@@ -1,0 +1,1598 @@
+{
+  "case_id": "probe_subframe_updates",
+  "intent": [
+    "在一个 AC-4 帧（2048 采样）内产生多次对象位置更新。",
+    "验证 num_obj_info_blocks 与 block_offset_factor 的解析与时间对齐。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 98304,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "silence"
+    }
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "probe-subframe",
+      "comment": "每 512 采样一次位置事件，即每帧 4 次。",
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 512,
+          "position": [
+            -0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 1024,
+          "position": [
+            -0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 1536,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 2048,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 2560,
+          "position": [
+            -0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 3072,
+          "position": [
+            -0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 3584,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 4096,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 4608,
+          "position": [
+            -0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 5120,
+          "position": [
+            -0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 5632,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 6144,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 6656,
+          "position": [
+            -0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 7168,
+          "position": [
+            -0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 7680,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 8192,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 8704,
+          "position": [
+            0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 9216,
+          "position": [
+            0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 9728,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 10240,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 10752,
+          "position": [
+            0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 11264,
+          "position": [
+            0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 11776,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 12288,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 12800,
+          "position": [
+            0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 13312,
+          "position": [
+            0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 13824,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 14336,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 14848,
+          "position": [
+            0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 15360,
+          "position": [
+            0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 15872,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 16384,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 16896,
+          "position": [
+            0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 17408,
+          "position": [
+            0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 17920,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 18432,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 18944,
+          "position": [
+            0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 19456,
+          "position": [
+            0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 19968,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 20480,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 20992,
+          "position": [
+            0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 21504,
+          "position": [
+            0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 22016,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 22528,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 23040,
+          "position": [
+            0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 23552,
+          "position": [
+            0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 24064,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 24576,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 25088,
+          "position": [
+            -0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 25600,
+          "position": [
+            -0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 26112,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 26624,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 27136,
+          "position": [
+            -0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 27648,
+          "position": [
+            -0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 28160,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 28672,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 29184,
+          "position": [
+            -0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 29696,
+          "position": [
+            -0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 30208,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 30720,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 31232,
+          "position": [
+            -0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 31744,
+          "position": [
+            -0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 32256,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 32768,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 33280,
+          "position": [
+            -0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 33792,
+          "position": [
+            -0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 34304,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 34816,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 35328,
+          "position": [
+            -0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 35840,
+          "position": [
+            -0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 36352,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 36864,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 37376,
+          "position": [
+            -0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 37888,
+          "position": [
+            -0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 38400,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 38912,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 39424,
+          "position": [
+            -0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 39936,
+          "position": [
+            -0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 40448,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 40960,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 41472,
+          "position": [
+            0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 41984,
+          "position": [
+            0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 42496,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 43008,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 43520,
+          "position": [
+            0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 44032,
+          "position": [
+            0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 44544,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 45056,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 45568,
+          "position": [
+            0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 46080,
+          "position": [
+            0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 46592,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 47104,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 47616,
+          "position": [
+            0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 48128,
+          "position": [
+            0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 48640,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 49152,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 49664,
+          "position": [
+            0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 50176,
+          "position": [
+            0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 50688,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 51200,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 51712,
+          "position": [
+            0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 52224,
+          "position": [
+            0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 52736,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 53248,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 53760,
+          "position": [
+            0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 54272,
+          "position": [
+            0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 54784,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 55296,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 55808,
+          "position": [
+            0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 56320,
+          "position": [
+            0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 56832,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 57344,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 57856,
+          "position": [
+            -0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 58368,
+          "position": [
+            -0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 58880,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 59392,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 59904,
+          "position": [
+            -0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 60416,
+          "position": [
+            -0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 60928,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 61440,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 61952,
+          "position": [
+            -0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 62464,
+          "position": [
+            -0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 62976,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 63488,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 64000,
+          "position": [
+            -0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 64512,
+          "position": [
+            -0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 65024,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 65536,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 66048,
+          "position": [
+            -0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 66560,
+          "position": [
+            -0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 67072,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 67584,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 68096,
+          "position": [
+            -0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 68608,
+          "position": [
+            -0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 69120,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 69632,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 70144,
+          "position": [
+            -0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 70656,
+          "position": [
+            -0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 71168,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 71680,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 72192,
+          "position": [
+            -0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 72704,
+          "position": [
+            -0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 73216,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 73728,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 74240,
+          "position": [
+            0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 74752,
+          "position": [
+            0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 75264,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 75776,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 76288,
+          "position": [
+            0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 76800,
+          "position": [
+            0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 77312,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 77824,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 78336,
+          "position": [
+            0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 78848,
+          "position": [
+            0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 79360,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 79872,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 80384,
+          "position": [
+            0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 80896,
+          "position": [
+            0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 81408,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 81920,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 82432,
+          "position": [
+            0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 82944,
+          "position": [
+            0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 83456,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 83968,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 84480,
+          "position": [
+            0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 84992,
+          "position": [
+            0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 85504,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 86016,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 86528,
+          "position": [
+            0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 87040,
+          "position": [
+            0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 87552,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 88064,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 88576,
+          "position": [
+            0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 89088,
+          "position": [
+            0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 89600,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 90112,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 90624,
+          "position": [
+            -0.0968,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 91136,
+          "position": [
+            -0.1613,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 91648,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 92160,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 92672,
+          "position": [
+            -0.3548,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 93184,
+          "position": [
+            -0.4194,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 93696,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 94208,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 94720,
+          "position": [
+            -0.6129,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 95232,
+          "position": [
+            -0.6774,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 95744,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96256,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96768,
+          "position": [
+            -0.871,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 97280,
+          "position": [
+            -0.9355,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 97792,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "signal": {
+        "kind": "sine",
+        "frequency_hz": 1000.0,
+        "level_dbfs": -12.0,
+        "fade_samples": 240
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0
+      }
+    }
+  ],
+  "encodes": [
+    768
+  ],
+  "notes": [
+    "对象持续发声（省略 burst_samples），使每一帧都有信号可对齐。",
+    "位置沿 X 轴往返扫描，相邻事件位置必不相同。"
+  ]
+}

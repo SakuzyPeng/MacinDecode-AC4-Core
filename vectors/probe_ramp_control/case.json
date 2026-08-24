@@ -1,0 +1,240 @@
+{
+  "case_id": "probe_ramp_control",
+  "intent": [
+    "probe_ramp_lengths 的对照：位置轨迹相同，rampLength 全部为 0。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 81920,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "silence"
+    }
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "probe-ramp-control",
+      "comment": "位置在 X 轴两极间跳变，rampLength 逐段取不同值。",
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 4096,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 8192,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 12288,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 16384,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 20480,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 24576,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 28672,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 32768,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 36864,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 40960,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 45056,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 49152,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 53248,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 57344,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 61440,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 65536,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 69632,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 73728,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 77824,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        }
+      ],
+      "signal": {
+        "kind": "sine",
+        "frequency_hz": 1000.0,
+        "level_dbfs": -12.0,
+        "fade_samples": 240
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0
+      }
+    }
+  ],
+  "encodes": [
+    768
+  ],
+  "notes": [
+    "与 probe_ramp_lengths 的唯一差别是 rampLength。"
+  ]
+}

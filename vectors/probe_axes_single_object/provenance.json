@@ -1,0 +1,178 @@
+{
+  "case_id": "probe_axes_single_object",
+  "generated_at": "2026-08-19T15:41:05Z",
+  "generator": {
+    "script": "scripts/gen_damf.py",
+    "sha256": "573513786b08dfeb9005a60ea825f24a9c74e532abc3b0f1f87ce3058f122ef3",
+    "repo": {
+      "commit": "0893c10ee0a5ecca1e363b3868e524c19eb49b82",
+      "dirty": true
+    }
+  },
+  "encode": {
+    "codec": "ac4",
+    "bitrates_kbps": [
+      768,
+      1500
+    ],
+    "jobs": [
+      {
+        "backend": "default",
+        "bitrate_kbps": 768,
+        "output": "encoded/master_ac4_768K.m4a"
+      },
+      {
+        "backend": "default",
+        "bitrate_kbps": 1500,
+        "output": "encoded/master_ac4_1500K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 3,
+        "bitrate_kbps": 768,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l3_768K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 1500,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_1500K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 768,
+        "start_samples": 0,
+        "encoder_mode": "3dof",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_768K_3dof.m4a",
+        "input_transform": "damf_0.6.0_type_3dof"
+      },
+      {
+        "backend": "dee_ims",
+        "bitrate_kbps": 256,
+        "encoding_profile": "ims",
+        "legacy_presentation": false,
+        "output": "encoded/master_ac4_ims_256K.m4a"
+      },
+      {
+        "backend": "dee_ims",
+        "bitrate_kbps": 256,
+        "encoding_profile": "ims",
+        "legacy_presentation": true,
+        "output": "encoded/master_ac4_ims_legacy_256K.m4a"
+      }
+    ],
+    "sample_rate": 48000,
+    "frame_rate": "24",
+    "duration_samples": 288000,
+    "encoder_behavior_scope": "backend_and_job_parameters"
+  },
+  "tools": {
+    "ac4_encoder": {
+      "sha256": "6d5c72747e74eed3c784a0a8f17474ec37313757ac279d24fa85370db4ed4c5b",
+      "commit": "b4f7ca19eaae8da6057df81c7bd56e74d98438e4",
+      "worktree_dirty": false
+    },
+    "adm_normalizer": {
+      "sha256": "21229c3d2855bf68f604ed4915e9832eac2c4e4fdd33e4bce3e3e7dcfa6eae21"
+    },
+    "dme_ac4": {
+      "encoder_sha256": "c8ac73eefb6af7bff58d1889017d8824705e29112cdac121d5a618e22af43889",
+      "muxer_sha256": "452a13d2320baee3880405da9e00886b294fdf317ae8e39d16c77614d185ce00"
+    },
+    "ac4_muxer": {
+      "backend": "gpac_mp4box",
+      "sha256": "910837f90ecbecc19da2bfa2b737982d4feafa1ff00b72055a4a106f99b2065d"
+    },
+    "encoder_backend": {
+      "present": true
+    },
+    "dee_ims_encoder": {
+      "wrapper_sha256": "f3bf551d7cb79f6374a9c992118248ca2e1550b95c0b9abf95459b2ec5af6ba1",
+      "engine_sha256": "65485b6d35fa534b25109ab6f238971aaded73fc99c7f7fb119d1a5d5299234e",
+      "template_sha256": "7f03d04a9e3fa498be71be4803303feaa1677143864e176de24fb8cdd1957e69",
+      "workspace_present": true
+    },
+    "ffprobe": {
+      "version": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers"
+    },
+    "mp4box": {
+      "sha256": "910837f90ecbecc19da2bfa2b737982d4feafa1ff00b72055a4a106f99b2065d",
+      "version": "MP4Box - GPAC version 26.02-revrelease"
+    }
+  },
+  "host": {
+    "os": "macOS 27.0",
+    "arch": "arm64"
+  },
+  "artifacts": {
+    "case.json": {
+      "sha256": "5f1b5bde58b5345411fa4660ac7f3cb990066a68a26bc2a57bb32251fe8f02bd",
+      "bytes": 2855
+    },
+    "source/master.atmos": {
+      "sha256": "f78412ad1078ffd6c4895e7c8ecca305044a517a805e575d2687dc190a42cd4e",
+      "bytes": 1095
+    },
+    "source/master.atmos.audio": {
+      "sha256": "e825a12fbd1b9eac50c285a312c0fc14be0c23261822e6044b2ca7dd9154f36b",
+      "bytes": 9504068
+    },
+    "source/master.atmos.metadata": {
+      "sha256": "5313c24fc75947def17302140a22eddd0b480f773ae63f19dcc834b0cefe2a24",
+      "bytes": 3947
+    },
+    "normalized/output.wav": {
+      "sha256": "669a1fa3872d49789aa6fe34b69b8933bc14d961f95fcfeede37a60fc9e521b8",
+      "bytes": 9524628
+    },
+    "encoded/master_ac4_1500K.m4a": {
+      "sha256": "04794aa9a8fe98fb16c1565e3e5221d31ad399076eec9f874b4b60d1a374f633",
+      "bytes": 1145360,
+      "payload_sha256": "70459a276e6187946e54397d574773de128ccf6033fc88818dd8200cad4ee1bd"
+    },
+    "encoded/master_ac4_768K.m4a": {
+      "sha256": "e7e6f1cbf5e646b686bc005c369abeaf12799a1b53a0170ccf2242405951f705",
+      "bytes": 586438,
+      "payload_sha256": "4830e67269552c0a81ed5d0841a080d31cfbc2c096f5034d6e9b2a3b6e626fc4"
+    },
+    "encoded/master_ac4_dme_l3_768K.m4a": {
+      "sha256": "43dcaaa3e2d7c7438ada6b5d2d8e0cfbfbccc9eea7fadd9790c169a587f6c881",
+      "bytes": 587198,
+      "payload_sha256": "e13ee04c9ef095a34a71f92a7e922fe4a1975368b7996edba07d4ee7169ff5c2"
+    },
+    "encoded/master_ac4_dme_l4_1500K.m4a": {
+      "sha256": "2dbff4388486d63c196500fcf80df4cd52602c2dcffd9dad55f314552aca5658",
+      "bytes": 1145470,
+      "payload_sha256": "ac2e2b05968994522494497cea1d894180368192ea5b82523a85f9bf4403b961"
+    },
+    "encoded/master_ac4_dme_l4_768K_3dof.m4a": {
+      "sha256": "561e04bb381d48915bd18ae2fe807c72a34628dc4f050b80df6a308135fe5b1e",
+      "bytes": 587198,
+      "payload_sha256": "5f0084b0f4c71008ae754519e8dec116a1f803e0effbea922a30fd4620e6ce25"
+    },
+    "encoded/master_ac4_ims_256K.m4a": {
+      "sha256": "8b28cf95cab416cda6a1adb8eeae23a1ada5d7d9e3db7a01ccb515d76bb209c2",
+      "bytes": 193975,
+      "payload_sha256": "e7f65e5f19dc5470ce1bba3a9de01fcc8e666b023cff44b9d4e250d6aa370348"
+    },
+    "encoded/master_ac4_ims_legacy_256K.m4a": {
+      "sha256": "7169b401ce869b1e57c710df39859aface8f6af2b85ddf53cd840eef57226ead",
+      "bytes": 193975,
+      "payload_sha256": "fcacb69514509fa6b6f908b6cfaa2d130f3be8b27d5215b2898ab932b844bdd1"
+    }
+  }
+}

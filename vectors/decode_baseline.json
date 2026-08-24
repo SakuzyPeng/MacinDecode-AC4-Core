@@ -1,0 +1,229 @@
+{
+  "comment": [
+    "核心带 PCM 的逐位回归基线，由 scripts/decode_check.py 维护。",
+    "摘要取自 export-core-pcm 写出的 WAVE_FORMAT_EXTENSIBLE 32 位浮点 WAVE；",
+    "内容是 A-JOC 下混信号的核心带重建，不含 A-SPX 带宽扩展。",
+    "逐路来源是传输侧的 substream:element:channel。",
+    "多 presentation 向量必须由 presentation_overrides 显式选择，禁止依赖默认第一项。",
+    "data 块直接写 f32::to_bits()，整个文件的摘要覆盖呈现 PCM 与容器形状。",
+    "MP4 输入已应用 edit list；编码媒体不入库，因此这是 fail-closed 的本地门禁。",
+    "它证明「没有意外改变」，不证明「正确」；参考解码器不暴露 A-JOC 前的中间 PCM，输出层级不可比。"
+  ],
+  "presentation_overrides": {
+    "probe_axes_single_object/master_ac4_ims_legacy_256K.m4a": 0
+  },
+  "entries": {
+    "probe_axes_single_object/master_ac4_1500K.m4a": {
+      "sha256": "6b71d4d1c6619b0d22cba17af732ab5568f2739816d61233c5f7f936a0bf0936",
+      "sample_rate": 48000,
+      "channels": 12,
+      "frames": 288000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0",
+        "2:5:1",
+        "2:6:0"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_768K.m4a": {
+      "sha256": "fcfa92944c273e746ca626b9ae02343ea3c75a71ec8c5485390b158e6872504d",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 288000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_dme_l3_768K.m4a": {
+      "sha256": "89d315ffbf58797e31f88d19aa261a3ccd3be83abe3c53bdb66ce6036cb88a6a",
+      "sample_rate": 48000,
+      "channels": 8,
+      "frames": 288000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a": {
+      "sha256": "8a044402a0cd9393fb649fb094a5288e7b60ebcc562bfe6e26e94890d64d1621",
+      "sample_rate": 48000,
+      "channels": 12,
+      "frames": 288000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0",
+        "2:5:1",
+        "2:6:0"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a": {
+      "sha256": "908ffbf53a64587918a192e375db70bc405edb49769e821010bb1003c2649bf8",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 288000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    },
+    "probe_bed_only/master_ac4_256K.m4a": {
+      "sha256": "c92ad6c8c9d3b8a51871d2e1d12204f479c1121147c4768f72a908703f15be52",
+      "sample_rate": 48000,
+      "channels": 6,
+      "frames": 96000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0"
+      ]
+    },
+    "probe_bed_only/master_ac4_448K.m4a": {
+      "sha256": "2b40c79da762cee69ebaff607b924fe9fd40b52c1ccfc30f557aaee8c6d4c0c9",
+      "sample_rate": 48000,
+      "channels": 8,
+      "frames": 96000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0"
+      ]
+    },
+    "probe_delayed_onset/master_ac4_768K.m4a": {
+      "sha256": "acf19c0d59a1084848857d41db0cbe8406565c57807c375c6122b324d111c268",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 288000,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    },
+    "probe_ramp_control/master_ac4_768K.m4a": {
+      "sha256": "0701f30d3ecce356252de65e58e6234b45f7973b6bffc8158a5a9c1f976175dc",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 81920,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    },
+    "probe_ramp_lengths/master_ac4_768K.m4a": {
+      "sha256": "0701f30d3ecce356252de65e58e6234b45f7973b6bffc8158a5a9c1f976175dc",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 81920,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    },
+    "probe_subframe_control/master_ac4_768K.m4a": {
+      "sha256": "92b70b7748d24312cf352be008ae213d87df7c0dc67cd4d22e91f97983704862",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 98304,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    },
+    "probe_subframe_updates/master_ac4_768K.m4a": {
+      "sha256": "d918df0bcee353f61013c710761cc6f855d2101a327975969d30e29e514bfb6f",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 98304,
+      "tracks": [
+        "2:0:0",
+        "2:1:0",
+        "2:1:1",
+        "2:2:0",
+        "2:2:1",
+        "2:3:0",
+        "2:3:1",
+        "2:4:0",
+        "2:4:1",
+        "2:5:0"
+      ]
+    }
+  }
+}

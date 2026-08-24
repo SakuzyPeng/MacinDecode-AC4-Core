@@ -1,0 +1,53 @@
+{
+  "case_id": "probe_delayed_onset",
+  "intent": [
+    "观察输出槽位是全流固定占用还是随内容动态分配。",
+    "验证对象中途入场与退场时，参考解码器输出的静音是严格零还是极低电平。",
+    "为落盘工具的前导静音回填路径提供真实数据。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 288000,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": ["L", "R", "C", "LFE", "Lss", "Rss", "Lrs", "Rrs", "Lts", "Rts"],
+    "signal": {"kind": "silence"}
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "probe-delayed-onset",
+      "comment": "位置全程不变，只有信号有无变化，避免位置更新干扰对槽位占用的判读。",
+      "segments": [
+        {"start_samples": 0,      "position": [-1.0, 0.0, 0.0], "silent": true, "label": "pre-silence"},
+        {"start_samples": 96000,  "position": [-1.0, 0.0, 0.0], "label": "onset"},
+        {"start_samples": 192000, "position": [-1.0, 0.0, 0.0], "silent": true, "label": "post-silence"}
+      ],
+      "segment_samples": 96000,
+      "burst_samples": 96000,
+      "signal": {
+        "kind": "sine",
+        "frequency_hz": 1000.0,
+        "level_dbfs": -12.0,
+        "fade_samples": 240
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0
+      }
+    }
+  ],
+  "encodes": [768],
+  "notes": [
+    "时间结构：0-2 s 静音，2-4 s 发声，4-6 s 静音。",
+    "若前 2 s 对应槽位严格为零，说明槽位随内容动态分配；若为极低非零值，说明槽位在全流被占用。"
+  ]
+}

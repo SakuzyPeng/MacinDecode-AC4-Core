@@ -1,0 +1,235 @@
+{
+  "schema": "macinac4.core-decode-layout-observation",
+  "version": 1,
+  "recorded_on": "2026-08-19",
+  "purpose": "判断 A-JOC 的 core decode 下混信号能否解释成固定扬声器布局，并观察源 BED 与创作对象如何进入 core。",
+  "normative_context": {
+    "specification": "ETSI TS 103 190-2 V1.3.1 (2025-07)",
+    "findings": [
+      "4.8.3.1 与表 6 条件 3.1 只在 full decoding mode 使用 A-JOC；core decoding mode 绕过 A-JOC 上混。",
+      "4.8.3.4.2 规定 b_static_dmx 为假时存在两份独立 OAMD，第一份供 core、第二份供 full。",
+      "6.3.2.8.3 只在 b_static_dmx 为真时把 core decode signal 定义成静态 5.0/5.1 bed。",
+      "6.3.3.1.28 的表 71 与伪码 26 在 A-JOC 且 b_static_dmx 为假时令 pres_ch_mode_core = -1；该分支没有规范声道模式。",
+      "5.8.2.4 明确把 core dialogue enhancement 的 xch 定义为 5.7.2.1 的 Qin_AJOC；这同时钉住 core 对象 essence 使用 Pseudocode 14a 的输入顺序。"
+    ],
+    "interpretation": "当前样本的 core 全带信号在规范上是带独立 OAMD 的对象，不是带声道标签的 PCM；但编码器可以把这些对象固定在扬声器形状的坐标网格上。"
+  },
+  "inputs": {
+    "probe_bed_only": {
+      "case_sha256": "b6099cd46a5220dea19c9df54a65e41155e111f7a80365a9c5d12737028b2d81",
+      "source": "7.1.2 BED；九路全带声道分别为 200、350、500、800、950、1100、1250、1400、1550 Hz，LFE 为 40 Hz；无创作对象。",
+      "encodes": {
+        "256": {
+          "container_sha256": "4831735e2463b4a98b44d0b6c4f5d137175d8a1fba874878f70a6adb3ac527dc",
+          "aspx_wave_sha256": "aa60fb868482b520fa30ad4acb0ab04431a69d094197b54857196a16a1896b99"
+        },
+        "448": {
+          "container_sha256": "f46bc25e128c1d5b10d624d52029f59649c52a95c94bc2f9aa60c1978f1d8a55",
+          "aspx_wave_sha256": "9b802a06939932651b5fc75ab782351a6f61bff25dd649695f27499a29914bb1"
+        }
+      }
+    },
+    "probe_axes_single_object": {
+      "case_sha256": "d920c2a8daee70b21f1894dd7861d6f2b1efa91628013d71935e2fb921604276",
+      "source": "静音 7.1.2 BED 加一个 1 kHz 对象；对象依次位于 X-min、X-max、Y-min、Y-max、原点、Z-max。",
+      "encodes": {
+        "768": {
+          "container_sha256": "e7e6f1cbf5e646b686bc005c369abeaf12799a1b53a0170ccf2242405951f705",
+          "aspx_wave_sha256": "16e53a036e071e9ec3b145122e8e5c424a35b0c7424857d88b1ab62e0b0d84e8"
+        },
+        "1500": {
+          "container_sha256": "04794aa9a8fe98fb16c1565e3e5221d31ad399076eec9f874b4b60d1a374f633",
+          "aspx_wave_sha256": "92dac7272e87a63f8951f528437c77c103f3526a71379e17f94fa4740933d658"
+        }
+      }
+    },
+    "additional_768_cases": [
+      "probe_delayed_onset",
+      "probe_ramp_control",
+      "probe_ramp_lengths",
+      "probe_subframe_control",
+      "probe_subframe_updates"
+    ]
+  },
+  "tools": {
+    "topology_trace_repo_commit": "25f4c3f544ecf0096a69fd4b4aff6ada696a2e0b",
+    "pcm_decoder_revision": "包含本记录的 Git revision",
+    "commands": [
+      "macinac4 trace <input>",
+      "macinac4 export-damf --mode core --all-objects --output <new-dir> <input>",
+      "macinac4 export-aspx-pcm --output <new-wave> <input>"
+    ]
+  },
+  "method": {
+    "topology": "逐流读取 b_static_dmx、core/full 的 bed_dyn_obj_assignment 与全带信号数。",
+    "core_positions": "用 core 模式 DAMF 导出读取第一份 OAMD；按已标定轴映射换成 [-1, 1] 坐标，并检查每个对象在全时长内的位置唯一值。",
+    "bed_energy": "对 export-aspx-pcm 的 A-JOC 输入顺序逐路投影已知正弦；使用呈现时间线样本 [24000, 72000)，按每个源频率在全部 core 输入中的平方幅度归一化为功率占比。",
+    "moving_object_energy": "每个 48000 样本位置段取 [start+4000, start+20000)，投影 1 kHz；按全部 core 输入的平方幅度归一化。",
+    "rounding": "功率占比四舍五入到 0.1%；表中省略小于 0.1% 的项。",
+    "important_boundary": "export-aspx-pcm 是 A-SPX 后、full A-JOC 前的诊断出口；5.8.2.4 证明其 Qin_AJOC 顺序也是 core 对象 essence 的顺序。本实验流没有 DE 数据，故无需再做 core DE；精确 PCM 尚无外部 oracle，规范与 OAMD 结论不依赖这些 PCM 数值。"
+  },
+  "results": {
+    "topology": {
+      "common": {
+        "b_static_dmx": false,
+        "core_assignment": "dynamic_only",
+        "full_assignment": "dynamic_only",
+        "full_fullband_objects": 20,
+        "lfe": true
+      },
+      "tiers": [
+        {
+          "bitrate_kbps": 256,
+          "core_fullband_objects": 5,
+          "grid_shape": "5.0-like",
+          "total_with_lfe": 6
+        },
+        {
+          "bitrate_kbps": 448,
+          "core_fullband_objects": 7,
+          "grid_shape": "5.0.2-like",
+          "total_with_lfe": 8
+        },
+        {
+          "bitrate_kbps": 768,
+          "core_fullband_objects": 9,
+          "grid_shape": "5.0.4-like",
+          "total_with_lfe": 10
+        },
+        {
+          "bitrate_kbps": 1500,
+          "core_fullband_objects": 11,
+          "grid_shape": "7.0.4-like",
+          "total_with_lfe": 12
+        }
+      ]
+    },
+    "core_oamd_grids": {
+      "5": [
+        {"object": 1, "position": [-1, 1, 0]},
+        {"object": 2, "position": [1, 1, 0]},
+        {"object": 3, "position": [0, 1, 0]},
+        {"object": 4, "position": [-1, -1, 0]},
+        {"object": 5, "position": [1, -1, 0]}
+      ],
+      "7": [
+        {"object": 1, "position": [-1, 1, 0]},
+        {"object": 2, "position": [1, 1, 0]},
+        {"object": 3, "position": [0, 1, 0]},
+        {"object": 4, "position": [-1, -1, 0]},
+        {"object": 5, "position": [1, -1, 0]},
+        {"object": 6, "position": [-1, 0, 1]},
+        {"object": 7, "position": [1, 0, 1]}
+      ],
+      "9": [
+        {"object": 1, "position": [-1, 1, 0]},
+        {"object": 2, "position": [1, 1, 0]},
+        {"object": 3, "position": [0, 1, 0]},
+        {"object": 4, "position": [-1, -1, 0]},
+        {"object": 5, "position": [1, -1, 0]},
+        {"object": 6, "position": [-1, 1, 1]},
+        {"object": 7, "position": [1, 1, 1]},
+        {"object": 8, "position": [-1, -1, 1]},
+        {"object": 9, "position": [1, -1, 1]}
+      ],
+      "11": [
+        {"object": 1, "position": [-1, 1, 0]},
+        {"object": 2, "position": [1, 1, 0]},
+        {"object": 3, "position": [0, 1, 0]},
+        {"object": 4, "position": [-1, 0, 0]},
+        {"object": 5, "position": [1, 0, 0]},
+        {"object": 6, "position": [-1, 1, 1]},
+        {"object": 7, "position": [1, 1, 1]},
+        {"object": 8, "position": [-1, -1, 1]},
+        {"object": 9, "position": [1, -1, 1]},
+        {"object": 10, "position": [-1, -1, 0]},
+        {"object": 11, "position": [1, -1, 0]}
+      ],
+      "stability": {
+        "cases_checked": 9,
+        "moving_core_objects": 0,
+        "all_768_cases_same_grid": true
+      }
+    },
+    "full_oamd_for_bed_only": {
+      "assignment": "20 dynamic fullband objects plus separate LFE",
+      "speaker_shaped_positions": [
+        {"object": 1, "source_bed_role": "L", "position": [-1, 1, 0]},
+        {"object": 2, "source_bed_role": "C", "position": [0, 1, 0]},
+        {"object": 3, "source_bed_role": "Lss", "position": [-1, 0, 0]},
+        {"object": 4, "source_bed_role": "R", "position": [1, 1, 0]},
+        {"object": 5, "source_bed_role": "Lrs", "position": [-1, -1, 0]},
+        {"object": 6, "source_bed_role": "Rss", "position": [1, 0, 0]},
+        {"object": 7, "source_bed_role": "Lts", "position": [-1, 0, 1]},
+        {"object": 8, "source_bed_role": "Rrs", "position": [1, -1, 0]},
+        {"object": 9, "source_bed_role": "Rts", "position": [1, 0, 1]}
+      ],
+      "remaining_objects": "对象 10–20 保持默认位置；本实验未用 full 对象 PCM 判定其能量。",
+      "interpretation": "源 BED 的扬声器身份没有以 BED 类型保留，而是通过动态对象的位置模板表达。"
+    },
+    "bed_power_share_percent": {
+      "256": {
+        "L": {"q0": 100.0},
+        "R": {"q1": 100.0},
+        "C": {"q2": 100.0},
+        "Lss": {"q3": 100.0},
+        "Rss": {"q4": 100.0},
+        "Lrs": {"q3": 100.0},
+        "Rrs": {"q4": 100.0},
+        "Lts": {"q3": 100.0},
+        "Rts": {"q4": 100.0},
+        "LFE": {"separate_lfe_track": 100.0}
+      },
+      "448": {
+        "L": {"q0": 100.0},
+        "R": {"q1": 100.0},
+        "C": {"q2": 100.0},
+        "Lss": {"q3": 100.0},
+        "Rss": {"q4": 100.0},
+        "Lrs": {"q3": 100.0},
+        "Rrs": {"q4": 100.0},
+        "Lts": {"q5": 100.0},
+        "Rts": {"q6": 100.0},
+        "LFE": {"separate_lfe_track": 100.0}
+      },
+      "observation": "P1 5.3 声道矩阵完成后，左右源严格落入成对 core 对象；core 宽度增加时，新增高度对占用 q5/q6。A-JOC 输入下标仍由 core 网格而非作者侧 BED identity 定义。"
+    },
+    "moving_object_power_share_percent": {
+      "768_core_9": {
+        "X-min": {"q3": 100.0},
+        "X-max": {"q4": 100.0},
+        "Y-min": {"q3": 48.9, "q4": 51.1},
+        "Y-max": {"q2": 99.8, "q3": 0.1, "q4": 0.1},
+        "origin": {"q2": 0.1, "q3": 50.0, "q4": 50.0},
+        "Z-max": {"q5": 25.0, "q6": 25.0, "q7": 25.0, "q8": 25.0}
+      },
+      "1500_core_11": {
+        "X-min": {"q3": 100.0},
+        "X-max": {"q4": 100.0},
+        "Y-min": {"q9": 49.0, "q10": 50.9},
+        "Y-max": {"q2": 99.8, "q3": 0.1, "q4": 0.1},
+        "origin": {"q2": 0.1, "q3": 50.0, "q4": 50.0},
+        "Z-max": {"q5": 25.0, "q6": 25.0, "q7": 25.0, "q8": 25.0}
+      },
+      "oamd_behavior": "core 的对象位置不动；创作对象的空间运动被折成固定 core 对象之间的音频重分配。full 模式则由对象 1 的 OAMD 位置移动。"
+    }
+  },
+  "conclusions": [
+    "严格答案不是固定扬声器声道：b_static_dmx 为假、pres_ch_mode_core = -1、全带 assignment 为 dynamic_only。",
+    "对当前编码器可以把 core 看成扬声器形状的虚拟对象网格：5/7/9/11 路分别呈 5.0、5.0.2、5.0.4、7.0.4 形状，另带独立 LFE。该网格是 OAMD 对象位置，不是 WAVE channel mask。",
+    "sf_data 输入轨本身没有声道含义；必须先执行 P1 5.3 的 MDCT 声道矩阵，输出轨才与上述 core 对象顺序配对。漏掉该步会把 M/S 输入误作 L/R，并制造虚假的左偏与功率串扰。",
+    "BED 与创作对象在 core 中不保持作者侧类型边界：两者都折入固定 core 动态对象。纯 BED 通过静态位置模板与音频下混表达，移动对象通过这些固定对象之间的音频重分配表达。",
+    "对本实验九条 b_de_data_present = 0 的已支持向量，export-aspx-pcm 已到达 core 对象 essence 的数值边界；要形成 core 场景输出，应把它与第一份 OAMD 配对，而不是等待 full 模式的 A-JOC 上混。"
+  ],
+  "evidence_scope": {
+    "classification": "controlled-local-observation",
+    "automated_gate": false,
+    "limitations": [
+      "编码媒体被版本控制排除；哈希与 tracked case/hashes 文件可确认本机输入，但公开 checkout 不能单独重现实验。",
+      "core/full assignment、OAMD 位置与规范分支是比特级结果；PCM 的精确能量比例只由当前实现产出，尚无外部 core-mode oracle。",
+      "只覆盖当前两套编码后端与 256/448/768/1500 kbps 档位，不能外推到任意 AC-4 编码器。",
+      "固定网格不授权把导出 WAVE 标成 5.1、5.1.2、5.1.4 或 7.1.4；其它合法码流可以让 core 动态对象移动。",
+      "通用 core 场景 API 仍须实现或显式拒绝 5.8.2.4 的 core dialogue enhancement；本实验只能证明无 DE 的现有向量已经到达该边界。"
+    ]
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "case_id": "probe_ramp_lengths",
+  "intent": [
+    "让源端声明非零 rampLength，判定 ramp_duration 是否由源决定。",
+    "覆盖 ramp_duration_code 的四个分支与 ramp_duration_table 的多个条目。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 81920,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "silence"
+    }
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "probe-ramp",
+      "comment": "位置在 X 轴两极间跳变，rampLength 逐段取不同值。",
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 4096,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 512
+        },
+        {
+          "start_samples": 8192,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1536
+        },
+        {
+          "start_samples": 12288,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 32
+        },
+        {
+          "start_samples": 16384,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1024
+        },
+        {
+          "start_samples": 20480,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1600
+        },
+        {
+          "start_samples": 24576,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1920
+        },
+        {
+          "start_samples": 28672,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 2048
+        },
+        {
+          "start_samples": 32768,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 256
+        },
+        {
+          "start_samples": 36864,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 480
+        },
+        {
+          "start_samples": 40960,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 0
+        },
+        {
+          "start_samples": 45056,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 512
+        },
+        {
+          "start_samples": 49152,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1536
+        },
+        {
+          "start_samples": 53248,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 32
+        },
+        {
+          "start_samples": 57344,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1024
+        },
+        {
+          "start_samples": 61440,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1600
+        },
+        {
+          "start_samples": 65536,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 1920
+        },
+        {
+          "start_samples": 69632,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 2048
+        },
+        {
+          "start_samples": 73728,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 256
+        },
+        {
+          "start_samples": 77824,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "ramp_samples": 480
+        }
+      ],
+      "signal": {
+        "kind": "sine",
+        "frequency_hz": 1000.0,
+        "level_dbfs": -12.0,
+        "fade_samples": 240
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0
+      }
+    }
+  ],
+  "encodes": [
+    768
+  ],
+  "notes": [
+    "既有向量的 rampLength 恒为 0，而码流中 ramp_duration 恒为 2048；",
+    "本案例用于判定该值是编码器固定策略，还是源端可控。",
+    "rampLength 取值序列：[0, 512, 1536, 32, 1024, 1600, 1920, 2048, 256, 480]。"
+  ]
+}

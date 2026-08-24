@@ -1,0 +1,65 @@
+{
+  "comment": [
+    "规范文件的锁定清单。文件本身受 ETSI 版权保护，不进入版本控制；",
+    "此清单记录来源与哈希，使任何人都能取得完全相同的字节。",
+    "由 scripts/fetch_specs.py 消费。升级规范版本必须通过 ADR。"
+  ],
+  "baseline": "TS103190:2025-07",
+  "documents": [
+    {
+      "id": "TS103190-1",
+      "title": "Digital Audio Compression (AC-4) Standard; Part 1: Channel based coding",
+      "version": "1.4.1",
+      "release": "2025-07",
+      "pages": 318,
+      "citation_prefix": "TS103190-1:v1.4.1",
+      "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319001/01.04.01_60/ts_10319001v010401p.pdf",
+      "filename": "ts_10319001v010401p.pdf",
+      "sha256": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f",
+      "size": 2440195,
+      "attachment": {
+        "description": "规范随附的 symbolic C tables",
+        "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319001/01.04.01_60/ts_10319001v010401p0.zip",
+        "filename": "ts_10319001v010401p0.zip",
+        "sha256": "8c827f84e568c2df541e4ac51a1d4cf81fdf2dc48e9aaefcadf608811f7e3ea4",
+        "member": "ts_103190_tables.c",
+        "member_sha256": "5832889afb5828b567447f59c219c820baea5cf864c698833de0f9cc6249d483"
+      }
+    },
+    {
+      "id": "TS103190-2",
+      "title": "Digital Audio Compression (AC-4) Standard; Part 2: Immersive and personalized audio",
+      "version": "1.3.1",
+      "release": "2025-07",
+      "pages": 254,
+      "citation_prefix": "TS103190-2:v1.3.1",
+      "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319002/01.03.01_60/ts_10319002v010301p.pdf",
+      "filename": "ts_10319002v010301p.pdf",
+      "sha256": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1",
+      "size": 2284459,
+      "attachment": {
+        "description": "规范随附的 symbolic C tables",
+        "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319002/01.03.01_60/ts_10319002v010301p0.zip",
+        "filename": "ts_10319002v010301p0.zip",
+        "sha256": "44105a06e9b3f075e8900476a135996bc8211c88bf5df52108fb10e8c7eef9c6",
+        "member": "ts_103190_tables_part2.c",
+        "member_sha256": "2ee628a25e61eeed1ead1fa94cf21eac314e3c2f312e5aac6130763b9926cb7e"
+      }
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "id": "TS103190-PDF-TABLES-RUST",
+      "filename": "generated/ts103190_pdf_tables.rs",
+      "generator": "scripts/generate_spec_tables.py",
+      "sha256": "b29bd5fd133d505f9abab4839308f1cd8804dfe3114c7b113ed8397edb5ba32a",
+      "distribution": "local-only"
+    }
+  ],
+  "retrieved_at": "2026-07-25",
+  "notes": [
+    "两份文档均为 ETSI 免费公开发布；下载需要常规浏览器 User-Agent，否则返回 403。",
+    "截至 retrieved_at，Part 1 v1.5.1 与 Part 2 v1.4.1 均不存在，当前为最新版本。",
+    "C tables 只作为表格核对来源，不构成完整参考解码器。"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "case_id": "probe_bed_only",
+  "generated_at": "2026-07-27T09:44:24Z",
+  "generator": {
+    "script": "scripts/gen_damf.py",
+    "sha256": "90731af78fdb0553140b1ab191003bb3881be635a36f7c07cb8cec375bb32d91",
+    "repo": {
+      "commit": "4e351d859bde985a04439e0b68d11697dd61ee88",
+      "dirty": true
+    }
+  },
+  "encode": {
+    "codec": "ac4",
+    "bitrates_kbps": [
+      256,
+      448
+    ],
+    "sample_rate": 48000,
+    "frame_rate": "24",
+    "duration_samples": 96000
+  },
+  "tools": {
+    "ac4_encoder": {
+      "sha256": "6580620e16649b4f41cf18c3a1a54dc30044c8d14f45c6e9cdfe697030a4b0b1",
+      "commit": "d900bb791af4a1cb870565abcbd6d916d9c32809",
+      "worktree_dirty": false
+    },
+    "adm_normalizer": {
+      "sha256": "21229c3d2855bf68f604ed4915e9832eac2c4e4fdd33e4bce3e3e7dcfa6eae21"
+    },
+    "ac4_muxer": {
+      "sha256": "42b6cad1cd20f17dff3f91fd35391bb6254908d300c03acc4b72ca86114242d5"
+    },
+    "encoder_backend": {
+      "present": true
+    },
+    "ffprobe": {
+      "version": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers"
+    }
+  },
+  "host": {
+    "os": "macOS 27.0",
+    "arch": "arm64"
+  },
+  "artifacts": {
+    "case.json": {
+      "sha256": "b6099cd46a5220dea19c9df54a65e41155e111f7a80365a9c5d12737028b2d81",
+      "bytes": 1141
+    },
+    "source/master.atmos": {
+      "sha256": "97e87cfff79e32495a46a589c1fe228b5df5924086ad1282296c0370690eed8c",
+      "bytes": 1048
+    },
+    "source/master.atmos.audio": {
+      "sha256": "b9d87dc29930edf08f31504c5fc658902b274c29786a7ad6f5790c801a509bc5",
+      "bytes": 2880068
+    },
+    "source/master.atmos.metadata": {
+      "sha256": "cb04bbce4353f1fafea78dfc70f8e6beb3a5666b15564c5047be36dd4461f5e9",
+      "bytes": 1840
+    },
+    "normalized/output.wav": {
+      "sha256": "5ff59973c615f20c73cff2cb793da97353341a34592efed63f60b255b0fb0417",
+      "bytes": 2896928
+    },
+    "encoded/master_ac4_256K.m4a": {
+      "sha256": "4831735e2463b4a98b44d0b6c4f5d137175d8a1fba874878f70a6adb3ac527dc",
+      "bytes": 67775,
+      "payload_sha256": "0e6b4b4f9f915b36b14530cd1a4141b943564a6d9247d049f23ec85b34f755bf"
+    },
+    "encoded/master_ac4_448K.m4a": {
+      "sha256": "f46bc25e128c1d5b10d624d52029f59649c52a95c94bc2f9aa60c1978f1d8a55",
+      "bytes": 117951,
+      "payload_sha256": "e10e462b310924785a9b9c4b22e1130412805a76ed67f59e7a6818e5309f8d84"
+    }
+  }
+}

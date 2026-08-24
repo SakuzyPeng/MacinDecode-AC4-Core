@@ -1,0 +1,88 @@
+{
+  "case_id": "probe_axes_single_object",
+  "intent": [
+    "标定 DAMF 有符号位置到参考解码器无符号 Q15 输出的映射。",
+    "观测单个已知信号在 A-JOC 空间对象组之间的能量分布。",
+    "测量解码时延与位置更新的采样对齐。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 288000,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": ["L", "R", "C", "LFE", "Lss", "Rss", "Lrs", "Rrs", "Lts", "Rts"],
+    "signal": {"kind": "silence"}
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "probe-axes",
+      "comment": "每段前半发声后半静音，便于分辨段边界与解码时延。",
+      "segments": [
+        {"start_samples": 0,      "position": [-1.0, 0.0, 0.0], "label": "X-min"},
+        {"start_samples": 48000,  "position": [1.0, 0.0, 0.0],  "label": "X-max"},
+        {"start_samples": 96000,  "position": [0.0, -1.0, 0.0], "label": "Y-min"},
+        {"start_samples": 144000, "position": [0.0, 1.0, 0.0],  "label": "Y-max"},
+        {"start_samples": 192000, "position": [0.0, 0.0, 0.0],  "label": "origin"},
+        {"start_samples": 240000, "position": [0.0, 0.0, 1.0],  "label": "Z-max"}
+      ],
+      "segment_samples": 48000,
+      "burst_samples": 24000,
+      "signal": {
+        "kind": "sine",
+        "frequency_hz": 1000.0,
+        "level_dbfs": -12.0,
+        "fade_samples": 240
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      }
+    }
+  ],
+  "encodes": [768, 1500],
+  "dme_ac4": [
+    {
+      "level": 3,
+      "bitrate": 768
+    },
+    {
+      "level": 4,
+      "bitrate": 1500
+    },
+    {
+      "level": 4,
+      "bitrate": 768,
+      "mode": "3dof"
+    }
+  ],
+  "dee_ims": [
+    {
+      "bitrate": 256,
+      "encoding_profile": "ims",
+      "legacy_presentation": false
+    },
+    {
+      "bitrate": 256,
+      "encoding_profile": "ims",
+      "legacy_presentation": true
+    }
+  ],
+  "notes": [
+    "position 采用 DAMF 约定的有符号归一化坐标。",
+    "六段分别把单个轴推到极值，其余轴置零，使三轴方向、范围与可能的轴交换都能分辨。",
+    "bed 全静音，任何非零 bed 输出都说明存在串扰或布局重映射。",
+    "3DoF 作业固定对象为 scene relative，用于验证旋转头部跟踪路径；presentation 类型只在隔离 staging 中提升，不改写 canonical DAMF。",
+    "DEE IMS 基线用于 presentation、loudness、DRC 与 dialog enhancement 正向验证。",
+    "DEE IMS legacy 作业只覆盖多 presentation 共享物理 substream，不视为 alternative 向量。"
+  ]
+}

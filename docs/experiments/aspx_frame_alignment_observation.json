@@ -1,0 +1,109 @@
+{
+  "schema": "macinac4.aspx-frame-alignment-observation",
+  "version": 1,
+  "recorded_on": "2026-08-21",
+  "purpose": "定位并修正 core 直接 PCM 中 14 kHz 以上事件相对低频左移的问题，验证 P1 表 188 的 PCM/QMF 控制帧对齐。",
+  "input": {
+    "file": "private_music_reference_ac4_768K.m4a",
+    "sha256": "4ce3d12e3bc1b0f395eae8f5fbd3630d3fd1a08094cbb607e283d827ca96cf2f",
+    "sample_rate_hz": 48000,
+    "frame_length": 2048
+  },
+  "implementations": {
+    "old_core_commit": "46efe8a007300c4d2ad6c3c1794dccc2ccb76f53",
+    "fixed_core_revision": "包含本记录的 Git revision",
+    "drp_reference": "同一输入由 Dolby Reference Player 导出的 5.1.4 Float32 PCM"
+  },
+  "root_cause": {
+    "specification": "ETSI TS 103 190-1 V1.4.1 (2025-07)",
+    "clauses": [
+      "5.6.2 Table 188：48 kHz music / frame_length 2048 的 PCM signal delay d_pcm = 352 samples，control data delay d_ctrl = 1 frame",
+      "5.7.2：同一 raw AC-4 frame 的 QMF 控制必须暂存，直到对应 spectral frontend signal 到达 QMF 工具时才应用"
+    ],
+    "old_behavior": "当前 raw frame 的 VarChannelElement/A-SPX 控制直接驱动当前 IMDCT PCM，既未执行 d_pcm，也未执行 d_ctrl。",
+    "expected_relative_error_samples": 1696,
+    "expected_relative_error_derivation": "d_ctrl * frame_length - d_pcm = 1 * 2048 - 352",
+    "fixed_behavior": "逐声道连续延迟 PCM 352 samples，并按 substream 暂存一帧 QMF 控制；首份控制到期前只预热信号侧与 QMF 合成历史。"
+  },
+  "comparison_channel": {
+    "old_core": "5.1.4 C，输出轨 2",
+    "fixed_core": "export-aspx-pcm q2；该已验证 5.1.4 固定网格对应 C",
+    "drp_reference": "5.1.4 C，输出轨 2"
+  },
+  "metric": {
+    "transform": "1024-point real FFT with Hann window",
+    "hop_samples": 64,
+    "bands_hz": {
+      "low": [200, 13000],
+      "high": [14000, 22000]
+    },
+    "feature": "每帧 log(sum(abs(STFT)^2) + 1e-30)，去均值并除以标准差",
+    "edges": "两端各排除 5000 个 feature frame",
+    "lag_definition": "正 lag 表示第二份音频的能量包络晚于第一份；在搜索范围内取归一化互相关最大值",
+    "loudness_independence": "三份 feature 分别标准化，因此整体响度和固定 2^-15 缩放不影响 lag。"
+  },
+  "results": {
+    "old_core_to_fixed_core": {
+      "low_band_lag_samples": 320,
+      "low_band_correlation": 0.999650,
+      "high_band_lag_samples": 2048,
+      "high_band_correlation": 0.992510,
+      "relative_band_shift_samples": 1728,
+      "interpretation": "64-sample hop 下分别吻合表 188 的 d_pcm=352 与 d_ctrl*frame_length=2048；相对量与规范预期 1696 相差半个 hop。"
+    },
+    "fixed_core_to_drp": {
+      "low_band_lag_samples": 2048,
+      "low_band_correlation": 0.996052,
+      "high_band_lag_samples": 2048,
+      "high_band_correlation": 0.990970,
+      "relative_band_shift_samples": 0
+    },
+    "old_core_to_drp": {
+      "low_band_lag_samples": 2432,
+      "low_band_correlation": 0.996155,
+      "high_band_lag_samples": 4096,
+      "high_band_correlation": 0.984780,
+      "relative_band_shift_samples": 1664
+    }
+  },
+  "artifacts": {
+    "old_core": {
+      "file": "private_music_reference_ac4_768K_core_direct_5.1.4_PCM_F32_LUFS-13.6.wav",
+      "sha256": "ea4ed583ee9146c54414e34cf53d1616d9f6bb155c04f9023faea00d18d4b2dc",
+      "frames": 14578832,
+      "channels": 10
+    },
+    "fixed_core": {
+      "file": "aspx_fixed.wav",
+      "sha256": "08ff3d61c0fcfaec74caff0247801bfe56470d08f906335a40d0ca657c5f67d5",
+      "frames": 14578832,
+      "channels": 10
+    },
+    "drp_reference": {
+      "file": "private_music_reference_ac4_768K_DRP_direct_5.1.4_PCM_F32_LUFS-13.6.wav",
+      "sha256": "c254d89b785ca1bc418429a59c5ef407faf3f82f0232022f67de71bdde3be002",
+      "frames": 14583808,
+      "channels": 10
+    }
+  },
+  "conclusions": [
+    "修复前相对 DRP 的高低频 lag 残差为 1664 samples，与表 188 预测的 1696 在一个 64-sample hop 内一致。",
+    "修复后低频与高频相对 DRP 都取同一个 2048-sample lag，14 kHz 上下的带间错位在本指标分辨率内消失。",
+    "共同的 2048-sample lag 只说明两份导出的时间轴起点不同；本实验不据此判断 core 或 DRP 的容器 priming 原点谁对谁错。",
+    "DRP 只作为跨频带同步的外部观测，不是 A-JOC 前 core PCM 的逐样本规范 oracle。"
+  ],
+  "evidence_scope": {
+    "classification": "controlled-local-observation",
+    "automated_gate": false,
+    "related_automated_gates": [
+      "表 188 八档映射、连续环形延迟和 reset 单元测试",
+      "1/2/4 帧控制 FIFO 与 A-SPX 信号侧预热单元测试",
+      "九条 export-aspx-pcm 逐位基线"
+    ],
+    "limitations": [
+      "输入与三份生成音频不进入版本控制，只保留摘要、形状和统计结果。",
+      "真实节目只覆盖 frame_length=2048 / d_ctrl=1；其余七档由构造判据覆盖。",
+      "能量包络互相关可判断频带相对时序，不裁决不同解码器的逐样本波形、响度、带宽或绝对时间轴。"
+    ]
+  }
+}

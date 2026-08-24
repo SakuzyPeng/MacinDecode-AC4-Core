@@ -1,0 +1,233 @@
+{
+  "comment": [
+    "带宽扩展 PCM 的逐位回归基线，由 scripts/decode_check.py 维护。",
+    "摘要取自 export-aspx-pcm 写出的 WAVE_FORMAT_EXTENSIBLE 32 位浮点 WAVE；",
+    "内容是补上 A-SPX 高频后的下混信号，尚未执行 A-JOC 上混。",
+    "Core PCM 的 2 倍接口因子在 QMF 分析后撤销、终端合成后补回。",
+    "逐路顺序是 Pseudocode 14a 的 A-JOC 输入，LFE 带 role=lfe 单独排在最后；",
+    "来源串因此含 role，LFE 被错标成 A-JOC 输入下标会直接顶出基线。",
+    "PCM 已执行 P1 5.6 表 188 的 d_pcm，QMF 控制按同表 d_ctrl 延后到对应信号；",
+    "与核心带那份各自冻结：共用一个文件会让一次 --update 把两层一起重冻。",
+    "多 presentation 向量必须由 presentation_overrides 显式选择，禁止依赖默认第一项。",
+    "data 块直接写 f32::to_bits()，整个文件的摘要覆盖呈现 PCM 与容器形状。",
+    "MP4 输入已应用 edit list；编码媒体不入库，因此这是 fail-closed 的本地门禁。",
+    "它证明「没有意外改变」，不证明「正确」；参考解码器不暴露 A-JOC 前的中间 PCM，输出层级不可比。"
+  ],
+  "presentation_overrides": {
+    "probe_axes_single_object/master_ac4_ims_legacy_256K.m4a": 0
+  },
+  "entries": {
+    "probe_axes_single_object/master_ac4_1500K.m4a": {
+      "sha256": "4308ef0d1175625d5c4b88b3efedf371b389704038ff2500c06aec5c172db360",
+      "sample_rate": 48000,
+      "channels": 12,
+      "frames": 288000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:ajoc_input:9",
+        "2:ajoc_input:10",
+        "2:lfe"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_768K.m4a": {
+      "sha256": "7e6dacc7192cf4948fba90e287560376bad4ed2f4e7efca1e4b6a4049ad7e4bc",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 288000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_dme_l3_768K.m4a": {
+      "sha256": "e4f052f122c7cd5ef8d242c8fcdc509211938e6e14277913de44a19678fda760",
+      "sample_rate": 48000,
+      "channels": 8,
+      "frames": 288000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:lfe"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a": {
+      "sha256": "9de3491749cedd993d08384697f93a903af3f768d792b27f525a405f11c00c35",
+      "sample_rate": 48000,
+      "channels": 12,
+      "frames": 288000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:ajoc_input:9",
+        "2:ajoc_input:10",
+        "2:lfe"
+      ]
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a": {
+      "sha256": "b2138d7d743b347f640510bd9e866edc57c638ceb4fff8f05b04d8479ed5429a",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 288000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    },
+    "probe_bed_only/master_ac4_256K.m4a": {
+      "sha256": "64e6e83c45a30c98a4eb78b77e116007b49b65d6d23efa304279d8e8d000ffd3",
+      "sample_rate": 48000,
+      "channels": 6,
+      "frames": 96000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:lfe"
+      ]
+    },
+    "probe_bed_only/master_ac4_448K.m4a": {
+      "sha256": "dd55349eb267d5649b52f70c4ddee4b6b76aad3803ecb9ac6dc583dd9606b165",
+      "sample_rate": 48000,
+      "channels": 8,
+      "frames": 96000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:lfe"
+      ]
+    },
+    "probe_delayed_onset/master_ac4_768K.m4a": {
+      "sha256": "706f8701b373efacff2bcdba65116dde5499042f65c53c309d1087294c3edf69",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 288000,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    },
+    "probe_ramp_control/master_ac4_768K.m4a": {
+      "sha256": "ce2e8acc77e6cc1a6b12671df239a47ccf17619dedbd75a4208edd83b8681b95",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 81920,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    },
+    "probe_ramp_lengths/master_ac4_768K.m4a": {
+      "sha256": "ce2e8acc77e6cc1a6b12671df239a47ccf17619dedbd75a4208edd83b8681b95",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 81920,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    },
+    "probe_subframe_control/master_ac4_768K.m4a": {
+      "sha256": "06575a3467a15464d35c3d5fd254d776225d7011f94b4e3b4c12a722642b735d",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 98304,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    },
+    "probe_subframe_updates/master_ac4_768K.m4a": {
+      "sha256": "34f189d016ab51b5e6b54eec73166d50a2fa061327b0e0870b704f9c33d96a6c",
+      "sample_rate": 48000,
+      "channels": 10,
+      "frames": 98304,
+      "tracks": [
+        "2:ajoc_input:0",
+        "2:ajoc_input:1",
+        "2:ajoc_input:2",
+        "2:ajoc_input:3",
+        "2:ajoc_input:4",
+        "2:ajoc_input:5",
+        "2:ajoc_input:6",
+        "2:ajoc_input:7",
+        "2:ajoc_input:8",
+        "2:lfe"
+      ]
+    }
+  }
+}

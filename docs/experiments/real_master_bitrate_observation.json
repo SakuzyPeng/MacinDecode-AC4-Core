@@ -1,0 +1,163 @@
+{
+  "schema": "macinac4.real-master-bitrate-observation",
+  "version": 2,
+  "recorded_on": "2026-08-17",
+  "purpose": "用同一母版、同一工具提交和固定编码区间分离码率与编码后端；结果只限定合成向量的覆盖结论，不作为解码回归基线。",
+  "comparison_policy": "项目把同码率的 Logic 与 DAR 产物归入同一行为档，后端不是测试矩阵的一维。后端字段只用于防止把跨后端数字误归因于码率，不用于比较编码器版本。",
+  "method": {
+    "encode_range": "从 ADM 起点到 157.5 秒，即前 7560000 个 48 kHz 采样；母版末尾不足一个 24 fps 帧的 307 个采样不进入任一受控产物。",
+    "occupancy_percent": "逐个 AC-4 容器样本去掉尾部 0x00，再用有效字节总数除以样本槽字节总数。",
+    "equivalent_bitrate_kbps": "有效字节总数按 AC-4 媒体时长 frames * 2048 / 48000 折算为十进制 kbps。",
+    "aspx_add_harmonic_frames": "trace 中至少一次命中 aspx_add_harmonic 的帧数，同帧多个元素只计一次。",
+    "elementary_stream_sha256": "用 MP4Box -raw audio 抽取的带同步头 AC-4 基本流 SHA-256；它排除容器时间戳和 DAR 附带的视频轨。"
+  },
+  "inputs": {
+    "real_master": {
+      "kind": "未入库的真实 ADM 音乐母版",
+      "sha256": "950f056909e76662ac995b14f2f1634b3bdfbc853d955cb4945cf505fd91af5d",
+      "bytes": 952696640,
+      "sample_rate": 48000,
+      "channels": 42,
+      "bits_per_sample": 24,
+      "duration_samples": 7560307,
+      "compared_duration_samples": 7560000,
+      "distributed": false
+    },
+    "synthetic": {
+      "case_id": "probe_axes_single_object",
+      "distributed": false,
+      "tracked_manifest": "vectors/probe_axes_single_object/provenance.json"
+    }
+  },
+  "tools": {
+    "encoder_binary_sha256": "6d5c72747e74eed3c784a0a8f17474ec37313757ac279d24fa85370db4ed4c5b",
+    "encoder_source_commit": "b4f7ca19eaae8da6057df81c7bd56e74d98438e4",
+    "encoder_worktree_dirty": false,
+    "trace_repo_commit": "1027c7f62a55c258826a29aa2d718f680bc8e39a"
+  },
+  "results": {
+    "real_master": {
+      "logic": {
+        "768": {
+          "command": "encode --codec ac4 --bitrate 768 --end 157.5 <source>",
+          "container_sha256": "8e543d92eece8e4c288585d6e887b4b8bd6f4db671dcd019e7742c77ea810878",
+          "elementary_stream_sha256": "42a77e1408292c6ddea0522d36888424a4170b571d47144f9a262b5f19d6604c",
+          "frames": 3694,
+          "payload_total_bytes": 15130624,
+          "effective_payload_bytes": 14422745,
+          "occupancy_percent": 95.321548,
+          "equivalent_bitrate_kbps": 732.069488,
+          "dmx_signals": 9,
+          "aspx_add_harmonic_frames": 13,
+          "aspx_variable_framing_frames": 251,
+          "aspx_balance_frames": 0,
+          "aspx_interleaved_frames": 0,
+          "scale_factor_bands": 1669362,
+          "scaled_lines": 37200948
+        },
+        "1024": {
+          "command": "encode --codec ac4 --bitrate 1024 --end 157.5 <source>",
+          "container_sha256": "fbbea69de7ebbea0d6f057495ecf3272528bec74e842157de08282dc98354a5e",
+          "elementary_stream_sha256": "d44e7183795eae1407ce6ec5dece7f9c67d42ba914185651b27bb63a2202bb04",
+          "frames": 3694,
+          "payload_total_bytes": 20174165,
+          "effective_payload_bytes": 19045930,
+          "occupancy_percent": 94.407526,
+          "equivalent_bitrate_kbps": 966.733047,
+          "dmx_signals": 9,
+          "aspx_add_harmonic_frames": 13,
+          "aspx_variable_framing_frames": 251,
+          "aspx_balance_frames": 0,
+          "aspx_interleaved_frames": 0,
+          "scale_factor_bands": 1705241,
+          "scaled_lines": 37206452
+        }
+      },
+      "dar": {
+        "768": {
+          "command": "dar-encode --bitrate 768 --end 157.5 <source>",
+          "container_sha256": "42bb67d513508f49ac8c8b9be35814d5cb64852edac517a3fcccfd7dab3a9dee",
+          "supplied_container_sha256": "f3a35c379c56c41972b9ea66f3d61c7ab5f2f5ca509b5ec488ab395828274dfe",
+          "elementary_stream_sha256": "374089f5a03a5f8313f5363ed1c4e23f95d7d90d7fd57c8dbd3fc3b69e5d800b",
+          "frames": 3694,
+          "payload_total_bytes": 15130624,
+          "effective_payload_bytes": 14424057,
+          "occupancy_percent": 95.330219,
+          "equivalent_bitrate_kbps": 732.136082,
+          "dmx_signals": 9,
+          "aspx_add_harmonic_frames": 1150,
+          "aspx_variable_framing_frames": 267,
+          "aspx_balance_frames": 0,
+          "aspx_interleaved_frames": 0,
+          "scale_factor_bands": 1661333,
+          "scaled_lines": 37198528,
+          "note": "受控重跑与用户提供容器的 AC-4 基本流哈希相同；完整容器哈希因封装时间戳不同。两者都附带一条 H.264 预览轨，统计只选择 AC-4 轨。"
+        },
+        "1500": {
+          "command": "dar-encode --bitrate 1500 --end 157.5 <source>",
+          "container_sha256": "63211d52d9a17277b1584a513f233f13e67b364bcfb54d973b40b6cf06c49c63",
+          "elementary_stream_sha256": "da84789ad70c64409589f954bebc102027ad879aa5b67d8492e970ce83bcf9fd",
+          "frames": 3694,
+          "payload_total_bytes": 29552000,
+          "effective_payload_bytes": 27575404,
+          "occupancy_percent": 93.311465,
+          "equivalent_bitrate_kbps": 1399.671968,
+          "dmx_signals": 11,
+          "aspx_add_harmonic_frames": 1087,
+          "aspx_variable_framing_frames": 271,
+          "aspx_balance_frames": 0,
+          "aspx_interleaved_frames": 0,
+          "scale_factor_bands": 2311762,
+          "scaled_lines": 64262600
+        }
+      }
+    },
+    "synthetic_retained": {
+      "logic_768": {
+        "container_sha256": "eabcdf9b0d9a0fcc30e1d7a49f0e000fb67714241d56f942403ca82e70fe3fa3",
+        "elementary_stream_sha256": "7e6e874c9a0151d871b5a50ac8665f94d622b7539266d955d89d0c7ac3978448",
+        "frames": 143,
+        "payload_total_bytes": 585728,
+        "effective_payload_bytes": 72892,
+        "occupancy_percent": 12.444684,
+        "equivalent_bitrate_kbps": 95.575175,
+        "dmx_signals": 9,
+        "aspx_add_harmonic_frames": 15
+      },
+      "dar_1500": {
+        "container_sha256": "a5b79f0d5b6aac772d6b6b15319d61f8718e4a8d60af9659deae52db46d5506f",
+        "elementary_stream_sha256": "039fc962620b2ca807df87f1d60f9c37253e0cade789f9040966d1ad2e8bbe89",
+        "frames": 143,
+        "payload_total_bytes": 1144000,
+        "effective_payload_bytes": 105435,
+        "occupancy_percent": 9.216346,
+        "equivalent_bitrate_kbps": 138.245192,
+        "dmx_signals": 11,
+        "aspx_add_harmonic_frames": 0
+      }
+    },
+    "synthetic_withdrawn": {
+      "logic_1024": {
+        "reason": "产物与 768 的 trace 和核心带 PCM 无回归增量，已撤回；只保留旧观察值，不参与当前精确表。",
+        "legacy_occupancy_percent": 10.6,
+        "legacy_equivalent_bitrate_kbps": 98,
+        "aspx_add_harmonic_frames": 15
+      }
+    }
+  },
+  "conclusions": [
+    "受控真实母版的有效占用为 93.31%–95.33%，保留的合成向量只有 9.22%–12.44%；合成素材仍不足以覆盖高复杂度内容。",
+    "只在同一后端内比较码率：Logic 768→1024 的音调命中保持 13→13，DAR 768→1500 为 1150→1087；当前样本不支持音调命中随码率单调增加。",
+    "Logic 与 DAR 在 768 kbps 上都给出 9 路 core，项目据此仍把同码率产物归入同一行为档；两者音调计数不同只说明跨后端数字不能拿来归因码率。",
+    "四个受控真实母版产物的 aspx_balance_frames 与 aspx_interleaved_frames 都为 0；这只限定当前母版和工具配置，不外推到编码器版本。"
+  ],
+  "evidence_scope": {
+    "classification": "controlled-local-observation",
+    "automated_gate": false,
+    "limitations": [
+      "真实母版与受控产物不入库；哈希和命令可确认本地文件身份，但第三方不能只凭仓库复现实验。",
+      "合成素材的 1024 kbps 产物已撤回，其旧占用率没有纳入本次统一口径重算。",
+      "后端不是项目测试矩阵的一维；本记录保留后端字段只是为了避免混淆变量。"
+    ]
+  }
+}

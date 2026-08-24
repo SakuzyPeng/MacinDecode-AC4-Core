@@ -1,0 +1,29 @@
+# 本地工具路径，因机器而异
+.env.local
+
+# 规范文件受 ETSI 版权保护，不可重分发；用 scripts/fetch_specs.py 获取。
+# MANIFEST.json 记录来源与哈希，必须版本控制。
+/spec/*
+!/spec/MANIFEST.json
+
+# 本地规范调研与临时渲染产物
+/tmp/
+
+# 测试向量产物：体积大且可重新生成
+# case.json / inspection / hashes 由 scripts 单独维护白名单
+/vectors/*/source/
+/vectors/*/normalized/
+/vectors/*/encoded/
+
+# Rust
+**/*.rs.bk
+
+# 系统
+.DS_Store
+
+# Rust 构建产物
+/target/
+
+# Python 字节码
+__pycache__/
+*.pyc

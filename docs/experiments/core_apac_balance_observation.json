@@ -1,0 +1,88 @@
+{
+  "schema": "macinac4.core-apac-balance-observation",
+  "version": 1,
+  "recorded_on": "2026-08-19",
+  "purpose": "定位 core 对象场景经 SAF/Apple 几何渲染后相对 DRP APAC 明显偏左的原因，并验证 P1 5.3 声道矩阵修复。",
+  "input": {
+    "file": "Tsuioku_SS2RPV4_ac4_768K.m4a",
+    "sha256": "f3a35c379c56c41972b9ea66f3d61c7ab5f2f5ca509b5ec488ab395828274dfe"
+  },
+  "implementations": {
+    "old_scene_commit": "cc29893",
+    "fixed_scene_revision": "包含本记录的 Git revision",
+    "macinrender_commit": "88172a39119ad044c51ba87be7757b2f02e5177a",
+    "macinrender_version": "mradm 1.9.1",
+    "drp_apac_export_commit": "2b1e42e651bc6b677434942712fcbc44283f561b"
+  },
+  "root_cause": {
+    "specification": "ETSI TS 103 190-1 V1.4.1 (2025-07)",
+    "clauses": [
+      "5.3.1：声道数据元素的输入轨没有声道含义，矩阵输出才携带声道顺序",
+      "5.3.2 Pseudocode 59：从 sap_mode、ms_used 与 sap_data 展开逐时频 tile 的 a/b/c/d",
+      "5.3.3.2：two_channel_data 在 b_enable_mdct_stereo_proc 为真时执行 2×2 矩阵",
+      "5.3.3.3 Table 178：three_channel_data 用 chel_matsel 组合两份参数为 3×3 矩阵"
+    ],
+    "old_behavior": "解析器保留了 b_enable_mdct_stereo_proc、sap_mode、ms_used、sap_data 与 chel_matsel，但重建链把每个 sf_data 输入独立缩放、解组和 IMDCT，未消费这些参数；M/S 编码轨因此被误当成 L/R 输出。",
+    "fixed_behavior": "同一 ChannelElement 的全部输入先完成反量化和缩放，再按窗口组与标度因子带执行 P1 5.3 矩阵，之后才分别解组和 IMDCT。"
+  },
+  "render": {
+    "layout": "5.1.4",
+    "channel_order": ["L", "R", "C", "LFE", "Ls", "Rs", "Vhl", "Vhr", "Ltr", "Rtr"],
+    "renderer": "SAF VBAP",
+    "speaker_geometry": "Apple",
+    "codec": "APAC",
+    "container": "CAF"
+  },
+  "metric": {
+    "definition": "10*log10(sum(x^2) for L,Ls,Vhl,Ltr / sum(x^2) for R,Rs,Vhr,Rtr)",
+    "centre_and_lfe": "C 与 LFE 不计入左右方向能量。该比值不受三份文件整体增益差异影响。",
+    "decode": "三份 APAC 均由同一系统 AudioToolbox 路径解码为 48 kHz、10 路 float32 后逐样本统计。"
+  },
+  "results": {
+    "old_core": {
+      "decoded_frames": 7560000,
+      "directional_left_over_right_db": 3.419072,
+      "rms_dbfs": [-24.188, -28.622, -19.295, -39.830, -20.193, -23.449, -35.849, -36.252, -39.284, -38.856],
+      "apac_sha256": "907766433be2d6ccce1f936940f5b24f3dadd57b1fadb219946ba1d1898f2594"
+    },
+    "fixed_core": {
+      "decoded_frames": 7560000,
+      "directional_left_over_right_db": 0.299882,
+      "rms_dbfs": [-23.795, -23.930, -20.294, -40.829, -18.317, -18.658, -34.000, -34.613, -37.383, -37.624],
+      "adm_sha256": "091bba193e7ec24313bb268cb8595606d369226a21c1f5ff763b4977eb303976",
+      "apac_sha256": "350ee1118c7e5a4e0799cca22194d1810c8fdf9ee74a5e23bb75ab650c262408"
+    },
+    "drp_reference": {
+      "decoded_frames": 7565312,
+      "directional_left_over_right_db": 0.469452,
+      "rms_dbfs": [-42.835, -42.930, -39.077, -59.616, -40.175, -40.852, -52.383, -53.061, -54.255, -54.661],
+      "apac_sha256": "27f7fcc1f2ecdab13574e8699bccb7177047b7722da13a6f32d9d1f05b09e56b"
+    }
+  },
+  "conclusions": [
+    "修复把 core 的方向左右差从 +3.419 dB 降到 +0.300 dB，与 DRP 的 +0.469 dB 相差 0.170 dB；主观偏左对应的主要数值缺陷已消失。",
+    "同一 core render 的未压缩输出与 APAC 解码在各声道 RMS 上相差不超过约 0.006 dB，因此 APAC 编码、CAF 布局与 AudioToolbox 不是原偏移的来源。",
+    "DRP 与 core 是不同解码/场景表示，且参考文件帧数与整体增益不同；本实验只把 DRP 当方向平衡的外部参照，不主张两者逐样本或逐声道相等。"
+  ],
+  "artifacts": {
+    "adm": {
+      "file": "Tsuioku_SS2RPV4_ac4_768K_core_adm_stereo_matrix.wav",
+      "bytes": 447229186
+    },
+    "apac": {
+      "file": "Tsuioku_SS2RPV4_ac4_768K_core_5.1.4_saf_apple_stereo_matrix_apac.caf",
+      "bytes": 34018798,
+      "duration_seconds": 157.5,
+      "nominal_bit_rate_bps": 1725962
+    }
+  },
+  "evidence_scope": {
+    "classification": "controlled-local-observation",
+    "automated_gate": false,
+    "limitations": [
+      "输入与生成音频不进入版本控制，只保留 SHA-256、命令语义和统计结果。",
+      "真实样本只覆盖这一条 768K A-JOC 流；四种 sap_mode 与表 178 的十二个三声道选择码由构造单元测试覆盖。",
+      "方向能量比可定位左右失衡，但不是 AC-4 core PCM 的逐样本外部 oracle。"
+    ]
+  }
+}

@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "!docs/experiments/**"
+      - "!.gitignore"
+      - "!LICENSE"
+      # check_transform_tables.py 直接读取该 ADR，不能按纯文档跳过。
+      - "docs/decisions/0003-trigonometric-tables-for-the-transform.md"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup target add --toolchain stable thumbv7em-none-eabi
+
+      - name: Check formatting
+        run: cargo +stable fmt --all -- --check
+
+      - name: Check Scene no_std API
+        run: cargo +stable check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features
+
+      - name: Lint default features
+        run: cargo +stable clippy --locked --workspace --all-targets -- -D warnings
+
+      - name: Test default features
+        run: cargo +stable test --locked --workspace
+
+      - name: Verify crates.io packages
+        run: |
+          for crate_license in crates/*/LICENSE; do
+            cmp LICENSE "$crate_license"
+          done
+          cargo +stable package --locked --workspace
+
+      - name: Audit specification distribution boundary
+        run: python3 scripts/check_spec_distribution.py
+
+      - name: Audit transform tables
+        run: python3 scripts/check_transform_tables.py
+
+      - name: Audit real function anchors
+        run: python3 scripts/check_math.py
+
+      - name: Audit HF patch tables
+        run: python3 scripts/check_patch_tables.py --sweep
+
+      - name: Test HF patch table checker
+        run: python3 -m unittest scripts/test_check_patch_tables.py
+
+      - name: Test trajectory checker
+        run: python3 -m unittest scripts/test_trajectory_check.py
+
+      - name: Test decode baseline checker
+        run: python3 -m unittest scripts/test_decode_check.py
+
+      - name: Test A-JOC census checker
+        run: python3 -m unittest scripts/test_ajoc_census.py
+
+      - name: Test DEE IMS job configuration
+        run: python3 -m unittest scripts/test_dee_ims.py
+
+      - name: Test DME A-JOC job configuration
+        run: python3 -m unittest scripts/test_dme_ac4.py
+
+  audio_decode:
+    name: audio-decode
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy
+          rustup target add --toolchain stable thumbv7em-none-eabi
+
+      - name: Generate local specification tables
+        run: |
+          python3 -m pip install -r scripts/requirements-spec.txt
+          python3 scripts/fetch_specs.py
+          python3 scripts/generate_spec_tables.py
+          python3 scripts/check_sfb_tables.py
+          python3 scripts/check_aspx_tables.py
+          python3 scripts/check_ajoc_tables.py
+          python3 scripts/check_spec_distribution.py --generated
+
+      - name: Check Scene no_std decoder
+        run: cargo +stable check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features --features audio-decode
+
+      - name: Check public API documentation
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: cargo +stable doc --locked --workspace --no-deps --features audio-decode
+
+      - name: Lint audio-decode feature
+        run: cargo +stable clippy --locked --workspace --all-targets --features audio-decode -- -D warnings
+
+      - name: Test audio-decode feature
+        run: cargo +stable test --locked --workspace --features audio-decode
+
+      - name: Verify crates.io packages with audio-decode
+        env:
+          MACINDECODE_AC4_SPEC_DIR: ${{ github.workspace }}/spec
+        run: cargo +stable package --locked --workspace --all-features
+
+  msrv:
+    name: msrv-1.85
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.85.0
+        run: rustup toolchain install 1.85.0 --profile minimal
+
+      - name: Generate local specification tables
+        run: |
+          python3 -m pip install -r scripts/requirements-spec.txt
+          python3 scripts/fetch_specs.py
+          python3 scripts/generate_spec_tables.py
+          python3 scripts/check_spec_distribution.py --generated
+
+      - name: Test on Rust 1.85.0
+        run: cargo +1.85.0 test --locked --workspace --features audio-decode

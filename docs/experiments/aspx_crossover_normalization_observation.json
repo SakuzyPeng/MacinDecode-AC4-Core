@@ -1,0 +1,270 @@
+{
+  "schema": "macinac4.aspx-crossover-normalization-observation",
+  "version": 4,
+  "recorded_on": "2026-08-22",
+  "purpose": "调查 core/full PCM 在 A-SPX crossover 处的可见能量分界，验证 Pseudocode 90 的时间归一化，并记录 Core PCM/QMF 的 2 倍量级歧义与实现裁决。",
+  "input": {
+    "file": "private_music_reference_ac4_768K.m4a",
+    "sha256": "4ce3d12e3bc1b0f395eae8f5fbd3630d3fd1a08094cbb607e283d827ca96cf2f",
+    "sample_rate_hz": 48000,
+    "frame_length": 2048,
+    "num_ts_in_ats": 2,
+    "sbx": 36,
+    "qmf_subband_width_hz": 375,
+    "crossover_hz": 13500
+  },
+  "normative_ambiguity": {
+    "decision_record": "docs/decisions/0006-core-pcm-qmf-gain-boundary.md",
+    "status": "跨条款实现解释；尚无 ETSI 勘误、官方逐样本 conformance vector 或可核验参考源码确认",
+    "conflicting_text": [
+      "Pseudocode 62 在后旋转中除以 N。",
+      "Pseudocode 64 直接把 overlap 写入 pcm，且 pIMDCT,ch 对应该 pcm 数组，没有写乘 2。",
+      "5.5.3 的 480/480/960 三次块切换示例都明确写了 factor of 2，并把 composition buffer 交给下一个工具。",
+      "5.7.3 与 5.7.6.1 把 frame-aligned Core/IMDCT 时域输出送入 QMF analysis，但没有另列 2 倍换算。"
+    ],
+    "resolution": "低层 analyse/synthesise 保持 Pseudocode 65/66 字面量级；本实现把终端 Core PCM 的 2 倍表示在进入 QMF 后撤销，并在全部 QMF 域工具结束后的终端 PCM 补回。",
+    "claim_boundary": "该裁决由 P62/P64、5.5.3、P65/P66、P82、crossover 连续性及分层参考交叉检查共同支持；不得写成 5.5.3 已明文规定 QMF 前除以 2，也不得把 DRP 当作规范。",
+    "superseded_by": "ETSI 勘误、新规范版本、官方 PCM conformance vector 或可核验参考源码中的任一更强证据"
+  },
+  "root_cause": {
+    "scope": "Pseudocode 90 时间归一化；本节数据早于 Core PCM/QMF 接口增益修复。",
+    "specification": "ETSI TS 103 190-1 V1.4.1 (2025-07)",
+    "pseudocode_literal": "Pseudocode 90 的累加边界乘 num_ts_in_ats，分母却只写 ATS 包络跨度；倍率为 2 时会把两个 QMF 时隙的能量相加而不平均。",
+    "conflicting_evidence": [
+      "5.7.6.4.2.1 的定义与正文把 signal scale factor 描述为 QMF 区域的平均能量",
+      "Pseudocode 85 的区域平均显式除以 ATS 跨度乘 num_ts_in_ats",
+      "Pseudocode 94/95 把估计量用于逐 QMF 样本的能量配平"
+    ],
+    "old_behavior": "est_sig 除以 ATS 包络跨度，倍率 2 时凭帧长配置平白增加一倍估计能量。",
+    "fixed_behavior": "est_sig 除以实际累加的 QMF 时隙数，即 ATS 包络跨度乘 num_ts_in_ats。",
+    "estimated_energy_correction_db": -3.010300
+  },
+  "pcm_qmf_interface_root_cause": {
+    "classification": "对规范内部量级矛盾的实现裁决，不是 ETSI 明文接口规则",
+    "old_behavior": "Core IMDCT 已按 5.5.3 的块切换示例在 PCM 出口乘 2，A-SPX 驱动又把这份 PCM 原样交给 Pseudocode 65；直通低带的振幅因此相对 QMF 内部量级多 2 倍、能量多 6.0206 dB，而 Pseudocode 82 传输来的绝对高带目标不随该 PCM 接口因子改变。",
+    "fixed_behavior": "analyse_ac4_pcm 在字面 QMF 分析后除以 2；A-SPX/A-JOC 全部 QMF 域工具结束后，synthesise_ac4_pcm 才在终端 PCM 乘回 2。纯 analyse/synthesise 与 Core-only PCM 均保持原量级。",
+    "evidence": [
+      "Pseudocode 65/66 的低层实现与单位增益往返判据不改，排除在 QMF 原型窗或 1/64 合成归一化里补常数",
+      "Pseudocode 82 的信号标度因子是绝对 QMF 能量目标；完整节目高带组装相对该目标已在 0.02 dB 内闭合",
+      "隔离 A/B 保持低带端到端电平，只移动 PCM 接口因子，core 与 full 对象两层的 crossover 同时贴近 DRP"
+    ],
+    "not_a_fix": [
+      "不是固定 +6 dB 高频补偿或 crossover EQ",
+      "不是 P2 4.8.3.11.2 只适用于 immersive_channel_element / ASPX_SCPL 的 g=2",
+      "不是针对 DRP 18 kHz 以上带宽限制的低通"
+    ]
+  },
+  "decoder_probe": {
+    "scope": "输入开头 499 个 2048-sample frame",
+    "observation": "传输来的首个高带目标相对 crossover 下方相邻 QMF 子带约低 6.46 dB；因此规范归一化修正不应被扩展成固定 +6 dB 高频补偿。",
+    "qmf_checks": [
+      "同奇偶 patch 的合成能量比约为 1，未发现 patch 拷贝增益缺失",
+      "QMF 分析/合成相位与测试校准一致，未发现能解释固定分界的滤波器增益错误",
+      "TNA、preflat、limiter、interpolation 和噪声/音调相位分支均不能单独解释该分界"
+    ]
+  },
+  "pcm_comparison": {
+    "common": {
+      "format": "48 kHz 10-channel Float32 CAF with Atmos_5_1_4 tag",
+      "frames": 14578832,
+      "loudness_lufs_i": -13.60,
+      "normalization": "每份只施加独立恒定增益；不限制、不削波，频带内比值不受该增益影响"
+    },
+    "metric": {
+      "transform": "4096-point real FFT with Hann window, non-overlapping blocks",
+      "channels": "除 LFE 外的 9 个扬声器轨",
+      "low_band_hz": [13125, 13500],
+      "high_band_hz": [13500, 13875],
+      "integrated_ratio": "10*log10(sum(high-band power)/sum(low-band power))",
+      "block_ratio": "逐块逐轨 10*log10(mean(high-band power)/mean(low-band power))"
+    },
+    "old": {
+      "implementation_commit": "1a5e0743fda6095d9da792df6aac7b7792191fc5",
+      "file": "private_music_reference_ac4_768K_core_direct_5.1.4_PCM_F32_LUFS-13.6.caf",
+      "sha256": "890d40ca65e28fc0622516ff85219a3bd7a294167ec9fefb3d5ba8d35df0387e",
+      "integrated_high_to_low_db": -9.649,
+      "median_block_high_to_low_db": -7.822
+    },
+    "fixed": {
+      "implementation_revision": "包含本记录的 Git revision",
+      "file": "private_music_reference_ac4_768K_core_direct_5.1.4_PCM_F32_LUFS-13.6.caf",
+      "sha256": "0b44e1184a775c0c3e3e5555c1544ad558eef680b3326823b3ac58ec5c8239bb",
+      "integrated_high_to_low_db": -7.976,
+      "median_block_high_to_low_db": -6.066,
+      "integrated_improvement_db": 1.673,
+      "median_improvement_db": 1.756,
+      "true_peak_dbtp": -1.49
+    }
+  },
+  "qmf_energy_closure": {
+    "scope": {
+      "program": "完整输入",
+      "pcm_qmf_interface": "修复前；本节用于排除 P95–P104，并不代表修复后的低带量级。",
+      "aspx_frames": 7120,
+      "fullband_channels": 9,
+      "channel_frame_observations": 64080,
+      "sbx": 36,
+      "aspx_subbands": 20,
+      "interpolation": true,
+      "limiter": true
+    },
+    "full_program_db": {
+      "transmitted_first_high_to_adjacent_low_qout_db": -7.731,
+      "assembled_first_high_to_transmitted_target_db": 0.513,
+      "final_qout_first_high_to_adjacent_low_db": -5.645,
+      "assembled_all_high_to_transmitted_target_db": 0.016,
+      "component_power_sum_all_high_to_transmitted_target_db": 0.012
+    },
+    "four_minute_windows": [
+      {
+        "seconds": [224, 240],
+        "transmitted_first_high_to_adjacent_low_qout_db": -7.156,
+        "assembled_first_high_to_transmitted_target_db": 0.373,
+        "final_qout_first_high_to_adjacent_low_db": -5.363,
+        "assembled_all_high_to_transmitted_target_db": 0.032
+      },
+      {
+        "seconds": [240, 256],
+        "transmitted_first_high_to_adjacent_low_qout_db": -7.464,
+        "assembled_first_high_to_transmitted_target_db": 0.501,
+        "final_qout_first_high_to_adjacent_low_db": -5.340,
+        "assembled_all_high_to_transmitted_target_db": -0.011
+      },
+      {
+        "seconds": [256, 272],
+        "transmitted_first_high_to_adjacent_low_qout_db": -7.271,
+        "assembled_first_high_to_transmitted_target_db": 0.398,
+        "final_qout_first_high_to_adjacent_low_db": -5.279,
+        "assembled_all_high_to_transmitted_target_db": -0.009
+      }
+    ],
+    "limiter_audit": {
+      "scope": "开头 500 个 A-SPX frame，共 4500 条逐声道记录",
+      "group_patterns": [
+        {
+          "relative_groups": [[0, 8], [8, 20]],
+          "absolute_groups": [[36, 44], [44, 56]],
+          "records": 3792,
+          "component_power_sum_to_target_median_db": [0.000, 0.000],
+          "assembled_to_target_median_db": [-0.031, 0.003]
+        },
+        {
+          "relative_groups": [[0, 20]],
+          "absolute_groups": [[36, 56]],
+          "records": 708,
+          "component_power_sum_to_target_median_db": -0.771
+        }
+      ],
+      "interpretation": "两组路径逐组闭合；单组路径受 boost 上限时只会留下目标能量不足，不能解释 crossover 处额外抬升。"
+    },
+    "scale_factor_audit": {
+      "result": "Pseudocode 82–84 的指数、能量域常数和 balance 配对均按规范字面实现，未发现可解释该分界的反量化倍率错误。",
+      "reserved_literal_branch": "P82 有一条以已反量化正线性标度因子小于零为条件的不可达字面分支；没有交叉证据支持擅自替换条件，因此保持字面实现。"
+    },
+    "interpretation": "完整节目所有高带上，P95–P101 的输出分量功率和、P102–P104 的实际组装结果都与传输目标在 0.02 dB 内闭合。最终 Q_out 的首个高带反而比传输目标相对低带高约 2.09 dB，因此剩余接缝不是补偿增益、噪声/正弦注入或组装不足造成的。"
+  },
+  "full_decode_reference_comparison": {
+    "decoder": {
+      "implementation": "Dolby Reference Player runtime 4.3.0.19350 arm64",
+      "disabled_processing": [
+        "DAP",
+        "DRC",
+        "limiter",
+        "IEQ"
+      ],
+      "direct_5_1_4_file": "private_music_reference_ac4_768K_DRP_direct_5.1.4_PCM_F32_LUFS-13.6.caf",
+      "direct_5_1_4_sha256": "0332148f995cb2e64865be2892a18fc929ab869fec68e10ef6be70ff245d26b9"
+    },
+    "metric": "沿用 pcm_comparison.metric；所有结果都排除 LFE，并以恒定响度增益后的频带内功率比计算。这里的本地 core_direct_5_1_4 是接口修复前结果；修复后的 A/B 见 gain_relocation_ab。",
+    "integrated_high_to_low_db": {
+      "core_direct_5_1_4": -7.976,
+      "drp_direct_5_1_4": -2.512,
+      "drp_reconstructed_20_objects_before_oar": -2.524,
+      "drp_oar_9_1_6": -2.506,
+      "drp_direct_minus_core_db": 5.464
+    },
+    "stage_interpretation": [
+      "DRP 在 OAR 前的 20 路重建对象、OAR 后 9.1.6 和直接 5.1.4 三个出口只差约 0.02 dB，因此 13.5 kHz crossover 差异在对象渲染之前已经存在。",
+      "本地 core 出口是 A-SPX 后的 Qin_AJOC；DRP 出口已经经过频率相关 dry/wet 矩阵和 decorrelator 的完整 A-JOC 对象重建。两者层级不同，DRP 不能作为 A-JOC 前 core PCM 的数值 oracle。",
+      "M6 提供本地 20 对象同层出口后，增益后移变体的聚合 crossover 为 -2.898 dB，与 DRP OAR 前 -2.524 dB 相差约 0.374 dB；core/full 两层的改善方向一致。",
+      "本流是 object audio substream 中的 var_channel_element，var_codec_mode=ASPX 且 b_ajoc=1；P2 4.8.3.11.2 对 immersive_channel_element / ASPX_SCPL 规定的 g=2 不适用，不能据此给 core 高频固定补 6 dB。"
+    ],
+    "drp_bandwidth_limit": {
+      "observation": "DRP 在约 18.0 kHz 开始陡降，18.0–18.375 kHz 频带相对 13.125–13.5 kHz 已约低 22.18 dB；从约 18.375 kHz 起进入约 -79 dB 的近停止带。相同 core 输出仍延伸到约 21 kHz。",
+      "steep_rolloff_begins_hz": 18000,
+      "effective_stopband_from_hz": 18375,
+      "reference_policy": "DRP 的 >=18 kHz 频谱不用于裁决 A-SPX 带宽、幅度或是否应延伸到 21 kHz；尤其不得把 18.375 kHz 以上的缺失内容当作规范目标。低于该边界的比较仍必须先保证解码层级一致。"
+    },
+    "follow_up": "已完成：M6 full 对象出口落地后执行 Core PCM/QMF 接口增益隔离 A/B；结果记录在 gain_relocation_ab。仍不增加 crossover EQ、固定高频增益或针对 DRP 的带宽裁剪。"
+  },
+  "gain_relocation_ab": {
+    "method": "完整输入、4096 点 Hann FFT、非重叠块；除 LFE 外聚合。实验只在 QMF 分析后除以 2，并在终端 QMF 合成后乘以 2。",
+    "nominal_interface_amplitude_gain_db": 6.020600,
+    "core_direct": {
+      "artifact": "private_music_reference_aspx_gain_relocated.wav",
+      "sha256": "58bfea991c55b4e002298b9beded272df172d9b9c2c10828de5884dd70b38509",
+      "bytes": 583153360,
+      "frames": 14578832,
+      "channels": 10,
+      "old_high_to_low_db": -7.976367,
+      "gain_relocated_high_to_low_db": -2.660284,
+      "drp_direct_high_to_low_db": -2.511597,
+      "relocated_minus_drp_db": -0.148687,
+      "crossover_improvement_db": 5.316083,
+      "bands_from_13875_hz_relative_lift_db": [5.962006, 5.965125],
+      "bands_below_crossover_relative_shape_shift_db": -0.055547,
+      "float_samples_at_or_above_nominal_full_scale": 20,
+      "float_peak_internal_scale": 34953.449219
+    },
+    "full_objects": {
+      "artifact": "private_music_reference_objects_gain_relocated.wav",
+      "sha256": "62bdc1994b1da33ef3201c336f1cd05464ea9f05ba762b80f961e2a16c904d5b",
+      "bytes": 1224621968,
+      "frames": 14578832,
+      "channels": 21,
+      "objects_aggregated": 20,
+      "old_high_to_low_db": -8.105,
+      "gain_relocated_high_to_low_db": -2.897883,
+      "drp_oar_pre_high_to_low_db": -2.524,
+      "relocated_minus_drp_db": -0.374,
+      "per_object_high_to_low_db_range": [-3.745880, -1.459371],
+      "float_samples_at_or_above_nominal_full_scale": 27,
+      "float_peak_internal_scale": 39292.683594
+    },
+    "rendered_logic_adm": {
+      "artifact": "private_music_reference_logic_full_adm_crossover_fixed.wav",
+      "sha256": "46b52d01274dee79ca492d8dcdcca6d68cd148a5f05c2481df441f746c1e4708",
+      "bytes": 1383352572,
+      "format": "Logic-compatible RF64, 30-channel PCM S24LE",
+      "global_linear_gain": 0.833946602853,
+      "sample_peak": 0.999999880791,
+      "samples_at_or_above_full_scale": 0,
+      "objects_high_to_low_db": -2.897883
+    },
+    "interpretation": "首个高带含 crossover 滤波泄漏，故改善量略小于理论 6.0206 dB；从下一完整 375 Hz 带开始相对提升稳定在约 5.965 dB。Float32 诊断出口保留越过标称满幅的有限样本，不是削波；ADM/DAMF writer 会按既有全局峰值策略统一衰减。"
+  },
+  "conclusions": [
+    "P90 的缺项分母会人为加重 crossover 分界；按 QMF 区域平均修正后，真实节目交界相邻两带的差缩小约 1.7 dB。",
+    "完整节目 QMF 能量闭合排除了 P95–P104 的增益、限幅、噪声/正弦注入和组装通路；后续 A/B 把剩余约 6 dB 指向 Core PCM/QMF 接口因子。",
+    "把 IMDCT PCM 出口的 2 倍因子移到终端 QMF 合成后，core 直接与 full 对象的 crossover 比分别改善到 -2.660 dB 与 -2.898 dB，并与 DRP 对应出口落在 0.15/0.37 dB 内。",
+    "修正没有改变采样率、声道数、帧数、时间轴、低层 QMF 或纯 Core PCM，也没有加入 crossover EQ、固定高频增益、归一化器或限幅器。",
+    "Pseudocode 62/64、5.5.3 与后续 QMF 数据流对 2 倍因子的落位存在文字歧义；当前实现以互逆内部表示换算解决，结论保留为 ADR-0006 的跨条款解释而非官方勘误。",
+    "DRP 约 18.0 kHz 起的陡降和约 18.375 kHz 以上的近停止带仍只作为参考边界，不用于裁决本地 18–21 kHz 输出。"
+  ],
+  "evidence_scope": {
+    "classification": "controlled-local-observation-with-reference-cross-check",
+    "automated_gates": [
+      "倍率 2 的恒定复样本单元测试锁定逐 QMF 时隙平均",
+      "九条 export-aspx-pcm 真实向量逐位基线已重冻并复验",
+      "workspace audio-decode tests 与全 feature clippy"
+    ],
+    "limitations": [
+      "输入与生成音频不进入版本控制，只保留摘要、形状和统计结果。",
+      "节目观测只覆盖 frame_length=2048 / num_ts_in_ats=2；倍率 1 由构造判据覆盖。",
+      "相邻频带功率可量化分界变化，但不能独立证明主观透明度或与任一参考解码器逐样本一致。",
+      "QMF 临时探针、DRP 的 OAR 前对象中间件和原始逐帧记录不进入版本控制；这里保留完整节目、四分钟附近窗口、限幅器分组与分层出口的汇总值。",
+      "DRP 只在其未触发陡降的频段内充当 full decode 行为参照；它不是规范本身，也不提供同层的 Qin_AJOC 出口。",
+      "尚无 ETSI 勘误、官方逐样本 PCM 向量或可核验参考源码直接确认 2 倍因子的 QMF 边界落位；更强证据到来时必须重跑并重新裁决。"
+    ]
+  }
+}

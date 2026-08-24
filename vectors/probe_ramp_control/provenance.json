@@ -1,0 +1,71 @@
+{
+  "case_id": "probe_ramp_control",
+  "generated_at": "2026-07-27T09:41:36Z",
+  "generator": {
+    "script": "scripts/gen_damf.py",
+    "sha256": "ffa775e2065c3696fa58baa638ccac6057f922dcd6a55580ffdecb4024dd372b",
+    "repo": {
+      "commit": "18d8f7bd642cc78ca516b4296c83be687c56a836",
+      "dirty": true
+    }
+  },
+  "encode": {
+    "codec": "ac4",
+    "bitrates_kbps": [
+      768
+    ],
+    "sample_rate": 48000,
+    "frame_rate": "24",
+    "duration_samples": 81920
+  },
+  "tools": {
+    "ac4_encoder": {
+      "sha256": "6580620e16649b4f41cf18c3a1a54dc30044c8d14f45c6e9cdfe697030a4b0b1",
+      "commit": "d900bb791af4a1cb870565abcbd6d916d9c32809",
+      "worktree_dirty": false
+    },
+    "adm_normalizer": {
+      "sha256": "21229c3d2855bf68f604ed4915e9832eac2c4e4fdd33e4bce3e3e7dcfa6eae21"
+    },
+    "ac4_muxer": {
+      "sha256": "42b6cad1cd20f17dff3f91fd35391bb6254908d300c03acc4b72ca86114242d5"
+    },
+    "encoder_backend": {
+      "present": true
+    },
+    "ffprobe": {
+      "version": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers"
+    }
+  },
+  "host": {
+    "os": "macOS 27.0",
+    "arch": "arm64"
+  },
+  "artifacts": {
+    "case.json": {
+      "sha256": "67e98868ab4aeed63216a545acb6755ac3d1dc91d6ac1338489b89a279e586ce",
+      "bytes": 4573
+    },
+    "source/master.atmos": {
+      "sha256": "82cc30603b28ce34c082e7fece8735a811c8d87c5f4ffe5feb28dbf814ac7c8a",
+      "bytes": 1103
+    },
+    "source/master.atmos.audio": {
+      "sha256": "e7b2c14441397b7c8d9304a5b6c0d716a5e993c8d03d896892e2a2e48de22c8d",
+      "bytes": 2703428
+    },
+    "source/master.atmos.metadata": {
+      "sha256": "9ce490162c782f300e7097f6a04d5c816b4a8fd98ab6f3bf9291710c027d4348",
+      "bytes": 8864
+    },
+    "normalized/output.wav": {
+      "sha256": "b028ae521b4b76f01d075d0ac64e0d1bf7b6a585675fbd1dd2035a4933b8d24d",
+      "bytes": 2728834
+    },
+    "encoded/master_ac4_768K.m4a": {
+      "sha256": "0b8fe220a94216d3e35df87f0479e90874ecc5dd41cacf0327ec21037f1f0eb2",
+      "bytes": 172706,
+      "payload_sha256": "7a255fb058e2e2f808fba90891d3161c9cfa651928ba70a940aff397fd71f8b8"
+    }
+  }
+}

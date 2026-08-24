@@ -1,0 +1,97 @@
+{
+  "schema": "macinac4.reference-decoder-position-crosscheck",
+  "version": 4,
+  "recorded_on": "2026-08-17",
+  "purpose": "用外部参考解码器对照上混侧逐对象位置时间线；这是该时间线第一次获得实现之外的证据。不作为解码回归基线。",
+  "oracle": {
+    "kind": "厂商权威参考解码器，经本地适配后导出重建 ADM BWF",
+    "identity_recorded": false,
+    "identity_note": "个人适配工具的名称、版本与调用路径不入库；可核对的是官方 runtime profile、输入哈希与 AXML 哈希。",
+    "runtime_profile": "DRP 4.3.0.19350 arm64",
+    "output_used": "ADM BWF 的 axml chunk，即已解析的 audioBlockFormat 位置序列",
+    "outputs_not_used": [
+      "21 声道对象 PCM——需要 A-SPX 与 A-JOC 上混完成后才可比",
+      "16 声道渲染输出——本项目不做渲染"
+    ]
+  },
+  "method": {
+    "ours": "macinac4 trace 的 result.validation.ajoc.observations.position_timeline 加 first_positions 的首帧初值；需 audio-decode 特性。",
+    "pairing": "按对象分组后逐条按序配对，不按时间就近匹配。",
+    "axis_mapping": "X = (code − 31)/31，Y = −(code − 31)/31，Z = code/15。与 ROADMAP M3 早先用母版意图独立标定的轴映射相同，本次未引入新的自由度。",
+    "comparison_rule": "逐轴绝对差 < 1e-9。这是容差比较，不是浮点严格相等或逐位相等。",
+    "compared_coordinates": 1992,
+    "strict_equal_coordinates": 831,
+    "max_abs_error": 4.838629497072588e-13,
+    "max_abs_error_note": "最大值来自合成探针对象 1 第 23 个配对点的 Y 轴：我方 0.12903225806451613，对照 AXML 0.129032258065。AXML 适配器把坐标格式化为小数点后最多 12 位，故并非浮点严格相等。",
+    "time_note": "参考侧 rtime 恒比我方帧起点晚 2400 采样（0,05 s）。2400 = 2048 + 352，352 是参考解码器元数据记录头里的恒定偏移量。这是自洽的解释，不是证明。",
+    "object_scope": "两份对照都遍历参考侧全部 20 个 AC-4 Object，含只有初值一条 block 的静态对象；早先合成探针一行只统计了唯一的动态对象，与真实母版一行口径不同，本版统一。"
+  },
+  "inputs": {
+    "synthetic_probe": {
+      "case": "vectors/probe_axes_single_object",
+      "container_sha256": "eabcdf9b0d9a0fcc30e1d7a49f0e000fb67714241d56f942403ca82e70fe3fa3",
+      "frames": 143,
+      "tracked": true
+    },
+    "real_master": {
+      "kind": "未入库的真实 ADM 音乐母版编码产物",
+      "container_sha256": "f3a35c379c56c41972b9ea66f3d61c7ab5f2f5ca509b5ec488ab395828274dfe",
+      "frames": 3694,
+      "tracked": false,
+      "cross_reference": "与 real_master_bitrate_observation.json 的 results.real_master.dar.768.supplied_container_sha256 同一文件"
+    }
+  },
+  "results": {
+    "synthetic_probe": {
+      "axml_sha256": "ed739fb8aecd8182c9871aefbb5f2964db5a587e4d4176200087e95d6ab29a49",
+      "compared_points": 49,
+      "compared_coordinates": 147,
+      "strict_equal_coordinates": 132,
+      "matches_within_tolerance": 49,
+      "mismatches_outside_tolerance": 0,
+      "max_abs_error": 4.838629497072588e-13,
+      "dynamic_objects": 1,
+      "note": "六段轴极值加编码器过渡帧全部通过容差判据；每段后半的默认位置也通过。其余 19 个对象各有一条初值 block，一并计入。",
+      "static_objects": 19
+    },
+    "real_master": {
+      "axml_sha256": "f5ec48969e5252bbd8216682428e262f06608df938114dfbe1bcf85c7e0b7e95",
+      "compared_points": 615,
+      "compared_coordinates": 1845,
+      "strict_equal_coordinates": 699,
+      "matches_within_tolerance": 615,
+      "mismatches_outside_tolerance": 0,
+      "max_abs_error": 4.516387264175137e-13,
+      "dynamic_objects": 19,
+      "static_objects": 1,
+      "object_set_agreement": "两侧的动态对象集合都是对象 01–20 缺 05；对象 05 在两侧都全程不动。",
+      "count_difference": {
+        "object": 3,
+        "ours": 73,
+        "oracle": 72,
+        "explanation": "前 72 条值全同。我方多出的是末帧事件，加 2400 采样偏移后落在 157,618 s，超过 157,6107 s 的媒体末尾，被参考侧当作越界丢弃。不是我方多解。"
+      }
+    }
+  },
+  "conclusions": [
+    "上混侧逐对象位置时间线的 664 个点、1992 个坐标全部通过逐轴绝对差 < 1e-9 的判据，实测最大绝对差为 4.838629497072588e-13，覆盖 1 个与 19 个动态对象两种规模。",
+    "轴映射得到第二个独立来源确认：ROADMAP M3 用母版意图标定，本次用参考解码器复核，两者给出同一组常数。",
+    "动态/静态对象分类也一致，说明对象编号与 substream 归属的读法正确，不只是数值对得上。"
+  ],
+  "not_verified": [
+    "增益、优先级、activity 等其余 OAMD 字段本次一条都没比，只做了位置。",
+    "核心带 PCM 无法用本 oracle 验证：它最浅的出口是完整解码后的对象 PCM，中间层不暴露。当前那份逐位冻结基线的地位仍然只是防回归，不是防错。",
+    "2400 采样偏移的解释自洽但未证实；没有独立依据说明为何恰好是一帧加那个常量。",
+    "只覆盖当前编码链产出的 A-JOC 路径。"
+  ],
+  "evidence_scope": {
+    "classification": "controlled-local-observation",
+    "automated_gate": false,
+    "limitations": [
+      "参考解码器与真实母版都不入库，第三方不能只凭仓库复现；哈希只能确认本地文件身份。",
+      "1992 个坐标中只有 831 个浮点严格相等；其余差异符合 AXML 小数点后最多 12 位的格式化结果，不能把容差一致写成严格相等。",
+      "参考解码器是参照物不是真理。与它冲突时按 TEST_VECTOR_STRATEGY 9.2 的规矩回到条款重新论证，不得直接改成它的行为。",
+      "本次对照是人工发起的一次性核对，未接入任何门禁。"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/SakuzyPeng/MacinDecode-AC4-Core/main/crates/macindecode-ac4-cli/schema/cli-diagnostic-v1.schema.json",
+  "title": "MacinDecode AC-4 CLI diagnostic v1",
+  "type": "object",
+  "required": ["schema", "version", "level", "command", "code", "message", "context"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "macinac4.cli-diagnostic"
+    },
+    "version": {
+      "const": 1
+    },
+    "level": {
+      "enum": ["warning", "error"]
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "code": {
+      "enum": [
+        "cli.invalid_arguments",
+        "feature.required",
+        "input.read_failed",
+        "input.invalid",
+        "parse.failed",
+        "selection.invalid",
+        "mapping.unsupported",
+        "mapping.lossy",
+        "output.exists",
+        "output.create_failed",
+        "output.write_failed",
+        "output.commit_failed",
+        "unsupported.coding_path",
+        "serialization.failed",
+        "internal.invariant_failed"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "context": {
+      "type": "object"
+    }
+  }
+}

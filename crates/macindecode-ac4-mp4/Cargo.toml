@@ -1,0 +1,19 @@
+[package]
+name = "macindecode-ac4-mp4"
+description = "ISO BMFF box parsing for AC-4 tracks: sample entry, dac4 and sample table"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/macindecode-ac4-mp4"
+readme = "README.md"
+keywords = ["ac-4", "mp4", "isobmff", "audio", "no-std"]
+categories = ["multimedia::audio", "parser-implementations", "no-std"]
+include = ["src/**", "README.md", "LICENSE"]
+
+[dependencies]
+macindecode-ac4-bitstream.workspace = true
+
+[lints]
+workspace = true

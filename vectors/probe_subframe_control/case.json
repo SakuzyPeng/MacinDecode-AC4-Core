@@ -1,0 +1,446 @@
+{
+  "case_id": "probe_subframe_control",
+  "intent": [
+    "probe_subframe_updates 的对照：完全相同的音频，位置更新降到每帧一次。",
+    "两者的对象 PCM 逐字节相同（位置只是元数据），差异只来自元数据密度。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 98304,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "silence"
+    }
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "probe-subframe-control",
+      "comment": "每 2048 采样一次位置事件，即每帧 1 次。",
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 2048,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 4096,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 6144,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 8192,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 10240,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 12288,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 14336,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 16384,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 18432,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 20480,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 22528,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 24576,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 26624,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 28672,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 30720,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 32768,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 34816,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 36864,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 38912,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 40960,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 43008,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 45056,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 47104,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 49152,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 51200,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 53248,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 55296,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 57344,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 59392,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 61440,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 63488,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 65536,
+          "position": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 67584,
+          "position": [
+            -0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 69632,
+          "position": [
+            -0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 71680,
+          "position": [
+            -0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 73728,
+          "position": [
+            0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 75776,
+          "position": [
+            0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 77824,
+          "position": [
+            0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 79872,
+          "position": [
+            0.8065,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 81920,
+          "position": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 83968,
+          "position": [
+            0.7419,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 86016,
+          "position": [
+            0.4839,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 88064,
+          "position": [
+            0.2258,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 90112,
+          "position": [
+            -0.0323,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 92160,
+          "position": [
+            -0.2903,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 94208,
+          "position": [
+            -0.5484,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96256,
+          "position": [
+            -0.8065,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "signal": {
+        "kind": "sine",
+        "frequency_hz": 1000.0,
+        "level_dbfs": -12.0,
+        "fade_samples": 240
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0
+      }
+    }
+  ],
+  "encodes": [
+    768
+  ],
+  "notes": [
+    "与 probe_subframe_updates 的唯一差别是位置事件密度：每帧 1 次 vs 4 次。",
+    "对象音频完全相同，因此码流字节数之差可归因于元数据。"
+  ]
+}

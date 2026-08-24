@@ -1,0 +1,45 @@
+{
+  "case_id": "probe_bed_only",
+  "intent": [
+    "不含任何对象的纯 bed 母版，验证编码链是否走 channel-based 路径。",
+    "每个声道一个可区分频率，用于识别声道顺序与串扰。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 96000,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "per_channel_sine",
+      "level_dbfs": -18.0,
+      "base_hz": 200.0,
+      "step_hz": 150.0,
+      "lfe_hz": 40.0,
+      "fade_samples": 480
+    }
+  },
+  "objects": [],
+  "encodes": [
+    256,
+    448
+  ],
+  "notes": [
+    "objects 为空是本案例的关键：现有向量都至少有一个对象，因而恒走 A-JOC。",
+    "若编码器对纯 bed 仍选择 A-JOC，则 channel-based 路径同样不可达。",
+    "LFE 取 40 Hz，其余声道 200 + 150·index Hz，互不重叠。",
+    "768 kbps 未采用：编码器对本素材实测得 770 510 bps，未通过其自带的码率校验。"
+  ]
+}

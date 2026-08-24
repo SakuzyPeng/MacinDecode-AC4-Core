@@ -1,0 +1,1108 @@
+{
+  "comment": [
+    "A-JOC 矩阵侧信息覆盖基线，由 scripts/ajoc_census.py 维护。",
+    "逐媒体冻结数据点、起点/渐变、参数带、粗细量化、稀疏矩阵、频率/时间差分、去相关器和原始码值范围。",
+    "full_support 是进入 M6 full DSP 的唯一支持凭证计数；任一未支持 substream 都使门禁失败。",
+    "基线只证明现有语料覆盖未意外改变；未出现的分支不因此成为受支持路径。",
+    "两条 IMS channel-based 媒体必须按名称和 scene_path 精确跳过，不能以通配规则放行。",
+    "编码媒体不入库；默认校验基线声明与本地发现集合的并集，缺失媒体时不运行子集。"
+  ],
+  "entries": {
+    "probe_axes_single_object/master_ac4_1500K.m4a": {
+      "codec_frames": 143,
+      "substreams": 143,
+      "census": {
+        "b_nodt": {
+          "false": 136,
+          "true": 7
+        },
+        "data_points": {
+          "0": 0,
+          "1": 143,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 143,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 429
+        },
+        "dry": {
+          "carried_segments": 4790,
+          "frequency_segments": 3191,
+          "omitted_segments": 7068,
+          "raw_values": {
+            "count": 110170,
+            "max": 100,
+            "min": -9
+          },
+          "time_segments": 1599
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 143,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 1782,
+          "parameter_bands": {
+            "1": 0,
+            "12": 0,
+            "15": 0,
+            "23": 1078,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 1078,
+          "quantization": {
+            "coarse": 0,
+            "fine": 1078
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 1078
+          },
+          "with_parameters": 1078
+        },
+        "ramp_lengths": {
+          "count": 143,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 143,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 143,
+        "wet": {
+          "carried_segments": 5,
+          "frequency_segments": 1,
+          "omitted_segments": 3229,
+          "raw_values": {
+            "count": 115,
+            "max": 40,
+            "min": 0
+          },
+          "time_segments": 4
+        }
+      }
+    },
+    "probe_axes_single_object/master_ac4_768K.m4a": {
+      "codec_frames": 143,
+      "substreams": 143,
+      "census": {
+        "b_nodt": {
+          "false": 136,
+          "true": 7
+        },
+        "data_points": {
+          "0": 0,
+          "1": 143,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 143,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 429
+        },
+        "dry": {
+          "carried_segments": 188,
+          "frequency_segments": 74,
+          "omitted_segments": 604,
+          "raw_values": {
+            "count": 2256,
+            "max": 100,
+            "min": -2
+          },
+          "time_segments": 114
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 143,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 2772,
+          "parameter_bands": {
+            "1": 0,
+            "12": 88,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 88,
+          "quantization": {
+            "coarse": 0,
+            "fine": 88
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 88
+          },
+          "with_parameters": 88
+        },
+        "ramp_lengths": {
+          "count": 143,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 143,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 143,
+        "wet": {
+          "carried_segments": 82,
+          "frequency_segments": 19,
+          "omitted_segments": 182,
+          "raw_values": {
+            "count": 984,
+            "max": 40,
+            "min": -3
+          },
+          "time_segments": 63
+        }
+      }
+    },
+    "probe_axes_single_object/master_ac4_dme_l3_768K.m4a": {
+      "codec_frames": 143,
+      "substreams": 143,
+      "census": {
+        "b_nodt": {
+          "false": 135,
+          "true": 8
+        },
+        "data_points": {
+          "0": 0,
+          "1": 143,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 143,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 429
+        },
+        "dry": {
+          "carried_segments": 164,
+          "frequency_segments": 66,
+          "omitted_segments": 452,
+          "raw_values": {
+            "count": 1968,
+            "max": 100,
+            "min": -1
+          },
+          "time_segments": 98
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 143,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 2057,
+          "parameter_bands": {
+            "1": 0,
+            "12": 88,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 88,
+          "quantization": {
+            "coarse": 0,
+            "fine": 88
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 88
+          },
+          "with_parameters": 88
+        },
+        "ramp_lengths": {
+          "count": 143,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 143,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 143,
+        "wet": {
+          "carried_segments": 8,
+          "frequency_segments": 7,
+          "omitted_segments": 256,
+          "raw_values": {
+            "count": 96,
+            "max": 40,
+            "min": 0
+          },
+          "time_segments": 1
+        }
+      }
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a": {
+      "codec_frames": 143,
+      "substreams": 143,
+      "census": {
+        "b_nodt": {
+          "false": 135,
+          "true": 8
+        },
+        "data_points": {
+          "0": 0,
+          "1": 143,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 143,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 429
+        },
+        "dry": {
+          "carried_segments": 4889,
+          "frequency_segments": 2383,
+          "omitted_segments": 7189,
+          "raw_values": {
+            "count": 112447,
+            "max": 100,
+            "min": -47
+          },
+          "time_segments": 2506
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 143,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 1762,
+          "parameter_bands": {
+            "1": 0,
+            "12": 0,
+            "15": 0,
+            "23": 1098,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 1098,
+          "quantization": {
+            "coarse": 0,
+            "fine": 1098
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 1098
+          },
+          "with_parameters": 1098
+        },
+        "ramp_lengths": {
+          "count": 143,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 143,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 143,
+        "wet": {
+          "carried_segments": 5,
+          "frequency_segments": 3,
+          "omitted_segments": 3289,
+          "raw_values": {
+            "count": 115,
+            "max": 40,
+            "min": 0
+          },
+          "time_segments": 2
+        }
+      }
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a": {
+      "codec_frames": 143,
+      "substreams": 143,
+      "census": {
+        "b_nodt": {
+          "false": 135,
+          "true": 8
+        },
+        "data_points": {
+          "0": 0,
+          "1": 143,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 143,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 429
+        },
+        "dry": {
+          "carried_segments": 192,
+          "frequency_segments": 78,
+          "omitted_segments": 600,
+          "raw_values": {
+            "count": 2304,
+            "max": 100,
+            "min": 0
+          },
+          "time_segments": 114
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 143,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 2772,
+          "parameter_bands": {
+            "1": 0,
+            "12": 88,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 88,
+          "quantization": {
+            "coarse": 0,
+            "fine": 88
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 88
+          },
+          "with_parameters": 88
+        },
+        "ramp_lengths": {
+          "count": 143,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 143,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 143,
+        "wet": {
+          "carried_segments": 8,
+          "frequency_segments": 7,
+          "omitted_segments": 256,
+          "raw_values": {
+            "count": 96,
+            "max": 40,
+            "min": 0
+          },
+          "time_segments": 1
+        }
+      }
+    },
+    "probe_bed_only/master_ac4_256K.m4a": {
+      "codec_frames": 49,
+      "substreams": 49,
+      "census": {
+        "b_nodt": {
+          "false": 46,
+          "true": 3
+        },
+        "data_points": {
+          "0": 0,
+          "1": 49,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 49,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 147
+        },
+        "dry": {
+          "carried_segments": 1140,
+          "frequency_segments": 152,
+          "omitted_segments": 1065,
+          "raw_values": {
+            "count": 7980,
+            "max": 100,
+            "min": -6
+          },
+          "time_segments": 988
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 49,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 539,
+          "parameter_bands": {
+            "1": 0,
+            "12": 0,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 441,
+            "9": 0
+          },
+          "present": 441,
+          "quantization": {
+            "coarse": 0,
+            "fine": 441
+          },
+          "sparsity": {
+            "dense": 20,
+            "sparse": 421
+          },
+          "with_parameters": 441
+        },
+        "ramp_lengths": {
+          "count": 49,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 49,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 49,
+        "wet": {
+          "carried_segments": 722,
+          "frequency_segments": 55,
+          "omitted_segments": 601,
+          "raw_values": {
+            "count": 5054,
+            "max": 40,
+            "min": -5
+          },
+          "time_segments": 667
+        }
+      }
+    },
+    "probe_bed_only/master_ac4_448K.m4a": {
+      "codec_frames": 49,
+      "substreams": 49,
+      "census": {
+        "b_nodt": {
+          "false": 46,
+          "true": 3
+        },
+        "data_points": {
+          "0": 0,
+          "1": 49,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 49,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 147
+        },
+        "dry": {
+          "carried_segments": 2018,
+          "frequency_segments": 428,
+          "omitted_segments": 1069,
+          "raw_values": {
+            "count": 24216,
+            "max": 100,
+            "min": -98
+          },
+          "time_segments": 1590
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 49,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 539,
+          "parameter_bands": {
+            "1": 0,
+            "12": 441,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 441,
+          "quantization": {
+            "coarse": 0,
+            "fine": 441
+          },
+          "sparsity": {
+            "dense": 4,
+            "sparse": 437
+          },
+          "with_parameters": 441
+        },
+        "ramp_lengths": {
+          "count": 49,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 49,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 49,
+        "wet": {
+          "carried_segments": 764,
+          "frequency_segments": 48,
+          "omitted_segments": 559,
+          "raw_values": {
+            "count": 9168,
+            "max": 40,
+            "min": -4
+          },
+          "time_segments": 716
+        }
+      }
+    },
+    "probe_delayed_onset/master_ac4_768K.m4a": {
+      "codec_frames": 143,
+      "substreams": 143,
+      "census": {
+        "b_nodt": {
+          "false": 136,
+          "true": 7
+        },
+        "data_points": {
+          "0": 0,
+          "1": 143,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 143,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 429
+        },
+        "dry": {
+          "carried_segments": 50,
+          "frequency_segments": 4,
+          "omitted_segments": 400,
+          "raw_values": {
+            "count": 600,
+            "max": 91,
+            "min": 0
+          },
+          "time_segments": 46
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 143,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 2810,
+          "parameter_bands": {
+            "1": 0,
+            "12": 50,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 50,
+          "quantization": {
+            "coarse": 0,
+            "fine": 50
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 50
+          },
+          "with_parameters": 50
+        },
+        "ramp_lengths": {
+          "count": 143,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 143,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 143,
+        "wet": {
+          "carried_segments": 49,
+          "frequency_segments": 5,
+          "omitted_segments": 101,
+          "raw_values": {
+            "count": 588,
+            "max": 40,
+            "min": 0
+          },
+          "time_segments": 44
+        }
+      }
+    },
+    "probe_ramp_control/master_ac4_768K.m4a": {
+      "codec_frames": 42,
+      "substreams": 42,
+      "census": {
+        "b_nodt": {
+          "false": 39,
+          "true": 3
+        },
+        "data_points": {
+          "0": 0,
+          "1": 42,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 42,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 126
+        },
+        "dry": {
+          "carried_segments": 82,
+          "frequency_segments": 48,
+          "omitted_segments": 296,
+          "raw_values": {
+            "count": 984,
+            "max": 100,
+            "min": 0
+          },
+          "time_segments": 34
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 42,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 798,
+          "parameter_bands": {
+            "1": 0,
+            "12": 42,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 42,
+          "quantization": {
+            "coarse": 0,
+            "fine": 42
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 42
+          },
+          "with_parameters": 42
+        },
+        "ramp_lengths": {
+          "count": 42,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 42,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 42,
+        "wet": {
+          "carried_segments": 42,
+          "frequency_segments": 6,
+          "omitted_segments": 84,
+          "raw_values": {
+            "count": 504,
+            "max": 40,
+            "min": -1
+          },
+          "time_segments": 36
+        }
+      }
+    },
+    "probe_ramp_lengths/master_ac4_768K.m4a": {
+      "codec_frames": 42,
+      "substreams": 42,
+      "census": {
+        "b_nodt": {
+          "false": 39,
+          "true": 3
+        },
+        "data_points": {
+          "0": 0,
+          "1": 42,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 42,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 126
+        },
+        "dry": {
+          "carried_segments": 82,
+          "frequency_segments": 48,
+          "omitted_segments": 296,
+          "raw_values": {
+            "count": 984,
+            "max": 100,
+            "min": 0
+          },
+          "time_segments": 34
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 42,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 798,
+          "parameter_bands": {
+            "1": 0,
+            "12": 42,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 42,
+          "quantization": {
+            "coarse": 0,
+            "fine": 42
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 42
+          },
+          "with_parameters": 42
+        },
+        "ramp_lengths": {
+          "count": 42,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 42,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 42,
+        "wet": {
+          "carried_segments": 42,
+          "frequency_segments": 6,
+          "omitted_segments": 84,
+          "raw_values": {
+            "count": 504,
+            "max": 40,
+            "min": -1
+          },
+          "time_segments": 36
+        }
+      }
+    },
+    "probe_subframe_control/master_ac4_768K.m4a": {
+      "codec_frames": 50,
+      "substreams": 50,
+      "census": {
+        "b_nodt": {
+          "false": 46,
+          "true": 4
+        },
+        "data_points": {
+          "0": 0,
+          "1": 50,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 50,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 150
+        },
+        "dry": {
+          "carried_segments": 99,
+          "frequency_segments": 55,
+          "omitted_segments": 351,
+          "raw_values": {
+            "count": 1188,
+            "max": 100,
+            "min": 0
+          },
+          "time_segments": 44
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 50,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 950,
+          "parameter_bands": {
+            "1": 0,
+            "12": 50,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 50,
+          "quantization": {
+            "coarse": 0,
+            "fine": 50
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 50
+          },
+          "with_parameters": 50
+        },
+        "ramp_lengths": {
+          "count": 50,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 50,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 50,
+        "wet": {
+          "carried_segments": 50,
+          "frequency_segments": 6,
+          "omitted_segments": 100,
+          "raw_values": {
+            "count": 600,
+            "max": 40,
+            "min": -1
+          },
+          "time_segments": 44
+        }
+      }
+    },
+    "probe_subframe_updates/master_ac4_768K.m4a": {
+      "codec_frames": 50,
+      "substreams": 50,
+      "census": {
+        "b_nodt": {
+          "false": 46,
+          "true": 4
+        },
+        "data_points": {
+          "0": 0,
+          "1": 50,
+          "2": 0,
+          "3": 0
+        },
+        "decorrelators": {
+          "counts": {
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 50,
+            "4": 0,
+            "5": 0,
+            "6": 0,
+            "7": 0
+          },
+          "disabled": 0,
+          "enabled": 150
+        },
+        "dry": {
+          "carried_segments": 100,
+          "frequency_segments": 54,
+          "omitted_segments": 350,
+          "raw_values": {
+            "count": 1200,
+            "max": 100,
+            "min": 0
+          },
+          "time_segments": 46
+        },
+        "full_support": {
+          "first_unsupported": null,
+          "supported": 50,
+          "unsupported": 0
+        },
+        "objects": {
+          "absent": 950,
+          "parameter_bands": {
+            "1": 0,
+            "12": 50,
+            "15": 0,
+            "23": 0,
+            "3": 0,
+            "5": 0,
+            "7": 0,
+            "9": 0
+          },
+          "present": 50,
+          "quantization": {
+            "coarse": 0,
+            "fine": 50
+          },
+          "sparsity": {
+            "dense": 0,
+            "sparse": 50
+          },
+          "with_parameters": 50
+        },
+        "ramp_lengths": {
+          "count": 50,
+          "max": 32,
+          "min": 32
+        },
+        "start_positions": {
+          "count": 50,
+          "max": 0,
+          "min": 0
+        },
+        "substreams": 50,
+        "wet": {
+          "carried_segments": 50,
+          "frequency_segments": 5,
+          "omitted_segments": 100,
+          "raw_values": {
+            "count": 600,
+            "max": 40,
+            "min": -1
+          },
+          "time_segments": 45
+        }
+      }
+    }
+  },
+  "skips": {
+    "probe_axes_single_object/master_ac4_ims_256K.m4a": "channel_based",
+    "probe_axes_single_object/master_ac4_ims_legacy_256K.m4a": "channel_based"
+  }
+}

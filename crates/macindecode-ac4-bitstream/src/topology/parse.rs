@@ -1,0 +1,509 @@
+//! substream index table、拓扑模型与逐帧解析。
+
+use super::*;
+
+/// `substream_index_table()` 中的一条 substream 尺寸。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SubstreamSize {
+    /// 以字节计的 substream 尺寸。
+    pub bytes: u32,
+}
+
+/// `substream_index_table()`，见 `TS103190-1:v1.4.1:4.2.3.11`（表 14）。
+///
+/// `n_substreams == 1` 时尺寸可以省略，此时 substream 一直延伸到帧尾；
+/// 其余情况必须逐条给出。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SubstreamIndexTable {
+    /// substream 数量。
+    pub n_substreams: u32,
+    /// 是否传输了各 substream 的尺寸。
+    pub size_present: bool,
+    sizes: [SubstreamSize; MAX_SUBSTREAMS],
+    written: usize,
+}
+
+impl SubstreamIndexTable {
+    /// 已记录的 substream 尺寸。
+    ///
+    /// `size_present` 为假时为空切片。
+    #[must_use]
+    pub fn sizes(&self) -> &[SubstreamSize] {
+        self.sizes.get(..self.written).unwrap_or(&[])
+    }
+
+    /// 解析 `substream_index_table()`。
+    ///
+    /// # Errors
+    ///
+    /// 读取越界或 substream 数超过 [`MAX_SUBSTREAMS`] 时返回错误。
+    pub fn parse(reader: &mut BitReader<'_>) -> Result<Self, TopologyError> {
+        let mut n_substreams = u32::try_from(reader.read_bits(2)?).unwrap_or(u32::MAX);
+        if n_substreams == 0 {
+            n_substreams = reader.variable_bits_scaled_u32(2, 4, 0)?;
+        }
+
+        // 只有单 substream 时尺寸才可省略：此时帧内没有需要跳过的边界。
+        let size_present = if n_substreams == 1 {
+            reader.read_flag()?
+        } else {
+            true
+        };
+
+        let mut table = Self {
+            n_substreams,
+            size_present,
+            sizes: [SubstreamSize::default(); MAX_SUBSTREAMS],
+            written: 0,
+        };
+        if !size_present {
+            return Ok(table);
+        }
+
+        let count = usize::try_from(n_substreams).unwrap_or(usize::MAX);
+        if count > MAX_SUBSTREAMS {
+            return Err(TopologyError::CapacityExceeded {
+                what: Capacity::Substreams,
+                declared: n_substreams,
+                limit: MAX_SUBSTREAMS,
+            });
+        }
+
+        for _ in 0..count {
+            // b_more_bits 在 substream_size 之前传输
+            let more = reader.read_flag()?;
+            let mut bytes = u32::try_from(reader.read_bits(10)?).unwrap_or(u32::MAX);
+            if more {
+                bytes = reader.variable_bits_scaled_u32(2, bytes, 10)?;
+            }
+            let slot =
+                table
+                    .sizes
+                    .get_mut(table.written)
+                    .ok_or(TopologyError::CapacityExceeded {
+                        what: Capacity::Substreams,
+                        declared: n_substreams,
+                        limit: MAX_SUBSTREAMS,
+                    })?;
+            *slot = SubstreamSize { bytes };
+            table.written = table.written.saturating_add(1);
+        }
+        Ok(table)
+    }
+}
+
+/// 一帧内所有 group 共同确定的编码路径。
+///
+/// 这是 M2 要回答的问题：整条编码链究竟产生了什么。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScenePath {
+    /// 全部 group 都是声道编码。
+    ChannelBased,
+    /// 至少一个 group 使用 A-JOC，且没有 direct-object。
+    Ajoc,
+    /// 至少一个 group 使用 direct-coded object。
+    DirectObject,
+    /// 同帧内同时出现 A-JOC 与 direct-object。
+    Mixed,
+    /// 帧内没有任何 substream group。
+    Empty,
+}
+
+impl ScenePath {
+    /// 用于序列化的稳定名称。
+    #[must_use]
+    pub const fn label(&self) -> &'static str {
+        match *self {
+            ScenePath::ChannelBased => "channel_based",
+            ScenePath::Ajoc => "ajoc",
+            ScenePath::DirectObject => "direct_object",
+            ScenePath::Mixed => "mixed",
+            ScenePath::Empty => "empty",
+        }
+    }
+}
+
+impl fmt::Display for ScenePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.label())
+    }
+}
+
+/// 帧级节目标识，见 `TS103190-2:v1.3.1:6.3.2.1.4`。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProgramId {
+    /// 16 比特短标识。
+    pub short_program_id: u16,
+    /// 可选的 16 字节 UUID。
+    pub program_uuid: Option<[u8; 16]>,
+}
+
+/// 一帧的完整 TOC 拓扑。
+#[derive(Debug, Clone)]
+pub struct Ac4Topology {
+    /// TOC 前置字段。
+    pub toc: Ac4Toc,
+    /// 节目标识，未传输时为 `None`。
+    pub program_id: Option<ProgramId>,
+    presentations: [Ac4PresentationV1Info; MAX_PRESENTATIONS],
+    n_presentations: usize,
+    groups: [Ac4SubstreamGroupInfo; MAX_SUBSTREAM_GROUPS],
+    n_groups: usize,
+    /// substream 索引表。
+    pub index_table: SubstreamIndexTable,
+    /// TOC 解析结束时的比特偏移，即 `byte_align` 之前的位置。
+    pub bits_consumed: u64,
+}
+
+impl Ac4Topology {
+    /// 本帧的 presentation。
+    #[must_use]
+    pub fn presentations(&self) -> &[Ac4PresentationV1Info] {
+        self.presentations
+            .get(..self.n_presentations)
+            .unwrap_or(&[])
+    }
+
+    /// 本帧的 substream group，下标即 `group_index`。
+    #[must_use]
+    pub fn groups(&self) -> &[Ac4SubstreamGroupInfo] {
+        self.groups.get(..self.n_groups).unwrap_or(&[])
+    }
+
+    /// 字节对齐后的 `ac4_toc` 长度，即 substream 载荷区的计算基准。
+    ///
+    /// `payload_base` 按 `TS103190-1:v1.4.1:4.3.3.2.11` 相对该位置计。
+    #[must_use]
+    pub const fn toc_bytes(&self) -> u64 {
+        self.bits_consumed.div_ceil(8)
+    }
+
+    /// 定位单个 substream 的载荷字节。
+    ///
+    /// 实现 `TS103190-1:v1.4.1:4.3.3.12` 的 Pseudocode 1：偏移由
+    /// `payload_base` 加上所有更小下标的 `substream_size` 累加得到，全部相对
+    /// 字节对齐的 `ac4_toc` 末尾。`frame` 必须是完整的 `raw_ac4_frame`，即
+    /// 从 `ac4_toc` 首字节开始。
+    ///
+    /// # Errors
+    ///
+    /// 索引越界返回 [`TopologyError::SubstreamIndexOutOfRange`]；除可延伸到帧尾的
+    /// 单 substream 外，索引表未传输尺寸返回
+    /// [`TopologyError::SubstreamSizesAbsent`]；区间超出帧长返回
+    /// [`TopologyError::SubstreamPayloadOutOfFrame`]。
+    pub fn substream_payload<'a>(
+        &self,
+        frame: &'a [u8],
+        index: u32,
+    ) -> Result<&'a [u8], TopologyError> {
+        let sizes = self.index_table.sizes();
+        let wanted = usize::try_from(index).unwrap_or(usize::MAX);
+        if index >= self.index_table.n_substreams {
+            return Err(TopologyError::SubstreamIndexOutOfRange {
+                index,
+                total: self.index_table.n_substreams,
+            });
+        }
+        let mut start = self
+            .toc_bytes()
+            .saturating_add(u64::from(self.toc.payload_base));
+        for earlier in sizes.get(..wanted).unwrap_or(&[]) {
+            start = start.saturating_add(u64::from(earlier.bytes));
+        }
+        let frame_len = frame.len() as u64;
+        let end = match sizes.get(wanted) {
+            Some(size) => start.saturating_add(u64::from(size.bytes)),
+            // 单 substream 可省略尺寸；它是载荷区内唯一元素，边界即帧尾。
+            None if self.index_table.n_substreams == 1 && !self.index_table.size_present => {
+                frame_len
+            }
+            None => return Err(TopologyError::SubstreamSizesAbsent),
+        };
+        let range = usize::try_from(start)
+            .ok()
+            .zip(usize::try_from(end).ok())
+            .and_then(|(start, end)| frame.get(start..end));
+        range.ok_or(TopologyError::SubstreamPayloadOutOfFrame {
+            index,
+            start,
+            end,
+            frame_len,
+        })
+    }
+
+    /// 综合所有 group 得到的编码路径。
+    #[must_use]
+    pub fn scene_path(&self) -> ScenePath {
+        let mut has_ajoc = false;
+        let mut has_direct = false;
+        let mut any = false;
+        for group in self.groups() {
+            any = true;
+            has_ajoc |= group.has_ajoc();
+            has_direct |= group.has_direct_object();
+        }
+        match (any, has_ajoc, has_direct) {
+            (false, _, _) => ScenePath::Empty,
+            (true, true, true) => ScenePath::Mixed,
+            (true, true, false) => ScenePath::Ajoc,
+            (true, false, true) => ScenePath::DirectObject,
+            (true, false, false) => ScenePath::ChannelBased,
+        }
+    }
+
+    /// 本帧的解码器配置指纹。
+    #[must_use]
+    pub fn config_fingerprint(&self) -> ConfigFingerprint {
+        let mut presentations = [Ac4PresentationV1Info::EMPTY; MAX_PRESENTATIONS];
+        for (target, source) in presentations.iter_mut().zip(self.presentations()) {
+            *target = source.configuration_copy();
+        }
+
+        let mut groups = [Ac4SubstreamGroupInfo::EMPTY; MAX_SUBSTREAM_GROUPS];
+        for (target, source) in groups.iter_mut().zip(self.groups()) {
+            *target = source.configuration_copy();
+        }
+
+        ConfigFingerprint {
+            bitstream_version: self.toc.bitstream_version,
+            fs_index: self.toc.fs_index,
+            frame_rate_index: self.toc.frame_rate_index,
+            n_presentations: u32::try_from(self.presentations().len()).unwrap_or(u32::MAX),
+            n_groups: u32::try_from(self.groups().len()).unwrap_or(u32::MAX),
+            scene_path: self.scene_path(),
+            total_objects: self.total_objects(),
+            n_substreams: self.configuration_substream_span(),
+            program_id: self.program_id,
+            presentations,
+            groups,
+        }
+    }
+
+    /// 固定配置所引用的 substream 下标跨度。
+    ///
+    /// EMDF payload substream 是逐帧路由：没有 payload 的帧可以不声明它，
+    /// 因此既不在这里计数，也不应触发整个解码会话重置。每帧的 index table
+    /// 仍由引用校验与 payload 定位独立验证。
+    fn configuration_substream_span(&self) -> u32 {
+        let mut span = 0u32;
+        let mut include = |index: u32| {
+            span = span.max(index.saturating_add(1));
+        };
+
+        for presentation in self.presentations() {
+            if let Some(substream) = presentation.substream {
+                include(substream.substream_index);
+            }
+        }
+        for group in self.groups() {
+            if let Some(index) = group
+                .oamd_substream
+                .and_then(|substream| substream.substream_index)
+            {
+                include(index);
+            }
+            for substream in group.substreams() {
+                if let Some(first) = substream.substream_index() {
+                    for offset in 0..group.frame_rate_factor {
+                        include(first.saturating_add(offset));
+                    }
+                }
+            }
+            for &index in group.hsf_substream_indices().iter().flatten() {
+                include(index);
+            }
+        }
+        span
+    }
+
+    /// 本帧作为随机访问点的可用程度。
+    ///
+    /// `b_iframe_global` 为假时直接判定不可起解；为真时还要求全部
+    /// substream、OAMD 与 presentation substream 的 ndot 标志均为真，
+    /// 才算完整的场景重建起点。
+    #[must_use]
+    pub fn random_access(&self) -> RandomAccess {
+        if !self.toc.iframe_global {
+            return RandomAccess::None;
+        }
+        let audio_independent = self
+            .groups()
+            .iter()
+            .all(|group| group.substreams().iter().all(SubstreamInfo::audio_ndot));
+        let oamd_independent = self
+            .groups()
+            .iter()
+            .all(|group| group.oamd_substream.is_none_or(|oamd| oamd.ndot));
+        let presentation_independent = self
+            .presentations()
+            .iter()
+            .all(|item| item.substream.is_none_or(|substream| substream.ndot));
+
+        if audio_independent && oamd_independent && presentation_independent {
+            RandomAccess::Full
+        } else {
+            RandomAccess::AudioOnly
+        }
+    }
+
+    /// 全部 group 中的对象总数。
+    #[must_use]
+    pub fn total_objects(&self) -> u32 {
+        self.groups()
+            .iter()
+            .fold(0u32, |acc, group| acc.saturating_add(group.n_objects()))
+    }
+
+    /// 解析 `raw_ac4_frame()` 的完整 TOC。
+    ///
+    /// 会先解析 TOC 前置字段，再按 `bitstream_version` 选择 presentation 语法。
+    ///
+    /// # Errors
+    ///
+    /// 读取越界、结构超出固定容量，或遇到未覆盖的语法分支时返回错误。
+    pub fn parse(raw_frame: &[u8]) -> Result<Self, TopologyError> {
+        let toc = Ac4Toc::parse(raw_frame).map_err(|error| match error {
+            crate::toc::TocError::Read(read) => TopologyError::Read(read),
+        })?;
+
+        let mut reader = BitReader::new(raw_frame);
+        reader.skip_bits(toc.bits_consumed)?;
+
+        // bitstream_version ≤ 1 走 ac4_presentation_info()，当前工具链不产生
+        // 这类码流，实现它无法验证。当前规范也只定义到版本 2，
+        // 未来版本不能沿用 v2 语法猜测性解析。
+        if toc.bitstream_version <= 1 {
+            return Err(TopologyError::Unsupported {
+                what: Unsupported::LegacyPresentationInfo {
+                    bitstream_version: toc.bitstream_version,
+                },
+                bit_position: reader.bit_position(),
+            });
+        }
+        if toc.bitstream_version > 2 {
+            return Err(TopologyError::Unsupported {
+                what: Unsupported::FutureBitstreamVersion {
+                    bitstream_version: toc.bitstream_version,
+                },
+                bit_position: reader.bit_position(),
+            });
+        }
+
+        let program_id = if reader.read_flag()? {
+            let short_program_id = u16::try_from(reader.read_bits(16)?).unwrap_or(u16::MAX);
+            let program_uuid = if reader.read_flag()? {
+                let mut uuid = [0u8; 16];
+                for slot in &mut uuid {
+                    *slot = u8::try_from(reader.read_bits(8)?).unwrap_or(0);
+                }
+                Some(uuid)
+            } else {
+                None
+            };
+            Some(ProgramId {
+                short_program_id,
+                program_uuid,
+            })
+        } else {
+            None
+        };
+
+        let declared = toc.n_presentations;
+        let n_presentations = usize::try_from(declared).unwrap_or(usize::MAX);
+        if n_presentations > MAX_PRESENTATIONS {
+            return Err(TopologyError::CapacityExceeded {
+                what: Capacity::Presentations,
+                declared,
+                limit: MAX_PRESENTATIONS,
+            });
+        }
+
+        let mut presentations = [Ac4PresentationV1Info::EMPTY; MAX_PRESENTATIONS];
+        let mut written = 0usize;
+        for _ in 0..n_presentations {
+            let info = Ac4PresentationV1Info::parse(
+                &mut reader,
+                toc.bitstream_version,
+                toc.frame_rate_index,
+            )?;
+            let slot = presentations
+                .get_mut(written)
+                .ok_or(TopologyError::CapacityExceeded {
+                    what: Capacity::Presentations,
+                    declared,
+                    limit: MAX_PRESENTATIONS,
+                })?;
+            *slot = info;
+            written = written.saturating_add(1);
+        }
+
+        // total_n_substream_groups = 1 + max(group_index)，见 6.3.2.1.8。
+        // group 的数量不由某个字段直接给出，必须先读完全部 presentation。
+        let total_groups = presentations
+            .get(..written)
+            .unwrap_or(&[])
+            .iter()
+            .flat_map(Ac4PresentationV1Info::group_indices)
+            .fold(None::<u32>, |acc, index| {
+                Some(acc.map_or(*index, |current| current.max(*index)))
+            })
+            .map_or(0usize, |max| {
+                usize::try_from(max.saturating_add(1)).unwrap_or(usize::MAX)
+            });
+        if total_groups > MAX_SUBSTREAM_GROUPS {
+            return Err(TopologyError::CapacityExceeded {
+                what: Capacity::SubstreamGroups,
+                declared: u32::try_from(total_groups).unwrap_or(u32::MAX),
+                limit: MAX_SUBSTREAM_GROUPS,
+            });
+        }
+
+        let mut groups = [Ac4SubstreamGroupInfo::EMPTY; MAX_SUBSTREAM_GROUPS];
+        let mut groups_written = 0usize;
+        for index in 0..total_groups {
+            // frame_rate_factor 由 presentation 携带，而 group 在 TOC 级共享。
+            // 取第一个引用该 group 的 presentation 的取值；frame_rate_index 13
+            // 下该值恒为 1，本项目的向量不区分这两种取法。
+            let factor = presentations
+                .get(..written)
+                .unwrap_or(&[])
+                .iter()
+                .find(|presentation| {
+                    presentation
+                        .group_indices()
+                        .iter()
+                        .any(|&referenced| usize::try_from(referenced) == Ok(index))
+                })
+                .map_or(1, Ac4PresentationV1Info::frame_rate_factor);
+
+            let info = Ac4SubstreamGroupInfo::parse(
+                &mut reader,
+                toc.bitstream_version,
+                toc.fs_index,
+                factor,
+            )?;
+            let slot = groups
+                .get_mut(groups_written)
+                .ok_or(TopologyError::CapacityExceeded {
+                    what: Capacity::SubstreamGroups,
+                    declared: u32::try_from(total_groups).unwrap_or(u32::MAX),
+                    limit: MAX_SUBSTREAM_GROUPS,
+                })?;
+            *slot = info;
+            groups_written = groups_written.saturating_add(1);
+        }
+
+        let index_table = SubstreamIndexTable::parse(&mut reader)?;
+
+        Ok(Self {
+            toc,
+            program_id,
+            presentations,
+            n_presentations: written,
+            groups,
+            n_groups: groups_written,
+            index_table,
+            bits_consumed: reader.bit_position(),
+        })
+    }
+}

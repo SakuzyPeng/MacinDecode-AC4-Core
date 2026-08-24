@@ -1,0 +1,1466 @@
+//! A-JOC 对象 QMF 矩阵重建。
+//!
+//! 本模块把 `TS103190-2:v1.3.1:5.7.3.1`–`5.7.3.6` 已实现的四段原语接成
+//! 单一帧级事务：差分解码、反量化、dry/wet/pre rolling 插值、pre 矩阵乘法、
+//! 去相关和最终对象矩阵乘法。输入与输出仍停在 QMF 域；LFE 插回和终端 QMF
+//! 合成属于调用方的下一层。
+//!
+//! # 对象各自的频带网格
+//!
+//! `Pseudocode 18` 把 `mtx_pre_param` 写成单一 `[pb]` 维度，但 dry/wet 参数的
+//! 频带数明确定义成 `ajoc_num_bands[o]`。共享一个对象的 `pb` 去累加另一个对象
+//! 因而没有定义。这里按 `5.7.3.6.2` 的 QMF 子带公式直接计算
+//! `D(ts,sb) = |Csub2(ts,sb)^T| * Csub1(ts,sb)`：每个对象先用自己的
+//! [`AjocBandMap`] 把当前 `sb` 映回参数带，再加入同一个 pre target。
+//!
+//! # 事务边界
+//!
+//! [`AjocWorkspace`] 持有完整候选状态。任一差分、形状、插值、去相关或数值错误
+//! 都只会弄脏工作区和调用方的帧内输出，不会提交 [`AjocReconstructionState`]；
+//! 成功处理全部对象和时隙后才复制候选状态。CLI 因此可以丢弃失败帧、reset 后从
+//! 随机访问点继续，而不会保留半推进的历史。
+
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::needless_range_loop,
+    reason = "全部热路径下标由 20 对象、16 输入、7 decorrelator、3 数据点和 64 子带的固定上界派生；\
+              显式循环同时固定 Pseudocode 18 的 dry 后 wet 累加顺序"
+)]
+
+use super::bands::{AjocBandMap, NUM_QMF_SUBBANDS};
+use super::decorrelator::{DecorrelatorError, DecorrelatorState, kind_for_ajoc_index};
+use super::dequant::{DequantError, dequantise};
+use super::diff::{DiffError, DiffState, QuantizedObjectMatrix, decode};
+use super::interp::{
+    CoefficientGroup, InterpolationError, InterpolationSchedule, InterpolationState,
+    RollingCoefficient, RollingCoefficients,
+};
+use super::syntax::{Ajoc, AjocObjectControl, AjocObjectMatrix};
+use super::{MAX_AJOC_BANDS, MAX_AJOC_DMX_SIGNALS, MAX_DATA_POINTS, MAX_DECORRELATORS, MatrixKind};
+use crate::aspx::qmf::QmfSlot;
+use crate::element_drive::{QmfChannelFrame, empty_channel_frame};
+use alloc::{boxed::Box, vec};
+use core::fmt;
+
+/// M6 标量重建支持的对象数上界。
+///
+/// A-JOC 语法可以声明更多对象；20 是当前真实编码链、CLI full 支持凭证与验证
+/// 矩阵共同冻结的产品边界，不冒充规范上限。
+pub const MAX_RECONSTRUCTED_OBJECTS: usize = 20;
+
+const DRY_ROLLING_LEN: usize = MAX_RECONSTRUCTED_OBJECTS * MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS;
+const WET_ROLLING_LEN: usize = MAX_RECONSTRUCTED_OBJECTS * MAX_DECORRELATORS * NUM_QMF_SUBBANDS;
+const PRE_ROLLING_LEN: usize = MAX_DECORRELATORS * MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS;
+
+const DRY_TARGET_LEN: usize =
+    MAX_DATA_POINTS * MAX_RECONSTRUCTED_OBJECTS * MAX_AJOC_DMX_SIGNALS * MAX_AJOC_BANDS;
+const WET_TARGET_LEN: usize =
+    MAX_DATA_POINTS * MAX_RECONSTRUCTED_OBJECTS * MAX_DECORRELATORS * MAX_AJOC_BANDS;
+const PRE_TARGET_LEN: usize = MAX_DATA_POINTS * PRE_ROLLING_LEN;
+
+/// 会改变跨帧 rolling 与 decorrelator 状态布局的 A-JOC 拓扑。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReconstructionShape {
+    /// 上混对象数。
+    pub objects: u8,
+    /// 下混输入数。
+    pub num_dmx: u8,
+    /// 并行 decorrelator 数。
+    pub num_decorr: u8,
+}
+
+/// 一条物理 A-JOC substream 的跨帧重建状态。
+///
+/// rolling、差分与 decorrelator 历史在构造时安全地分配到堆上，应由会话长期持有，
+/// 不要在逐帧热路径反复构造。对象带宽网格可以逐帧变化，因为 rolling 系数按 QMF
+/// 子带保存；对象/input/decorrelator 拓扑变化则必须先 [`Self::reset`]。
+#[derive(Debug, PartialEq)]
+pub struct AjocReconstructionState {
+    diff: Box<[DiffState]>,
+    interpolation: InterpolationState,
+    dry: Box<[RollingCoefficient]>,
+    wet: Box<[RollingCoefficient]>,
+    pre: Box<[RollingCoefficient]>,
+    decorrelators: Box<[DecorrelatorState]>,
+    shape: Option<ReconstructionShape>,
+}
+
+impl Clone for AjocReconstructionState {
+    fn clone(&self) -> Self {
+        Self {
+            diff: self.diff.clone(),
+            interpolation: self.interpolation,
+            dry: self.dry.clone(),
+            wet: self.wet.clone(),
+            pre: self.pre.clone(),
+            decorrelators: self.decorrelators.clone(),
+            shape: self.shape,
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        // 五份固定形状堆缓冲逐项复用；帧级候选/提交不能因迁移到堆所有权而变成
+        // 每帧重新分配。长度由私有构造器锁定，若内部不变量被破坏则 slice API
+        // 明确 panic，而不是静默截断历史。
+        self.diff.clone_from_slice(&source.diff);
+        self.interpolation = source.interpolation;
+        self.dry.clone_from_slice(&source.dry);
+        self.wet.clone_from_slice(&source.wet);
+        self.pre.clone_from_slice(&source.pre);
+        self.decorrelators.clone_from_slice(&source.decorrelators);
+        self.shape = source.shape;
+    }
+}
+
+impl AjocReconstructionState {
+    /// 全零差分、插值和去相关历史。
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            diff: vec![DiffState::new(); MAX_RECONSTRUCTED_OBJECTS].into_boxed_slice(),
+            interpolation: InterpolationState::new(),
+            dry: vec![RollingCoefficient::ZERO; DRY_ROLLING_LEN].into_boxed_slice(),
+            wet: vec![RollingCoefficient::ZERO; WET_ROLLING_LEN].into_boxed_slice(),
+            pre: vec![RollingCoefficient::ZERO; PRE_ROLLING_LEN].into_boxed_slice(),
+            decorrelators: (0..MAX_DECORRELATORS)
+                .map(|_| DecorrelatorState::new())
+                .collect::<alloc::vec::Vec<_>>()
+                .into_boxed_slice(),
+            shape: None,
+        }
+    }
+
+    /// 丢弃该 substream 的全部差分、ramp 与 decorrelator 历史。
+    pub fn reset(&mut self) {
+        self.diff.fill(DiffState::new());
+        self.interpolation.reset();
+        self.dry.fill(RollingCoefficient::ZERO);
+        self.wet.fill(RollingCoefficient::ZERO);
+        self.pre.fill(RollingCoefficient::ZERO);
+        for decorrelator in &mut self.decorrelators {
+            decorrelator.reset();
+        }
+        self.shape = None;
+    }
+
+    /// 最近一次成功提交的矩阵拓扑；全新或 reset 后为 `None`。
+    #[must_use]
+    pub const fn shape(&self) -> Option<ReconstructionShape> {
+        self.shape
+    }
+}
+
+impl Default for AjocReconstructionState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A-JOC 帧级候选状态与矩阵工作区。
+///
+/// 大型候选与 target 缓冲在构造时分配到堆上，同样应由调用方长期复用；逐帧入口
+/// 本身不分配。它不包含输入和最终输出帧，后者由 CLI 的 QMF 控制 FIFO/对象缓冲
+/// 持有。失败后无需清理，下一次调用会完整覆写候选状态并清空三组 target。
+#[derive(Debug)]
+pub struct AjocWorkspace {
+    candidate: Box<AjocReconstructionState>,
+    quantized: Box<[QuantizedObjectMatrix]>,
+    dry_targets: Box<[f32]>,
+    wet_targets: Box<[f32]>,
+    pre_targets: Box<[f32]>,
+    u: [QmfSlot; MAX_DECORRELATORS],
+    y: [QmfSlot; MAX_DECORRELATORS],
+}
+
+impl AjocWorkspace {
+    /// 全零工作区。
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            candidate: Box::new(AjocReconstructionState::new()),
+            quantized: vec![QuantizedObjectMatrix::new(); MAX_RECONSTRUCTED_OBJECTS]
+                .into_boxed_slice(),
+            dry_targets: vec![0.0; DRY_TARGET_LEN].into_boxed_slice(),
+            wet_targets: vec![0.0; WET_TARGET_LEN].into_boxed_slice(),
+            pre_targets: vec![0.0; PRE_TARGET_LEN].into_boxed_slice(),
+            u: [QmfSlot::zero(); MAX_DECORRELATORS],
+            y: [QmfSlot::zero(); MAX_DECORRELATORS],
+        }
+    }
+
+    fn prepare_frame(&mut self) {
+        self.dry_targets.fill(0.0);
+        self.wet_targets.fill(0.0);
+        self.pre_targets.fill(0.0);
+        self.u.fill(QmfSlot::zero());
+        self.y.fill(QmfSlot::zero());
+    }
+}
+
+impl Default for AjocWorkspace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// 对象矩阵重建失败。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReconstructionError {
+    /// A-JOC 固定维度或本阶段的 20 对象边界不成立。
+    DimensionOutOfRange {
+        objects: u32,
+        num_dpoints: u8,
+        num_dmx: u8,
+        num_decorr: u8,
+    },
+    /// control/raw/input/output 至少有一个对象或信号切片不足。
+    WorkspaceTooSmall {
+        objects: usize,
+        num_dmx: usize,
+        controls: usize,
+        raw: usize,
+        input: usize,
+        output: usize,
+    },
+    /// 已提交状态遇到不同的对象/input/decorrelator 拓扑。
+    ShapeChangeRequiresReset {
+        previous: ReconstructionShape,
+        current: ReconstructionShape,
+    },
+    /// active 对象声明了表 78 之外的参数频带数。
+    MissingBandMap { object: usize, num_bands: u8 },
+    /// 差分输出缺少声明形状内的量化值。
+    MissingQuantizedValue {
+        kind: MatrixKind,
+        object: usize,
+        data_point: usize,
+        row: usize,
+        band: usize,
+    },
+    /// 差分解码失败。
+    Diff(DiffError),
+    /// 带对象/数据点上下文的反量化失败。
+    Dequant {
+        object: usize,
+        data_point: usize,
+        row: usize,
+        band: usize,
+        source: DequantError,
+    },
+    /// 插值日程或时隙无效。
+    Interpolation(InterpolationError),
+    /// 输入 QMF 含非有限分量。
+    NonFiniteInput {
+        channel: usize,
+        timeslot: usize,
+        subband: usize,
+    },
+    /// 对象求和后的 pre target 非有限。
+    NonFinitePreTarget {
+        data_point: usize,
+        decorrelator: usize,
+        channel: usize,
+        subband: usize,
+    },
+    /// rolling 插值产生非有限系数。
+    NonFiniteCoefficient {
+        group: CoefficientGroup,
+        index: usize,
+    },
+    /// pre 矩阵乘法的 QMF 输出不能表示为 f32。
+    NonFiniteDecorrelatorInput {
+        decorrelator: usize,
+        timeslot: usize,
+        subband: usize,
+    },
+    /// 某一路去相关器失败。
+    Decorrelator {
+        decorrelator: usize,
+        source: DecorrelatorError,
+    },
+    /// 最终对象矩阵乘法的输出不能表示为 f32。
+    NonFiniteOutput {
+        object: usize,
+        timeslot: usize,
+        subband: usize,
+    },
+}
+
+impl fmt::Display for ReconstructionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DimensionOutOfRange {
+                objects,
+                num_dpoints,
+                num_dmx,
+                num_decorr,
+            } => write!(
+                f,
+                "A-JOC 重建维度越界：objects={objects}, dpoints={num_dpoints}, dmx={num_dmx}, decorr={num_decorr}"
+            ),
+            Self::WorkspaceTooSmall {
+                objects,
+                num_dmx,
+                controls,
+                raw,
+                input,
+                output,
+            } => write!(
+                f,
+                "A-JOC 重建需要 {objects} 对象/{num_dmx} 输入，control/raw/input/output 只有 {controls}/{raw}/{input}/{output}"
+            ),
+            Self::ShapeChangeRequiresReset { previous, current } => write!(
+                f,
+                "A-JOC 重建拓扑从 {previous:?} 变为 {current:?}，必须先 reset"
+            ),
+            Self::MissingBandMap { object, num_bands } => {
+                write!(f, "A-JOC 对象 {object} 的 {num_bands} 带没有表 28 映射")
+            }
+            Self::MissingQuantizedValue {
+                kind,
+                object,
+                data_point,
+                row,
+                band,
+            } => write!(
+                f,
+                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 缺量化频带 {band}"
+            ),
+            Self::Diff(error) => write!(f, "{error}"),
+            Self::Dequant {
+                object,
+                data_point,
+                row,
+                band,
+                source,
+            } => write!(
+                f,
+                "A-JOC 对象 {object} 数据点 {data_point} 行 {row} 频带 {band} 反量化失败：{source}"
+            ),
+            Self::Interpolation(error) => write!(f, "{error}"),
+            Self::NonFiniteInput {
+                channel,
+                timeslot,
+                subband,
+            } => write!(
+                f,
+                "A-JOC 输入 {channel} 时隙 {timeslot} 子带 {subband} 非有限"
+            ),
+            Self::NonFinitePreTarget {
+                data_point,
+                decorrelator,
+                channel,
+                subband,
+            } => write!(
+                f,
+                "A-JOC pre target 在数据点 {data_point}/decorrelator {decorrelator}/输入 {channel}/子带 {subband} 非有限"
+            ),
+            Self::NonFiniteCoefficient { group, index } => {
+                write!(f, "A-JOC {group:?} rolling 系数 {index} 非有限")
+            }
+            Self::NonFiniteDecorrelatorInput {
+                decorrelator,
+                timeslot,
+                subband,
+            } => write!(
+                f,
+                "A-JOC decorrelator {decorrelator} 输入在时隙 {timeslot}/子带 {subband} 非有限"
+            ),
+            Self::Decorrelator {
+                decorrelator,
+                source,
+            } => write!(f, "A-JOC decorrelator {decorrelator} 失败：{source}"),
+            Self::NonFiniteOutput {
+                object,
+                timeslot,
+                subband,
+            } => write!(
+                f,
+                "A-JOC 对象 {object} 输出在时隙 {timeslot}/子带 {subband} 非有限"
+            ),
+        }
+    }
+}
+
+impl core::error::Error for ReconstructionError {}
+
+impl From<DiffError> for ReconstructionError {
+    fn from(error: DiffError) -> Self {
+        Self::Diff(error)
+    }
+}
+
+impl From<InterpolationError> for ReconstructionError {
+    fn from(error: InterpolationError) -> Self {
+        Self::Interpolation(error)
+    }
+}
+
+/// 把一帧 A-JOC side information 和对齐后的下混 QMF 重建为对象 QMF。
+///
+/// `input[ch]` 是 `Qin_AJOC,ch`，`output[o]` 是 `Qout_AJOC,o`；每个固定容量帧
+/// 只有前 `num_qmf_timeslots` 项有效。control/raw 可以是复用后更长的工作区，
+/// 但 input/output 至少要覆盖当前拓扑。成功时会把输出帧未使用的尾部也清零。
+/// 本入口不执行 dialogue enhancement；产品 full 驱动必须先消费拒绝活动 DE 的
+/// 支持凭证，不能把未实现分支伪装成普通矩阵重建。
+///
+/// # Errors
+///
+/// 形状、差分、反量化、插值、矩阵乘法或去相关失败时返回
+/// [`ReconstructionError`]。任何错误都不提交 `state`。
+#[expect(
+    clippy::too_many_arguments,
+    reason = "帧级事务必须显式绑定 side information、实际 QMF 时隙、输入、两类持久对象和输出；\
+              把它们藏进可伪造 DTO 会模糊状态所有权"
+)]
+pub fn reconstruct_frame(
+    ajoc: &Ajoc,
+    controls: &[AjocObjectControl],
+    raw: &[AjocObjectMatrix],
+    num_qmf_timeslots: u8,
+    input: &[QmfChannelFrame],
+    state: &mut AjocReconstructionState,
+    workspace: &mut AjocWorkspace,
+    output: &mut [QmfChannelFrame],
+) -> Result<(), ReconstructionError> {
+    let schedule = InterpolationSchedule::from_data_points(&ajoc.data_points, num_qmf_timeslots)?;
+    let dimensions = validate_frame(
+        ajoc,
+        controls,
+        raw,
+        usize::from(schedule.num_qmf_timeslots()),
+        input,
+        state,
+        output,
+    )?;
+
+    workspace.prepare_frame();
+    for frame in output.iter_mut() {
+        *frame = empty_channel_frame();
+    }
+    workspace.candidate.as_mut().clone_from(state);
+
+    decode(
+        ajoc,
+        controls,
+        raw,
+        &mut workspace.candidate.diff[..dimensions.objects],
+        &mut workspace.quantized[..dimensions.objects],
+    )?;
+
+    let maps = prepare_targets(controls, dimensions, workspace)?;
+    process_timeslots(
+        controls, dimensions, &schedule, &maps, input, workspace, output,
+    )?;
+
+    workspace.candidate.shape = Some(dimensions.shape);
+    state.clone_from(&workspace.candidate);
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct FrameDimensions {
+    objects: usize,
+    num_dpoints: usize,
+    num_dmx: usize,
+    num_decorr: usize,
+    decorr_enabled: [bool; MAX_DECORRELATORS],
+    timeslots: usize,
+    shape: ReconstructionShape,
+}
+
+fn validate_frame(
+    ajoc: &Ajoc,
+    controls: &[AjocObjectControl],
+    raw: &[AjocObjectMatrix],
+    timeslots: usize,
+    input: &[QmfChannelFrame],
+    state: &AjocReconstructionState,
+    output: &[QmfChannelFrame],
+) -> Result<FrameDimensions, ReconstructionError> {
+    let objects = usize::try_from(ajoc.num_umx_signals).unwrap_or(usize::MAX);
+    let num_dpoints = usize::from(ajoc.data_points.count);
+    let num_dmx = usize::from(ajoc.num_dmx_signals);
+    let num_decorr = usize::from(ajoc.num_decorr);
+    if objects == 0
+        || objects > MAX_RECONSTRUCTED_OBJECTS
+        || num_dpoints > MAX_DATA_POINTS
+        || num_dmx == 0
+        || num_dmx > MAX_AJOC_DMX_SIGNALS
+        || num_decorr > MAX_DECORRELATORS
+    {
+        return Err(ReconstructionError::DimensionOutOfRange {
+            objects: ajoc.num_umx_signals,
+            num_dpoints: ajoc.data_points.count,
+            num_dmx: ajoc.num_dmx_signals,
+            num_decorr: ajoc.num_decorr,
+        });
+    }
+    if controls.len() < objects
+        || raw.len() < objects
+        || input.len() < num_dmx
+        || output.len() < objects
+    {
+        return Err(ReconstructionError::WorkspaceTooSmall {
+            objects,
+            num_dmx,
+            controls: controls.len(),
+            raw: raw.len(),
+            input: input.len(),
+            output: output.len(),
+        });
+    }
+
+    let shape = ReconstructionShape {
+        objects: u8::try_from(objects).unwrap_or(u8::MAX),
+        num_dmx: ajoc.num_dmx_signals,
+        num_decorr: ajoc.num_decorr,
+    };
+    if let Some(previous) = state.shape {
+        if previous != shape {
+            return Err(ReconstructionError::ShapeChangeRequiresReset {
+                previous,
+                current: shape,
+            });
+        }
+    }
+
+    let mut decorr_enabled = [false; MAX_DECORRELATORS];
+    for (decorrelator, enabled) in decorr_enabled.iter_mut().enumerate().take(num_decorr) {
+        *enabled = ajoc.decorr_enable(decorrelator).unwrap_or(false);
+    }
+
+    validate_input(input, num_dmx, timeslots)?;
+
+    Ok(FrameDimensions {
+        objects,
+        num_dpoints,
+        num_dmx,
+        num_decorr,
+        decorr_enabled,
+        timeslots,
+        shape,
+    })
+}
+
+fn validate_input(
+    input: &[QmfChannelFrame],
+    num_dmx: usize,
+    timeslots: usize,
+) -> Result<(), ReconstructionError> {
+    for channel in 0..num_dmx {
+        for timeslot in 0..timeslots {
+            for subband in 0..NUM_QMF_SUBBANDS {
+                if !input[channel][timeslot].re[subband].is_finite()
+                    || !input[channel][timeslot].im[subband].is_finite()
+                {
+                    return Err(ReconstructionError::NonFiniteInput {
+                        channel,
+                        timeslot,
+                        subband,
+                    });
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn prepare_targets(
+    controls: &[AjocObjectControl],
+    dimensions: FrameDimensions,
+    workspace: &mut AjocWorkspace,
+) -> Result<[Option<AjocBandMap>; MAX_RECONSTRUCTED_OBJECTS], ReconstructionError> {
+    let mut maps = [None; MAX_RECONSTRUCTED_OBJECTS];
+    for object in 0..dimensions.objects {
+        let control = &controls[object];
+        if !control.present || dimensions.num_dpoints == 0 {
+            continue;
+        }
+        let map = AjocBandMap::for_num_bands(control.num_bands).ok_or(
+            ReconstructionError::MissingBandMap {
+                object,
+                num_bands: control.num_bands,
+            },
+        )?;
+        maps[object] = Some(map);
+
+        for data_point in 0..dimensions.num_dpoints {
+            for channel in 0..dimensions.num_dmx {
+                for band in 0..usize::from(control.num_bands) {
+                    let quantized = workspace.quantized[object]
+                        .dry(data_point, channel, band)
+                        .ok_or(ReconstructionError::MissingQuantizedValue {
+                            kind: MatrixKind::Dry,
+                            object,
+                            data_point,
+                            row: channel,
+                            band,
+                        })?;
+                    workspace.dry_targets[dry_target_index(data_point, object, channel, band)] =
+                        dequantise(MatrixKind::Dry, control.coarse, quantized).map_err(
+                            |source| ReconstructionError::Dequant {
+                                object,
+                                data_point,
+                                row: channel,
+                                band,
+                                source,
+                            },
+                        )?;
+                }
+            }
+            for decorrelator in 0..dimensions.num_decorr {
+                for band in 0..usize::from(control.num_bands) {
+                    let quantized = workspace.quantized[object]
+                        .wet(data_point, decorrelator, band)
+                        .ok_or(ReconstructionError::MissingQuantizedValue {
+                            kind: MatrixKind::Wet,
+                            object,
+                            data_point,
+                            row: decorrelator,
+                            band,
+                        })?;
+                    workspace.wet_targets
+                        [wet_target_index(data_point, object, decorrelator, band)] =
+                        dequantise(MatrixKind::Wet, control.coarse, quantized).map_err(
+                            |source| ReconstructionError::Dequant {
+                                object,
+                                data_point,
+                                row: decorrelator,
+                                band,
+                                source,
+                            },
+                        )?;
+                }
+            }
+        }
+    }
+
+    calculate_pre_targets(controls, dimensions, &maps, workspace)?;
+    Ok(maps)
+}
+
+fn calculate_pre_targets(
+    controls: &[AjocObjectControl],
+    dimensions: FrameDimensions,
+    maps: &[Option<AjocBandMap>; MAX_RECONSTRUCTED_OBJECTS],
+    workspace: &mut AjocWorkspace,
+) -> Result<(), ReconstructionError> {
+    for data_point in 0..dimensions.num_dpoints {
+        for subband in 0..NUM_QMF_SUBBANDS {
+            for decorrelator in 0..dimensions.num_decorr {
+                for channel in 0..dimensions.num_dmx {
+                    let mut sum = 0.0f64;
+                    for object in 0..dimensions.objects {
+                        if !controls[object].present {
+                            continue;
+                        }
+                        let map = maps[object].ok_or(ReconstructionError::MissingBandMap {
+                            object,
+                            num_bands: controls[object].num_bands,
+                        })?;
+                        let band = usize::from(map.column()[subband]);
+                        let dry = workspace.dry_targets
+                            [dry_target_index(data_point, object, channel, band)];
+                        let wet = workspace.wet_targets
+                            [wet_target_index(data_point, object, decorrelator, band)];
+                        sum += f64::from(wet.abs()) * f64::from(dry);
+                    }
+                    let value = sum as f32;
+                    if !sum.is_finite() || !value.is_finite() {
+                        return Err(ReconstructionError::NonFinitePreTarget {
+                            data_point,
+                            decorrelator,
+                            channel,
+                            subband,
+                        });
+                    }
+                    workspace.pre_targets
+                        [pre_target_index(data_point, decorrelator, channel, subband)] = value;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn process_timeslots(
+    controls: &[AjocObjectControl],
+    dimensions: FrameDimensions,
+    schedule: &InterpolationSchedule,
+    maps: &[Option<AjocBandMap>; MAX_RECONSTRUCTED_OBJECTS],
+    input: &[QmfChannelFrame],
+    workspace: &mut AjocWorkspace,
+    output: &mut [QmfChannelFrame],
+) -> Result<(), ReconstructionError> {
+    let AjocWorkspace {
+        candidate,
+        dry_targets,
+        wet_targets,
+        pre_targets,
+        u,
+        y,
+        ..
+    } = workspace;
+    let AjocReconstructionState {
+        interpolation,
+        dry,
+        wet,
+        pre,
+        decorrelators,
+        ..
+    } = &mut **candidate;
+
+    for timeslot in 0..dimensions.timeslots {
+        let mut rolling = RollingCoefficients::new(&mut *dry, &mut *wet, &mut *pre);
+        interpolation.interpolate_timeslot(
+            u8::try_from(timeslot).unwrap_or(u8::MAX),
+            schedule,
+            &mut rolling,
+            |group, data_point, index| {
+                target_for(
+                    group,
+                    data_point,
+                    index,
+                    controls,
+                    dimensions,
+                    maps,
+                    dry_targets,
+                    wet_targets,
+                    pre_targets,
+                )
+            },
+        )?;
+        validate_rolling(&rolling)?;
+
+        for decorrelator in 0..dimensions.num_decorr {
+            u[decorrelator] =
+                decorrelator_input(decorrelator, timeslot, dimensions, rolling.pre(), input)?;
+            let kind = kind_for_ajoc_index(decorrelator).ok_or(
+                ReconstructionError::DimensionOutOfRange {
+                    objects: u32::from(dimensions.shape.objects),
+                    num_dpoints: u8::try_from(dimensions.num_dpoints).unwrap_or(u8::MAX),
+                    num_dmx: dimensions.shape.num_dmx,
+                    num_decorr: dimensions.shape.num_decorr,
+                },
+            )?;
+            super::decorrelator::process_timeslot(
+                kind,
+                &u[decorrelator],
+                &mut decorrelators[decorrelator],
+                &mut y[decorrelator],
+            )
+            .map_err(|source| ReconstructionError::Decorrelator {
+                decorrelator,
+                source,
+            })?;
+        }
+
+        reconstruct_output(
+            timeslot,
+            dimensions,
+            rolling.dry(),
+            rolling.wet(),
+            input,
+            y,
+            output,
+        )?;
+    }
+    Ok(())
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "插值 closure 只能返回值；把三组已预检 target 和形状显式传入，保证热路径无失败分支"
+)]
+fn target_for(
+    group: CoefficientGroup,
+    data_point: usize,
+    index: usize,
+    controls: &[AjocObjectControl],
+    dimensions: FrameDimensions,
+    maps: &[Option<AjocBandMap>; MAX_RECONSTRUCTED_OBJECTS],
+    dry_targets: &[f32],
+    wet_targets: &[f32],
+    pre_targets: &[f32],
+) -> f32 {
+    match group {
+        CoefficientGroup::Dry => {
+            let subband = index % NUM_QMF_SUBBANDS;
+            let row = index / NUM_QMF_SUBBANDS;
+            let channel = row % MAX_AJOC_DMX_SIGNALS;
+            let object = row / MAX_AJOC_DMX_SIGNALS;
+            if object >= dimensions.objects
+                || channel >= dimensions.num_dmx
+                || !controls[object].present
+            {
+                return 0.0;
+            }
+            let Some(map) = maps[object] else {
+                return 0.0;
+            };
+            let band = usize::from(map.column()[subband]);
+            dry_targets[dry_target_index(data_point, object, channel, band)]
+        }
+        CoefficientGroup::Wet => {
+            let subband = index % NUM_QMF_SUBBANDS;
+            let row = index / NUM_QMF_SUBBANDS;
+            let decorrelator = row % MAX_DECORRELATORS;
+            let object = row / MAX_DECORRELATORS;
+            if object >= dimensions.objects
+                || decorrelator >= dimensions.num_decorr
+                || !controls[object].present
+            {
+                return 0.0;
+            }
+            let Some(map) = maps[object] else {
+                return 0.0;
+            };
+            let band = usize::from(map.column()[subband]);
+            wet_targets[wet_target_index(data_point, object, decorrelator, band)]
+        }
+        CoefficientGroup::Pre => {
+            let subband = index % NUM_QMF_SUBBANDS;
+            let row = index / NUM_QMF_SUBBANDS;
+            let channel = row % MAX_AJOC_DMX_SIGNALS;
+            let decorrelator = row / MAX_AJOC_DMX_SIGNALS;
+            if decorrelator >= dimensions.num_decorr || channel >= dimensions.num_dmx {
+                return 0.0;
+            }
+            pre_targets[pre_target_index(data_point, decorrelator, channel, subband)]
+        }
+    }
+}
+
+fn validate_rolling(rolling: &RollingCoefficients<'_>) -> Result<(), ReconstructionError> {
+    for (group, coefficients) in [
+        (CoefficientGroup::Dry, rolling.dry()),
+        (CoefficientGroup::Wet, rolling.wet()),
+        (CoefficientGroup::Pre, rolling.pre()),
+    ] {
+        for (index, coefficient) in coefficients.iter().enumerate() {
+            if !coefficient.current().is_finite()
+                || !coefficient.target().is_finite()
+                || !coefficient.delta().is_finite()
+            {
+                return Err(ReconstructionError::NonFiniteCoefficient { group, index });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn decorrelator_input(
+    decorrelator: usize,
+    timeslot: usize,
+    dimensions: FrameDimensions,
+    pre: &[RollingCoefficient],
+    input: &[QmfChannelFrame],
+) -> Result<QmfSlot, ReconstructionError> {
+    let mut out = QmfSlot::zero();
+    for subband in 0..NUM_QMF_SUBBANDS {
+        let mut re = 0.0f64;
+        let mut im = 0.0f64;
+        for channel in 0..dimensions.num_dmx {
+            let coefficient = pre[pre_rolling_index(decorrelator, channel, subband)].current();
+            re += f64::from(coefficient) * f64::from(input[channel][timeslot].re[subband]);
+            im += f64::from(coefficient) * f64::from(input[channel][timeslot].im[subband]);
+        }
+        out.re[subband] = re as f32;
+        out.im[subband] = im as f32;
+        if !re.is_finite()
+            || !im.is_finite()
+            || !out.re[subband].is_finite()
+            || !out.im[subband].is_finite()
+        {
+            return Err(ReconstructionError::NonFiniteDecorrelatorInput {
+                decorrelator,
+                timeslot,
+                subband,
+            });
+        }
+    }
+    Ok(out)
+}
+
+fn reconstruct_output(
+    timeslot: usize,
+    dimensions: FrameDimensions,
+    dry: &[RollingCoefficient],
+    wet: &[RollingCoefficient],
+    input: &[QmfChannelFrame],
+    y: &[QmfSlot; MAX_DECORRELATORS],
+    output: &mut [QmfChannelFrame],
+) -> Result<(), ReconstructionError> {
+    for object in 0..dimensions.objects {
+        for subband in 0..NUM_QMF_SUBBANDS {
+            let mut re = 0.0f64;
+            let mut im = 0.0f64;
+            for channel in 0..dimensions.num_dmx {
+                let coefficient = dry[dry_rolling_index(object, channel, subband)].current();
+                re += f64::from(coefficient) * f64::from(input[channel][timeslot].re[subband]);
+                im += f64::from(coefficient) * f64::from(input[channel][timeslot].im[subband]);
+            }
+            for decorrelator in 0..dimensions.num_decorr {
+                // P2 6.3.6.2.1：dense 语法即使在该路禁用时仍携带 wet 段，
+                // 因此不能靠系数自然为零。上面的候选 DSP 继续推进跨帧历史，
+                // 这里只把禁用路从可观察的对象输出中硬性移除。
+                if !dimensions.decorr_enabled[decorrelator] {
+                    continue;
+                }
+                // 只有 pre target 对 wet 取绝对值；最终输出必须保留原始 wet 符号。
+                let coefficient = wet[wet_rolling_index(object, decorrelator, subband)].current();
+                re += f64::from(coefficient) * f64::from(y[decorrelator].re[subband]);
+                im += f64::from(coefficient) * f64::from(y[decorrelator].im[subband]);
+            }
+            output[object][timeslot].re[subband] = re as f32;
+            output[object][timeslot].im[subband] = im as f32;
+            if !re.is_finite()
+                || !im.is_finite()
+                || !output[object][timeslot].re[subband].is_finite()
+                || !output[object][timeslot].im[subband].is_finite()
+            {
+                return Err(ReconstructionError::NonFiniteOutput {
+                    object,
+                    timeslot,
+                    subband,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+const fn dry_rolling_index(object: usize, channel: usize, subband: usize) -> usize {
+    (object * MAX_AJOC_DMX_SIGNALS + channel) * NUM_QMF_SUBBANDS + subband
+}
+
+const fn wet_rolling_index(object: usize, decorrelator: usize, subband: usize) -> usize {
+    (object * MAX_DECORRELATORS + decorrelator) * NUM_QMF_SUBBANDS + subband
+}
+
+const fn pre_rolling_index(decorrelator: usize, channel: usize, subband: usize) -> usize {
+    (decorrelator * MAX_AJOC_DMX_SIGNALS + channel) * NUM_QMF_SUBBANDS + subband
+}
+
+const fn dry_target_index(data_point: usize, object: usize, channel: usize, band: usize) -> usize {
+    ((data_point * MAX_RECONSTRUCTED_OBJECTS + object) * MAX_AJOC_DMX_SIGNALS + channel)
+        * MAX_AJOC_BANDS
+        + band
+}
+
+const fn wet_target_index(
+    data_point: usize,
+    object: usize,
+    decorrelator: usize,
+    band: usize,
+) -> usize {
+    ((data_point * MAX_RECONSTRUCTED_OBJECTS + object) * MAX_DECORRELATORS + decorrelator)
+        * MAX_AJOC_BANDS
+        + band
+}
+
+const fn pre_target_index(
+    data_point: usize,
+    decorrelator: usize,
+    channel: usize,
+    subband: usize,
+) -> usize {
+    data_point * PRE_ROLLING_LEN + pre_rolling_index(decorrelator, channel, subband)
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate std;
+
+    use super::*;
+    use std::thread;
+    use std::vec;
+    use std::vec::Vec;
+
+    const TIMESLOTS: u8 = 24;
+
+    fn on_large_stack(test: impl FnOnce() + Send + 'static) {
+        thread::Builder::new()
+            .name(std::string::String::from("ajoc-reconstruction-test"))
+            .stack_size(16 * 1_024 * 1_024)
+            .spawn(test)
+            .expect("应能建立大工作区测试线程")
+            .join()
+            .expect("大工作区测试不应 panic");
+    }
+
+    fn control(
+        present: bool,
+        num_bands: u8,
+        num_dmx: usize,
+        num_decorr: usize,
+    ) -> AjocObjectControl {
+        AjocObjectControl::for_test(
+            present,
+            num_bands,
+            true,
+            false,
+            &vec![true; num_dmx],
+            &vec![true; num_decorr],
+        )
+    }
+
+    fn frequency_symbols(values: &[i16], levels: i16) -> Vec<i16> {
+        let mut out = Vec::with_capacity(values.len());
+        for (index, &value) in values.iter().enumerate() {
+            if index == 0 {
+                out.push(value);
+            } else {
+                out.push((value - values[index - 1]).rem_euclid(levels));
+            }
+        }
+        out
+    }
+
+    fn constant_symbols(value: i16, bands: usize) -> Vec<i16> {
+        let mut values = vec![0; bands];
+        if let Some(first) = values.first_mut() {
+            *first = value;
+        }
+        values
+    }
+
+    fn matrix(
+        num_bands: u8,
+        num_dmx: u8,
+        num_decorr: u8,
+        dry_values: &[i16],
+        wet_values: &[i16],
+    ) -> AjocObjectMatrix {
+        let mut out = AjocObjectMatrix::for_test(num_bands, 1, num_dmx, num_decorr);
+        for channel in 0..usize::from(num_dmx) {
+            out.set_dry_for_test(0, channel, dry_values, false);
+        }
+        for decorrelator in 0..usize::from(num_decorr) {
+            out.set_wet_for_test(0, decorrelator, wet_values, false);
+        }
+        out
+    }
+
+    fn zero_inputs(count: usize) -> Vec<QmfChannelFrame> {
+        vec![empty_channel_frame(); count]
+    }
+
+    fn sentinel_frame(value: f32) -> QmfChannelFrame {
+        let mut frame = empty_channel_frame();
+        for slot in &mut frame {
+            slot.re.fill(value);
+            slot.im.fill(-value);
+        }
+        frame
+    }
+
+    #[test]
+    fn dry_only_reconstructs_complex_qmf_and_clears_unused_slots() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(0, 1, 1, 1);
+            let controls = [control(true, 1, 1, 0)];
+            let raw = [matrix(1, 1, 0, &[30], &[])];
+            let mut input = zero_inputs(1);
+            input[0][1].re[0] = 2.0;
+            input[0][1].im[0] = -3.0;
+            let mut output = vec![sentinel_frame(99.0)];
+            let mut state = AjocReconstructionState::new();
+            let mut workspace = AjocWorkspace::new();
+
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &raw,
+                TIMESLOTS,
+                &input,
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("dry-only 重建");
+
+            let gain = dequantise(MatrixKind::Dry, true, 30).expect("表内 dry");
+            assert_eq!(output[0][0], QmfSlot::zero(), "新 target 在时隙 0 之后安装");
+            assert_eq!(
+                output[0][1].re[0].to_bits(),
+                ((f64::from(gain) * 2.0) as f32).to_bits()
+            );
+            assert_eq!(
+                output[0][1].im[0].to_bits(),
+                ((f64::from(gain) * -3.0) as f32).to_bits()
+            );
+            assert_eq!(output[0][usize::from(TIMESLOTS)], QmfSlot::zero());
+            assert_eq!(
+                state.shape(),
+                Some(ReconstructionShape {
+                    objects: 1,
+                    num_dmx: 1,
+                    num_decorr: 0,
+                })
+            );
+        });
+    }
+
+    #[test]
+    fn wet_path_is_nonzero_and_only_the_final_wet_term_keeps_its_sign() {
+        on_large_stack(|| {
+            fn run(wet_q: i16) -> (Vec<QmfChannelFrame>, AjocReconstructionState) {
+                let ajoc = Ajoc::for_test(1, 1, 1, 1);
+                let controls = [control(true, 1, 1, 1)];
+                let raw = [matrix(1, 1, 1, &[30], &[wet_q])];
+                let mut input = zero_inputs(1);
+                input[0][1].re[0] = 1.0;
+                let mut output = vec![empty_channel_frame()];
+                let mut state = AjocReconstructionState::new();
+                let mut workspace = AjocWorkspace::new();
+                reconstruct_frame(
+                    &ajoc,
+                    &controls,
+                    &raw,
+                    TIMESLOTS,
+                    &input,
+                    &mut state,
+                    &mut workspace,
+                    &mut output,
+                )
+                .expect("wet 重建");
+                (output, state)
+            }
+
+            let (positive, positive_state) = run(15);
+            let (negative, negative_state) = run(5);
+            let delayed = 8usize;
+            assert_ne!(positive[0][delayed].re[0].to_bits(), 0);
+            assert_eq!(
+                positive[0][delayed].re[0].to_bits(),
+                (-negative[0][delayed].re[0]).to_bits(),
+                "pre 必须取 abs(wet)，最终 wet 项才保留符号"
+            );
+            assert_eq!(
+                positive_state.decorrelators[0], negative_state.decorrelators[0],
+                "正负等幅 wet 应产生相同 decorrelator 输入与状态"
+            );
+        });
+    }
+
+    #[test]
+    fn disabled_dense_decorrelator_keeps_history_but_never_reaches_output() {
+        on_large_stack(|| {
+            fn run(enabled: bool, wet_q: i16) -> (Vec<QmfChannelFrame>, AjocReconstructionState) {
+                let mut ajoc = Ajoc::for_test(1, 1, 1, 1);
+                ajoc.set_decorr_enable_for_test(0, enabled);
+                let controls = [control(true, 1, 1, 1)];
+                let raw = [matrix(1, 1, 1, &[30], &[wet_q])];
+                let mut input = zero_inputs(1);
+                input[0][1].re[0] = 1.0;
+                let mut output = vec![empty_channel_frame()];
+                let mut state = AjocReconstructionState::new();
+                let mut workspace = AjocWorkspace::new();
+                reconstruct_frame(
+                    &ajoc,
+                    &controls,
+                    &raw,
+                    TIMESLOTS,
+                    &input,
+                    &mut state,
+                    &mut workspace,
+                    &mut output,
+                )
+                .expect("dense decorrelator gate");
+                (output, state)
+            }
+
+            let (enabled_output, enabled_state) = run(true, 15);
+            let (disabled_output, disabled_state) = run(false, 15);
+            let (zero_wet_output, _) = run(true, 10);
+
+            assert_ne!(
+                enabled_output, disabled_output,
+                "夹具必须让启用路产生可观察的 wet 输出"
+            );
+            assert_eq!(
+                disabled_output, zero_wet_output,
+                "禁用路即使在 dense 模式携带非零 wet，也不得混入对象输出"
+            );
+            assert_eq!(
+                disabled_state, enabled_state,
+                "输出门控不得中断量化、rolling 或 decorrelator 的跨帧历史"
+            );
+        });
+    }
+
+    #[test]
+    fn inactive_object_targets_zero_without_destroying_diff_history() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(0, 1, 1, 1);
+            let active = [control(true, 1, 1, 0)];
+            let active_raw = [matrix(1, 1, 0, &[30], &[])];
+            let mut state = AjocReconstructionState::new();
+            let mut workspace = AjocWorkspace::new();
+            let mut output = vec![empty_channel_frame()];
+            reconstruct_frame(
+                &ajoc,
+                &active,
+                &active_raw,
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("建立 active 历史");
+            let diff_before = state.diff[0];
+
+            let inactive = [control(false, 0, 1, 0)];
+            let inactive_raw = [AjocObjectMatrix::new()];
+            let mut input = zero_inputs(1);
+            for slot in input[0].iter_mut().take(usize::from(TIMESLOTS)) {
+                slot.re[0] = 1.0;
+            }
+            output[0] = sentinel_frame(77.0);
+            reconstruct_frame(
+                &ajoc,
+                &inactive,
+                &inactive_raw,
+                TIMESLOTS,
+                &input,
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("inactive target");
+
+            assert_ne!(output[0][0].re[0].to_bits(), 0, "时隙 0 仍使用旧 target");
+            assert_eq!(output[0][1].re[0].to_bits(), 0, "一步 ramp 后应归零");
+            assert_eq!(state.diff[0], diff_before, "inactive 不得销毁最后传输历史");
+        });
+    }
+
+    #[test]
+    fn pre_target_uses_each_objects_own_parameter_band_grid() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(1, 1, 2, 1);
+            let controls = [control(true, 1, 1, 1), control(true, 23, 1, 1)];
+            let object0 = matrix(1, 1, 1, &[30], &[15]);
+            let object1_dry: Vec<i16> = (25..=47).collect();
+            let object1 = matrix(
+                23,
+                1,
+                1,
+                &frequency_symbols(&object1_dry, 51),
+                &constant_symbols(15, 23),
+            );
+            let raw = [object0, object1];
+            let mut state = AjocReconstructionState::new();
+            let mut workspace = AjocWorkspace::new();
+            let mut output = vec![empty_channel_frame(); 2];
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &raw,
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("混合频带网格");
+
+            let dry0 = dequantise(MatrixKind::Dry, true, 30).expect("dry0");
+            let wet = dequantise(MatrixKind::Wet, true, 15).expect("wet");
+            let object1_low = dequantise(MatrixKind::Dry, true, 25).expect("low");
+            let object1_high = dequantise(MatrixKind::Dry, true, 47).expect("high");
+            let expected_low = (f64::from(wet.abs()) * f64::from(dry0)
+                + f64::from(wet.abs()) * f64::from(object1_low))
+                as f32;
+            let expected_high = (f64::from(wet.abs()) * f64::from(dry0)
+                + f64::from(wet.abs()) * f64::from(object1_high))
+                as f32;
+            let low = workspace.pre_targets[pre_target_index(0, 0, 0, 0)];
+            let high = workspace.pre_targets[pre_target_index(0, 0, 0, 63)];
+            assert_eq!(low.to_bits(), expected_low.to_bits());
+            assert_eq!(high.to_bits(), expected_high.to_bits());
+            assert_ne!(low.to_bits(), high.to_bits());
+        });
+    }
+
+    #[test]
+    fn every_frame_clears_pre_targets_and_the_complete_output_buffer() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(1, 1, 1, 1);
+            let controls = [control(true, 1, 1, 1)];
+            let mut state = AjocReconstructionState::new();
+            let mut workspace = AjocWorkspace::new();
+            let mut output = vec![empty_channel_frame(), sentinel_frame(66.0)];
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &[matrix(1, 1, 1, &[30], &[15])],
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("非零 pre target");
+            assert_ne!(workspace.pre_targets[pre_target_index(0, 0, 0, 0)], 0.0);
+
+            output[0] = sentinel_frame(55.0);
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &[matrix(1, 1, 1, &[30], &[10])],
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("零 wet frame");
+            assert_eq!(workspace.pre_targets[pre_target_index(0, 0, 0, 0)], 0.0);
+            assert!(
+                output.iter().flatten().all(|slot| *slot == QmfSlot::zero()),
+                "有效对象、固定容量尾部和多余对象工作区都必须覆盖旧输出"
+            );
+        });
+    }
+
+    #[test]
+    fn dimensions_band_maps_and_shape_changes_fail_closed() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(0, 1, 1, 1);
+            let controls = [control(true, 1, 1, 0)];
+            let raw = [matrix(1, 1, 0, &[30], &[])];
+            let mut state = AjocReconstructionState::new();
+            let before = state.clone();
+            let mut workspace = AjocWorkspace::new();
+            let mut output = vec![empty_channel_frame()];
+            assert!(matches!(
+                reconstruct_frame(
+                    &ajoc,
+                    &controls,
+                    &raw,
+                    TIMESLOTS,
+                    &[],
+                    &mut state,
+                    &mut workspace,
+                    &mut output,
+                ),
+                Err(ReconstructionError::WorkspaceTooSmall { input: 0, .. })
+            ));
+            assert_eq!(state, before);
+
+            let too_many = Ajoc::for_test(0, 1, 21, 1);
+            assert!(matches!(
+                reconstruct_frame(
+                    &too_many,
+                    &[],
+                    &[],
+                    TIMESLOTS,
+                    &[],
+                    &mut state,
+                    &mut workspace,
+                    &mut [],
+                ),
+                Err(ReconstructionError::DimensionOutOfRange { objects: 21, .. })
+            ));
+            assert_eq!(state, before);
+
+            let invalid_control = [control(true, 2, 1, 0)];
+            let invalid_raw = [matrix(2, 1, 0, &[30, 0], &[])];
+            assert_eq!(
+                reconstruct_frame(
+                    &ajoc,
+                    &invalid_control,
+                    &invalid_raw,
+                    TIMESLOTS,
+                    &zero_inputs(1),
+                    &mut state,
+                    &mut workspace,
+                    &mut output,
+                ),
+                Err(ReconstructionError::MissingBandMap {
+                    object: 0,
+                    num_bands: 2,
+                })
+            );
+            assert_eq!(state, before);
+
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &raw,
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("建立 shape");
+            let committed = state.clone();
+            let changed = Ajoc::for_test(0, 1, 1, 2);
+            assert!(matches!(
+                reconstruct_frame(
+                    &changed,
+                    &[control(true, 1, 2, 0)],
+                    &[matrix(1, 2, 0, &[30], &[])],
+                    TIMESLOTS,
+                    &zero_inputs(2),
+                    &mut state,
+                    &mut workspace,
+                    &mut output,
+                ),
+                Err(ReconstructionError::ShapeChangeRequiresReset { .. })
+            ));
+            assert_eq!(state, committed);
+        });
+    }
+
+    #[test]
+    fn numeric_failure_after_partial_candidate_progress_does_not_commit_state() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(0, 1, 1, 1);
+            let controls = [control(true, 1, 1, 0)];
+            let raw = [matrix(1, 1, 0, &[30], &[])];
+            let mut state = AjocReconstructionState::new();
+            let mut workspace = AjocWorkspace::new();
+            let mut output = vec![empty_channel_frame()];
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &raw,
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("先建立跨帧状态");
+            let before = state.clone();
+
+            let mut input = zero_inputs(1);
+            input[0][0].re[0] = f32::MAX;
+            assert_eq!(
+                reconstruct_frame(
+                    &ajoc,
+                    &controls,
+                    &raw,
+                    TIMESLOTS,
+                    &input,
+                    &mut state,
+                    &mut workspace,
+                    &mut output,
+                ),
+                Err(ReconstructionError::NonFiniteOutput {
+                    object: 0,
+                    timeslot: 0,
+                    subband: 0,
+                })
+            );
+            assert_eq!(state, before, "候选 diff/interp 不得在错误后提交");
+        });
+    }
+}

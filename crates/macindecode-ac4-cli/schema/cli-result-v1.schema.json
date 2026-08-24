@@ -1,0 +1,490 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/SakuzyPeng/MacinDecode-AC4-Core/main/crates/macindecode-ac4-cli/schema/cli-result-v1.schema.json",
+  "title": "MacinDecode AC-4 CLI success result v1",
+  "type": "object",
+  "required": ["schema", "version", "command", "result"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "macinac4.cli-result"
+    },
+    "version": {
+      "const": 1
+    },
+    "command": {
+      "enum": ["trace", "export-damf", "export-full-damf", "export-adm-bwf", "export-full-adm-bwf", "export-core-caf", "export-core-pcm", "export-aspx-pcm", "export-objects-pcm"]
+    },
+    "result": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "trace"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/traceResult"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "enum": ["export-damf", "export-full-damf", "export-adm-bwf", "export-full-adm-bwf", "export-core-caf", "export-core-pcm", "export-aspx-pcm", "export-objects-pcm"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/exportResult"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-full-damf"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["package", "tracks", "scale", "bandwidth", "channel_order"],
+            "properties": {
+              "artifacts": {
+                "minItems": 3,
+                "maxItems": 3
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-damf"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["package"],
+            "properties": {
+              "artifacts": {
+                "minItems": 3,
+                "maxItems": 3
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-adm-bwf"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["profile", "container", "compatibility", "axml_bytes", "dbmd_bytes"],
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-full-adm-bwf"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["profile", "container", "compatibility", "axml_bytes", "dbmd_bytes", "tracks", "scale", "bandwidth", "channel_order"],
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-core-caf"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["container", "layout", "tracks", "scale", "bandwidth", "channel_order"],
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-core-pcm"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["tracks", "scale", "bandwidth"],
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-aspx-pcm"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["tracks", "scale", "bandwidth", "channel_order"],
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "export-objects-pcm"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "required": ["tracks", "scale", "bandwidth", "channel_order"],
+            "properties": {
+              "artifacts": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "traceResult": {
+      "type": "object",
+      "required": ["source", "frames", "validation"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/mp4Source"
+            },
+            {
+              "$ref": "#/$defs/annexGSource"
+            }
+          ]
+        },
+        "frames": {
+          "type": "object"
+        },
+        "validation": {
+          "$ref": "#/$defs/traceValidation"
+        }
+      }
+    },
+    "mp4Source": {
+      "type": "object",
+      "required": ["kind", "boxes", "track", "presentation", "dac4", "derived", "first_samples"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "mp4"
+        },
+        "boxes": {
+          "type": "array"
+        },
+        "track": {
+          "type": "object"
+        },
+        "presentation": {
+          "type": "object"
+        },
+        "dac4": {
+          "type": "object"
+        },
+        "derived": {
+          "type": "object"
+        },
+        "first_samples": {
+          "type": "array"
+        }
+      }
+    },
+    "annexGSource": {
+      "type": "object",
+      "required": ["kind", "payload_bytes", "escaped_size_frames", "crc", "first_frames"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "annex_g"
+        },
+        "payload_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "escaped_size_frames": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "crc": {
+          "type": "object",
+          "required": ["protected_frames", "failures"],
+          "additionalProperties": false,
+          "properties": {
+            "protected_frames": {
+              "type": ["integer", "null"],
+              "minimum": 0
+            },
+            "failures": {
+              "type": ["integer", "null"],
+              "minimum": 0
+            }
+          }
+        },
+        "first_frames": {
+          "type": "array"
+        }
+      }
+    },
+    "traceValidation": {
+      "type": "object",
+      "required": ["topology", "oamd", "audio_substream", "ajoc"],
+      "additionalProperties": false,
+      "properties": {
+        "topology": {
+          "$ref": "#/$defs/validationSection"
+        },
+        "oamd": {
+          "$ref": "#/$defs/validationSection"
+        },
+        "audio_substream": {
+          "$ref": "#/$defs/validationSection"
+        },
+        "ajoc": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/validationSection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "validationSection": {
+      "type": "object",
+      "required": ["coverage", "references", "timing", "configuration", "spectrum", "pcm", "invariants", "observations"],
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "type": "object"
+        },
+        "references": {
+          "type": "object"
+        },
+        "timing": {
+          "type": "object"
+        },
+        "configuration": {
+          "type": "object"
+        },
+        "spectrum": {
+          "type": "object"
+        },
+        "pcm": {
+          "type": "object"
+        },
+        "invariants": {
+          "type": "object"
+        },
+        "observations": {
+          "type": "object"
+        }
+      }
+    },
+    "range": {
+      "type": "object",
+      "required": ["min", "max"],
+      "additionalProperties": false,
+      "properties": {
+        "min": {},
+        "max": {}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["kind", "path", "bytes"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "required": ["sample_rate_hz", "bit_depth", "channels", "frames", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "sample_rate_hz": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "bit_depth": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "channels": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "frames": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "format": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "exportResult": {
+      "type": "object",
+      "required": ["artifacts", "audio", "objects", "unmapped"],
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        },
+        "audio": {
+          "$ref": "#/$defs/audio"
+        },
+        "objects": {
+          "type": "array"
+        },
+        "unmapped": {
+          "type": "array"
+        },
+        "profile": {
+          "type": ["string", "null"]
+        },
+        "container": {
+          "type": ["string", "null"]
+        },
+        "layout": {
+          "type": ["string", "null"]
+        },
+        "compatibility": {
+          "type": ["string", "null"]
+        },
+        "axml_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "dbmd_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "package": {
+          "type": "object"
+        },
+        "tracks": {
+          "type": ["array", "null"]
+        },
+        "scale": {
+          "type": ["string", "null"]
+        },
+        "bandwidth": {
+          "type": ["string", "null"]
+        },
+        "channel_order": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
