@@ -144,6 +144,19 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 
 `export-full-damf` 不提供对象子集，也不生成试听噪声。它与 `export-full-adm-bwf` 共用 Scene Session batch adapter、节目级增益和 S24LE 交织 writer：前十轨是 7.1.2 compatibility bed，可选 LFE 只进入第 4 轨，其余九轨静音；全部 full Objects 从第 11 轨开始。因此 CAF audio payload 与 full ADM `data` payload 逐字节一致。对象按连续 full OAMD 与 `PcmTrackSource::AjocObject { object_index: 0…N−1 }` 显式配对，LFE 按来源标签定位；采样率固定 48 kHz，不执行重采样。
 
+互操作提示：`export-full-damf` 生成的 `home`/DAMF 0.5.1 三件套已实测可由 Dolby Media Encoder（DME）直接读取并编码 AC-4，也可由 Dolby Atmos Conversion Tool 直接读取并转换其他 Atmos 母版格式，均无需先转换为 ADM BWF。manifest 保留 `creationTool: MacinDecode-AC4-Core full A-JOC` 与实际 `creationToolVersion` 即可；这两个字段如实记录 DAMF 包的创建工具，不需要改写为 ADM BWF `dbmd` 语境中的 `Created using Dolby equipment`。DME 与 Dolby Atmos Conversion Tool 均为用户自行安装的外部工具，不随本项目分发。
+
+Dolby Atmos Conversion Tool 随安装包提供命令行程序 `cmdline_atmos_conversion_tool`，适合脚本化批量转换与互操作检查。例如把 DAMF 转为 ADM BWF/WAV：
+
+```bash
+cmdline_atmos_conversion_tool \
+  --pm_in path/to/full-package/<stem>.atmos \
+  --output_path path/to/converted.wav \
+  --output_format wav
+```
+
+该可执行文件通常位于 Dolby Atmos Conversion Tool 的安装目录而不在 `PATH` 中；调用时可使用绝对路径。输出 `wav` 时，`--output_path` 应指向具体文件而不是目录。完整选项以 `cmdline_atmos_conversion_tool --help` 为准。
+
 默认 `--presentation-type home` 写 `version: 0.5.1`/`type: home`；选择 `3dof` 只把 manifest 改为 `version: 0.6.0`/`type: 3dof`。两种 package 的 metadata、CAF、对象顺序、增益和时间线完全相同，逐对象 `headTrackMode` 仍由 full OAMD 决定，并不因 3DoF 被强制改写。`--fps` 只写 manifest，默认 24；启用 `--strict-mapping` 后，发现无法映射的字段会在创建输出目录前使命令失败。
 
 ### `export-adm-bwf`
@@ -167,11 +180,10 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 | `--mode <MODE>` | 否 | `full` | 选择 `full` 或 `core` 对象集合。 |
 | `--fps <RATE>` | 否 | `24` | Logic `dbmd` 帧率；标准 BW64 不使用。 |
 | `--probe-level-dbfs <DBFS>` | 否 | `-18` | 每路粉红噪声的理论峰值。 |
-| `--name <NAME>` | 否 | 输入文件名 | ADM programme/content 名称。 |
 | `--compatibility <MODE>` | 否 | `standard` | 选择 `standard` BW64 或 `logic` RF64/`dbmd`。 |
 | `--strict-mapping` | 否 | 关闭 | 发现无法精确映射的 AC-4 元数据时失败。 |
 
-`export-adm-bwf` 直接生成 [ITU-R BS.2088](https://www.itu.int/rec/R-REC-BS.2088/) 64 位容器：默认 `--compatibility standard` 固定写 `BW64`；`--compatibility logic` 固定写 Logic Pro 可识别的 `RF64`，并加入独立生成、逐段校验的 Logic 兼容 `dbmd`。两种配置无论文件是否超过 4 GiB，首块都固定为 `ds64`；这里的“64 位”指文件和 `data` 大小使用 64 位寻址，不是把采样改成 64-bit。PCM 仍固定为 48 kHz、24-bit little-endian，声道布局同样是十路静音 7.1.2 bed 加每个选中对象一路独立粉红噪声。ADM 图以兼容性广泛的 ITU-R BS.2076-2 profile 写入 `axml`，轨道映射写入 `chna`；OAMD 的 active、gain、位置、宽度、priority 和 ramp 直接写入对象 `audioBlockFormat`。Logic 配置还把 ADM 时钟字段量化为五位小数，以适配其导入器；非时钟型的 `interpolationLength` 保留完整精度。`--fps` 同步写入 Logic 兼容 `dbmd`，可选 `23.976`/`24`/`25`/`29.97`/`29.97df`/`30`，默认为 `24`；标准 BW64 不使用该值。输出文件必须不存在，并通过同目录临时文件原子提交。这些文件都是合成 ADM 试听探针，不声明等同于编码前母版；`dbmd` 仅用于明确请求的 Logic 互操作配置。
+`export-adm-bwf` 固定使用 `Atmos_Master` 作为 ADM programme/content 名称，并直接生成 [ITU-R BS.2088](https://www.itu.int/rec/R-REC-BS.2088/) 64 位容器：默认 `--compatibility standard` 固定写 `BW64`；`--compatibility logic` 固定写 Logic Pro 可识别的 `RF64`，并加入独立生成、逐段校验的 Logic 兼容 `dbmd`。两种配置无论文件是否超过 4 GiB，首块都固定为 `ds64`；这里的“64 位”指文件和 `data` 大小使用 64 位寻址，不是把采样改成 64-bit。PCM 仍固定为 48 kHz、24-bit little-endian，声道布局同样是十路静音 7.1.2 bed 加每个选中对象一路独立粉红噪声。ADM 图以兼容性广泛的 ITU-R BS.2076-2 profile 写入 `axml`，轨道映射写入 `chna`；OAMD 的 active、gain、位置、宽度、priority 和 ramp 直接写入对象 `audioBlockFormat`。Logic 配置还把 ADM 时钟字段量化为五位小数，以适配其导入器；非时钟型的 `interpolationLength` 保留完整精度。`--fps` 同步写入 Logic 兼容 `dbmd`，可选 `23.976`/`24`/`25`/`29.97`/`29.97df`/`30`，默认为 `24`；标准 BW64 不使用该值。输出文件必须不存在，并通过同目录临时文件原子提交。这些文件都是合成 ADM 试听探针，不声明等同于编码前母版；`dbmd` 仅用于明确请求的 Logic 互操作配置。
 
 ### `export-full-adm-bwf`
 把 full 重建对象与第二份/full OAMD 封装为真实 ADM。
@@ -191,12 +203,11 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 | `<INPUT>` | 是 | — | MP4/M4A 或裸 AC-4 输入。 |
 | `-o, --output <FILE>` | 是 | — | 新建的 ADM BWF 文件；不会覆盖已有路径。 |
 | `--presentation <INDEX>` | 否 | 唯一 eligible presentation | 按零基下标选择；省略时若不唯一则拒绝。 |
-| `--name <NAME>` | 否 | 输入文件名 | ADM programme/content 名称。 |
 | `--compatibility <MODE>` | 否 | `standard` | 选择 `standard` BW64 或 `logic` RF64/`dbmd`。 |
 | `--fps <RATE>` | 否 | `24` | Logic `dbmd` 帧率；标准 BW64 不使用。 |
 | `--strict-mapping` | 否 | 关闭 | 发现无法精确映射的 AC-4 元数据时失败。 |
 
-`export-full-adm-bwf` 不接受对象子集，取 A-JOC 上混后的全部 full 对象和第二份/full OAMD。场景与 PCM 由同一趟 Scene Session batch 解码共同采集；只接受所选 presentation 的单一物理 A-JOC substream，并要求 full OAMD 在存在 LFE 时将其置于 `object 0 / Bed`；有 LFE 时动态对象严格连续为 `1…N`，无 LFE 时则为 `0…N−1`，再按显式 `PcmTrackSource::AjocObject { object_index }`/`Lfe` 来源标签配对。LFE 在 `Pseudocode 15` 输出中的位置可以在对象首、中或尾，但始终写入 ADM 7.1.2 bed 第 4 轨；九条其余 bed 轨静音，full Objects 从第 11 轨开始。24-bit PCM 使用节目级增益策略、MP4 edit/preroll 时间线、原子 no-clobber 写出和 OAMD 映射。
+`export-full-adm-bwf` 固定使用 `Atmos_Master` 作为 ADM programme/content 名称，不接受对象子集，取 A-JOC 上混后的全部 full 对象和第二份/full OAMD。场景与 PCM 由同一趟 Scene Session batch 解码共同采集；只接受所选 presentation 的单一物理 A-JOC substream，并要求 full OAMD 在存在 LFE 时将其置于 `object 0 / Bed`；有 LFE 时动态对象严格连续为 `1…N`，无 LFE 时则为 `0…N−1`，再按显式 `PcmTrackSource::AjocObject { object_index }`/`Lfe` 来源标签配对。LFE 在 `Pseudocode 15` 输出中的位置可以在对象首、中或尾，但始终写入 ADM 7.1.2 bed 第 4 轨；九条其余 bed 轨静音，full Objects 从第 11 轨开始。24-bit PCM 使用节目级增益策略、MP4 edit/preroll 时间线、原子 no-clobber 写出和 OAMD 映射。
 
 默认 `--compatibility standard` 生成 BW64、九位 ADM 时钟且不写 dbmd；`--compatibility logic` 生成 RF64、五位时钟和 Logic 兼容 dbmd，`--fps` 只控制 dbmd 帧率码，`interpolationLength` 不随时钟降精度。768K 回归向量固定产生 20 个 full Objects、30 轨、288000 帧；Logic dbmd 为 564 字节，segment 10 声道数为 30。两种模式只改变容器元数据，PCM 与轨序逐字节一致。它通过公开的 `Ac4SceneFrame` batch adapter 采集对象 PCM 与 full OAMD，不加入未证实的 2400-sample DRP 偏移；未覆盖 full 分支继续返回 `unsupported.coding_path`。
 
