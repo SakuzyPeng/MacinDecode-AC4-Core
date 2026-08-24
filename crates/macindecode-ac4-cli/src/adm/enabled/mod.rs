@@ -34,6 +34,7 @@ use std::path::{Path, PathBuf};
 
 const DBMD_VERSION: [u8; 4] = [0x06, 0x00, 0x00, 0x01];
 const DBMD_ATMOS_SUPPLEMENTAL_SYNC: [u8; 4] = [0xbd, 0x6f, 0x72, 0xf8];
+const ADM_PROGRAMME_NAME: &str = "Atmos_Master";
 const BED_CHANNELS: [BedChannel; 10] = [
     BedChannel::new("RoomCentricLeft", "RC_L", -1.0, 1.0, 0.0),
     BedChannel::new("RoomCentricRight", "RC_R", 1.0, 1.0, 0.0),
@@ -181,8 +182,6 @@ pub(super) fn run(args: ExportAdmBwfArgs) -> Result<String, CliError> {
         .map_err(|message| cli_error(DiagnosticCode::SelectionInvalid, message))?;
     validate_selected_common(&selected)
         .map_err(|message| cli_error(DiagnosticCode::SelectionInvalid, message))?;
-    let name = choose_name(&args)
-        .map_err(|message| cli_error(DiagnosticCode::SelectionInvalid, message))?;
     let duration = rescale_u64(
         metadata.duration_samples,
         metadata.sample_rate,
@@ -201,7 +200,7 @@ pub(super) fn run(args: ExportAdmBwfArgs) -> Result<String, CliError> {
     let mut warnings = WarningSet::default();
     append_common_warnings(&selected, &mut warnings);
     let axml = build_axml(
-        &name,
+        ADM_PROGRAMME_NAME,
         &metadata,
         &selected,
         duration,
@@ -284,31 +283,6 @@ fn select_objects(
             })
         })
         .collect()
-}
-
-fn choose_name(args: &ExportAdmBwfArgs) -> Result<String, String> {
-    choose_name_from(&args.input, args.name.clone())
-}
-
-fn choose_name_from(input: &Path, explicit: Option<String>) -> Result<String, String> {
-    let name = explicit.or_else(|| {
-        input
-            .file_stem()
-            .and_then(|value| value.to_str())
-            .map(str::to_owned)
-    });
-    let name = name.ok_or("无法从输入文件名推导 ADM 名称，请使用 --name")?;
-    if name.is_empty() || name.chars().any(|ch| !is_xml_char(ch)) {
-        return Err(format!("无效 ADM 名称：{name:?}"));
-    }
-    Ok(name)
-}
-
-fn is_xml_char(ch: char) -> bool {
-    matches!(ch, '\u{9}' | '\u{a}' | '\u{d}')
-        || ('\u{20}'..='\u{d7ff}').contains(&ch)
-        || ('\u{e000}'..='\u{fffd}').contains(&ch)
-        || ('\u{10000}'..='\u{10ffff}').contains(&ch)
 }
 
 fn validate_selected_common(selected: &[SelectedObject]) -> Result<(), String> {

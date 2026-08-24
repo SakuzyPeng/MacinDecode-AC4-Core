@@ -66,12 +66,10 @@ pub(super) fn run(args: ExportFullAdmBwfArgs) -> Result<String, CliError> {
     format_sample_time_at(duration, pcm.sample_rate, args.compatibility)
         .map_err(|message| full_error(DiagnosticCode::MappingUnsupported, message))?;
 
-    let name = choose_name_from(&args.input, args.name.clone())
-        .map_err(|message| full_error(DiagnosticCode::SelectionInvalid, message))?;
     let mut warnings = WarningSet::default();
     append_common_warnings(&selection.objects, &mut warnings);
     let axml = build_full_axml(
-        &name,
+        ADM_PROGRAMME_NAME,
         &metadata,
         &selection.objects,
         duration,

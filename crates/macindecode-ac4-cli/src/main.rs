@@ -314,9 +314,6 @@ struct ExportAdmBwfArgs {
     /// 每路粉红噪声的理论峰值，单位 dBFS。
     #[arg(long, default_value_t = -18.0, allow_hyphen_values = true)]
     probe_level_dbfs: f64,
-    /// ADM programme/content 名称；默认使用输入文件名。
-    #[arg(long)]
-    name: Option<String>,
     /// 选择标准 BW64 或 Logic Pro 兼容 RF64/dbmd 输出。
     #[arg(long, value_enum, default_value_t = AdmCompatibility::Standard)]
     compatibility: AdmCompatibility,
@@ -336,9 +333,6 @@ struct ExportFullAdmBwfArgs {
     /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
     #[arg(long)]
     presentation: Option<usize>,
-    /// ADM programme/content 名称；默认使用输入文件名。
-    #[arg(long)]
-    name: Option<String>,
     /// 选择标准 BW64 或 Logic Pro 兼容 RF64/dbmd 输出。
     #[arg(long, value_enum, default_value_t = AdmCompatibility::Standard)]
     compatibility: AdmCompatibility,
@@ -709,15 +703,12 @@ mod tests {
             "out.wav",
             "--object",
             "2:1,3:2",
-            "--name",
-            "OAMD probe",
         ])
         .expect("合法 ADM BWF 参数应能解析");
         let Command::ExportAdmBwf(args) = parsed.command else {
             panic!("应解析为 export-adm-bwf");
         };
         assert_eq!(args.object, ["2:1", "3:2"]);
-        assert_eq!(args.name.as_deref(), Some("OAMD probe"));
         assert_eq!(args.compatibility, AdmCompatibility::Standard);
 
         let parsed = Cli::try_parse_from([
@@ -758,8 +749,6 @@ mod tests {
             "out.wav",
             "--presentation",
             "1",
-            "--name",
-            "Full scene",
             "--strict-mapping",
         ])
         .expect("合法 full ADM 参数应能解析");
@@ -767,7 +756,6 @@ mod tests {
             panic!("应解析为 export-full-adm-bwf");
         };
         assert_eq!(args.presentation, Some(1));
-        assert_eq!(args.name.as_deref(), Some("Full scene"));
         assert_eq!(args.compatibility, AdmCompatibility::Standard);
         assert_eq!(args.fps, MasterFrameRate::Fps24);
         assert!(args.strict_mapping);
@@ -853,7 +841,6 @@ mod tests {
             mode: DecodeMode::Full,
             fps: MasterFrameRate::Fps24,
             probe_level_dbfs: -18.0,
-            name: None,
             compatibility: AdmCompatibility::Standard,
             strict_mapping: false,
         };
@@ -869,7 +856,6 @@ mod tests {
             input: PathBuf::from("unused.ac4"),
             output: PathBuf::from("unused.wav"),
             presentation: None,
-            name: None,
             compatibility: AdmCompatibility::Standard,
             fps: MasterFrameRate::Fps24,
             strict_mapping: false,
