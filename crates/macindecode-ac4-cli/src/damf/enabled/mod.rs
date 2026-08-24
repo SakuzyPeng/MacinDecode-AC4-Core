@@ -83,27 +83,30 @@ pub(super) fn run(args: ExportDamfArgs) -> Result<String, CliError> {
     if !args.probe_level_dbfs.is_finite() || !(-96.0..=0.0).contains(&args.probe_level_dbfs) {
         return Err(cli_error(
             DiagnosticCode::SelectionInvalid,
-            "--probe-level-dbfs 必须位于 -96..=0",
+            "--probe-level-dbfs must be within -96..=0",
         ));
     }
     if args.output.exists() {
         return Err(cli_error(
             DiagnosticCode::OutputExists,
-            format!("输出路径已存在：{}", args.output.display()),
+            format!("Output path already exists: {}", args.output.display()),
         ));
     }
     let parent = output_parent(&args.output);
     if !parent.is_dir() {
         return Err(cli_error(
             DiagnosticCode::OutputCreateFailed,
-            format!("输出目录的父目录不存在：{}", parent.display()),
+            format!(
+                "Output parent directory does not exist: {}",
+                parent.display()
+            ),
         ));
     }
 
     let data = fs::read(&args.input).map_err(|error| {
         cli_error(
             DiagnosticCode::InputReadFailed,
-            format!("无法读取 {}：{error}", args.input.display()),
+            format!("Failed to read {}: {error}", args.input.display()),
         )
     })?;
     let mode = match args.mode {
@@ -114,7 +117,7 @@ pub(super) fn run(args: ExportDamfArgs) -> Result<String, CliError> {
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             cli_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
         None => PresentationSelection::AutoUnique,
@@ -136,7 +139,7 @@ pub(super) fn run(args: ExportDamfArgs) -> Result<String, CliError> {
     if duration == 0 {
         return Err(cli_error(
             DiagnosticCode::InputInvalid,
-            "应用 edit 后的呈现时长为零",
+            "Presentation duration is zero after applying edits",
         ));
     }
 
@@ -155,7 +158,7 @@ pub(super) fn run(args: ExportDamfArgs) -> Result<String, CliError> {
         return Err(cli_error(
             DiagnosticCode::MappingUnsupported,
             format!(
-                "严格映射拒绝 {} 类无法精确表示的元数据：{}",
+                "Strict mapping rejected {} class(es) of metadata that cannot be represented exactly: {}",
                 warnings.items.len(),
                 warnings
                     .items
@@ -192,7 +195,7 @@ fn select_objects(
         select_metadata_elements(metadata, selectors, all).map_err(|error| error.to_string())?;
     if chosen.len() > MAX_PROBE_OBJECTS {
         return Err(format!(
-            "选择了 {} 个对象，DAMF 7.1.2 bed 最多容纳 {MAX_PROBE_OBJECTS} 个对象",
+            "Selected {} objects; the DAMF 7.1.2 bed supports at most {MAX_PROBE_OBJECTS}",
             chosen.len()
         ));
     }
@@ -217,7 +220,7 @@ fn choose_stem_from(input: &Path, requested: Option<String>) -> Result<String, S
             .and_then(|value| value.to_str())
             .map(str::to_owned)
     });
-    let stem = stem.ok_or("无法从输入文件名推导 DAMF stem，请使用 --stem")?;
+    let stem = stem.ok_or("Cannot derive a DAMF stem from the input file name; use --stem")?;
     if stem.is_empty()
         || stem == "."
         || stem == ".."
@@ -225,7 +228,7 @@ fn choose_stem_from(input: &Path, requested: Option<String>) -> Result<String, S
         || stem.contains('\\')
         || stem.chars().any(char::is_control)
     {
-        return Err(format!("无效 DAMF stem：{stem:?}"));
+        return Err(format!("Invalid DAMF stem: {stem:?}"));
     }
     Ok(stem)
 }
@@ -250,7 +253,8 @@ fn summary_json(
     selected: &[SelectedObject],
     warnings: &[MappingWarning],
 ) -> Result<String, String> {
-    let root = fs::canonicalize(output).map_err(|error| format!("无法规范化输出路径：{error}"))?;
+    let root = fs::canonicalize(output)
+        .map_err(|error| format!("Failed to canonicalize output path: {error}"))?;
     let file = |suffix: &str| root.join(format!("{stem}{suffix}"));
     let objects = selected
         .iter()
@@ -324,7 +328,7 @@ fn number(value: f64) -> String {
 }
 
 fn io_error(error: std::io::Error) -> String {
-    format!("写 CAF 失败：{error}")
+    format!("Failed to write CAF: {error}")
 }
 
 #[cfg(test)]
@@ -380,12 +384,12 @@ mod tests {
         assert!(
             select_objects(&batch, &["1".to_owned()], false)
                 .expect_err("裸对象号应有歧义")
-                .contains("有歧义")
+                .contains("is ambiguous")
         );
         assert!(
             select_objects(&batch, &["2:1".to_owned(), "2:1".to_owned()], false)
                 .expect_err("重复 selector 必须失败")
-                .contains("重复选择")
+                .contains("selected twice")
         );
         let all = select_objects(&batch, &[], true).expect("all-objects 应成功");
         assert_eq!(

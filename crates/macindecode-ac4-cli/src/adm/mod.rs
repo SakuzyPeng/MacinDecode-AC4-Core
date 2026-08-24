@@ -13,7 +13,7 @@ pub(crate) fn run(_args: ExportAdmBwfArgs) -> Result<String, CliError> {
     Err(CliError::new(
         COMMAND,
         DiagnosticCode::FeatureRequired,
-        "export-adm-bwf 需要以 --features audio-decode 重新构建 macinac4",
+        "export-adm-bwf requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 
@@ -22,7 +22,7 @@ pub(crate) fn run_full(_args: ExportFullAdmBwfArgs) -> Result<String, CliError> 
     Err(CliError::new(
         FULL_COMMAND,
         DiagnosticCode::FeatureRequired,
-        "export-full-adm-bwf 需要以 --features audio-decode 重新构建 macinac4",
+        "export-full-adm-bwf requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 

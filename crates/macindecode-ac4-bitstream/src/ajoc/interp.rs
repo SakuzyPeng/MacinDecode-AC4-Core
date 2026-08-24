@@ -458,31 +458,40 @@ impl fmt::Display for InterpolationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TooManyDataPoints { count, limit } => {
-                write!(f, "A-JOC 插值数据点 {count} 超过上限 {limit}")
+                write!(
+                    f,
+                    "A-JOC interpolation data-point count {count} exceeds limit {limit}"
+                )
             }
             Self::TimeslotCountOutOfRange { num_qmf_timeslots } => write!(
                 f,
-                "A-JOC 当前帧 QMF 时隙数 {num_qmf_timeslots} 不在 1..={MAX_AJOC_TIMESLOTS}"
+                "A-JOC current-frame QMF timeslot count {num_qmf_timeslots} is outside 1..={MAX_AJOC_TIMESLOTS}"
             ),
             Self::StartPositionOutOfRange {
                 start_pos,
                 num_qmf_timeslots,
             } => write!(
                 f,
-                "A-JOC 插值起点 {start_pos} 越出当前帧 0..{num_qmf_timeslots}"
+                "A-JOC interpolation start {start_pos} is outside current frame range 0..{num_qmf_timeslots}"
             ),
             Self::TimeslotOutOfRange {
                 timeslot,
                 num_qmf_timeslots,
             } => write!(
                 f,
-                "A-JOC 插值时隙 {timeslot} 越出当前帧 0..{num_qmf_timeslots}"
+                "A-JOC interpolation timeslot {timeslot} is outside current frame range 0..{num_qmf_timeslots}"
             ),
             Self::RampLengthOutOfRange { ramp_len } => {
-                write!(f, "A-JOC 插值 ramp 长度 {ramp_len} 不在 1..=64")
+                write!(
+                    f,
+                    "A-JOC interpolation ramp length {ramp_len} is outside 1..=64"
+                )
             }
             Self::MissingDataPoint { data_point } => {
-                write!(f, "A-JOC 插值缺少数据点 {data_point} 的控制字段")
+                write!(
+                    f,
+                    "A-JOC interpolation lacks control fields for data point {data_point}"
+                )
             }
         }
     }

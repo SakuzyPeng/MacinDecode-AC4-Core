@@ -89,19 +89,22 @@ impl fmt::Display for FullAjocSyntaxError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Self::SubstreamIndexOutOfRange { index, limit } => {
-                write!(formatter, "substream {index} 超出音频语法状态容量 {limit}")
+                write!(
+                    formatter,
+                    "Substream {index} exceeds audio-syntax state capacity {limit}"
+                )
             }
             Self::Decode {
                 substream_index,
                 error,
-            } => write!(formatter, "substream {substream_index}：{error}"),
+            } => write!(formatter, "Substream {substream_index}: {error}"),
             Self::WorkspaceInvariant {
                 buffer,
                 needed,
                 available,
             } => write!(
                 formatter,
-                "{buffer} 工作区需要 {needed} 项，但只预分配了 {available} 项"
+                "{buffer} workspace requires {needed} entries, but only {available} were preallocated"
             ),
         }
     }

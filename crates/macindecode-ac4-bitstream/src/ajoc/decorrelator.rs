@@ -84,7 +84,7 @@ const fn build_decorrelator_cycle() -> [DecorrelatorKind; 7] {
             0 => DecorrelatorKind::D0,
             1 => DecorrelatorKind::D1,
             2 => DecorrelatorKind::D2,
-            _ => panic!("本地生成的去相关器循环含非法编号"),
+            _ => panic!("locally generated decorrelator loop contains an invalid index"),
         };
         index += 1;
     }
@@ -224,24 +224,42 @@ impl fmt::Display for DecorrelatorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TimeslotCountOutOfRange { timeslots, limit } => {
-                write!(f, "A-JOC 去相关时隙数 {timeslots} 不在 1..={limit}")
+                write!(
+                    f,
+                    "A-JOC decorrelation timeslot count {timeslots} is outside 1..={limit}"
+                )
             }
             Self::OutputLengthMismatch { input, output } => {
-                write!(f, "A-JOC 去相关输入/输出时隙数为 {input}/{output}")
+                write!(
+                    f,
+                    "A-JOC decorrelation input/output timeslot counts are {input}/{output}"
+                )
             }
             Self::NonFiniteInput { subband } => {
-                write!(f, "A-JOC 去相关输入子带 {subband} 非有限")
+                write!(
+                    f,
+                    "A-JOC decorrelation input subband {subband} is non-finite"
+                )
             }
             Self::NonFiniteEnergy { parameter_band } => {
-                write!(f, "A-JOC ducker 参数带 {parameter_band} 的能量非有限")
+                write!(
+                    f,
+                    "Energy in A-JOC ducker parameter band {parameter_band} is non-finite"
+                )
             }
             Self::NonFiniteDucker { parameter_band } => {
-                write!(f, "A-JOC ducker 参数带 {parameter_band} 的状态非有限")
+                write!(
+                    f,
+                    "State in A-JOC ducker parameter band {parameter_band} is non-finite"
+                )
             }
             Self::NonFiniteOutput { subband } => {
-                write!(f, "A-JOC 去相关输出子带 {subband} 非有限")
+                write!(
+                    f,
+                    "A-JOC decorrelation output subband {subband} is non-finite"
+                )
             }
-            Self::MissingDuckerBandMap => write!(f, "A-JOC 缺少内建的 15 带 ducker 映射"),
+            Self::MissingDuckerBandMap => write!(f, "A-JOC lacks the built-in 15-band ducker map"),
         }
     }
 }

@@ -49,7 +49,7 @@ impl fmt::Display for ReadError {
                 remaining_bits,
             } => write!(
                 f,
-                "需要 {requested_bits} 比特，但偏移 {bit_position} 处仅剩 {remaining_bits} 比特"
+                "Requested {requested_bits} bits at offset {bit_position}, but only {remaining_bits} bits remain"
             ),
             ReadError::WidthUnsupported {
                 requested_bits,
@@ -57,11 +57,14 @@ impl fmt::Display for ReadError {
             } => {
                 write!(
                     f,
-                    "偏移 {bit_position} 处请求 {requested_bits} 比特，超出 64 比特上限"
+                    "Requested {requested_bits} bits at offset {bit_position}, exceeding the 64-bit limit"
                 )
             }
             ReadError::ValueOverflow { bit_position } => {
-                write!(f, "偏移 {bit_position} 处变长字段数值溢出")
+                write!(
+                    f,
+                    "Variable-length field value overflow at offset {bit_position}"
+                )
             }
         }
     }

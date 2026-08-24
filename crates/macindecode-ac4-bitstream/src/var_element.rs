@@ -82,17 +82,20 @@ impl fmt::Display for VarElementError {
             VarElementError::SignalCountOutOfRange {
                 n_dmx_signals,
                 limit,
-            } => write!(f, "n_fullband_dmx_signals {n_dmx_signals} 超过上界 {limit}"),
+            } => write!(
+                f,
+                "n_fullband_dmx_signals {n_dmx_signals} exceeds limit {limit}"
+            ),
             VarElementError::ChannelWorkspaceTooSmall { needed, provided } => write!(
                 f,
-                "该元素需要 {needed} 个声道工作区，只提供了 {provided} 个"
+                "Element requires {needed} channel workspaces, but only {provided} were provided"
             ),
             VarElementError::AspxWorkspaceTooSmall { needed, provided } => write!(
                 f,
-                "该元素需要 {needed} 个 A-SPX 工作区，只提供了 {provided} 个"
+                "Element requires {needed} A-SPX workspaces, but only {provided} were provided"
             ),
             VarElementError::MissingAspxConfig => {
-                write!(f, "非 I 帧缺少可沿用的 aspx_config")
+                write!(f, "Non-I-frame has no prior aspx_config to continue")
             }
         }
     }

@@ -66,15 +66,15 @@ pub(crate) fn selector_seed(scene: &MetadataElement) -> u32 {
 
 pub(crate) fn rescale_u64(value: u64, source_rate: u32, target_rate: u32) -> Result<u64, String> {
     if source_rate == 0 {
-        return Err("源采样率为零".to_owned());
+        return Err("Source sample rate is zero".to_owned());
     }
     let numerator = u128::from(value)
         .checked_mul(u128::from(target_rate))
-        .ok_or("时间缩放乘法溢出")?
+        .ok_or("Time-rescaling multiplication overflow")?
         .checked_add(u128::from(source_rate / 2))
-        .ok_or("时间缩放舍入溢出")?;
+        .ok_or("Time-rescaling rounding overflow")?;
     let scaled = numerator
         .checked_div(u128::from(source_rate))
-        .ok_or("源采样率为零")?;
-    u64::try_from(scaled).map_err(|_| "时间缩放结果溢出".to_owned())
+        .ok_or("Source sample rate is zero")?;
+    u64::try_from(scaled).map_err(|_| "Time-rescaling result overflow".to_owned())
 }

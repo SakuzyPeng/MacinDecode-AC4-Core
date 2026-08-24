@@ -78,13 +78,19 @@ impl fmt::Display for FrameError {
         match self {
             FrameError::UnsupportedTimeslots { num_aspx_timeslots } => write!(
                 f,
-                "num_aspx_timeslots {num_aspx_timeslots} 不在表 194 的五个取值内"
+                "num_aspx_timeslots {num_aspx_timeslots} is not one of the five values in Table 194"
             ),
             FrameError::UnsupportedFixfixEnvelopes { num_env } => {
-                write!(f, "FIXFIX 的包络数 {num_env} 不在表 194 的 1、2、4 内")
+                write!(
+                    f,
+                    "FIXFIX envelope count {num_env} is not 1, 2, or 4 as required by Table 194"
+                )
             }
             FrameError::TooManyEnvelopes { num_env, limit } => {
-                write!(f, "包络数 {num_env} 超过表 128 的上界 {limit}")
+                write!(
+                    f,
+                    "Envelope count {num_env} exceeds Table 128 limit {limit}"
+                )
             }
             FrameError::NoiseEnvelopeCountMismatch {
                 num_env,
@@ -92,16 +98,19 @@ impl fmt::Display for FrameError {
                 expected,
             } => write!(
                 f,
-                "信号包络数 {num_env} 要求 {expected} 个噪声包络，实际为 {num_noise}"
+                "Signal envelope count {num_env} requires {expected} noise envelopes, got {num_noise}"
             ),
             FrameError::TooManyRelativeBorders { count } => {
-                write!(f, "相对边界数 {count} 超过 {MAX_REL_BORDERS}")
+                write!(f, "Relative-border count {count} exceeds {MAX_REL_BORDERS}")
             }
             FrameError::BordersNotIncreasing { index } => {
-                write!(f, "包络边界在第 {index} 项处未严格递增")
+                write!(
+                    f,
+                    "Envelope borders are not strictly increasing at index {index}"
+                )
             }
             FrameError::NegativeStartBorder { border } => {
-                write!(f, "起始边界 {border} 为负")
+                write!(f, "Initial border {border} is negative")
             }
         }
     }

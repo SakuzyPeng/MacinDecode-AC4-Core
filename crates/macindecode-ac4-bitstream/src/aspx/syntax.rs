@@ -62,10 +62,10 @@ impl fmt::Display for AspxError {
             AspxError::Bands(error) => write!(f, "{error}"),
             AspxError::Frames(error) => write!(f, "{error}"),
             AspxError::UnsupportedFrameLenBase { frame_len_base } => {
-                write!(f, "frame_len_base {frame_len_base} 不在表 192 内")
+                write!(f, "frame_len_base {frame_len_base} is not in Table 192")
             }
             AspxError::EightEnvelopesProhibited => {
-                write!(f, "FIXFIX 的八包络为语法所禁止")
+                write!(f, "Eight FIXFIX envelopes are forbidden by the syntax")
             }
         }
     }

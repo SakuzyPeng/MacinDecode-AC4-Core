@@ -16,7 +16,7 @@ pub(super) fn build_manifest(
             "presentation",
             None,
             "common",
-            "所选 A-JOC 子流的 presentation 级 OAMD common 不一致，manifest 使用首个值",
+            "Selected A-JOC substreams have inconsistent presentation-level OAMD common metadata; the manifest uses the first value",
         );
     }
     if selected.iter().any(|item| item.scene.common_conflict) {
@@ -24,7 +24,7 @@ pub(super) fn build_manifest(
             "presentation",
             None,
             "common",
-            "输入时间线中的 OAMD common 发生变化，manifest 使用首个稳定值",
+            "OAMD common changes over the input timeline; the manifest uses the first stable value",
         );
     }
     let mut screen_ratio = 1.0;
@@ -47,7 +47,7 @@ pub(super) fn build_manifest(
                 "presentation",
                 None,
                 "trim",
-                "AC-4 的九配置 trim 与 DAMF 四配置 trimMode 不存在无损的一一对应，保留 DAMF 默认值",
+                "AC-4 nine-configuration trim has no lossless one-to-one mapping to DAMF four-configuration trimMode; keeping the DAMF default",
             );
         }
         if common.bed_render_info.present {
@@ -55,7 +55,7 @@ pub(super) fn build_manifest(
                 "presentation",
                 None,
                 "bed_render_info",
-                "AC-4 bed render 工具没有等价的 DAMF manifest 表达，保留兼容默认值",
+                "The AC-4 bed-render tool has no equivalent DAMF manifest representation; keeping the compatible default",
             );
         }
     }

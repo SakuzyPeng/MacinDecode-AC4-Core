@@ -77,7 +77,7 @@ impl fmt::Display for NeedMoreData {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "AU 至少需要 {} 比特，但当前只有 {} 比特",
+            "Access unit requires at least {} bits, but only {} bits are available",
             self.required_bits, self.available_bits
         )
     }
@@ -108,28 +108,31 @@ impl fmt::Display for PresentationSelectionError {
         match *self {
             Self::NoEligiblePresentation { declared } => write!(
                 formatter,
-                "输入声明 {declared} 个 presentation，但没有 eligible 音频 presentation"
+                "Input declares {declared} presentations but has no eligible audio presentation"
             ),
             Self::Ambiguous { eligible } => write!(
                 formatter,
-                "输入有 {eligible} 个 eligible presentation，AutoUnique 无法唯一选择"
+                "Input has {eligible} eligible presentations; AutoUnique cannot make a unique selection"
             ),
             Self::IndexOutOfRange {
                 requested,
                 declared,
             } => write!(
                 formatter,
-                "presentation 下标 {requested} 超出范围；输入声明 {declared} 个"
+                "Presentation index {requested} is out of range; input declares {declared} presentations"
             ),
             Self::IdNotFound { requested } => {
-                write!(formatter, "presentation_id {requested} 不存在")
+                write!(formatter, "presentation_id {requested} does not exist")
             }
             Self::IdNotUnique { requested, matches } => write!(
                 formatter,
-                "presentation_id {requested} 出现 {matches} 次，无法唯一选择"
+                "presentation_id {requested} occurs {matches} times and cannot be selected uniquely"
             ),
             Self::NotEligible { index } => {
-                write!(formatter, "presentation {index} 不携带可选择的音频 group")
+                write!(
+                    formatter,
+                    "Presentation {index} has no selectable audio group"
+                )
             }
         }
     }
@@ -210,14 +213,14 @@ impl fmt::Display for UnsupportedReason {
         match *self {
             Self::LegacyBitstreamVersion { bitstream_version } => write!(
                 formatter,
-                "bitstream_version {bitstream_version} 的旧 presentation 语法未覆盖"
+                "Legacy presentation syntax for bitstream_version {bitstream_version} is unsupported"
             ),
             Self::FutureBitstreamVersion { bitstream_version } => write!(
                 formatter,
-                "bitstream_version {bitstream_version} 超出当前规范支持范围"
+                "bitstream_version {bitstream_version} is outside the supported specification range"
             ),
             Self::ReservedChannelMode { channel_mode } => {
-                write!(formatter, "保留的 channel_mode {channel_mode}")
+                write!(formatter, "Reserved channel_mode {channel_mode}")
             }
             Self::TopologyCapacityExceeded {
                 what,
@@ -225,87 +228,87 @@ impl fmt::Display for UnsupportedReason {
                 limit,
             } => write!(
                 formatter,
-                "{what}数为 {declared}，超过当前 Scene 实现上限 {limit}"
+                "{what} count {declared} exceeds the current scene implementation limit {limit}"
             ),
-            Self::ChannelBased => formatter.write_str("channel-based 场景尚未进入本 API"),
+            Self::ChannelBased => formatter.write_str("Channel-based scenes are not yet supported by this API"),
             Self::DirectObject => {
-                formatter.write_str("direct-object 尚无真实 PCM 验证，当前明确拒绝")
+                formatter.write_str("Direct-object has no real-PCM validation and is explicitly rejected")
             }
-            Self::Mixed => formatter.write_str("mixed 编码路径尚未覆盖"),
-            Self::EmptyScene => formatter.write_str("所选 presentation 没有音频场景元素"),
+            Self::Mixed => formatter.write_str("Mixed coding path is unsupported"),
+            Self::EmptyScene => formatter.write_str("Selected presentation has no audio scene elements"),
             Self::AjocSubstreamIndexAbsent => {
-                formatter.write_str("A-JOC substream 未携带可定位的显式下标")
+                formatter.write_str("A-JOC substream has no explicit locatable index")
             }
             Self::OamdSubstreamIndexAbsent => {
-                formatter.write_str("OAMD substream 未携带可定位的显式下标")
+                formatter.write_str("OAMD substream has no explicit locatable index")
             }
             Self::AjocSubstreamContextConflict => {
-                formatter.write_str("同一物理 A-JOC substream 的音频解析上下文互相冲突")
+                formatter.write_str("Audio parse contexts conflict for the same physical A-JOC substream")
             }
             Self::MultipleFullSubstreams { count } => write!(
                 formatter,
-                "所选 presentation 引用 {count} 条 A-JOC Full substream；当前只支持一条"
+                "Selected presentation references {count} A-JOC Full substreams; only one is currently supported"
             ),
             Self::MultipleCoreSubstreams { count } => write!(
                 formatter,
-                "所选 presentation 引用 {count} 条 A-JOC Core substream；当前只支持一条"
+                "Selected presentation references {count} A-JOC Core substreams; only one is currently supported"
             ),
             Self::MultiSubstreamFrameRate { frame_rate_factor } => write!(
                 formatter,
-                "frame_rate_factor 为 {frame_rate_factor}，一个 info 覆盖多条连续 substream"
+                "frame_rate_factor is {frame_rate_factor}, so one info block covers multiple consecutive substreams"
             ),
             Self::FragmentedFrameRate {
                 frame_rate_fraction,
             } => write!(
                 formatter,
-                "frame_rate_fraction 为 {frame_rate_fraction}，codec frame 跨多个传输帧"
+                "frame_rate_fraction is {frame_rate_fraction}, so a codec frame spans multiple transport frames"
             ),
             Self::StaticDownmix => formatter
-                .write_str("b_static_dmx 需要 channel-based core downmix，当前 Scene 子集未覆盖"),
+                .write_str("b_static_dmx requires a channel-based core downmix, unsupported by the current scene subset"),
             Self::SamplingFrequency {
                 sampling_frequency_hz,
             } => write!(
                 formatter,
-                "A-JOC substream 采样率为 {sampling_frequency_hz} Hz，当前只支持 44100/48000 Hz"
+                "A-JOC substream sample rate is {sampling_frequency_hz} Hz; only 44100/48000 Hz are supported"
             ),
             Self::FullbandDownmixSignalsExceeded { declared, limit } => write!(
                 formatter,
-                "A-JOC fullband downmix 信号数为 {declared}，超过当前上限 {limit}"
+                "A-JOC fullband downmix signal count {declared} exceeds the current limit {limit}"
             ),
             Self::AjocObjectsExceeded { declared, limit } => write!(
                 formatter,
-                "A-JOC 对象数为 {declared}，超过当前 OAMD/Scene 上限 {limit}"
+                "A-JOC object count {declared} exceeds the current OAMD/scene limit {limit}"
             ),
             Self::FullbandObjectAssignment {
                 bed_signals,
                 isf_signals,
             } => write!(
                 formatter,
-                "A-JOC Full 上混分配包含 {bed_signals} 路 BED、{isf_signals} 路 ISF；当前 Scene 只支持动态对象"
+                "A-JOC Full upmix allocation contains {bed_signals} bed and {isf_signals} ISF signals; the current scene supports dynamic objects only"
             ),
             Self::CoreObjectAssignment {
                 bed_signals,
                 isf_signals,
             } => write!(
                 formatter,
-                "A-JOC Core 下混分配包含 {bed_signals} 路 BED、{isf_signals} 路 ISF；当前 Scene 只支持动态对象"
+                "A-JOC Core downmix allocation contains {bed_signals} bed and {isf_signals} ISF signals; the current scene supports dynamic objects only"
             ),
             Self::CoreDialogueEnhancement { dialogue_objects } => write!(
                 formatter,
-                "A-JOC Core 启用了 {dialogue_objects} 个 dialogue enhancement 对象；当前 Scene 不应用其系数"
+                "A-JOC Core enables {dialogue_objects} dialogue-enhancement objects; the current scene does not apply their coefficients"
             ),
             Self::AudioMetadataBranch => formatter
-                .write_str("ac4_substream metadata 中存在当前 A-JOC Scene 子集未覆盖的分支"),
+                .write_str("ac4_substream metadata contains a branch unsupported by the current A-JOC scene subset"),
             Self::AlternativeObjectMetadata => {
-                formatter.write_str("b_alternative 对象动态数据分支尚未覆盖")
+                formatter.write_str("b_alternative object dynamic-data branch is unsupported")
             }
             Self::FullAjocBranch => {
-                formatter.write_str("Full A-JOC engine 返回了尚未分类的未覆盖分支")
+                formatter.write_str("Full A-JOC engine returned an unclassified unsupported branch")
             }
             #[cfg(feature = "audio-decode")]
             Self::FullAjoc(reason) => write!(formatter, "{reason}"),
             Self::AudioDecodeFeatureDisabled => {
-                formatter.write_str("构建时未启用 audio-decode feature")
+                formatter.write_str("audio-decode feature was not enabled at build time")
             }
         }
     }
@@ -344,11 +347,11 @@ impl fmt::Display for BitstreamFailure {
             Self::Oamd(error) => write!(formatter, "{error}"),
             Self::OamdState(error) => write!(formatter, "{error}"),
             Self::OamdCommonConflict => {
-                formatter.write_str("同一 group 的 OAMD common 当前更新互相冲突")
+                formatter.write_str("Current OAMD common updates conflict within one group")
             }
             Self::OamdTimingConflict { expected, actual } => write!(
                 formatter,
-                "所选 Full A-JOC group 的 OAMD 块数冲突：{expected} 与 {actual}"
+                "Selected Full A-JOC group has conflicting OAMD block counts: {expected} and {actual}"
             ),
             Self::OamdUpdateOrder {
                 object_index,
@@ -356,7 +359,7 @@ impl fmt::Display for BitstreamFailure {
                 current_sample,
             } => write!(
                 formatter,
-                "OAMD 对象 {object_index} 的更新样本从 {previous_sample} 回退到 {current_sample}"
+                "OAMD update sample for object {object_index} regressed from {previous_sample} to {current_sample}"
             ),
             Self::FrameLengthUnavailable {
                 fs_index,
@@ -364,8 +367,8 @@ impl fmt::Display for BitstreamFailure {
                 frame_rate_factor,
             } => write!(
                 formatter,
-                "fs_index {fs_index}、frame_rate_index {frame_rate_index} 与因子 \
-                 {frame_rate_factor} 没有已定义的 codec frame length"
+                "The combination of fs_index {fs_index}, frame_rate_index {frame_rate_index}, and factor \
+                 {frame_rate_factor} has no defined codec frame length"
             ),
         }
     }
@@ -401,13 +404,17 @@ pub enum DecodeErrorKind {
 impl fmt::Display for DecodeErrorKind {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Self::NeedMoreData(error) => write!(formatter, "输入被截断：{error}"),
-            Self::Selection(error) => write!(formatter, "presentation 选择失败：{error}"),
-            Self::Unsupported(reason) => write!(formatter, "不支持的解码边界：{reason}"),
-            Self::InvalidBitstream(error) => write!(formatter, "无效码流：{error}"),
-            Self::DecodeFailure { stage } => write!(formatter, "{stage} 解码失败"),
-            Self::InternalInvariant { stage } => write!(formatter, "{stage} 内部不变量失败"),
-            Self::ResetRequired => formatter.write_str("Session 已失效，必须显式 reset"),
+            Self::NeedMoreData(error) => write!(formatter, "Truncated input: {error}"),
+            Self::Selection(error) => write!(formatter, "Presentation selection failed: {error}"),
+            Self::Unsupported(reason) => write!(formatter, "Unsupported decode boundary: {reason}"),
+            Self::InvalidBitstream(error) => write!(formatter, "Invalid bitstream: {error}"),
+            Self::DecodeFailure { stage } => write!(formatter, "{stage} decode failed"),
+            Self::InternalInvariant { stage } => {
+                write!(formatter, "{stage} internal invariant failed")
+            }
+            Self::ResetRequired => {
+                formatter.write_str("Session is invalid and must be explicitly reset")
+            }
         }
     }
 }
@@ -579,15 +586,15 @@ impl fmt::Display for DecodeError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "AU {}：{}",
+            "AU {}: {}",
             self.context.access_unit_index, self.kind
         )?;
         if let Some(path) = self.context.syntax_path {
-            write!(formatter, "（{path}")?;
+            write!(formatter, " ({path}")?;
             if let Some(bit_offset) = self.context.bit_offset {
-                write!(formatter, "，bit {bit_offset}")?;
+                write!(formatter, ", bit {bit_offset}")?;
             }
-            formatter.write_str("）")?;
+            formatter.write_str(")")?;
         }
         Ok(())
     }

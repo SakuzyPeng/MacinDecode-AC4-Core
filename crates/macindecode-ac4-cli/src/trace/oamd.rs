@@ -204,7 +204,7 @@ impl OamdTrace {
             found = true;
             let Some(mask) = 1u32.checked_shl(substream_index) else {
                 frame_failed = true;
-                self.remember_failure(index, "OAMD substream 下标超出状态容量");
+                self.remember_failure(index, "OAMD substream index exceeds state capacity");
                 continue;
             };
             // 同一物理 OAMD substream 可以被多个 group 引用，只解析和统计一次。
@@ -218,7 +218,7 @@ impl OamdTrace {
                 Err(error) => {
                     frame_failed = true;
                     self.reset_substream(substream_index);
-                    self.remember_failure(index, &format!("定位失败：{error}"));
+                    self.remember_failure(index, &format!("Location failed: {error}"));
                     continue;
                 }
             };
@@ -229,7 +229,7 @@ impl OamdTrace {
                 Err(error) => {
                     frame_failed = true;
                     self.reset_substream(substream_index);
-                    self.remember_failure(index, &format!("对象描述失败：{error}"));
+                    self.remember_failure(index, &format!("Object description failed: {error}"));
                     continue;
                 }
             };
@@ -257,13 +257,13 @@ impl OamdTrace {
             };
             let Some(state) = self.states.get_mut(state_index) else {
                 frame_failed = true;
-                self.remember_failure(index, "OAMD substream 下标超出状态容量");
+                self.remember_failure(index, "OAMD substream index exceeds state capacity");
                 continue;
             };
             if let Err(error) = state.apply(&parsed) {
                 state.reset();
                 frame_failed = true;
-                self.remember_failure(index, &format!("状态延续失败：{error}"));
+                self.remember_failure(index, &format!("State continuation failed: {error}"));
                 continue;
             }
 
@@ -396,7 +396,7 @@ impl OamdTrace {
 
     pub(super) fn remember_failure(&mut self, index: u32, message: &str) {
         if self.first_error.is_none() {
-            self.first_error = Some(format!("帧 {index}：{message}"));
+            self.first_error = Some(format!("Frame {index}: {message}"));
         }
     }
 

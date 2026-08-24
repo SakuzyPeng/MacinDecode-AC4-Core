@@ -138,7 +138,9 @@ pub(crate) fn collect_core_pcm(
 ) -> Result<PcmBatch, SceneBatchError> {
     collect_batch(data, selection, DecodeMode::Core, false, false, true)?
         .core_band_pcm
-        .ok_or_else(|| SceneBatchError::Invariant("核心带 Scene batch 未生成 PCM".to_owned()))
+        .ok_or_else(|| {
+            SceneBatchError::Invariant("Core-band scene batch produced no PCM".to_owned())
+        })
 }
 
 /// 通过流式 Scene Session 累积既有对象 WAVE 所需的整文件 PCM。
@@ -148,7 +150,7 @@ pub(crate) fn collect_objects_pcm(
 ) -> Result<PcmBatch, SceneBatchError> {
     collect_batch(data, selection, DecodeMode::Full, true, false, false)?
         .pcm
-        .ok_or_else(|| SceneBatchError::Invariant("对象 Scene batch 未生成 PCM".to_owned()))
+        .ok_or_else(|| SceneBatchError::Invariant("Object scene batch produced no PCM".to_owned()))
 }
 
 /// 通过流式 Core Scene Session 累积 A-SPX 诊断基线所需的整文件 PCM。
@@ -158,7 +160,7 @@ pub(crate) fn collect_aspx_pcm(
 ) -> Result<PcmBatch, SceneBatchError> {
     collect_batch(data, selection, DecodeMode::Core, true, false, false)?
         .pcm
-        .ok_or_else(|| SceneBatchError::Invariant("A-SPX Scene batch 未生成 PCM".to_owned()))
+        .ok_or_else(|| SceneBatchError::Invariant("A-SPX scene batch produced no PCM".to_owned()))
 }
 
 /// 通过流式 Scene Session 一趟采集 full artifact writer 所需的 PCM 与 OAMD 场景。
@@ -168,11 +170,11 @@ pub(crate) fn collect_full_scene_batch(
 ) -> Result<FullSceneBatch, SceneBatchError> {
     let batch = collect_batch(data, selection, DecodeMode::Full, true, true, false)?;
     let metadata = batch.metadata.ok_or_else(|| {
-        SceneBatchError::Invariant("full Scene batch 未生成场景元数据".to_owned())
+        SceneBatchError::Invariant("Full scene batch produced no scene metadata".to_owned())
     })?;
     let pcm = batch
         .pcm
-        .ok_or_else(|| SceneBatchError::Invariant("full Scene batch 未生成 PCM".to_owned()))?;
+        .ok_or_else(|| SceneBatchError::Invariant("Full scene batch produced no PCM".to_owned()))?;
     Ok(FullSceneBatch { metadata, pcm })
 }
 
@@ -183,11 +185,11 @@ pub(crate) fn collect_core_scene_batch(
 ) -> Result<CoreSceneBatch, SceneBatchError> {
     let batch = collect_batch(data, selection, DecodeMode::Core, true, true, false)?;
     let metadata = batch.metadata.ok_or_else(|| {
-        SceneBatchError::Invariant("Core Scene batch 未生成场景元数据".to_owned())
+        SceneBatchError::Invariant("Core scene batch produced no scene metadata".to_owned())
     })?;
     let pcm = batch
         .pcm
-        .ok_or_else(|| SceneBatchError::Invariant("Core Scene batch 未生成 PCM".to_owned()))?;
+        .ok_or_else(|| SceneBatchError::Invariant("Core scene batch produced no PCM".to_owned()))?;
     Ok(CoreSceneBatch { metadata, pcm })
 }
 
@@ -202,7 +204,7 @@ pub(crate) fn collect_diagnostic_scene_batch(
 ) -> Result<DiagnosticSceneBatch, SceneBatchError> {
     let batch = collect_batch(data, selection, mode, false, true, false)?;
     let metadata = batch.metadata.ok_or_else(|| {
-        SceneBatchError::Invariant("诊断 Scene batch 未生成场景元数据".to_owned())
+        SceneBatchError::Invariant("Diagnostic scene batch produced no scene metadata".to_owned())
     })?;
     Ok(DiagnosticSceneBatch { metadata })
 }
@@ -264,11 +266,13 @@ fn collect_raw(
         let sync_frame = item.map_err(|error| SceneBatchError::Failed(error.to_string()))?;
         let toc = Ac4Toc::parse(sync_frame.raw_frame)
             .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-        let rate = toc
-            .base_sampling_frequency_hz()
-            .ok_or_else(|| SceneBatchError::Failed("裸 AC-4 未声明受支持的采样率".to_owned()))?;
+        let rate = toc.base_sampling_frequency_hz().ok_or_else(|| {
+            SceneBatchError::Failed("Raw AC-4 declares no supported sample rate".to_owned())
+        })?;
         if sample_rate.is_some_and(|current| current != rate) {
-            return Err(SceneBatchError::Failed("裸 AC-4 中途切换采样率".to_owned()));
+            return Err(SceneBatchError::Failed(
+                "Raw AC-4 changes sample rate midstream".to_owned(),
+            ));
         }
         sample_rate = Some(rate);
 
@@ -284,24 +288,26 @@ fn collect_raw(
 
         let frame_len = toc
             .codec_frame_len_base(1)
-            .ok_or_else(|| SceneBatchError::unsupported("裸 AC-4 帧长不可推导"))?;
+            .ok_or_else(|| SceneBatchError::unsupported("Cannot derive raw AC-4 frame length"))?;
         frame_start = frame_start
             .checked_add(i64::from(frame_len))
-            .ok_or_else(|| SceneBatchError::Failed("裸 AC-4 时间线溢出".to_owned()))?;
-        access_units = access_units
-            .checked_add(1)
-            .ok_or_else(|| SceneBatchError::Failed("裸 AC-4 AU 下标溢出".to_owned()))?;
+            .ok_or_else(|| SceneBatchError::Failed("Raw AC-4 timeline overflow".to_owned()))?;
+        access_units = access_units.checked_add(1).ok_or_else(|| {
+            SceneBatchError::Failed("Raw AC-4 access-unit index overflow".to_owned())
+        })?;
     }
 
     if access_units == 0 {
         return Err(SceneBatchError::Failed(
-            "输入中没有 AC-4 sync frame".to_owned(),
+            "Input contains no AC-4 sync frame".to_owned(),
         ));
     }
     let duration_samples = u64::try_from(frame_start)
-        .map_err(|_| SceneBatchError::Failed("裸 AC-4 时长为负".to_owned()))?;
+        .map_err(|_| SceneBatchError::Failed("Raw AC-4 duration is negative".to_owned()))?;
     accumulator.finish(
-        sample_rate.ok_or_else(|| SceneBatchError::Failed("无法确定裸 AC-4 采样率".to_owned()))?,
+        sample_rate.ok_or_else(|| {
+            SceneBatchError::Failed("Cannot determine raw AC-4 sample rate".to_owned())
+        })?,
         duration_samples,
         Some(MediaSpan {
             start_sample: 0,
@@ -319,16 +325,17 @@ fn collect_mp4(
     collect_metadata: bool,
     collect_core_band_pcm: bool,
 ) -> Result<CollectedBatch, SceneBatchError> {
-    let moov =
-        find_box(data, b"moov").ok_or_else(|| SceneBatchError::Failed("未找到 moov".to_owned()))?;
+    let moov = find_box(data, b"moov")
+        .ok_or_else(|| SceneBatchError::Failed("moov box not found".to_owned()))?;
     let mvhd = find_box(moov.payload, b"mvhd")
-        .ok_or_else(|| SceneBatchError::Failed("未找到 mvhd".to_owned()))?;
+        .ok_or_else(|| SceneBatchError::Failed("mvhd box not found".to_owned()))?;
     let movie = parse_header_timing(*b"mvhd", mvhd.payload)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-    let track = find_ac4_track(moov.payload)
-        .ok_or_else(|| SceneBatchError::Failed("未找到含 ac-4 sample entry 的轨道".to_owned()))?;
+    let track = find_ac4_track(moov.payload).ok_or_else(|| {
+        SceneBatchError::Failed("No track with an ac-4 sample entry was found".to_owned())
+    })?;
     let mdhd = find_box(track.mdia.payload, b"mdhd")
-        .ok_or_else(|| SceneBatchError::Failed("未找到 mdhd".to_owned()))?;
+        .ok_or_else(|| SceneBatchError::Failed("mdhd box not found".to_owned()))?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
 
@@ -345,7 +352,7 @@ fn collect_mp4(
     let edits = edit_storage.get(..edit_count).unwrap_or(&[]);
     if edits.iter().filter(|entry| !entry.is_empty_edit()).count() > 1 {
         return Err(SceneBatchError::unsupported(
-            "场景导出首版不接受多个非连续媒体 edit",
+            "This scene-export version does not support multiple discontiguous media edits",
         ));
     }
     let presentation = presentation_timing(media, movie.timescale, edits)
@@ -356,7 +363,7 @@ fn collect_mp4(
         .payload
         .get(AUDIO_SAMPLE_ENTRY_LEN..)
         .and_then(|tail| find_box(tail, b"dac4"))
-        .ok_or_else(|| SceneBatchError::Failed("ac-4 sample entry 中无 dac4".to_owned()))?;
+        .ok_or_else(|| SceneBatchError::Failed("ac-4 sample entry has no dac4 box".to_owned()))?;
     let dsi = Ac4Dsi::parse(specific.payload)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
     let sample_rate = dsi.base_sampling_frequency.hz();
@@ -397,9 +404,9 @@ fn collect_mp4(
         let info = item.map_err(|error| SceneBatchError::Failed(error.to_string()))?;
         let start = usize::try_from(info.offset).unwrap_or(usize::MAX);
         let end = start.saturating_add(usize::try_from(info.size).unwrap_or(0));
-        let frame = data
-            .get(start..end)
-            .ok_or_else(|| SceneBatchError::Failed("AC-4 sample 范围超出文件".to_owned()))?;
+        let frame = data.get(start..end).ok_or_else(|| {
+            SceneBatchError::Failed("AC-4 sample range exceeds the file size".to_owned())
+        })?;
         let source_start = scale_i64_round(
             info.composition_time,
             i64::from(sample_rate),
@@ -412,7 +419,10 @@ fn collect_mp4(
             .with_random_access_hint(info.is_sync);
         if let Some(shift) = presentation_shift {
             let presentation_start = source_start.checked_add(shift).ok_or_else(|| {
-                SceneBatchError::Failed("应用 MP4 edit 后 AU 呈现位置溢出".to_owned())
+                SceneBatchError::Failed(
+                    "Access-unit presentation-position overflow after applying MP4 edits"
+                        .to_owned(),
+                )
             })?;
             context = context.with_presentation_sample_start(presentation_start);
         }
@@ -436,7 +446,7 @@ fn collect_mp4(
         priming,
         output_duration,
         media_span,
-        "Scene 对象 PCM",
+        "Scene object PCM",
     )?;
     batch.core_band_pcm = project_batch_pcm(
         batch.core_band_pcm,
@@ -444,7 +454,7 @@ fn collect_mp4(
         priming,
         output_duration,
         media_span,
-        "核心带诊断 PCM",
+        "Core-band diagnostic PCM",
     )?;
     Ok(batch)
 }
@@ -462,14 +472,14 @@ fn project_batch_pcm(
     };
     if pcm.sample_rate != sample_rate {
         return Err(SceneBatchError::Invariant(format!(
-            "{label} 采样率 {} 与 MP4 dac4 采样率 {sample_rate} 不一致",
+            "{label} sample rate {} does not match MP4 dac4 sample rate {sample_rate}",
             pcm.sample_rate
         )));
     }
     project_pcm_batch_to_presentation(Some(pcm), priming, output_duration, media_span)
         .map_err(SceneBatchError::Failed)?
         .map(Some)
-        .ok_or_else(|| SceneBatchError::Invariant(format!("{label} 投影后丢失")))
+        .ok_or_else(|| SceneBatchError::Invariant(format!("{label} was lost after projection")))
 }
 
 fn decode_into(
@@ -485,18 +495,22 @@ fn decode_into(
         DecodeStatus::Decoded => {}
         DecodeStatus::WaitingForRandomAccess { .. } => {
             return Err(SceneBatchError::Failed(
-                "整文件 Scene batch 输入未从完整随机访问点开始".to_owned(),
+                "Whole-file scene-batch input does not begin at a complete random-access point"
+                    .to_owned(),
             ));
         }
         _ => {
             return Err(SceneBatchError::unsupported(
-                "Scene Session 返回了 batch adapter 尚未覆盖的状态",
+                "Scene session returned a state not supported by the batch adapter",
             ));
         }
     }
     if let Some(core_band_pcm) = accumulator.core_band_pcm.as_mut() {
         let frame = decoded.core_band_pcm().ok_or_else(|| {
-            SceneBatchError::Invariant("成功 AU 缺少 pre-A-SPX 核心带诊断侧车".to_owned())
+            SceneBatchError::Invariant(
+                "Successful access unit lacks the pre-A-SPX core-band diagnostic sidecar"
+                    .to_owned(),
+            )
         })?;
         core_band_pcm.append(frame)?;
     }
@@ -581,14 +595,14 @@ impl SceneBatchAccumulator {
         let timeline = frame.timeline();
         if timeline.duration_samples() == 0 {
             return Err(SceneBatchError::Invariant(
-                "SceneFrame 的 PCM 时长为零".to_owned(),
+                "SceneFrame PCM duration is zero".to_owned(),
             ));
         }
         if !matches!(frame.presentation().path(), ScenePath::Ajoc)
             || frame.presentation().mode() != self.mode
         {
             return Err(SceneBatchError::unsupported(
-                "Scene batch adapter 收到与配置不一致的 A-JOC 输出模式",
+                "Scene batch adapter received an A-JOC output mode inconsistent with the configuration",
             ));
         }
         if frame
@@ -597,7 +611,7 @@ impl SceneBatchAccumulator {
             .is_some_and(|reset| reset != ResetKind::Initial)
         {
             return Err(SceneBatchError::Failed(
-                "输入中途发生来源、配置或连续性重置；整文件 Scene batch 只接受单一连续配置"
+                "Source, configuration, or continuity reset occurred midstream; whole-file scene batches require one continuous configuration"
                     .to_owned(),
             ));
         }
@@ -608,7 +622,7 @@ impl SceneBatchAccumulator {
             .is_some_and(|current| current != sample_rate)
         {
             return Err(SceneBatchError::Invariant(
-                "SceneFrame 中途切换 PCM 采样率".to_owned(),
+                "SceneFrame changes PCM sample rate midstream".to_owned(),
             ));
         }
         self.sample_rate = Some(sample_rate);
@@ -616,7 +630,7 @@ impl SceneBatchAccumulator {
         let generation = timeline.configuration_generation();
         if self.generation.is_some_and(|current| current != generation) {
             return Err(SceneBatchError::Failed(
-                "输入中途发生配置代次切换；整文件 Scene batch 不支持动态拓扑".to_owned(),
+                "Configuration generation changes midstream; whole-file scene batches do not support dynamic topology".to_owned(),
             ));
         }
         self.generation = Some(generation);
@@ -627,7 +641,7 @@ impl SceneBatchAccumulator {
             .is_some_and(|current| current != presentation)
         {
             return Err(SceneBatchError::Failed(
-                "输入中途切换了已选择的 presentation".to_owned(),
+                "Selected presentation changes midstream".to_owned(),
             ));
         }
         self.presentation = Some(presentation);
@@ -643,12 +657,12 @@ impl SceneBatchAccumulator {
     ) -> Result<CollectedBatch, SceneBatchError> {
         if self.sample_rate != Some(sample_rate) {
             return Err(SceneBatchError::Invariant(format!(
-                "SceneFrame 采样率 {:?} 与输入声明 {sample_rate} 不一致",
+                "SceneFrame sample rate {:?} does not match declared input rate {sample_rate}",
                 self.sample_rate
             )));
         }
         self.presentation.ok_or_else(|| {
-            SceneBatchError::Failed("解码未解析出 selected presentation".to_owned())
+            SceneBatchError::Failed("Decoder did not resolve a selected presentation".to_owned())
         })?;
         let pcm = self.pcm.map(ScenePcmAccumulator::finish).transpose()?;
         let core_band_pcm = self
@@ -710,7 +724,7 @@ impl MetadataAccumulator {
     fn append(&mut self, frame: Ac4SceneFrame<'_>) -> Result<(), SceneBatchError> {
         let timeline = frame.timeline();
         let source_start = timeline.source_sample_start().ok_or_else(|| {
-            SceneBatchError::Invariant("SceneFrame 缺少 source sample 起点".to_owned())
+            SceneBatchError::Invariant("SceneFrame lacks a source-sample start position".to_owned())
         })?;
         match self
             .source_starts
@@ -718,7 +732,7 @@ impl MetadataAccumulator {
         {
             Some(previous) if previous != source_start => {
                 return Err(SceneBatchError::Invariant(format!(
-                    "AU {} 的 source sample 起点从 {previous} 变为 {source_start}",
+                    "Access unit {} source-sample start changed from {previous} to {source_start}",
                     timeline.access_unit_index()
                 )));
             }
@@ -748,7 +762,7 @@ impl MetadataAccumulator {
                 ) => (substream_index, object_index),
                 _ => {
                     return Err(SceneBatchError::unsupported(
-                        "Scene 对象来源与所选 A-JOC 解码模式不一致",
+                        "Scene object source is inconsistent with the selected A-JOC decode mode",
                     ));
                 }
             };
@@ -782,7 +796,7 @@ impl MetadataAccumulator {
                 ) => (substream_index, object_index),
                 _ => {
                     return Err(SceneBatchError::unsupported(
-                        "Scene bed 来源与所选 A-JOC 解码模式不一致",
+                        "Scene bed source is inconsistent with the selected A-JOC decode mode",
                     ));
                 }
             };
@@ -798,17 +812,17 @@ impl MetadataAccumulator {
         }
         if frame_substreams.len() != 1 {
             return Err(SceneBatchError::unsupported(format!(
-                "Scene batch 只接受一条物理 A-JOC substream，实际为 {} 条",
+                "Scene batch accepts one physical A-JOC substream; got {}",
                 frame_substreams.len()
             )));
         }
         let substream = frame_substreams
             .first()
             .copied()
-            .ok_or_else(|| SceneBatchError::Invariant("Scene 元素集合为空".to_owned()))?;
+            .ok_or_else(|| SceneBatchError::Invariant("Scene element set is empty".to_owned()))?;
         if frame.presentation().substream_indices() != [substream] {
             return Err(SceneBatchError::Invariant(
-                "Scene presentation 的 substream 与元素来源不一致".to_owned(),
+                "Scene presentation substream is inconsistent with element sources".to_owned(),
             ));
         }
         if let Some(control_source) = timeline.control_source_access_unit_index() {
@@ -825,21 +839,24 @@ impl MetadataAccumulator {
                 .find(|binding| binding.element_id == update.element_id())
                 .ok_or_else(|| {
                     SceneBatchError::Invariant(format!(
-                        "OAMD 更新引用未知 Scene element {}",
+                        "OAMD update references unknown scene element {}",
                         update.element_id().get()
                     ))
                 })?;
             let raw = update.raw();
             if raw.block().object_index != binding.object || binding.substream != substream {
                 return Err(SceneBatchError::Invariant(
-                    "OAMD 更新的原始对象下标与 Scene element 来源不一致".to_owned(),
+                    "OAMD update raw object index is inconsistent with the scene-element source"
+                        .to_owned(),
                 ));
             }
             let state = update.state().raw();
             let sample_position = source_start
                 .checked_add(i64::from(update.offset_samples()))
                 .ok_or_else(|| {
-                    SceneBatchError::Invariant("OAMD 更新绝对采样位置溢出".to_owned())
+                    SceneBatchError::Invariant(
+                        "OAMD update absolute-sample-position overflow".to_owned(),
+                    )
                 })?;
             let control_source = update.control_source_access_unit_index();
             if raw.block().block_index == 0
@@ -852,7 +869,7 @@ impl MetadataAccumulator {
                     .copied()
                     .ok_or_else(|| {
                         SceneBatchError::Invariant(format!(
-                            "首份到期 OAMD 找不到 control source AU {control_source} 的时间"
+                            "First due OAMD update has no timing for control-source access unit {control_source}"
                         ))
                     })?;
                 let stream_order = self.take_stream_order()?;
@@ -882,7 +899,7 @@ impl MetadataAccumulator {
         let current = self.next_stream_order;
         self.next_stream_order = current
             .checked_add(1)
-            .ok_or_else(|| SceneBatchError::Invariant("OAMD 事件顺序溢出 u64".to_owned()))?;
+            .ok_or_else(|| SceneBatchError::Invariant("OAMD event order exceeds u64".to_owned()))?;
         Ok(current)
     }
 
@@ -907,7 +924,7 @@ impl MetadataAccumulator {
         {
             if *existing != binding {
                 return Err(SceneBatchError::Invariant(format!(
-                    "Scene element {} 的编码来源发生变化",
+                    "Encoded source for scene element {} changed",
                     element_id.get()
                 )));
             }
@@ -918,7 +935,7 @@ impl MetadataAccumulator {
                 .any(|existing| existing.substream == substream && existing.object == object)
             {
                 return Err(SceneBatchError::Invariant(format!(
-                    "Scene 对象 {substream}:{object} 在同一配置代次更换 element ID"
+                    "Scene object {substream}:{object} changed element ID within one configuration generation"
                 )));
             }
             self.bindings.push(binding);
@@ -934,7 +951,7 @@ impl MetadataAccumulator {
                 || existing.object_index != object
             {
                 return Err(SceneBatchError::Invariant(format!(
-                    "Scene 对象 {substream}:{object} 的类型发生变化"
+                    "Scene object {substream}:{object} changed type"
                 )));
             }
             existing.common_conflict |= common_conflict;
@@ -969,7 +986,9 @@ impl MetadataAccumulator {
             for event in &mut self.events {
                 event.sample_position =
                     event.sample_position.checked_add(shift).ok_or_else(|| {
-                        SceneBatchError::Failed("应用 MP4 edit 后对象事件位置溢出".to_owned())
+                        SceneBatchError::Failed(
+                            "Object-event position overflow after applying MP4 edits".to_owned(),
+                        )
                     })?;
             }
         } else {
@@ -1039,14 +1058,15 @@ impl CoreBandPcmAccumulator {
             || samples_per_channel == 0
         {
             return Err(SceneBatchError::Invariant(
-                "核心带诊断侧车不是有效的 non-empty planar f32".to_owned(),
+                "Core-band diagnostic sidecar is not valid non-empty planar f32".to_owned(),
             ));
         }
 
         if let Some(pcm) = self.pcm.as_mut() {
             if pcm.sample_rate != frame.sample_rate() || pcm.tracks.len() != channel_count {
                 return Err(SceneBatchError::Invariant(
-                    "核心带诊断侧车中途改变采样率或声道数量".to_owned(),
+                    "Core-band diagnostic sidecar changes sample rate or channel count midstream"
+                        .to_owned(),
                 ));
             }
             for (index, output) in pcm.tracks.iter_mut().enumerate() {
@@ -1061,7 +1081,7 @@ impl CoreBandPcmAccumulator {
                     || output.source != source
                 {
                     return Err(SceneBatchError::Invariant(format!(
-                        "核心带诊断侧车第 {index} 路的传输身份发生变化"
+                        "Transport identity of core-band diagnostic sidecar channel {index} changed"
                     )));
                 }
                 append_restored_samples(&mut output.samples, input.samples())?;
@@ -1070,7 +1090,7 @@ impl CoreBandPcmAccumulator {
             let mut tracks = Vec::new();
             tracks.try_reserve_exact(channel_count).map_err(|error| {
                 SceneBatchError::Failed(format!(
-                    "无法为核心带诊断 PCM 预留 {channel_count} 路声道：{error}"
+                    "Failed to reserve {channel_count} channels for core-band diagnostic PCM: {error}"
                 ))
             })?;
             for index in 0..channel_count {
@@ -1079,7 +1099,7 @@ impl CoreBandPcmAccumulator {
                 if let Some(capacity) = self.capacity_hint {
                     samples.try_reserve_exact(capacity).map_err(|error| {
                         SceneBatchError::Failed(format!(
-                            "无法为核心带诊断 PCM 预留 {capacity} 个样本：{error}"
+                            "Failed to reserve {capacity} samples for core-band diagnostic PCM: {error}"
                         ))
                     })?;
                 }
@@ -1104,8 +1124,9 @@ impl CoreBandPcmAccumulator {
     }
 
     fn finish(self) -> Result<PcmBatch, SceneBatchError> {
-        self.pcm
-            .ok_or_else(|| SceneBatchError::Failed("解码未留存任何核心带诊断 PCM".to_owned()))
+        self.pcm.ok_or_else(|| {
+            SceneBatchError::Failed("Decoder retained no core-band diagnostic PCM".to_owned())
+        })
     }
 }
 
@@ -1115,14 +1136,16 @@ fn validated_core_band_channel<'a>(
     expected_samples: usize,
 ) -> Result<macindecode_ac4_scene::CoreBandPcmChannel<'a>, SceneBatchError> {
     let channel = frame.channel(index).ok_or_else(|| {
-        SceneBatchError::Invariant(format!("核心带诊断侧车缺少第 {index} 路声道"))
+        SceneBatchError::Invariant(format!(
+            "Core-band diagnostic sidecar lacks channel {index}"
+        ))
     })?;
     if channel.stride() != 1
         || channel.samples().len() != expected_samples
         || channel.samples().iter().any(|sample| !sample.is_finite())
     {
         return Err(SceneBatchError::Invariant(format!(
-            "核心带诊断侧车第 {index} 路的 stride、长度或有限值不合法"
+            "Core-band diagnostic sidecar channel {index} has an invalid stride, length, or finite-value state"
         )));
     }
     Ok(channel)
@@ -1150,12 +1173,12 @@ impl ScenePcmAccumulator {
         if let Some(pcm) = self.pcm.as_mut() {
             if pcm.sample_rate != timeline.sample_rate() {
                 return Err(SceneBatchError::Invariant(
-                    "SceneFrame 中途切换 PCM 采样率".to_owned(),
+                    "SceneFrame changes PCM sample rate midstream".to_owned(),
                 ));
             }
             if pcm.tracks.len() != tracks.len() {
                 return Err(SceneBatchError::Invariant(
-                    "SceneFrame 中途改变对象 PCM 轨道数量".to_owned(),
+                    "SceneFrame changes the object-PCM track count midstream".to_owned(),
                 ));
             }
             for (output_index, (channel, track)) in
@@ -1167,7 +1190,7 @@ impl ScenePcmAccumulator {
                     || channel.scene_element_id != Some(track.element_id)
                 {
                     return Err(SceneBatchError::Invariant(format!(
-                        "SceneFrame 第 {output_index} 路对象身份或来源发生变化"
+                        "Object identity or source of SceneFrame channel {output_index} changed"
                     )));
                 }
                 append_restored_samples(&mut channel.samples, track.normalized_samples)?;
@@ -1179,7 +1202,7 @@ impl ScenePcmAccumulator {
                 if let Some(capacity) = self.capacity_hint {
                     samples.try_reserve_exact(capacity).map_err(|error| {
                         SceneBatchError::Failed(format!(
-                            "无法为对象 PCM 预留 {capacity} 个样本：{error}"
+                            "Failed to reserve {capacity} samples for object PCM: {error}"
                         ))
                     })?;
                 }
@@ -1201,8 +1224,9 @@ impl ScenePcmAccumulator {
     }
 
     fn finish(self) -> Result<PcmBatch, SceneBatchError> {
-        self.pcm
-            .ok_or_else(|| SceneBatchError::Failed("解码未留存任何 Scene 对象 PCM".to_owned()))
+        self.pcm.ok_or_else(|| {
+            SceneBatchError::Failed("Decoder retained no scene-object PCM".to_owned())
+        })
     }
 }
 
@@ -1216,25 +1240,28 @@ fn frame_tracks<'a>(
         .try_fold(0usize, |count, bed| {
             count.checked_add(bed.components().len())
         })
-        .ok_or_else(|| SceneBatchError::Invariant("Scene bed component 数量溢出".to_owned()))?;
+        .ok_or_else(|| {
+            SceneBatchError::Invariant("Scene bed-component count overflow".to_owned())
+        })?;
     let track_count = frame
         .objects()
         .len()
         .checked_add(component_count)
-        .ok_or_else(|| SceneBatchError::Invariant("Scene PCM 轨道数量溢出".to_owned()))?;
+        .ok_or_else(|| SceneBatchError::Invariant("Scene PCM track-count overflow".to_owned()))?;
     if track_count == 0 {
         return Err(SceneBatchError::Invariant(
-            "A-JOC SceneFrame 没有 PCM 元素".to_owned(),
+            "A-JOC SceneFrame has no PCM elements".to_owned(),
         ));
     }
     if frame.beds().len() > 1 || component_count > 1 {
         return Err(SceneBatchError::unsupported(
-            "对象 WAVE 首版只接受至多一路原生 LFE bed",
+            "This object-WAVE version accepts at most one native LFE bed",
         ));
     }
 
-    let expected_samples = usize::try_from(frame.timeline().duration_samples())
-        .map_err(|_| SceneBatchError::Invariant("SceneFrame PCM 时长超出 usize".to_owned()))?;
+    let expected_samples = usize::try_from(frame.timeline().duration_samples()).map_err(|_| {
+        SceneBatchError::Invariant("SceneFrame PCM duration exceeds usize".to_owned())
+    })?;
     let has_lfe = component_count == 1;
     let mut slots = vec![None; track_count];
 
@@ -1258,7 +1285,7 @@ fn frame_tracks<'a>(
             ) => (substream_index, object_index, output_index),
             _ => {
                 return Err(SceneBatchError::unsupported(
-                    "Scene 对象来源与所选 A-JOC 解码模式不一致",
+                    "Scene object source is inconsistent with the selected A-JOC decode mode",
                 ));
             }
         };
@@ -1270,26 +1297,28 @@ fn frame_tracks<'a>(
             || pcm.samples_per_plane() != expected_samples
         {
             return Err(SceneBatchError::Invariant(
-                "Scene 对象 PCM 不是有效的 normalized mono planar f32".to_owned(),
+                "Scene-object PCM is not valid normalized mono planar f32".to_owned(),
             ));
         }
-        let plane = pcm
-            .planes()
-            .first()
-            .ok_or_else(|| SceneBatchError::Invariant("Scene 对象 PCM 缺少 plane".to_owned()))?;
+        let plane = pcm.planes().first().ok_or_else(|| {
+            SceneBatchError::Invariant("Scene-object PCM lacks a plane".to_owned())
+        })?;
         if plane.stride() != 1 || plane.samples().len() != expected_samples {
             return Err(SceneBatchError::Invariant(
-                "Scene 对象 PCM 的 stride 或 normalized 长度错误".to_owned(),
+                "Scene-object PCM has an invalid stride or normalized length".to_owned(),
             ));
         }
-        let output_index = usize::try_from(output_index)
-            .map_err(|_| SceneBatchError::Invariant("对象输出下标超出 usize".to_owned()))?;
+        let output_index = usize::try_from(output_index).map_err(|_| {
+            SceneBatchError::Invariant("Object output index exceeds usize".to_owned())
+        })?;
         let slot = slots.get_mut(output_index).ok_or_else(|| {
-            SceneBatchError::Invariant("对象输出下标超出 Scene PCM 轨道范围".to_owned())
+            SceneBatchError::Invariant(
+                "Object output index exceeds the scene PCM track range".to_owned(),
+            )
         })?;
         if slot.is_some() {
             return Err(SceneBatchError::Invariant(
-                "Scene PCM 输出下标重复".to_owned(),
+                "Scene PCM output index is duplicated".to_owned(),
             ));
         }
         *slot = Some((
@@ -1320,35 +1349,36 @@ fn frame_tracks<'a>(
             ) => (substream_index, object_index, reinsertion_index),
             _ => {
                 return Err(SceneBatchError::unsupported(
-                    "Scene bed 来源与所选 A-JOC 解码模式不一致",
+                    "Scene bed source is inconsistent with the selected A-JOC decode mode",
                 ));
             }
         };
         if object_index != 0 {
             return Err(SceneBatchError::Invariant(
-                "Scene LFE 的来源对象下标不是 0".to_owned(),
+                "Scene LFE source object index is not 0".to_owned(),
             ));
         }
-        let component = bed
-            .components()
-            .first()
-            .ok_or_else(|| SceneBatchError::Invariant("Scene LFE bed 缺少 component".to_owned()))?;
+        let component = bed.components().first().ok_or_else(|| {
+            SceneBatchError::Invariant("Scene LFE bed lacks a component".to_owned())
+        })?;
         if !matches!(component.speaker(), SpeakerLabel::Lfe)
             || component.plane().stride() != 1
             || component.plane().samples().len() != expected_samples
         {
             return Err(SceneBatchError::Invariant(
-                "Scene LFE component 的标签、stride 或 normalized 长度错误".to_owned(),
+                "Scene LFE component has an invalid label, stride, or normalized length".to_owned(),
             ));
         }
         let output_index = usize::try_from(output_index)
-            .map_err(|_| SceneBatchError::Invariant("LFE 输出下标超出 usize".to_owned()))?;
+            .map_err(|_| SceneBatchError::Invariant("LFE output index exceeds usize".to_owned()))?;
         let slot = slots.get_mut(output_index).ok_or_else(|| {
-            SceneBatchError::Invariant("LFE 输出下标超出 Scene PCM 轨道范围".to_owned())
+            SceneBatchError::Invariant(
+                "LFE output index exceeds the scene PCM track range".to_owned(),
+            )
         })?;
         if slot.is_some() {
             return Err(SceneBatchError::Invariant(
-                "Scene PCM 输出下标重复".to_owned(),
+                "Scene PCM output index is duplicated".to_owned(),
             ));
         }
         *slot = Some((
@@ -1366,16 +1396,16 @@ fn frame_tracks<'a>(
         .map(|(output_index, slot)| {
             let (element_id, substream, object_index, normalized_samples) = slot.ok_or_else(|| {
                     SceneBatchError::Invariant(format!(
-                        "Scene PCM 缺少 Pseudocode 15 输出位置 {output_index}"
+                        "Scene PCM lacks Pseudocode 15 output position {output_index}"
                     ))
                 })?;
             let source = if let Some(object_index) = object_index {
                 let expected_oamd_index = object_ordinal.checked_add(usize::from(has_lfe)).ok_or_else(
-                    || SceneBatchError::Invariant("A-JOC 对象下标溢出".to_owned()),
+                    || SceneBatchError::Invariant("A-JOC object-index overflow".to_owned()),
                 )?;
                 if usize::from(object_index) != expected_oamd_index {
                     return Err(SceneBatchError::Invariant(format!(
-                        "Scene 对象 {object_ordinal} 的 OAMD 下标应为 {expected_oamd_index}，实际为 {object_index}"
+                        "OAMD index for scene object {object_ordinal} should be {expected_oamd_index}, got {object_index}"
                     )));
                 }
                 let source = match mode {
@@ -1387,12 +1417,12 @@ fn frame_tracks<'a>(
                     },
                     _ => {
                         return Err(SceneBatchError::unsupported(
-                            "Scene batch adapter 尚未覆盖该解码模式",
+                            "Scene batch adapter does not support this decode mode",
                         ));
                     }
                 };
                 object_ordinal = object_ordinal.checked_add(1).ok_or_else(|| {
-                    SceneBatchError::Invariant("A-JOC 对象序号溢出".to_owned())
+                    SceneBatchError::Invariant("A-JOC object-ordinal overflow".to_owned())
                 })?;
                 source
             } else {
@@ -1417,13 +1447,13 @@ fn append_restored_samples(
         let restored = normalized_sample * NORMALIZED_TO_INTERNAL;
         if !normalized_sample.is_finite() || !restored.is_finite() {
             return Err(SceneBatchError::Invariant(format!(
-                "Scene PCM 样本 {sample_index} 无法恢复为有限的内部尺度值"
+                "Scene PCM sample {sample_index} cannot be restored to a finite internal-scale value"
             )));
         }
     }
     target.try_reserve(normalized.len()).map_err(|error| {
         SceneBatchError::Failed(format!(
-            "无法为当前 SceneFrame 累积 {} 个 PCM 样本：{error}",
+            "Failed to accumulate {} PCM samples for the current SceneFrame: {error}",
             normalized.len()
         ))
     })?;
@@ -1516,7 +1546,10 @@ mod tests {
         assert_eq!(
             collect_core_pcm(&input, PresentationSelection::AutoUnique)
                 .expect_err("依赖帧开头的 core batch 必须等待完整随机访问点"),
-            SceneBatchError::Failed("整文件 Scene batch 输入未从完整随机访问点开始".to_owned())
+            SceneBatchError::Failed(
+                "Whole-file scene-batch input does not begin at a complete random-access point"
+                    .to_owned()
+            )
         );
     }
 

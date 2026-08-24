@@ -17,7 +17,7 @@ fn caf_error(code: DiagnosticCode, message: impl Into<String>) -> CliError {
 pub(crate) fn run(_args: ExportCoreCafArgs) -> Result<String, CliError> {
     Err(caf_error(
         DiagnosticCode::FeatureRequired,
-        "export-core-caf 需要以 --features audio-decode 重新构建 macinac4",
+        "export-core-caf requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 
@@ -187,7 +187,7 @@ mod enabled {
         let data = fs::read(&args.input).map_err(|error| {
             caf_error(
                 DiagnosticCode::InputReadFailed,
-                format!("无法读取 {}：{error}", args.input.display()),
+                format!("Failed to read {}: {error}", args.input.display()),
             )
         })?;
         let requested = match args.presentation {
@@ -195,7 +195,7 @@ mod enabled {
             Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
                 caf_error(
                     DiagnosticCode::SelectionInvalid,
-                    "presentation 下标超出 u32",
+                    "Presentation index exceeds u32",
                 )
             })?),
         };
@@ -210,20 +210,20 @@ mod enabled {
         if mapped.frames == 0 {
             return Err(caf_error(
                 DiagnosticCode::InputInvalid,
-                "应用 edit 后的呈现时长为零",
+                "Presentation duration is zero after applying edits",
             ));
         }
         if selection.lfe.is_none() || mapped.lfe.is_none() {
             return Err(caf_error(
                 DiagnosticCode::MappingUnsupported,
-                "直接扬声器 CAF 要求 object 0 = LFE BED 及其独立 PCM；不能用静音补位",
+                "Direct-speaker CAF requires object 0 to be an LFE bed with independent PCM; silence substitution is not allowed",
             ));
         }
         let layout = layout_for_count(selection.objects.len())?;
         let duration = u64::try_from(mapped.frames).map_err(|_| {
             caf_error(
                 DiagnosticCode::InternalInvariantFailed,
-                "core CAF PCM 帧数超出 u64",
+                "Core CAF PCM frame count exceeds u64",
             )
         })?;
         validate_speaker_grid(&metadata, &selection, layout, pcm.sample_rate, duration)?;
@@ -240,7 +240,7 @@ mod enabled {
             _ => Err(caf_error(
                 DiagnosticCode::MappingUnsupported,
                 format!(
-                    "core 有 {count} 路全频对象；直接扬声器 CAF 只接受已验证的 5/7/9/11 路网格"
+                    "Core has {count} full-range objects; direct-speaker CAF accepts only verified 5/7/9/11-channel grids"
                 ),
             )),
         }
@@ -257,7 +257,7 @@ mod enabled {
             let expected = layout.positions.get(index).copied().ok_or_else(|| {
                 caf_error(
                     DiagnosticCode::InternalInvariantFailed,
-                    "core 扬声器网格模板短于对象数量",
+                    "Core speaker-grid template is shorter than the object count",
                 )
             })?;
             let events = project_metadata_events(metadata, scene, sample_rate, duration).map_err(
@@ -265,7 +265,7 @@ mod enabled {
                     caf_error(
                         DiagnosticCode::MappingUnsupported,
                         format!(
-                            "对象 {} 的呈现时间线无法直接映射：{error}",
+                            "The presentation timeline for object {} cannot be mapped directly: {error}",
                             scene_selector(scene)
                         ),
                     )
@@ -292,7 +292,7 @@ mod enabled {
                 return Err(caf_error(
                     DiagnosticCode::MappingUnsupported,
                     format!(
-                        "core 对象 {selector} 的 OAMD common 在呈现时间线中发生变化；直接 CAF 无法固化动态 common"
+                        "OAMD common for core object {selector} changes over the presentation timeline; direct CAF cannot freeze dynamic common metadata"
                     ),
                 )
                 .with_context("selector", selector)
@@ -301,7 +301,7 @@ mod enabled {
             if scene.common != reference {
                 return Err(caf_error(
                     DiagnosticCode::MappingUnsupported,
-                    "所选 core 对象的 OAMD common 不一致；直接 CAF 无法选择唯一渲染配置",
+                    "Selected core objects have inconsistent OAMD common metadata; direct CAF cannot choose a unique rendering configuration",
                 )
                 .with_context("selector", selector)
                 .with_context("field", "common"));
@@ -319,7 +319,7 @@ mod enabled {
         if unsupported {
             return Err(caf_error(
                 DiagnosticCode::MappingUnsupported,
-                "OAMD common 使用了直接扬声器 CAF 未固化的 screen、bed render/distribution、warp 或自定义 trim",
+                "OAMD common uses screen, bed render/distribution, warp, or custom trim metadata not supported by direct-speaker CAF",
             )
             .with_context("field", "common"));
         }
@@ -374,14 +374,14 @@ mod enabled {
             .ok_or_else(|| {
                 caf_error(
                     DiagnosticCode::MappingUnsupported,
-                    "对象 ramp 缺少可见媒体区间，无法验证插值前态",
+                    "Object ramp has no visible media span, so its pre-interpolation state cannot be verified",
                 )
             })?
             .start_sample;
         let visible_start = i64::try_from(visible_start).map_err(|_| {
             caf_error(
                 DiagnosticCode::MappingUnsupported,
-                "对象 ramp 的媒体起点超出 i64，无法验证插值前态",
+                "Object-ramp media start exceeds i64, so its pre-interpolation state cannot be verified",
             )
         })?;
         let predecessor = metadata
@@ -395,7 +395,7 @@ mod enabled {
                 caf_error(
                     DiagnosticCode::MappingUnsupported,
                     format!(
-                        "core 对象 {} 在 sample {sample} 以非零 ramp 开始，但缺少可验证的 preroll 前态",
+                        "Core object {} starts a nonzero ramp at sample {sample} without a verifiable preroll state",
                         scene_selector(scene)
                     ),
                 )
@@ -423,44 +423,44 @@ mod enabled {
         };
         if !event.state.active {
             return Err(reject(format!(
-                "core 对象 {selector} 在 sample {} 不活动；直接写 PCM 会绕过对象静音",
+                "Core object {selector} is inactive at sample {}; writing PCM directly would bypass object muting",
                 event.sample
             )));
         }
         let basic = event.state.basic.ok_or_else(|| {
             reject(format!(
-                "core 对象 {selector} 在 sample {} 缺少完整 basic 状态",
+                "Core object {selector} lacks a complete basic state at sample {}",
                 event.sample
             ))
         })?;
         if basic.gain != ObjectGainState::Default {
             return Err(reject(format!(
-                "core 对象 {selector} 在 sample {} 不是默认 0 dB 增益",
+                "Core object {selector} does not use the default 0 dB gain at sample {}",
                 event.sample
             )));
         }
         let render = event.state.render.ok_or_else(|| {
             reject(format!(
-                "core 对象 {selector} 在 sample {} 缺少完整 render 状态",
+                "Core object {selector} lacks a complete render state at sample {}",
                 event.sample
             ))
         })?;
         let actual = (render.position.x, render.position.y, render.position.z);
         if actual != expected || event.additional.extended_position.is_some() {
             return Err(reject(format!(
-                "core 对象 {selector} 在 sample {} 的位置 {:?} 不是固定模板 {:?}，或使用了扩展坐标",
-                event.sample, actual, expected
+                "Core object {selector} has position {:?} at sample {}, not fixed template {:?}, or uses extended coordinates",
+                actual, event.sample, expected
             )));
         }
         if !neutral_width(render.other_properties.width) {
             return Err(reject(format!(
-                "core 对象 {selector} 在 sample {} 使用非零 width",
+                "Core object {selector} uses nonzero width at sample {}",
                 event.sample
             )));
         }
         if zone_components(render.zone) != (false, true, 0) {
             return Err(reject(format!(
-                "core 对象 {selector} 在 sample {} 使用非默认 zone/channel lock",
+                "Core object {selector} uses a non-default zone/channel lock at sample {}",
                 event.sample
             )));
         }
@@ -474,7 +474,7 @@ mod enabled {
             || other.divergence_code.is_some()
         {
             return Err(reject(format!(
-                "core 对象 {selector} 在 sample {} 使用 screen/depth/distance/infinity/divergence 空间修饰",
+                "Core object {selector} uses screen/depth/distance/infinity/divergence spatial modifiers at sample {}",
                 event.sample
             )));
         }
@@ -494,14 +494,14 @@ mod enabled {
             Ok(_) => {
                 return Err(caf_error(
                     DiagnosticCode::OutputExists,
-                    format!("输出路径已存在：{}", output.display()),
+                    format!("Output path already exists: {}", output.display()),
                 ));
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => {
                 return Err(caf_error(
                     DiagnosticCode::OutputCreateFailed,
-                    format!("检查输出路径失败：{error}"),
+                    format!("Failed to inspect output path: {error}"),
                 ));
             }
         }
@@ -509,7 +509,10 @@ mod enabled {
         if !parent.is_dir() {
             return Err(caf_error(
                 DiagnosticCode::OutputCreateFailed,
-                format!("输出文件的父目录不存在：{}", parent.display()),
+                format!(
+                    "Output parent directory does not exist: {}",
+                    parent.display()
+                ),
             ));
         }
         Ok(())
@@ -540,14 +543,14 @@ mod enabled {
                 Err(error) => {
                     return Err(caf_error(
                         DiagnosticCode::OutputCreateFailed,
-                        format!("创建临时 CAF 失败：{error}"),
+                        format!("Failed to create temporary CAF: {error}"),
                     ));
                 }
             }
         }
         Err(caf_error(
             DiagnosticCode::OutputCreateFailed,
-            "无法分配不冲突的临时 CAF 路径",
+            "Failed to allocate a unique temporary CAF path",
         ))
     }
 
@@ -563,7 +566,7 @@ mod enabled {
                 FloatCafWriter::new(file, sample_rate, layout.caf).map_err(|error| {
                     caf_error(
                         DiagnosticCode::OutputWriteFailed,
-                        format!("写入 CAF header 失败：{error}"),
+                        format!("Failed to write CAF header: {error}"),
                     )
                 })?;
             let capacity = layout
@@ -573,7 +576,7 @@ mod enabled {
                 .ok_or_else(|| {
                     caf_error(
                         DiagnosticCode::InternalInvariantFailed,
-                        "CAF interleave 缓冲区长度溢出",
+                        "CAF interleave buffer length overflow",
                     )
                 })?;
             let mut interleaved = Vec::with_capacity(capacity);
@@ -589,20 +592,20 @@ mod enabled {
                 writer.write_interleaved(&interleaved).map_err(|error| {
                     caf_error(
                         DiagnosticCode::OutputWriteFailed,
-                        format!("写入 CAF PCM 失败：{error}"),
+                        format!("Failed to write CAF PCM: {error}"),
                     )
                 })?;
             }
             let file = writer.finish().map_err(|error| {
                 caf_error(
                     DiagnosticCode::OutputWriteFailed,
-                    format!("完成 CAF data chunk 失败：{error}"),
+                    format!("Failed to finish CAF data chunk: {error}"),
                 )
             })?;
             file.sync_all().map_err(|error| {
                 caf_error(
                     DiagnosticCode::OutputWriteFailed,
-                    format!("同步临时 CAF 失败：{error}"),
+                    format!("Failed to sync temporary CAF: {error}"),
                 )
             })?;
             drop(file);
@@ -625,11 +628,14 @@ mod enabled {
             }
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Err(caf_error(
                 DiagnosticCode::OutputExists,
-                format!("输出路径在写入期间被创建：{}", output.display()),
+                format!(
+                    "Output path was created while writing: {}",
+                    output.display()
+                ),
             )),
             Err(error) => Err(caf_error(
                 DiagnosticCode::OutputCommitFailed,
-                format!("以原子 no-clobber 方式提交 core CAF 失败：{error}"),
+                format!("Failed to commit core CAF atomically without clobbering: {error}"),
             )),
         }
     }
@@ -646,13 +652,13 @@ mod enabled {
         .ok_or_else(|| {
             caf_error(
                 DiagnosticCode::InternalInvariantFailed,
-                format!("CAF track 来源 {source:?} 不存在"),
+                format!("CAF track source {source:?} does not exist"),
             )
         })?;
         channel.samples.get(frame).copied().ok_or_else(|| {
             caf_error(
                 DiagnosticCode::InternalInvariantFailed,
-                format!("CAF track 来源 {source:?} 短于声明时长"),
+                format!("CAF track source {source:?} is shorter than the declared duration"),
             )
         })
     }
@@ -667,13 +673,13 @@ mod enabled {
         let output = fs::canonicalize(output).map_err(|error| {
             caf_error(
                 DiagnosticCode::SerializationFailed,
-                format!("无法规范化 CAF 输出路径：{error}"),
+                format!("Failed to canonicalize CAF output path: {error}"),
             )
         })?;
         let lfe = selection.lfe.as_ref().ok_or_else(|| {
             caf_error(
                 DiagnosticCode::InternalInvariantFailed,
-                "CAF 摘要缺少已验证的 LFE 对象",
+                "CAF summary is missing the verified LFE object",
             )
         })?;
         let tracks = layout
@@ -685,7 +691,7 @@ mod enabled {
                     let scene = selection.objects.get(q).ok_or_else(|| {
                         caf_error(
                             DiagnosticCode::InternalInvariantFailed,
-                            "CAF 摘要的 q 来源超出对象数量",
+                            "CAF summary q source exceeds the object count",
                         )
                     })?;
                     Ok(json!({
@@ -720,7 +726,7 @@ mod enabled {
                     .ok_or_else(|| {
                         caf_error(
                             DiagnosticCode::InternalInvariantFailed,
-                            format!("CAF 布局没有引用 q{q}"),
+                            format!("CAF layout does not reference q{q}"),
                         )
                     })?;
                 Ok(json!({
@@ -750,7 +756,7 @@ mod enabled {
         .map_err(|error| {
             caf_error(
                 DiagnosticCode::SerializationFailed,
-                format!("序列化 core CAF 摘要失败：{error}"),
+                format!("Failed to serialize core CAF summary: {error}"),
             )
         })
     }

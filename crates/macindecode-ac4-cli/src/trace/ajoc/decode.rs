@@ -124,7 +124,10 @@ impl AjocTrace {
                 let slot_index = usize::try_from(substream_index).unwrap_or(usize::MAX);
                 let Some(slot) = contexts.get_mut(slot_index) else {
                     frame_failed = true;
-                    self.remember_failure(index, "A-JOC substream 下标超出统计容量");
+                    self.remember_failure(
+                        index,
+                        "A-JOC substream index exceeds statistics capacity",
+                    );
                     continue;
                 };
                 let frame_rate_fraction = match frame_rate_fraction {
@@ -163,7 +166,10 @@ impl AjocTrace {
                 if conflict {
                     self.reset_substream(substream_index);
                     frame_failed = true;
-                    self.remember_failure(index, "同一 A-JOC substream 的解析上下文冲突");
+                    self.remember_failure(
+                        index,
+                        "Conflicting parse contexts for the same A-JOC substream",
+                    );
                 }
             }
         }
@@ -263,7 +269,7 @@ impl AjocTrace {
             Ok(payload) => payload,
             Err(error) => {
                 self.reset_substream(substream_index);
-                self.remember_failure(location.index, &format!("定位失败：{error}"));
+                self.remember_failure(location.index, &format!("Location failed: {error}"));
                 return None;
             }
         };

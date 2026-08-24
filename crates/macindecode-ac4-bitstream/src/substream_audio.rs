@@ -109,37 +109,40 @@ impl fmt::Display for SubstreamAudioError {
                 frame_rate_factor,
             } => write!(
                 f,
-                "fs_index {fs_index}、frame_rate_index {frame_rate_index} 与因子 \
-                 {frame_rate_factor} 的组合在表 83/84/87 中没有帧长"
+                "The combination of fs_index {fs_index}, frame_rate_index {frame_rate_index}, and factor \
+                 {frame_rate_factor} has no frame length in Tables 83/84/87"
             ),
             SubstreamAudioError::UnsupportedBitstreamVersion { bitstream_version } => write!(
                 f,
-                "bitstream_version 为 {bitstream_version}，只有版本 2 能确定 sus_ver"
+                "bitstream_version is {bitstream_version}; sus_ver can only be determined for version 2"
             ),
             SubstreamAudioError::DownmixSignalsOutOfRange { declared } => write!(
                 f,
-                "n_fullband_dmx_signals 为 {declared}，超过本实现上限 {MAX_FULLBAND_DMX_SIGNALS}"
+                "n_fullband_dmx_signals is {declared}, exceeding implementation limit {MAX_FULLBAND_DMX_SIGNALS}"
             ),
             SubstreamAudioError::StaticDownmixUnsupported => {
-                write!(f, "b_static_dmx 为真，下混走 audio_data_chan，本实现未覆盖")
+                write!(
+                    f,
+                    "b_static_dmx is true, routing the downmix through unsupported audio_data_chan"
+                )
             }
             SubstreamAudioError::MultiSubstreamFrameRateUnsupported { frame_rate_factor } => {
                 write!(
                     f,
-                    "frame_rate_factor 为 {frame_rate_factor}，逐 substream 的 b_iframe 未保留"
+                    "frame_rate_factor is {frame_rate_factor}, but per-substream b_iframe was not retained"
                 )
             }
             SubstreamAudioError::FragmentedFrameRateUnsupported {
                 frame_rate_fraction,
             } => write!(
                 f,
-                "frame_rate_fraction 为 {frame_rate_fraction}，必须先重组跨传输帧的载荷"
+                "frame_rate_fraction is {frame_rate_fraction}; payloads spanning transport frames must be reassembled first"
             ),
             SubstreamAudioError::SamplingFrequencyUnsupported {
                 sampling_frequency_hz,
             } => write!(
                 f,
-                "substream 采样频率为 {sampling_frequency_hz} Hz，当前仅支持 44100 Hz 与 48000 Hz"
+                "Substream sample rate is {sampling_frequency_hz} Hz; only 44100 Hz and 48000 Hz are supported"
             ),
         }
     }

@@ -96,25 +96,37 @@ impl fmt::Display for AsfSpectrumError {
             AsfSpectrumError::Framing(error) => write!(f, "{error}"),
             AsfSpectrumError::ReservedSectionCodebook { sect_cb, group } => write!(
                 f,
-                "窗口组 {group} 的 sect_cb 为 {sect_cb}，12 至 15 不得使用"
+                "sect_cb {sect_cb} in window group {group} is forbidden; values 12 through 15 must not be used"
             ),
             AsfSpectrumError::SectionOverrunsMaxSfb {
                 group,
                 end,
                 max_sfb,
-            } => write!(f, "窗口组 {group} 的区段止于 {end}，超过 max_sfb {max_sfb}"),
+            } => write!(
+                f,
+                "Section in window group {group} ends at {end}, exceeding max_sfb {max_sfb}"
+            ),
             AsfSpectrumError::TooManySections { group } => {
-                write!(f, "窗口组 {group} 的区段数超出工作区容量 {MAX_SFB}")
+                write!(
+                    f,
+                    "Section count in window group {group} exceeds workspace capacity {MAX_SFB}"
+                )
             }
             AsfSpectrumError::LineIndexOutOfRange { line } => {
-                write!(f, "谱线下标 {line} 超出上限 {MAX_SPECTRAL_LINES}")
+                write!(
+                    f,
+                    "Spectral-line index {line} exceeds limit {MAX_SPECTRAL_LINES}"
+                )
             }
             AsfSpectrumError::ExtensionPrefixTooLong { prefix } => write!(
                 f,
-                "ext_decode 的一元前缀为 {prefix}，上限为 {MAX_EXT_PREFIX}"
+                "ext_decode unary prefix {prefix} exceeds limit {MAX_EXT_PREFIX}"
             ),
             AsfSpectrumError::QuantMagnitudeOutOfRange { magnitude } => {
-                write!(f, "量化谱线幅度 {magnitude} 超过上限 {MAX_QUANT_MAGNITUDE}")
+                write!(
+                    f,
+                    "Quantized spectral-line magnitude {magnitude} exceeds limit {MAX_QUANT_MAGNITUDE}"
+                )
             }
         }
     }

@@ -77,7 +77,7 @@ impl fmt::Display for DequantError {
                 levels,
             } => write!(
                 f,
-                "A-JOC {kind:?} {} 量化值 {value} 越出 0..{levels}",
+                "A-JOC {kind:?} {} quantized value {value} is outside 0..{levels}",
                 if *coarse { "coarse" } else { "fine" }
             ),
             Self::ArithmeticOverflow {
@@ -86,7 +86,7 @@ impl fmt::Display for DequantError {
                 value,
             } => write!(
                 f,
-                "A-JOC {kind:?} {} 量化值 {value} 的反量化整数公式溢出",
+                "Integer dequantization formula overflow for A-JOC {kind:?} {} quantized value {value}",
                 if *coarse { "coarse" } else { "fine" }
             ),
         }

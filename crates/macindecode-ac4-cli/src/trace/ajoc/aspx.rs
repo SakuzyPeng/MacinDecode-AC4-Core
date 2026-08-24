@@ -13,9 +13,10 @@ impl AjocTrace {
         match support {
             Ok(supported) => Some(supported),
             Err(blocker) => {
-                let error = format!("substream {substream_index}：{}", blocker.detail());
+                let error = format!("substream {substream_index}: {}", blocker.detail());
                 if self.aspx_unsupported_first_error.is_none() {
-                    self.aspx_unsupported_first_error = Some(format!("帧 {frame_index}：{error}"));
+                    self.aspx_unsupported_first_error =
+                        Some(format!("Frame {frame_index}: {error}"));
                 }
                 self.fail_aspx(substream_index, frame_index, error);
                 None
@@ -35,7 +36,7 @@ impl AjocTrace {
         }
         self.aspx_failures = self.aspx_failures.saturating_add(1);
         if self.aspx_first_error.is_none() {
-            self.aspx_first_error = Some(format!("帧 {frame_index}：{error}"));
+            self.aspx_first_error = Some(format!("Frame {frame_index}: {error}"));
         }
     }
 }

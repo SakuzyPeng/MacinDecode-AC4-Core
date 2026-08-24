@@ -81,18 +81,24 @@ impl fmt::Display for ChannelError {
             ChannelError::Framing(error) => write!(f, "{error}"),
             ChannelError::Spectrum(error) => write!(f, "{error}"),
             ChannelError::SpeechFrontendUnsupported => {
-                write!(f, "spec_frontend 选择了 SSF，本实现尚未覆盖语音频谱前端")
+                write!(
+                    f,
+                    "spec_frontend selected SSF; the speech spectrum front end is unsupported"
+                )
             }
             ChannelError::LfeBitWidthUnavailable { frame_len_base } => write!(
                 f,
-                "frame_len_base {frame_len_base} 在表 106 中没有 n_msfbl_bits"
+                "Table 106 has no n_msfbl_bits for frame_len_base {frame_len_base}"
             ),
             ChannelError::WorkspaceTooSmall { needed, provided } => {
-                write!(f, "该元素需要 {needed} 个工作区，只提供了 {provided} 个")
+                write!(
+                    f,
+                    "Element requires {needed} workspaces, but only {provided} were provided"
+                )
             }
             ChannelError::CompandingChannelsTooMany { channels, capacity } => write!(
                 f,
-                "压扩控制包含 {channels} 个逐声道状态，超过固定容量 {capacity}"
+                "Companding control contains {channels} per-channel states, exceeding fixed capacity {capacity}"
             ),
         }
     }
@@ -166,18 +172,24 @@ impl fmt::Display for ChannelMatrixError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsupportedChannelCount { channels } => {
-                write!(f, "声道元素包含 {channels} 个声道，矩阵处理只支持 1…3")
+                write!(
+                    f,
+                    "Channel element contains {channels} channels; matrix processing supports only 1..3"
+                )
             }
-            Self::MissingLayout { channel } => write!(f, "声道 {channel} 缺少窗口布局"),
+            Self::MissingLayout { channel } => write!(f, "Channel {channel} lacks a window layout"),
             Self::MissingMdctStereoFlag => {
-                write!(f, "两声道元素缺少 b_enable_mdct_stereo_proc")
+                write!(f, "Two-channel element lacks b_enable_mdct_stereo_proc")
             }
             Self::MissingStereoParameters { needed, provided } => write!(
                 f,
-                "声道矩阵需要 {needed} 份 chparam_info，只提供了 {provided} 份"
+                "Channel matrix requires {needed} chparam_info entries, but only {provided} were provided"
             ),
             Self::MissingSapData { parameter } => {
-                write!(f, "第 {parameter} 份 chparam_info 选择 SAP 但缺少 sap_data")
+                write!(
+                    f,
+                    "chparam_info entry {parameter} selects SAP but lacks sap_data"
+                )
             }
             Self::MissingSapAlphaDelta {
                 parameter,
@@ -185,7 +197,7 @@ impl fmt::Display for ChannelMatrixError {
                 sfb,
             } => write!(
                 f,
-                "第 {parameter} 份 chparam_info 的窗口组 {group} 频带 {sfb} 缺少 SAP alpha 差值"
+                "chparam_info entry {parameter}, window group {group}, band {sfb} lacks a SAP alpha delta"
             ),
             Self::SpectrumTooSmall {
                 channel,
@@ -193,13 +205,19 @@ impl fmt::Display for ChannelMatrixError {
                 provided,
             } => write!(
                 f,
-                "声道 {channel} 的谱线缓冲不足：需要 {needed}，只有 {provided}"
+                "Spectral-line buffer for channel {channel} is too small: need {needed}, have {provided}"
             ),
             Self::InvalidBandRange { group, sfb } => {
-                write!(f, "窗口组 {group} 频带 {sfb} 的谱线范围无效")
+                write!(
+                    f,
+                    "Invalid spectral-line range for window group {group}, band {sfb}"
+                )
             }
             Self::ReservedMatrixSelector { selector } => {
-                write!(f, "chel_matsel {selector} 是保留的三声道矩阵选择码")
+                write!(
+                    f,
+                    "chel_matsel {selector} is a reserved three-channel matrix selector"
+                )
             }
         }
     }
@@ -787,7 +805,7 @@ impl ChannelElement {
                     third,
                 )
             }
-            _ => unreachable!("声道数已在入口限制为 1…3"),
+            _ => unreachable!("channel count was restricted to 1..3 at entry"),
         }
     }
 }

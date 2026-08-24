@@ -60,17 +60,26 @@ impl fmt::Display for AjocDeError {
             AjocDeError::UmxSignalsOutOfRange {
                 num_umx_signals,
                 limit,
-            } => write!(f, "上混对象数 {num_umx_signals} 超过容量 {limit}"),
+            } => write!(
+                f,
+                "Upmix object count {num_umx_signals} exceeds capacity {limit}"
+            ),
             AjocDeError::DmxSignalsOutOfRange {
                 num_dmx_signals,
                 limit,
-            } => write!(f, "下混信号数 {num_dmx_signals} 超过容量 {limit}"),
+            } => write!(
+                f,
+                "Downmix signal count {num_dmx_signals} exceeds capacity {limit}"
+            ),
             AjocDeError::MissingConfiguration => {
-                write!(f, "当前帧未携带对话增强配置，也没有可沿用的历史配置")
+                write!(
+                    f,
+                    "Current frame has no dialogue-enhancement configuration and no prior configuration to continue"
+                )
             }
             AjocDeError::ObjectCountChanged { previous, current } => write!(
                 f,
-                "上一帧记录 {previous} 个对象，本帧为 {current}，无法沿用 de_main_dlg_flag"
+                "Previous frame recorded {previous} objects and current frame has {current}; de_main_dlg_flag cannot be continued"
             ),
         }
     }

@@ -6,9 +6,10 @@ pub(super) fn build_logic_dbmd(
     channel_count: usize,
     frame_rate: MasterFrameRate,
 ) -> Result<Vec<u8>, String> {
-    let channel_count = u16::try_from(channel_count).map_err(|_| "DBMD 声道数超出 u16")?;
+    let channel_count =
+        u16::try_from(channel_count).map_err(|_| "DBMD channel count exceeds u16")?;
     if channel_count > 128 {
-        return Err("DBMD Atmos supplemental 最多表示 128 路".to_owned());
+        return Err("DBMD Atmos supplemental data supports at most 128 channels".to_owned());
     }
 
     let mut out = Vec::new();
@@ -88,7 +89,9 @@ pub(super) fn set_dbmd_byte<const N: usize>(
     offset: usize,
     value: u8,
 ) -> Result<(), String> {
-    let byte = target.get_mut(offset).ok_or("内部 DBMD 字段偏移越界")?;
+    let byte = target
+        .get_mut(offset)
+        .ok_or("Internal DBMD field offset is out of bounds")?;
     *byte = value;
     Ok(())
 }
@@ -100,20 +103,20 @@ pub(super) fn copy_dbmd_ascii<const N: usize>(
     value: &str,
 ) -> Result<(), String> {
     if !value.is_ascii() || value.len() > width {
-        return Err("内部 DBMD ASCII 字段无效".to_owned());
+        return Err("Internal DBMD ASCII field is invalid".to_owned());
     }
     let end = offset
         .checked_add(value.len())
-        .ok_or("内部 DBMD ASCII 字段偏移溢出")?;
+        .ok_or("Internal DBMD ASCII field-offset overflow")?;
     let field = target
         .get_mut(offset..end)
-        .ok_or("内部 DBMD ASCII 字段越界")?;
+        .ok_or("Internal DBMD ASCII field is out of bounds")?;
     field.copy_from_slice(value.as_bytes());
     Ok(())
 }
 
 pub(super) fn append_dbmd_segment(out: &mut Vec<u8>, id: u8, payload: &[u8]) -> Result<(), String> {
-    let size = u16::try_from(payload.len()).map_err(|_| "DBMD segment 超出 u16")?;
+    let size = u16::try_from(payload.len()).map_err(|_| "DBMD segment exceeds u16")?;
     out.push(id);
     out.extend_from_slice(&size.to_le_bytes());
     out.extend_from_slice(payload);

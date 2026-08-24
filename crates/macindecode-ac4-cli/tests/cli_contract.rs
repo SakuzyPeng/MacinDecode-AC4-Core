@@ -30,6 +30,23 @@ fn diagnostics(stderr: &[u8]) -> Vec<serde_json::Value> {
         .collect()
 }
 
+fn assert_english_only(output: &[u8]) {
+    let output = std::str::from_utf8(output).expect("CLI output should be UTF-8");
+    assert!(
+        !output.chars().any(|character| matches!(
+            character,
+            '\u{3000}'..='\u{312f}'
+                | '\u{31a0}'..='\u{31bf}'
+                | '\u{3400}'..='\u{4dbf}'
+                | '\u{4e00}'..='\u{9fff}'
+                | '\u{ac00}'..='\u{d7af}'
+                | '\u{f900}'..='\u{faff}'
+                | '\u{ff00}'..='\u{ffef}'
+        )),
+        "CLI output must be English-only: {output}"
+    );
+}
+
 #[test]
 fn clap_errors_are_json_exit_two_and_help_version_stay_text() {
     let invalid = Command::new(env!("CARGO_BIN_EXE_macinac4"))
@@ -38,10 +55,11 @@ fn clap_errors_are_json_exit_two_and_help_version_stay_text() {
         .expect("应能启动 CLI");
     assert_eq!(invalid.status.code(), Some(2));
     assert!(invalid.stdout.is_empty());
+    assert_english_only(&invalid.stderr);
     let errors = diagnostics(&invalid.stderr);
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0]["code"], "cli.invalid_arguments");
-    assert_eq!(errors[0]["message"], "命令行参数无效");
+    assert_eq!(errors[0]["message"], "Invalid command-line arguments");
 
     for argument in ["--help", "--version"] {
         let output = Command::new(env!("CARGO_BIN_EXE_macinac4"))
@@ -59,6 +77,31 @@ fn clap_errors_are_json_exit_two_and_help_version_stay_text() {
 }
 
 #[test]
+fn every_help_page_is_english_only() {
+    for command in [
+        None,
+        Some("trace"),
+        Some("export-damf"),
+        Some("export-full-damf"),
+        Some("export-adm-bwf"),
+        Some("export-full-adm-bwf"),
+        Some("export-core-caf"),
+        Some("export-core-pcm"),
+        Some("export-aspx-pcm"),
+        Some("export-objects-pcm"),
+    ] {
+        let mut invocation = Command::new(env!("CARGO_BIN_EXE_macinac4"));
+        if let Some(command) = command {
+            invocation.arg(command);
+        }
+        let output = invocation.arg("--help").output().expect("CLI should start");
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        assert_english_only(&output.stdout);
+    }
+}
+
+#[test]
 fn runtime_errors_are_json_exit_one_with_empty_stdout() {
     let missing = format!("/definitely-missing-macinac4-input-{}", std::process::id());
     let output = Command::new(env!("CARGO_BIN_EXE_macinac4"))
@@ -68,6 +111,7 @@ fn runtime_errors_are_json_exit_one_with_empty_stdout() {
         .expect("应能启动 CLI");
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
+    assert_english_only(&output.stderr);
     let errors = diagnostics(&output.stderr);
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0]["code"], "input.read_failed");
@@ -84,9 +128,32 @@ fn runtime_errors_are_json_exit_one_with_empty_stdout() {
     std::fs::remove_file(&empty).expect("应能清理空输入");
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
+    assert_english_only(&output.stderr);
     let errors = diagnostics(&output.stderr);
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0]["code"], "input.invalid");
+
+    let malformed = std::env::temp_dir().join(format!(
+        "macinac4-malformed-contract-{}",
+        std::process::id()
+    ));
+    std::fs::write(&malformed, [0xac, 0x40, 0x00, 0x00]).expect("should write malformed input");
+    let output = Command::new(env!("CARGO_BIN_EXE_macinac4"))
+        .arg("trace")
+        .arg(&malformed)
+        .output()
+        .expect("CLI should start");
+    std::fs::remove_file(&malformed).expect("should remove malformed input");
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    assert_english_only(&output.stderr);
+    let errors = diagnostics(&output.stderr);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0]["code"], "parse.failed");
+    assert_eq!(
+        errors[0]["context"]["cause"],
+        "frame_size is zero at offset 0"
+    );
 }
 
 #[cfg(not(feature = "audio-decode"))]

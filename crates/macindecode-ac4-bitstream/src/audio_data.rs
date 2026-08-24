@@ -116,24 +116,36 @@ impl fmt::Display for AudioDataError {
             AudioDataError::AjocDe(error) => write!(f, "{error}"),
             AudioDataError::Oamd(error) => write!(f, "{error}"),
             AudioDataError::StaticDownmixUnsupported => {
-                write!(f, "b_static_dmx 为真，需要 audio_data_chan，本实现未覆盖")
+                write!(
+                    f,
+                    "b_static_dmx is true and requires unsupported audio_data_chan"
+                )
             }
             AudioDataError::AlternativeDataUnsupported => {
-                write!(f, "b_alternative 为真，备选对象数据集本实现未覆盖")
+                write!(
+                    f,
+                    "b_alternative is true; alternative object datasets are unsupported"
+                )
             }
             AudioDataError::TimingUnavailable { mode } => write!(
                 f,
-                "{mode} 模式未传输时间数据，且无可沿用的 num_obj_info_blocks"
+                "{mode} mode carries no timing data and has no prior num_obj_info_blocks to continue"
             ),
             AudioDataError::ZeroObjectInfoBlocksInIframe { mode } => {
-                write!(f, "I 帧的 {mode} 模式 num_obj_info_blocks 不得为零")
+                write!(
+                    f,
+                    "num_obj_info_blocks must not be zero for {mode} mode in an I-frame"
+                )
             }
             AudioDataError::ExtensionUnderflow { declared, consumed } => write!(
                 f,
-                "OAMD 扩展声明 {declared} 比特，少于 ajoc_bed_info 已消耗的 {consumed}"
+                "OAMD extension declares {declared} bits, fewer than the {consumed} consumed by ajoc_bed_info"
             ),
             AudioDataError::ObjectWorkspaceTooSmall { needed, provided } => {
-                write!(f, "该元素需要 {needed} 个对象槽位，只提供了 {provided} 个")
+                write!(
+                    f,
+                    "Element requires {needed} object slots, but only {provided} were provided"
+                )
             }
             AudioDataError::InvalidLfeLayout {
                 mode,
@@ -142,7 +154,7 @@ impl fmt::Display for AudioDataError {
                 actual,
             } => write!(
                 f,
-                "{mode} 模式对象 {index} 的 LFE 标志应为 {expected}，实际为 {actual}"
+                "LFE flag for object {index} in {mode} mode should be {expected}, got {actual}"
             ),
         }
     }

@@ -55,8 +55,8 @@ fn trace_frames(
     presented_duration: u64,
 ) -> Result<FrameTrace, String> {
     let table = SampleTable::parse(stbl).map_err(|e| e.to_string())?;
-    let presented_end =
-        i64::try_from(presented_duration).map_err(|_| "呈现时长超出有符号时间范围")?;
+    let presented_end = i64::try_from(presented_duration)
+        .map_err(|_| "Presentation duration exceeds the signed timeline range")?;
     let mut trace = FrameTrace {
         frames: 0,
         presented_frames: 0,
@@ -86,7 +86,7 @@ fn trace_frames(
         let media_end = info
             .composition_time
             .checked_add(i64::from(info.duration))
-            .ok_or("sample PTS 结束位置溢出")?;
+            .ok_or("Sample PTS end-position overflow")?;
         let presentation_end =
             media_time_to_presentation(media_end, media_timescale, movie_timescale, edits)
                 .map_err(|error| error.to_string())?;
@@ -107,7 +107,7 @@ fn trace_frames(
             trace.parse_failures = trace.parse_failures.saturating_add(1);
             trace
                 .topology
-                .record_parse_failure(info.index, "sample 范围超出文件");
+                .record_parse_failure(info.index, "Sample range exceeds the file size");
             continue;
         };
         trace
@@ -310,17 +310,18 @@ fn trace_topology() -> TopologyTrace {
 }
 
 pub(super) fn trace(data: &[u8]) -> Result<String, String> {
-    let moov = find_box(data, b"moov").ok_or("未找到 moov")?;
-    let mvhd = find_box(moov.payload, b"mvhd").ok_or("未找到 mvhd")?;
+    let moov = find_box(data, b"moov").ok_or("moov box not found")?;
+    let mvhd = find_box(moov.payload, b"mvhd").ok_or("mvhd box not found")?;
     let movie = parse_header_timing(*b"mvhd", mvhd.payload).map_err(|e| e.to_string())?;
 
-    let track = find_ac4_track(moov.payload).ok_or("未找到含 ac-4 sample entry 的轨道")?;
+    let track =
+        find_ac4_track(moov.payload).ok_or("No track with an ac-4 sample entry was found")?;
     let track_index = track.index;
     let trak = track.trak;
     let mdia = track.mdia;
     let stbl = track.stbl;
     let entry = track.sample_entry;
-    let mdhd = find_box(mdia.payload, b"mdhd").ok_or("未找到 mdhd")?;
+    let mdhd = find_box(mdia.payload, b"mdhd").ok_or("mdhd box not found")?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload).map_err(|e| e.to_string())?;
     let timescale = media.timescale;
     let duration = media.duration;
@@ -344,7 +345,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
         .payload
         .get(AUDIO_SAMPLE_ENTRY_LEN..)
         .and_then(|tail| find_box(tail, b"dac4"))
-        .ok_or("ac-4 sample entry 中无 dac4")?;
+        .ok_or("ac-4 sample entry has no dac4 box")?;
 
     let dsi = Ac4Dsi::parse(specific.payload).map_err(|error| error.to_string())?;
 

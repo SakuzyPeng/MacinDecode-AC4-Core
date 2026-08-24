@@ -26,7 +26,7 @@ impl fmt::Display for HuffmanError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             HuffmanError::Read(error) => write!(f, "{error}"),
-            HuffmanError::MalformedTable => write!(f, "Huffman 表结构损坏"),
+            HuffmanError::MalformedTable => write!(f, "Malformed Huffman table"),
         }
     }
 }

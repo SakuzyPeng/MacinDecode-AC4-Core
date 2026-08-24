@@ -23,7 +23,7 @@ pub(super) fn write_atomic_adm(
             .map_err(|error| {
                 cli_error(
                     DiagnosticCode::OutputCreateFailed,
-                    format!("打开临时 ADM BWF 失败：{error}"),
+                    format!("Failed to open temporary ADM BWF: {error}"),
                 )
             })?;
         write_adm_wave(
@@ -40,13 +40,16 @@ pub(super) fn write_atomic_adm(
         if output.exists() {
             return Err(cli_error(
                 DiagnosticCode::OutputExists,
-                format!("输出路径在写入期间被创建：{}", output.display()),
+                format!(
+                    "Output path was created while writing: {}",
+                    output.display()
+                ),
             ));
         }
         fs::rename(&temp, output).map_err(|error| {
             cli_error(
                 DiagnosticCode::OutputCommitFailed,
-                format!("提交 ADM BWF 失败：{error}"),
+                format!("Failed to commit ADM BWF: {error}"),
             )
         })?;
         Ok(())
@@ -72,10 +75,10 @@ pub(super) fn create_temp_file(output: &Path) -> Result<PathBuf, String> {
         {
             Ok(_) => return Ok(candidate),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(format!("无法创建临时 ADM BWF：{error}")),
+            Err(error) => return Err(format!("Failed to create temporary ADM BWF: {error}")),
         }
     }
-    Err("无法分配临时 ADM BWF 文件".to_owned())
+    Err("Failed to allocate a unique temporary ADM BWF file".to_owned())
 }
 
 pub(super) struct AdmWaveSpec<'a> {
@@ -102,7 +105,7 @@ pub(super) fn write_adm_wave(
     let channels = BED_CHANNELS
         .len()
         .checked_add(selected.len())
-        .ok_or("ADM BWF 声道数溢出")?;
+        .ok_or("ADM BWF channel-count overflow")?;
     write_adm_wave_payload(
         file,
         AdmWaveSpec {
@@ -135,27 +138,28 @@ where
         dbmd,
         compatibility,
     } = spec;
-    let channels_u16 = u16::try_from(channels).map_err(|_| "ADM BWF 声道数超出 u16")?;
+    let channels_u16 = u16::try_from(channels).map_err(|_| "ADM BWF channel count exceeds u16")?;
     let block_align_u64 = u64::from(channels_u16)
         .checked_mul(BYTES_PER_SAMPLE)
-        .ok_or("ADM BWF blockAlign 溢出")?;
-    let block_align = u16::try_from(block_align_u64).map_err(|_| "ADM BWF blockAlign 超出 u16")?;
+        .ok_or("ADM BWF blockAlign overflow")?;
+    let block_align =
+        u16::try_from(block_align_u64).map_err(|_| "ADM BWF blockAlign exceeds u16")?;
     let bytes_per_second = sample_rate
         .checked_mul(u32::from(block_align))
-        .ok_or("ADM BWF bytesPerSecond 溢出")?;
+        .ok_or("ADM BWF bytesPerSecond overflow")?;
     let data_size = frames
         .checked_mul(block_align_u64)
-        .ok_or("ADM BWF data 大小溢出")?;
-    let axml_size = u64::try_from(axml.len()).map_err(|_| "AXML 大小超出 u64")?;
-    let chna_size = u64::try_from(chna.len()).map_err(|_| "CHNA 大小超出 u64")?;
+        .ok_or("ADM BWF data-size overflow")?;
+    let axml_size = u64::try_from(axml.len()).map_err(|_| "AXML size exceeds u64")?;
+    let chna_size = u64::try_from(chna.len()).map_err(|_| "CHNA size exceeds u64")?;
     let dbmd_size = dbmd
-        .map(|value| u64::try_from(value.len()).map_err(|_| "DBMD 大小超出 u64"))
+        .map(|value| u64::try_from(value.len()).map_err(|_| "DBMD size exceeds u64"))
         .transpose()?;
     let dbmd_total = dbmd_size.map(chunk_total).transpose()?.unwrap_or(0);
     let axml_uses_ds64 = axml_size >= u64::from(u32::MAX);
     let ds64_payload_size = 28u64
         .checked_add(if axml_uses_ds64 { 12 } else { 0 })
-        .ok_or("ds64 大小溢出")?;
+        .ok_or("ds64 size overflow")?;
     let total_size = 12u64
         .checked_add(chunk_total(ds64_payload_size)?)
         .and_then(|value| value.checked_add(24))
@@ -163,8 +167,10 @@ where
         .and_then(|value| value.checked_add(chunk_total(axml_size).ok()?))
         .and_then(|value| value.checked_add(dbmd_total))
         .and_then(|value| value.checked_add(chunk_total(data_size).ok()?))
-        .ok_or("ADM BWF 文件大小溢出")?;
-    let riff_size = total_size.checked_sub(8).ok_or("ADM BWF 外层大小下溢")?;
+        .ok_or("ADM BWF file-size overflow")?;
+    let riff_size = total_size
+        .checked_sub(8)
+        .ok_or("ADM BWF outer-size underflow")?;
 
     let mut writer = BufWriter::new(file);
     writer
@@ -179,7 +185,7 @@ where
     writer
         .write_all(
             &u32::try_from(ds64_payload_size)
-                .map_err(|_| "ds64 payload 超出 u32")?
+                .map_err(|_| "ds64 payload exceeds u32")?
                 .to_le_bytes(),
         )
         .map_err(adm_io_error)?;
@@ -245,15 +251,15 @@ where
     writer.flush().map_err(adm_io_error)?;
     let file = writer
         .into_inner()
-        .map_err(|error| format!("完成 ADM BWF 写入失败：{}", error.error()))?;
+        .map_err(|error| format!("Failed to finish writing ADM BWF: {}", error.error()))?;
     file.sync_all()
-        .map_err(|error| format!("同步 ADM BWF 失败：{error}"))
+        .map_err(|error| format!("Failed to sync ADM BWF: {error}"))
 }
 
 pub(super) fn chunk_total(payload: u64) -> Result<u64, String> {
     8u64.checked_add(payload)
         .and_then(|value| value.checked_add(payload & 1))
-        .ok_or("RIFF chunk 大小溢出".to_owned())
+        .ok_or("RIFF chunk-size overflow".to_owned())
 }
 
 pub(super) fn write_chunk<W: Write>(
@@ -266,7 +272,7 @@ pub(super) fn write_chunk<W: Write>(
     let size = if uses_ds64 {
         u32::MAX
     } else {
-        u32::try_from(data.len()).map_err(|_| "RIFF chunk payload 超出 u32")?
+        u32::try_from(data.len()).map_err(|_| "RIFF chunk payload exceeds u32")?
     };
     writer
         .write_all(&size.to_le_bytes())

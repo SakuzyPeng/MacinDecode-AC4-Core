@@ -139,35 +139,35 @@ pub(crate) fn write_full_s24le<W: Write>(
                 .samples
                 .get(frame)
                 .copied()
-                .ok_or("full 对象 PCM 短于声明时长")?;
+                .ok_or("Full-object PCM is shorter than the declared duration")?;
             chunk.extend_from_slice(&full_s24_sample(sample, audio.linear_gain)?);
         }
         if chunk.len() >= channels.saturating_mul(3).saturating_mul(1024) {
             writer
                 .write_all(&chunk)
-                .map_err(|error| format!("写 full PCM 失败：{error}"))?;
+                .map_err(|error| format!("Failed to write full PCM: {error}"))?;
             chunk.clear();
         }
     }
     if !chunk.is_empty() {
         writer
             .write_all(&chunk)
-            .map_err(|error| format!("写 full PCM 失败：{error}"))?;
+            .map_err(|error| format!("Failed to write full PCM: {error}"))?;
     }
     Ok(())
 }
 
 pub(crate) fn full_s24_sample(sample: f32, linear_gain: f64) -> Result<[u8; 3], String> {
     if !sample.is_finite() {
-        return Err(format!("full PCM 样本 {sample:?} 不是有限值"));
+        return Err(format!("Full PCM sample {sample:?} is not finite"));
     }
     if !linear_gain.is_finite() || linear_gain <= 0.0 || linear_gain > 1.0 {
-        return Err(format!("full PCM 全局增益 {linear_gain:?} 无效"));
+        return Err(format!("Full PCM global gain {linear_gain:?} is invalid"));
     }
     let normalized = f64::from(sample) * linear_gain;
     if normalized.abs() > 32_768.0 + f64::EPSILON {
         return Err(format!(
-            "full PCM 样本 {sample:?} 经全局增益 {linear_gain:.12} 后仍超出 ±32768"
+            "Full PCM sample {sample:?} still exceeds ±32768 after applying global gain {linear_gain:.12}"
         ));
     }
     let value = (normalized / 32_768.0 * PCM_S24_MAX)
@@ -182,14 +182,14 @@ pub(crate) fn select_full_sources(
 ) -> Result<FullSourceSelection, FullSceneError> {
     if batch.decode_mode != DecodeMode::Full {
         return Err(FullSceneError::selection(
-            "full PCM 映射收到非 full Scene 批次",
+            "Full PCM mapping received a non-full scene batch",
         ));
     }
     let mut candidates = batch.elements.to_vec();
     candidates.sort_by_key(|item| (item.substream_index, item.object_index));
     if candidates.is_empty() {
         return Err(FullSceneError::unsupported(
-            "所选 presentation 没有可映射的 A-JOC full 对象",
+            "Selected presentation has no mappable A-JOC full objects",
         ));
     }
 
@@ -199,14 +199,13 @@ pub(crate) fn select_full_sources(
         .collect::<BTreeSet<_>>();
     if substreams.len() != 1 {
         return Err(FullSceneError::unsupported(format!(
-            "所选 presentation 引用了 {} 条 A-JOC full substream；当前只支持一条",
+            "Selected presentation references {} A-JOC full substreams; only one is currently supported",
             substreams.len()
         )));
     }
-    let substream = substreams
-        .first()
-        .copied()
-        .ok_or_else(|| FullSceneError::invariant("A-JOC full substream 集合意外为空"))?;
+    let substream = substreams.first().copied().ok_or_else(|| {
+        FullSceneError::invariant("A-JOC full substream set is unexpectedly empty")
+    })?;
 
     let mut lfe = None;
     let mut dynamic = Vec::new();
@@ -214,12 +213,12 @@ pub(crate) fn select_full_sources(
         if item.kind == MetadataElementKind::LfeBed {
             if lfe.is_some() {
                 return Err(FullSceneError::unsupported(
-                    "同一 A-JOC full substream 声明了多条 LFE",
+                    "One A-JOC full substream declares multiple LFE objects",
                 ));
             }
             if item.object_index != 0 {
                 return Err(FullSceneError::invariant(format!(
-                    "full LFE {}:{} 必须是对象索引 0 的 BED",
+                    "Full LFE {}:{} must be a bed at object index 0",
                     item.substream_index, item.object_index
                 )));
             }
@@ -230,17 +229,17 @@ pub(crate) fn select_full_sources(
     }
     if dynamic.is_empty() {
         return Err(FullSceneError::unsupported(
-            "所选 presentation 没有动态全频 full 对象",
+            "Selected presentation has no dynamic full-range full objects",
         ));
     }
     dynamic.sort_by_key(|item| item.object_index);
     let first_dynamic = usize::from(lfe.is_some());
     for (index, item) in dynamic.iter().enumerate() {
         let expected = u8::try_from(index.saturating_add(first_dynamic))
-            .map_err(|_| FullSceneError::invariant("full 对象数量超出 u8"))?;
+            .map_err(|_| FullSceneError::invariant("Full object count exceeds u8"))?;
         if item.object_index != expected {
             return Err(FullSceneError::unsupported(format!(
-                "full 全频对象索引不是从 {first_dynamic} 开始连续：期待 {expected}，实际为 {}",
+                "Full-range object indices are not contiguous from {first_dynamic}: expected {expected}, got {}",
                 item.object_index
             )));
         }
@@ -260,12 +259,12 @@ pub(crate) fn map_full_pcm<'a>(
 ) -> Result<FullMappedPcm<'a>, FullSceneError> {
     if pcm.sample_rate != batch.sample_rate {
         return Err(FullSceneError::invariant(format!(
-            "PCM 采样率 {} 与场景采样率 {} 不一致",
+            "PCM sample rate {} does not match scene sample rate {}",
             pcm.sample_rate, batch.sample_rate
         )));
     }
     let frames = usize::try_from(batch.duration_samples)
-        .map_err(|_| FullSceneError::invariant("呈现时长超出 usize"))?;
+        .map_err(|_| FullSceneError::invariant("Presentation duration exceeds usize"))?;
     let mut objects = vec![None; selection.objects.len()];
     let mut lfe = None;
     let mut output_channels = BTreeSet::new();
@@ -277,7 +276,7 @@ pub(crate) fn map_full_pcm<'a>(
     {
         if !output_channels.insert(channel.output_index) {
             return Err(FullSceneError::invariant(format!(
-                "full 对象输出位置 {} 重复",
+                "Full-object output position {} is duplicated",
                 channel.output_index
             )));
         }
@@ -286,29 +285,29 @@ pub(crate) fn map_full_pcm<'a>(
                 let count = objects.len();
                 let slot = objects.get_mut(object_index).ok_or_else(|| {
                     FullSceneError::invariant(format!(
-                        "PCM 声明 A-JOC 对象 {object_index}，full OAMD 只有 {count} 个对象"
+                        "PCM declares A-JOC object {object_index}, but full OAMD has only {count} objects"
                     ))
                 })?;
                 if slot.replace(channel).is_some() {
                     return Err(FullSceneError::invariant(format!(
-                        "A-JOC 对象 {object_index} 出现多路 PCM"
+                        "A-JOC object {object_index} has multiple PCM tracks"
                     )));
                 }
             }
             PcmTrackSource::Lfe if lfe.is_none() => lfe = Some(channel),
             PcmTrackSource::Lfe => {
                 return Err(FullSceneError::invariant(
-                    "同一 full substream 解出了多条 LFE PCM",
+                    "One full substream decoded multiple LFE PCM tracks",
                 ));
             }
             PcmTrackSource::TransportChannel { .. } => {
                 return Err(FullSceneError::invariant(
-                    "full 导出收到未经过 A-SPX 的传输侧元素 PCM",
+                    "Full export received transport-side element PCM that did not pass through A-SPX",
                 ));
             }
             PcmTrackSource::AjocInput { .. } => {
                 return Err(FullSceneError::invariant(
-                    "full 导出收到尚未经过 A-JOC 上混的输入 PCM",
+                    "Full export received input PCM that has not passed through A-JOC upmix",
                 ));
             }
         }
@@ -316,7 +315,7 @@ pub(crate) fn map_full_pcm<'a>(
 
     if selection.lfe.is_some() != lfe.is_some() {
         return Err(FullSceneError::invariant(format!(
-            "full OAMD 的 LFE={}，PCM 的 LFE={}，两者不一致",
+            "Full OAMD LFE={} does not match PCM LFE={}",
             selection.lfe.is_some(),
             lfe.is_some()
         )));
@@ -329,7 +328,7 @@ pub(crate) fn map_full_pcm<'a>(
         || output_channels.iter().copied().ne(0..expected_channels)
     {
         return Err(FullSceneError::invariant(format!(
-            "Pseudocode 15 输出位置必须连续为 0..{expected_channels}，实际为 {output_channels:?}"
+            "Pseudocode 15 output positions must be contiguous over 0..{expected_channels}; got {output_channels:?}"
         )));
     }
 
@@ -339,7 +338,7 @@ pub(crate) fn map_full_pcm<'a>(
         .map(|(object, channel)| {
             channel.ok_or_else(|| {
                 FullSceneError::invariant(format!(
-                    "full OAMD 对象 {} 缺少 PCM",
+                    "Full OAMD object {} has no PCM",
                     object.saturating_add(1)
                 ))
             })
@@ -348,7 +347,7 @@ pub(crate) fn map_full_pcm<'a>(
     for channel in objects.iter().copied().chain(lfe) {
         if channel.samples.len() != frames {
             return Err(FullSceneError::invariant(format!(
-                "substream {} 输出 {} 有 {} 个样本，呈现时长为 {frames}",
+                "Substream {} output {} has {} samples; presentation duration is {frames}",
                 channel.substream_index,
                 channel.output_index,
                 channel.samples.len()
@@ -356,7 +355,7 @@ pub(crate) fn map_full_pcm<'a>(
         }
         if let Some(sample) = channel.samples.iter().find(|sample| !sample.is_finite()) {
             return Err(FullSceneError::invariant(format!(
-                "full 对象 PCM 含非有限样本 {sample:?}"
+                "Full-object PCM contains a non-finite sample: {sample:?}"
             )));
         }
     }

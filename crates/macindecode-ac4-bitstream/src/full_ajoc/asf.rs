@@ -159,12 +159,12 @@ impl fmt::Display for FullAjocAsfError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "substream {}", self.substream_index)?;
         if let Some(element) = self.element_index {
-            write!(formatter, " 元素 {element}")?;
+            write!(formatter, " element {element}")?;
         }
         if let Some(channel) = self.channel_index {
-            write!(formatter, " 声道 {channel}")?;
+            write!(formatter, " channel {channel}")?;
         }
-        write!(formatter, "：{:?}", self.kind)
+        write!(formatter, ": {:?}", self.kind)
     }
 }
 

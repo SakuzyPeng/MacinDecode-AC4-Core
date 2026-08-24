@@ -80,7 +80,7 @@ fn append_engine_asf_observation(
     for index in 0..frame.channels() {
         let channel = frame.channel(index).ok_or_else(|| {
             format!(
-                "Full engine 声明 {} 路 ASF observation，但第 {index} 路不可读取",
+                "Full engine declares {} ASF observations, but observation {index} is unavailable",
                 frame.channels()
             )
         })?;
@@ -157,7 +157,7 @@ const fn engine_asf_failure_class(kind: FullAjocAsfErrorKind) -> EngineAsfFailur
 impl AjocTrace {
     /// 把统一 engine 的结构化 ASF 失败折回既有 trace 不变量字段。
     fn record_engine_asf_failure(&mut self, frame_index: u32, error: FullAjocAsfError) {
-        let detail = format!("帧 {frame_index} {error}");
+        let detail = format!("Frame {frame_index}: {error}");
         let occurrences = u64::try_from(error.nonfinite_samples().unwrap_or(1)).unwrap_or(u64::MAX);
         match engine_asf_failure_class(error.kind()) {
             EngineAsfFailureClass::ScaleFactor => {
@@ -262,7 +262,7 @@ impl AjocTrace {
     /// 不会抹掉旧 trace 已经记录的语法或核心带统计，也无需第二次解析载荷。
     #[expect(
         clippy::too_many_arguments,
-        reason = "trace 帧必须显式绑定载荷、拓扑引用、AU 时间与 LFE 位置"
+        reason = "trace frames must explicitly bind payload, topology references, AU time, and LFE position"
     )]
     pub(in crate::trace) fn observe_traced_audio(
         &mut self,
@@ -278,7 +278,7 @@ impl AjocTrace {
         let mut decoder = self
             .full_decoder
             .take()
-            .expect("ObserveFull 构造器必须建立统一 engine");
+            .expect("ObserveFull constructor must establish the unified engine");
         let input = FullAjocAudioFrameInput {
             syntax: FullAjocSyntaxFrameInput {
                 payload,
@@ -356,7 +356,7 @@ impl AjocTrace {
                                 self.object_shape_mismatches =
                                     self.object_shape_mismatches.saturating_add(1);
                                 self.object_shape_first_error
-                                    .get_or_insert_with(|| format!("帧 {frame_index}：{shape}"));
+                                    .get_or_insert_with(|| format!("Frame {frame_index}: {shape}"));
                             }
                         }
                         if let Err(blocker) = aspx_support {
@@ -430,7 +430,11 @@ impl AjocTrace {
             }
             Err(FullAjocAudioFrameError::Asf(error)) => {
                 self.record_engine_asf_failure(frame_index, error);
-                self.fail_aspx(substream_index, frame_index, format!("ASF 前端：{error}"));
+                self.fail_aspx(
+                    substream_index,
+                    frame_index,
+                    format!("ASF front end: {error}"),
+                );
             }
             Err(error) => {
                 self.fail_aspx(substream_index, frame_index, error.to_string());
@@ -464,7 +468,7 @@ impl AjocTrace {
             }
             Err(error) => {
                 let detail = error.detail().to_owned();
-                let remembered = format!("帧 {frame_index}：{detail}");
+                let remembered = format!("Frame {frame_index}: {detail}");
                 match error.kind() {
                     FullAjocDecodeErrorKind::Other => {}
                     FullAjocDecodeErrorKind::Unsupported => {
@@ -501,7 +505,7 @@ impl AjocTrace {
 
     pub(in crate::trace) fn remember_failure(&mut self, index: u32, message: &str) {
         if self.first_error.is_none() {
-            self.first_error = Some(format!("帧 {index}：{message}"));
+            self.first_error = Some(format!("Frame {index}: {message}"));
         }
     }
 
@@ -762,10 +766,9 @@ mod tests {
         );
 
         assert!(
-            trace
-                .aspx_unsupported_first_error
-                .as_deref()
-                .is_some_and(|error| error.starts_with("帧 4：substream 1：SIMPLE"))
+            trace.aspx_unsupported_first_error.as_deref().is_some_and(
+                |error| error.starts_with("Frame 4: substream 1: Global six-timeslot timeline")
+            )
         );
         assert_eq!(trace.aspx_failures, 2);
     }
@@ -786,7 +789,7 @@ mod tests {
             trace
                 .aspx_first_error
                 .as_deref()
-                .is_some_and(|detail| detail.contains("帧 9：音频语法"))
+                .is_some_and(|detail| detail.contains("Frame 9:"))
         );
         assert_eq!(trace.ajoc_reconstruction_failures, 0);
         assert_eq!(trace.objects_nonfinite, 0);

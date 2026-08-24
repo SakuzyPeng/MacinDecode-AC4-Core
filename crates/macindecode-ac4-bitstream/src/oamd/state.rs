@@ -147,12 +147,12 @@ pub enum OamdStateField {
 impl fmt::Display for OamdStateField {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::Basic => "基本信息",
-            Self::Gain => "对象增益",
-            Self::Render => "渲染信息",
-            Self::Position => "对象位置",
-            Self::Divergence => "对象 divergence",
-            Self::ParsedUpdate => "显式更新字段",
+            Self::Basic => "basic information",
+            Self::Gain => "object gain",
+            Self::Render => "rendering information",
+            Self::Position => "object position",
+            Self::Divergence => "object divergence",
+            Self::ParsedUpdate => "explicit update fields",
         })
     }
 }
@@ -182,11 +182,14 @@ impl fmt::Display for OamdStateError {
             Self::HistoryUnavailable {
                 object_index,
                 field,
-            } => write!(f, "对象 {object_index} 的{field}依赖不可用的前序状态"),
+            } => write!(
+                f,
+                "{field} for object {object_index} depends on unavailable prior state"
+            ),
             Self::ObjectIndexOutOfRange {
                 object_index,
                 limit,
-            } => write!(f, "OAMD 对象下标 {object_index} 超出上限 {limit}"),
+            } => write!(f, "OAMD object index {object_index} exceeds limit {limit}"),
         }
     }
 }

@@ -20,25 +20,30 @@ pub(crate) enum SelectionError {
 impl fmt::Display for SelectionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoDynamicObjects => formatter.write_str("所选 presentation 中没有动态全频对象"),
-            Self::InvalidSelector(raw) => write!(formatter, "无效对象选择器 {raw:?}"),
-            Self::InvalidSubstream(raw) => write!(formatter, "无效 substream 下标：{raw:?}"),
-            Self::InvalidObject(raw) => write!(formatter, "无效对象下标：{raw:?}"),
+            Self::NoDynamicObjects => {
+                formatter.write_str("Selected presentation has no dynamic full-range objects")
+            }
+            Self::InvalidSelector(raw) => write!(formatter, "Invalid object selector {raw:?}"),
+            Self::InvalidSubstream(raw) => write!(formatter, "Invalid substream index: {raw:?}"),
+            Self::InvalidObject(raw) => write!(formatter, "Invalid object index: {raw:?}"),
             Self::NoMatch(raw) => {
-                write!(formatter, "对象选择器 {raw:?} 没有匹配动态全频对象")
+                write!(
+                    formatter,
+                    "Object selector {raw:?} matches no dynamic full-range object"
+                )
             }
             Self::Ambiguous { selector, choices } => write!(
                 formatter,
-                "对象选择器 {selector:?} 有歧义，请使用 substream:object：{choices}"
+                "Object selector {selector:?} is ambiguous; use substream:object: {choices}"
             ),
-            Self::Duplicate(selector) => write!(formatter, "对象 {selector} 被重复选择"),
+            Self::Duplicate(selector) => write!(formatter, "Object {selector} was selected twice"),
             Self::ReservedGlobalTrim { selector, value } => write!(
                 formatter,
-                "对象 {selector} 的 OAMD common 使用保留 global_trim_mode {value}"
+                "OAMD common for object {selector} uses reserved global_trim_mode {value}"
             ),
             Self::ReservedHeadphoneMode { selector, value } => write!(
                 formatter,
-                "对象 {selector} 的 OAMD common 使用保留 hp_operation_mode {value}"
+                "OAMD common for object {selector} uses reserved hp_operation_mode {value}"
             ),
         }
     }

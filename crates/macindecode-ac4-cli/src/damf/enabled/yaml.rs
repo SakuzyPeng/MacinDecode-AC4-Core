@@ -3,16 +3,23 @@
 /// JSON 双引号字符串也是合法 YAML 1.2 scalar；复用 serde 的完整 UTF-8 与控制
 /// 字符转义，避免格式专属代码遗漏边界。
 pub(super) fn quote(value: &str) -> String {
-    serde_json::to_string(value).expect("String 必定可序列化为 YAML scalar")
+    serde_json::to_string(value).expect("String must be serializable as a YAML scalar")
 }
 
 /// 统一 LF、两空格缩进和末尾换行。
 pub(super) fn finish_lines(lines: Vec<String>) -> String {
     let mut out = String::new();
     for line in lines {
-        debug_assert!(!line.contains(['\r', '\n']), "YAML 行不得内嵌换行");
+        debug_assert!(
+            !line.contains(['\r', '\n']),
+            "YAML lines must not contain newlines"
+        );
         let indentation = line.bytes().take_while(|byte| *byte == b' ').count();
-        debug_assert_eq!(indentation % 2, 0, "DAMF YAML 必须使用两空格缩进");
+        debug_assert_eq!(
+            indentation % 2,
+            0,
+            "DAMF YAML must use two-space indentation"
+        );
         out.push_str(&line);
         out.push('\n');
     }

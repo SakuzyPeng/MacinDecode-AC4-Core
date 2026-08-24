@@ -140,27 +140,30 @@ pub(super) fn run(args: ExportAdmBwfArgs) -> Result<String, CliError> {
     if !args.probe_level_dbfs.is_finite() || !(-96.0..=0.0).contains(&args.probe_level_dbfs) {
         return Err(cli_error(
             DiagnosticCode::SelectionInvalid,
-            "--probe-level-dbfs 必须位于 -96..=0",
+            "--probe-level-dbfs must be within -96..=0",
         ));
     }
     if args.output.exists() {
         return Err(cli_error(
             DiagnosticCode::OutputExists,
-            format!("输出路径已存在：{}", args.output.display()),
+            format!("Output path already exists: {}", args.output.display()),
         ));
     }
     let parent = output_parent(&args.output);
     if !parent.is_dir() {
         return Err(cli_error(
             DiagnosticCode::OutputCreateFailed,
-            format!("输出文件的父目录不存在：{}", parent.display()),
+            format!(
+                "Output parent directory does not exist: {}",
+                parent.display()
+            ),
         ));
     }
 
     let data = fs::read(&args.input).map_err(|error| {
         cli_error(
             DiagnosticCode::InputReadFailed,
-            format!("无法读取 {}：{error}", args.input.display()),
+            format!("Failed to read {}: {error}", args.input.display()),
         )
     })?;
     let mode = match args.mode {
@@ -171,7 +174,7 @@ pub(super) fn run(args: ExportAdmBwfArgs) -> Result<String, CliError> {
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             cli_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
         None => PresentationSelection::AutoUnique,
@@ -191,7 +194,7 @@ pub(super) fn run(args: ExportAdmBwfArgs) -> Result<String, CliError> {
     if duration == 0 {
         return Err(cli_error(
             DiagnosticCode::InputInvalid,
-            "应用 edit 后的呈现时长为零",
+            "Presentation duration is zero after applying edits",
         ));
     }
     format_sample_time(duration, args.compatibility)
@@ -221,7 +224,7 @@ pub(super) fn run(args: ExportAdmBwfArgs) -> Result<String, CliError> {
         return Err(cli_error(
             DiagnosticCode::MappingUnsupported,
             format!(
-                "严格映射拒绝 {} 类无法精确表示的元数据：{}",
+                "Strict mapping rejected {} class(es) of metadata that cannot be represented exactly: {}",
                 warnings.items.len(),
                 warnings
                     .items
@@ -263,7 +266,7 @@ fn select_objects(
         select_metadata_elements(metadata, selectors, all).map_err(|error| error.to_string())?;
     if chosen.len() > MAX_PROBE_OBJECTS {
         return Err(format!(
-            "选择了 {} 个对象，7.1.2 ADM 试听探针最多容纳 {MAX_PROBE_OBJECTS} 个对象",
+            "Selected {} objects; the 7.1.2 ADM audition probe supports at most {MAX_PROBE_OBJECTS}",
             chosen.len()
         ));
     }
@@ -272,10 +275,10 @@ fn select_objects(
         .enumerate()
         .map(|(index, scene)| {
             let ordinal = u16::try_from(index.saturating_add(1))
-                .map_err(|_| "ADM 对象序号超出 u16".to_owned())?;
+                .map_err(|_| "ADM object ordinal exceeds u16".to_owned())?;
             let track_index =
                 u16::try_from(BED_CHANNELS.len().saturating_add(index.saturating_add(1)))
-                    .map_err(|_| "ADM track 下标超出 u16".to_owned())?;
+                    .map_err(|_| "ADM track index exceeds u16".to_owned())?;
             Ok(SelectedObject {
                 scene,
                 ordinal,
@@ -300,7 +303,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "common",
-            "所选 A-JOC 子流的 presentation 级 OAMD common 不一致，ADM 不写入冲突值",
+            "Selected A-JOC substreams have inconsistent presentation-level OAMD common metadata; ADM omits the conflicting value",
         );
     }
     if selected.iter().any(|item| item.scene.common_conflict) {
@@ -308,7 +311,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "common",
-            "输入时间线中的 OAMD common 发生变化，静态 ADM programme 无法精确表示",
+            "OAMD common changes over the input timeline and cannot be represented exactly by a static ADM programme",
         );
     }
     let Some(common) = common else {
@@ -319,7 +322,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "screen",
-            "OAMD 公共屏幕比例未映射到 ADM referenceScreen",
+            "OAMD common screen ratio is not mapped to ADM referenceScreen",
         );
     }
     if common.bed_object_chan_distribute {
@@ -327,7 +330,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "bed_distribution",
-            "OAMD bed/object 声道分配工具没有 ADM programme 等价值",
+            "The OAMD bed/object channel-distribution tool has no ADM programme equivalent",
         );
     }
     if common.trim.present {
@@ -335,7 +338,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "trim",
-            "OAMD trim 没有通用 ADM 等价值",
+            "OAMD trim has no general ADM equivalent",
         );
     }
     if common.bed_render_info.present {
@@ -343,7 +346,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "bed_render_info",
-            "OAMD bed render/downmix 工具没有通用 ADM 等价值",
+            "The OAMD bed render/downmix tool has no general ADM equivalent",
         );
     }
     if common.headphone.present {
@@ -351,7 +354,7 @@ fn append_common_warnings(selected: &[SelectedObject], warnings: &mut WarningSet
             "presentation",
             None,
             "headphone",
-            "OAMD 公共耳机模式不能无损转换为 ADM headphoneVirtualise",
+            "OAMD common headphone mode cannot be converted losslessly to ADM headphoneVirtualise",
         );
     }
 }
@@ -372,8 +375,8 @@ fn summary_json(
     compatibility: AdmCompatibility,
     warnings: &[MappingWarning],
 ) -> Result<String, String> {
-    let output =
-        fs::canonicalize(output).map_err(|error| format!("无法规范化输出路径：{error}"))?;
+    let output = fs::canonicalize(output)
+        .map_err(|error| format!("Failed to canonicalize output path: {error}"))?;
     let objects = selected
         .iter()
         .map(|object| {
@@ -470,7 +473,7 @@ fn format_sample_span_at(
     let end_units = samples_to_clock_units_at(end, sample_rate, units_per_second)?;
     let duration_units = end_units
         .checked_sub(start_units)
-        .ok_or("ADM block duration 下溢")?;
+        .ok_or("ADM block-duration underflow")?;
     format_clock_units(
         duration_units,
         units_per_second,
@@ -484,17 +487,17 @@ fn samples_to_clock_units_at(
     units_per_second: u64,
 ) -> Result<u64, String> {
     if sample_rate == 0 {
-        return Err("ADM 输出采样率为零".to_owned());
+        return Err("ADM output sample rate is zero".to_owned());
     }
     let scaled = u128::from(samples)
         .checked_mul(u128::from(units_per_second))
-        .ok_or("ADM 时间缩放溢出")?;
+        .ok_or("ADM time-rescaling overflow")?;
     let rounded = scaled
         .checked_add(u128::from(sample_rate / 2))
-        .ok_or("ADM 时间舍入溢出")?
+        .ok_or("ADM time-rounding overflow")?
         .checked_div(u128::from(sample_rate))
-        .ok_or("ADM 输出采样率为零")?;
-    u64::try_from(rounded).map_err(|_| "ADM 时间超出 u64".to_owned())
+        .ok_or("ADM output sample rate is zero")?;
+    u64::try_from(rounded).map_err(|_| "ADM time value exceeds u64".to_owned())
 }
 
 fn format_clock_units(
@@ -504,13 +507,15 @@ fn format_clock_units(
 ) -> Result<String, String> {
     let seconds = units
         .checked_div(units_per_second)
-        .ok_or("ADM 时钟单位为零")?;
+        .ok_or("ADM clock units per second is zero")?;
     let fraction = units
         .checked_rem(units_per_second)
-        .ok_or("ADM 时钟单位为零")?;
+        .ok_or("ADM clock units per second is zero")?;
     let hours = seconds / 3_600;
     if hours > 99 {
-        return Err("ADM BS.2076 时间字段无法表示 100 小时及以上时长".to_owned());
+        return Err(
+            "ADM BS.2076 time fields cannot represent durations of 100 hours or more".to_owned(),
+        );
     }
     let minutes = seconds % 3_600 / 60;
     let seconds = seconds % 60;
@@ -528,7 +533,7 @@ fn format_seconds_span_at(start: u64, end: u64, sample_rate: u32) -> Result<Stri
     let end_ns = samples_to_nanoseconds_at(end, sample_rate)?;
     let nanoseconds = end_ns
         .checked_sub(start_ns)
-        .ok_or("ADM interpolation duration 下溢")?;
+        .ok_or("ADM interpolation-duration underflow")?;
     let seconds = nanoseconds / 1_000_000_000;
     let fraction = nanoseconds % 1_000_000_000;
     let mut out = format!("{seconds}.{fraction:09}");
@@ -551,7 +556,8 @@ fn json_quote(value: &str) -> String {
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
             value if value.is_control() => {
-                write!(&mut out, "\\u{:04x}", u32::from(value)).expect("写入 String 不会失败");
+                write!(&mut out, "\\u{:04x}", u32::from(value))
+                    .expect("writing to String cannot fail");
             }
             value => out.push(value),
         }
@@ -575,7 +581,7 @@ fn number(value: f64) -> String {
 }
 
 fn adm_io_error(error: std::io::Error) -> String {
-    format!("写 ADM BWF 失败：{error}")
+    format!("Failed to write ADM BWF: {error}")
 }
 
 #[cfg(test)]

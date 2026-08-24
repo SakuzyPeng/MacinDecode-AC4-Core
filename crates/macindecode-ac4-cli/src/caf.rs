@@ -74,13 +74,13 @@ impl<W: Write + Seek> FloatCafWriter<W> {
         layout: CafChannelLayout,
     ) -> io::Result<Self> {
         if sample_rate == 0 {
-            return Err(invalid_input("CAF 采样率不能为零"));
+            return Err(invalid_input("CAF sample rate must not be zero"));
         }
-        let channels =
-            u32::try_from(layout.channels()).map_err(|_| invalid_input("CAF 声道数超出 u32"))?;
+        let channels = u32::try_from(layout.channels())
+            .map_err(|_| invalid_input("CAF channel count exceeds u32"))?;
         let bytes_per_packet = channels
             .checked_mul(u32::try_from(FLOAT32_BYTES).unwrap_or(4))
-            .ok_or_else(|| invalid_input("CAF 每 packet 字节数溢出"))?;
+            .ok_or_else(|| invalid_input("CAF bytes-per-packet overflow"))?;
 
         write_fourcc(&mut inner, *b"caff")?;
         write_u16(&mut inner, 1)?;
@@ -118,28 +118,30 @@ impl<W: Write + Seek> FloatCafWriter<W> {
     pub(crate) fn write_interleaved(&mut self, samples: &[f32]) -> io::Result<()> {
         if samples.len().checked_rem(self.channels) != Some(0) {
             return Err(invalid_input(format!(
-                "CAF interleaved 样本数 {} 不能组成 {} 声道完整帧",
+                "CAF interleaved sample count {} does not form complete {}-channel frames",
                 samples.len(),
                 self.channels
             )));
         }
         if let Some(sample) = samples.iter().find(|sample| !sample.is_finite()) {
-            return Err(invalid_input(format!("CAF PCM 含非有限样本 {sample:?}")));
+            return Err(invalid_input(format!(
+                "CAF PCM contains a non-finite sample: {sample:?}"
+            )));
         }
         let added = u64::try_from(samples.len())
             .ok()
             .and_then(|count| count.checked_mul(FLOAT32_BYTES))
-            .ok_or_else(|| invalid_input("CAF PCM 字节数溢出"))?;
+            .ok_or_else(|| invalid_input("CAF PCM byte-count overflow"))?;
         let new_total = self
             .pcm_bytes_written
             .checked_add(added)
-            .ok_or_else(|| invalid_input("CAF PCM 累计字节数溢出"))?;
+            .ok_or_else(|| invalid_input("CAF cumulative PCM byte-count overflow"))?;
         checked_data_chunk_size(new_total)?;
 
         let capacity = samples
             .len()
             .checked_mul(usize::try_from(FLOAT32_BYTES).unwrap_or(4))
-            .ok_or_else(|| invalid_input("CAF PCM 临时缓冲区长度溢出"))?;
+            .ok_or_else(|| invalid_input("CAF temporary PCM buffer length overflow"))?;
         let mut bytes = Vec::with_capacity(capacity);
         for sample in samples {
             bytes.extend_from_slice(&sample.to_bits().to_le_bytes());
@@ -163,8 +165,8 @@ impl<W: Write + Seek> FloatCafWriter<W> {
 fn checked_data_chunk_size(pcm_bytes: u64) -> io::Result<i64> {
     let size = pcm_bytes
         .checked_add(DATA_EDIT_COUNT_BYTES)
-        .ok_or_else(|| invalid_input("CAF data chunk 长度溢出"))?;
-    i64::try_from(size).map_err(|_| invalid_input("CAF data chunk 超出 i64"))
+        .ok_or_else(|| invalid_input("CAF data-chunk length overflow"))?;
+    i64::try_from(size).map_err(|_| invalid_input("CAF data chunk exceeds i64"))
 }
 
 fn invalid_input(message: impl Into<String>) -> io::Error {

@@ -64,7 +64,7 @@ impl fmt::Display for TimelineError {
                 let chars = name(&box_type);
                 write!(
                     f,
-                    "{}{}{}{} 负载不完整",
+                    "Truncated {}{}{}{} payload",
                     chars[0], chars[1], chars[2], chars[3]
                 )
             }
@@ -72,21 +72,24 @@ impl fmt::Display for TimelineError {
                 let chars = name(&box_type);
                 write!(
                     f,
-                    "{}{}{}{} 版本 {version} 未定义",
+                    "Undefined {}{}{}{} version {version}",
                     chars[0], chars[1], chars[2], chars[3]
                 )
             }
             TimelineError::TooManyEditEntries { declared, capacity } => {
-                write!(f, "elst 声明 {declared} 条编辑，超过容量 {capacity}")
+                write!(
+                    f,
+                    "elst declares {declared} edits, exceeding capacity {capacity}"
+                )
             }
             TimelineError::UnsupportedMediaRate { integer, fraction } => {
-                write!(f, "暂不支持 edit list 播放速率 {integer}.{fraction}")
+                write!(f, "Unsupported edit-list media rate {integer}.{fraction}")
             }
-            TimelineError::ZeroTimescale => write!(f, "movie/media 时间刻度不得为 0"),
+            TimelineError::ZeroTimescale => write!(f, "Movie/media timescale must not be zero"),
             TimelineError::InvalidMediaTime { value } => {
-                write!(f, "edit list media_time {value} 未定义")
+                write!(f, "Edit-list media_time {value} is undefined")
             }
-            TimelineError::TimeOverflow => write!(f, "容器时间换算溢出"),
+            TimelineError::TimeOverflow => write!(f, "Container time conversion overflow"),
         }
     }
 }

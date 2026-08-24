@@ -32,14 +32,14 @@ pub(super) fn run(args: ExportFullAdmBwfArgs) -> Result<String, CliError> {
     let data = fs::read(&args.input).map_err(|error| {
         full_error(
             DiagnosticCode::InputReadFailed,
-            format!("无法读取 {}：{error}", args.input.display()),
+            format!("Failed to read {}: {error}", args.input.display()),
         )
     })?;
     let presentation_selection = match args.presentation {
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             full_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
         None => PresentationSelection::AutoUnique,
@@ -54,13 +54,13 @@ pub(super) fn run(args: ExportFullAdmBwfArgs) -> Result<String, CliError> {
     let duration = u64::try_from(audio.frames).map_err(|_| {
         full_error(
             DiagnosticCode::InternalInvariantFailed,
-            "full ADM PCM 帧数超出 u64",
+            "Full ADM PCM frame count exceeds u64",
         )
     })?;
     if duration == 0 {
         return Err(full_error(
             DiagnosticCode::InputInvalid,
-            "应用 edit 后的呈现时长为零",
+            "Presentation duration is zero after applying edits",
         ));
     }
     format_sample_time_at(duration, pcm.sample_rate, args.compatibility)
@@ -86,7 +86,7 @@ pub(super) fn run(args: ExportFullAdmBwfArgs) -> Result<String, CliError> {
         .ok_or_else(|| {
             full_error(
                 DiagnosticCode::InternalInvariantFailed,
-                "full ADM 声道数溢出",
+                "Full ADM channel-count overflow",
             )
         })?;
     let dbmd = match args.compatibility {
@@ -100,7 +100,7 @@ pub(super) fn run(args: ExportFullAdmBwfArgs) -> Result<String, CliError> {
         return Err(full_error(
             DiagnosticCode::MappingUnsupported,
             format!(
-                "严格映射拒绝 {} 类无法精确表示的元数据：{}",
+                "Strict mapping rejected {} class(es) of metadata that cannot be represented exactly: {}",
                 warnings.items.len(),
                 warnings
                     .items
@@ -140,14 +140,17 @@ fn ensure_output(output: &Path) -> Result<(), CliError> {
     if fs::symlink_metadata(output).is_ok() {
         return Err(full_error(
             DiagnosticCode::OutputExists,
-            format!("输出路径已存在：{}", output.display()),
+            format!("Output path already exists: {}", output.display()),
         ));
     }
     let parent = output_parent(output);
     if !parent.is_dir() {
         return Err(full_error(
             DiagnosticCode::OutputCreateFailed,
-            format!("输出文件的父目录不存在：{}", parent.display()),
+            format!(
+                "Output parent directory does not exist: {}",
+                parent.display()
+            ),
         ));
     }
     Ok(())
@@ -200,7 +203,7 @@ fn select_full_objects(metadata: &MetadataBatch) -> Result<FullSelection, CliErr
             let ordinal = u16::try_from(index.saturating_add(1)).map_err(|_| {
                 full_error(
                     DiagnosticCode::InternalInvariantFailed,
-                    "ADM 对象序号超出 u16",
+                    "ADM object ordinal exceeds u16",
                 )
             })?;
             let track_index = u16::try_from(
@@ -209,7 +212,7 @@ fn select_full_objects(metadata: &MetadataBatch) -> Result<FullSelection, CliErr
             .map_err(|_| {
                 full_error(
                     DiagnosticCode::InternalInvariantFailed,
-                    "ADM track 下标超出 u16",
+                    "ADM track index exceeds u16",
                 )
             })?;
             Ok(SelectedObject {
@@ -243,13 +246,13 @@ fn write_atomic_full_adm(
             .map_err(|error| {
                 full_error(
                     DiagnosticCode::OutputCreateFailed,
-                    format!("打开临时 full ADM BWF 失败：{error}"),
+                    format!("Failed to open temporary full ADM BWF: {error}"),
                 )
             })?;
         let frames = u64::try_from(audio.frames).map_err(|_| {
             full_error(
                 DiagnosticCode::InternalInvariantFailed,
-                "full ADM PCM 帧数超出 u64",
+                "Full ADM PCM frame count exceeds u64",
             )
         })?;
         write_adm_wave_payload(
@@ -285,11 +288,14 @@ fn publish_temp_noclobber(temp: &Path, output: &Path) -> Result<(), CliError> {
         }
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Err(full_error(
             DiagnosticCode::OutputExists,
-            format!("输出路径在写入期间被创建：{}", output.display()),
+            format!(
+                "Output path was created while writing: {}",
+                output.display()
+            ),
         )),
         Err(error) => Err(full_error(
             DiagnosticCode::OutputCommitFailed,
-            format!("以原子 no-clobber 方式提交 full ADM BWF 失败：{error}"),
+            format!("Failed to commit full ADM BWF atomically without clobbering: {error}"),
         )),
     }
 }
@@ -306,8 +312,8 @@ fn summary_json(
     compatibility: AdmCompatibility,
     warnings: &[MappingWarning],
 ) -> Result<String, String> {
-    let output =
-        fs::canonicalize(output).map_err(|error| format!("无法规范化输出路径：{error}"))?;
+    let output = fs::canonicalize(output)
+        .map_err(|error| format!("Failed to canonicalize output path: {error}"))?;
     let objects = selection
         .objects
         .iter()

@@ -79,12 +79,12 @@ impl AxmlWriter {
     fn finish(self) -> Result<String, String> {
         let mut bytes = self.inner.into_inner();
         bytes.push(b'\n');
-        String::from_utf8(bytes).map_err(|error| format!("AXML 不是 UTF-8：{error}"))
+        String::from_utf8(bytes).map_err(|error| format!("AXML is not UTF-8: {error}"))
     }
 }
 
 fn xml_write_error(error: std::io::Error) -> String {
-    format!("AXML 事件写出失败：{error}")
+    format!("Failed to write AXML event: {error}")
 }
 
 pub(super) fn build_axml(
@@ -393,23 +393,23 @@ fn append_object_block(
     let state = event.state;
     let render = state.render.ok_or_else(|| {
         format!(
-            "对象 {selector} 在 sample {} 缺少完整 render 状态",
+            "Object {selector} lacks a complete render state at sample {}",
             event.sample
         )
     })?;
     let basic = state.basic.ok_or_else(|| {
         format!(
-            "对象 {selector} 在 sample {} 缺少完整 basic 状态",
+            "Object {selector} lacks a complete basic state at sample {}",
             event.sample
         )
     })?;
     let block_number = u32::try_from(index.saturating_add(1))
-        .map_err(|_| format!("对象 {selector} 的 audioBlockFormat 数量超出 u32"))?;
+        .map_err(|_| format!("audioBlockFormat count for object {selector} exceeds u32"))?;
     let rtime = format_sample_time_at(event.sample, sample_rate, compatibility)?;
     let block_end = event
         .sample
         .checked_add(block_duration)
-        .ok_or("ADM block 结束采样位置溢出")?;
+        .ok_or("ADM block end-sample-position overflow")?;
     let duration = format_sample_span_at(event.sample, block_end, sample_rate, compatibility)?;
     let block_id = block_id(channel_id, block_number);
     xml.start(
@@ -442,7 +442,7 @@ fn append_object_block(
         }
         Some(_) => {
             return Err(format!(
-                "对象 {selector} 在 sample {} 使用超出五比特范围的 width",
+                "Object {selector} uses a width outside the five-bit range at sample {}",
                 event.sample
             ));
         }
@@ -462,18 +462,20 @@ fn append_object_block(
             selector,
             i64::try_from(event.sample).ok(),
             "elevation",
-            "OAMD elevation 约束没有通用 ADM Objects 等价值",
+            "The OAMD elevation constraint has no general ADM Objects equivalent",
         );
     }
     if zone_mask != 0 {
         if zone_mask > 6 {
-            return Err(format!("对象 {selector} 使用保留 zone_mask {zone_mask}"));
+            return Err(format!(
+                "Object {selector} uses reserved zone_mask {zone_mask}"
+            ));
         }
         warnings.push(
             selector,
             i64::try_from(event.sample).ok(),
             "zones",
-            "OAMD 离散渲染区域没有经验证的 ADM zoneExclusion 几何等价值",
+            "OAMD discrete rendering zones have no verified ADM zoneExclusion geometry equivalent",
         );
     }
 
@@ -483,14 +485,14 @@ fn append_object_block(
             selector,
             i64::try_from(event.sample).ok(),
             "ramp",
-            "OAMD ramp 跨过下一事件，ADM interpolationLength 截断到当前 block duration",
+            "OAMD ramp crosses the next event; ADM interpolationLength is truncated to the current block duration",
         );
         ramp = block_duration;
     }
     let ramp_end = event
         .sample
         .checked_add(ramp)
-        .ok_or("ADM interpolation 结束采样位置溢出")?;
+        .ok_or("ADM interpolation end-sample-position overflow")?;
     let interpolation_length = format_seconds_span_at(event.sample, ramp_end, sample_rate)?;
     xml.element(
         "jumpPosition",
@@ -504,7 +506,7 @@ fn append_object_block(
             selector,
             i64::try_from(event.sample).ok(),
             "screen_factor",
-            "OAMD 连续 screen factor 在 ADM 中只能降为 screenRef 布尔值",
+            "Continuous OAMD screen factor can only be reduced to the ADM screenRef Boolean",
         );
     }
 
@@ -515,7 +517,7 @@ fn append_object_block(
                 selector,
                 i64::try_from(event.sample).ok(),
                 "importance",
-                "OAMD 5 比特 priority 已舍入到 ADM 0..10 importance",
+                "Five-bit OAMD priority was rounded to ADM importance 0..10",
             );
         }
     }
@@ -537,7 +539,7 @@ pub(super) fn append_unmapped_event_warnings(
             selector,
             sample,
             "depth_factor",
-            "OAMD depth factor 不是 ADM Objects 的声源 depth extent，未伪映射",
+            "OAMD depth factor is not an ADM Objects source depth extent and was not mapped",
         );
     }
     if other.object_at_infinity == Some(true) || other.distance_factor_code.is_some() {
@@ -545,7 +547,7 @@ pub(super) fn append_unmapped_event_warnings(
             selector,
             sample,
             "distance",
-            "Cartesian ADM position 没有 OAMD distance/infinity 的无损等价值",
+            "Cartesian ADM position has no lossless equivalent for OAMD distance/infinity",
         );
     }
     if other.divergence_mode.is_some()
@@ -554,13 +556,13 @@ pub(super) fn append_unmapped_event_warnings(
     {
         if other.divergence_mode == Some(3) {
             return Err(format!(
-                "对象 {selector} 在 sample {} 使用保留 object_div_mode 3",
+                "Object {selector} uses reserved object_div_mode 3 at sample {}",
                 event.sample
             ));
         }
         if other.divergence_code == Some(0) {
             return Err(format!(
-                "对象 {selector} 在 sample {} 使用保留 object_div_code 0",
+                "Object {selector} uses reserved object_div_code 0 at sample {}",
                 event.sample
             ));
         }
@@ -568,7 +570,7 @@ pub(super) fn append_unmapped_event_warnings(
             selector,
             sample,
             "divergence",
-            "OAMD divergence 量化表尚未验证，未伪映射为 ADM objectDivergence",
+            "The OAMD divergence quantization table is not verified and was not mapped to ADM objectDivergence",
         );
     }
     if event.additional.trim_disabled {
@@ -576,7 +578,7 @@ pub(super) fn append_unmapped_event_warnings(
             selector,
             sample,
             "trim",
-            "逐对象 trim bypass 没有通用 ADM 等价值",
+            "Per-object trim bypass has no general ADM equivalent",
         );
     }
     if event.additional.headphone.is_some() {
@@ -584,7 +586,7 @@ pub(super) fn append_unmapped_event_warnings(
             selector,
             sample,
             "headphone",
-            "OAMD 近/远与头部跟踪模式不能无损转换为 ADM headphoneVirtualise",
+            "OAMD near/far and head-tracking modes cannot be converted losslessly to ADM headphoneVirtualise",
         );
     }
     Ok(())
@@ -731,11 +733,11 @@ pub(super) fn build_chna(selected: &[SelectedObject]) -> Result<Vec<u8>, String>
     let tracks = BED_CHANNELS
         .len()
         .checked_add(selected.len())
-        .ok_or("CHNA track 数量溢出")?;
-    let tracks = u16::try_from(tracks).map_err(|_| "CHNA track 数量超出 u16")?;
+        .ok_or("CHNA track-count overflow")?;
+    let tracks = u16::try_from(tracks).map_err(|_| "CHNA track count exceeds u16")?;
     let capacity = 4usize
         .checked_add(usize::from(tracks).saturating_mul(40))
-        .ok_or("CHNA payload 容量溢出")?;
+        .ok_or("CHNA payload-capacity overflow")?;
     let mut out = Vec::with_capacity(capacity);
     out.extend_from_slice(&tracks.to_le_bytes());
     out.extend_from_slice(&tracks.to_le_bytes());
@@ -770,12 +772,14 @@ pub(super) fn append_chna_entry(
 
 pub(super) fn fixed_ascii<const N: usize>(value: &str, field: &str) -> Result<[u8; N], String> {
     if !value.is_ascii() || value.len() > N {
-        return Err(format!("{field} 无法写入 {N} 字节定长字段：{value:?}"));
+        return Err(format!(
+            "{field} cannot be written to a fixed-width {N}-byte field: {value:?}"
+        ));
     }
     let mut out = [0u8; N];
     let target = out
         .get_mut(..value.len())
-        .ok_or_else(|| format!("{field} 长度超出定长字段"))?;
+        .ok_or_else(|| format!("{field} length exceeds its fixed-width field"))?;
     target.copy_from_slice(value.as_bytes());
     Ok(out)
 }

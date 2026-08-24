@@ -140,22 +140,21 @@ struct AspxFrameIdentity {
 impl fmt::Display for AspxBlocker {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Self::ActiveCompanding => {
-                formatter.write_str("启用了尚未实现的 5.7.5 companding，不能导出 A-SPX PCM")
-            }
-            Self::Interleaving => {
-                formatter.write_str("启用了尚未实现的 5.7.6.5 FIC/TIC 交织，不能导出 A-SPX PCM")
-            }
-            Self::SimpleTimeline => {
-                formatter.write_str("SIMPLE 模式的终端 QMF 全局 6 时隙时间轴尚未裁决")
-            }
+            Self::ActiveCompanding => formatter
+                .write_str("Unsupported 5.7.5 companding is enabled; A-SPX PCM cannot be exported"),
+            Self::Interleaving => formatter.write_str(
+                "Unsupported 5.7.6.5 FIC/TIC interleaving is enabled; A-SPX PCM cannot be exported",
+            ),
+            Self::SimpleTimeline => formatter.write_str(
+                "Global six-timeslot timeline for final QMF in SIMPLE mode is unresolved",
+            ),
             Self::ShortFrameTimeline { frame_length } => write!(
                 formatter,
-                "短帧 {frame_length} 的 ts_offset_hfgen=3 与终端 QMF 全局 6 时隙时间轴尚未裁决"
+                "ts_offset_hfgen=3 for short frame {frame_length} and the global six-timeslot final-QMF timeline are unresolved"
             ),
             Self::UnsupportedFrameAlignment { frame_length } => write!(
                 formatter,
-                "帧长 {frame_length} 不在表 188/189 的公共支持集合中"
+                "Frame length {frame_length} is not in the common support set of Tables 188/189"
             ),
         }
     }
@@ -224,37 +223,40 @@ impl FullAjocBlocker {
 impl fmt::Display for FullAjocBlocker {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Self::Aspx(blocker) => write!(formatter, "A-JOC full 前置路径不受支持：{blocker}"),
+            Self::Aspx(blocker) => write!(
+                formatter,
+                "Unsupported A-JOC full prerequisite path: {blocker}"
+            ),
             Self::SamplingFrequency {
                 sampling_frequency_hz,
             } => write!(
                 formatter,
-                "A-JOC full 当前只支持 48000 Hz，实际为 {sampling_frequency_hz} Hz"
+                "A-JOC full currently supports only 48000 Hz; got {sampling_frequency_hz} Hz"
             ),
             Self::MultipleSubstreams {
                 physical_substreams,
             } => write!(
                 formatter,
-                "A-JOC full 当前只支持一条物理 substream，输出范围包含 {physical_substreams} 条"
+                "A-JOC full currently supports one physical substream; output range contains {physical_substreams}"
             ),
             Self::DmxSignals { num_dmx_signals } => write!(
                 formatter,
-                "A-JOC full 下混信号数 {num_dmx_signals} 不在 1..={MAX_AJOC_DMX_SIGNALS}"
+                "A-JOC full downmix signal count {num_dmx_signals} is outside 1..={MAX_AJOC_DMX_SIGNALS}"
             ),
             Self::UmxSignals { num_umx_signals } => write!(
                 formatter,
-                "A-JOC full 上混信号数 {num_umx_signals} 不在 1..={MAX_RECONSTRUCTED_OBJECTS}"
+                "A-JOC full upmix signal count {num_umx_signals} is outside 1..={MAX_RECONSTRUCTED_OBJECTS}"
             ),
-            Self::ReservedDataPointCount => {
-                formatter.write_str("ajoc_num_dpoints 为保留值 3，不能进入 A-JOC full 重建")
-            }
+            Self::ReservedDataPointCount => formatter.write_str(
+                "ajoc_num_dpoints is reserved value 3 and cannot enter A-JOC full reconstruction",
+            ),
             Self::DataPointCountOutOfRange { data_points } => write!(
                 formatter,
-                "ajoc_num_dpoints 为 {data_points}，超过 2 位字段上限 {MAX_DATA_POINTS}"
+                "ajoc_num_dpoints is {data_points}, exceeding the two-bit field limit {MAX_DATA_POINTS}"
             ),
             Self::ActiveDialogueEnhancement { dialogue_objects } => write!(
                 formatter,
-                "A-JOC full 启用了 {dialogue_objects} 个 dialogue enhancement 对象"
+                "A-JOC full enables {dialogue_objects} dialogue-enhancement objects"
             ),
         }
     }

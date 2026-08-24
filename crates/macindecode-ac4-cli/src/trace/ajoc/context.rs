@@ -140,7 +140,7 @@ fn scene_timing(context: EffectiveSceneContext, mode: DecodeMode) -> Option<Oamd
 #[derive(Debug, Clone, Copy)]
 #[expect(
     clippy::large_enum_variant,
-    reason = "固定容量逐帧上下文保持 Copy，避免每帧为有效 substream 分配堆内存"
+    reason = "fixed-capacity per-frame contexts remain Copy and avoid per-frame heap allocation"
 )]
 pub(crate) enum AjocContextSlot {
     Empty,
@@ -165,12 +165,14 @@ pub(crate) fn group_frame_rate_fraction(
             continue;
         }
         if presentation.frame_rate_factor != parsed_factor {
-            return Err("同一 group 的 frame_rate_factor 声明冲突");
+            return Err("Conflicting frame_rate_factor declarations for the same group");
         }
         match fraction {
             None => fraction = Some(presentation.frame_rate_fraction),
             Some(current) if current == presentation.frame_rate_fraction => {}
-            Some(_) => return Err("同一 group 的 frame_rate_fraction 声明冲突"),
+            Some(_) => {
+                return Err("Conflicting frame_rate_fraction declarations for the same group");
+            }
         }
     }
     Ok(fraction.unwrap_or(1))

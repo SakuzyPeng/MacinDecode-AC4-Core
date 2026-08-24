@@ -29,7 +29,10 @@ impl fmt::Display for BoxError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             BoxError::HeaderTruncated { offset, available } => {
-                write!(f, "偏移 {offset} 处 box 头部不完整，仅剩 {available} 字节")
+                write!(
+                    f,
+                    "Truncated box header at offset {offset}; only {available} bytes remain"
+                )
             }
             BoxError::SizeInvalid {
                 offset,
@@ -38,7 +41,7 @@ impl fmt::Display for BoxError {
             } => {
                 write!(
                     f,
-                    "偏移 {offset} 处 box 声明尺寸 {declared}，但仅有 {available} 字节可用"
+                    "Box at offset {offset} declares size {declared}, but only {available} bytes are available"
                 )
             }
         }

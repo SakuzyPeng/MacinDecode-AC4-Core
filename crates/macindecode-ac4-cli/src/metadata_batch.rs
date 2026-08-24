@@ -111,7 +111,7 @@ pub(crate) fn project_metadata_events(
     if media_span.start_sample > media_span.end_sample
         || media_span.end_sample > batch.duration_samples
     {
-        return Err("媒体 edit 可见区间超出呈现时间线".to_owned());
+        return Err("Media-edit visible range exceeds the presentation timeline".to_owned());
     }
 
     let visible_start = scale_u64_round(
@@ -125,13 +125,14 @@ pub(crate) fn project_metadata_events(
         u64::from(batch.sample_rate),
     )?;
     if visible_start > visible_end || visible_end > duration {
-        return Err("媒体 edit 可见区间超出导出时长".to_owned());
+        return Err("Media-edit visible range exceeds the export duration".to_owned());
     }
     if visible_start == visible_end {
         return Ok(vec![inactive]);
     }
-    let visible_start_i64 = i64::try_from(visible_start).map_err(|_| "媒体 edit 起点超出 i64")?;
-    let visible_end_i64 = i64::try_from(visible_end).map_err(|_| "媒体 edit 终点超出 i64")?;
+    let visible_start_i64 =
+        i64::try_from(visible_start).map_err(|_| "Media-edit start exceeds i64")?;
+    let visible_end_i64 = i64::try_from(visible_end).map_err(|_| "Media-edit end exceeds i64")?;
 
     let mut source = batch
         .events
@@ -153,7 +154,7 @@ pub(crate) fn project_metadata_events(
         let source_end = event
             .sample_position
             .checked_add(i64::from(event.ramp_samples))
-            .ok_or("事件 ramp 结束位置溢出")?;
+            .ok_or("Event-ramp end-position overflow")?;
         let end = scale_i64_round(
             source_end,
             i64::from(output_sample_rate),
@@ -167,7 +168,7 @@ pub(crate) fn project_metadata_events(
         if sample >= visible_end_i64 {
             continue;
         }
-        let sample = u64::try_from(sample).map_err(|_| "事件采样位置为负")?;
+        let sample = u64::try_from(sample).map_err(|_| "Event sample position is negative")?;
         let mapped = OutputMetadataEvent {
             sample,
             ramp: ramp.min(duration.saturating_sub(sample)),
@@ -191,7 +192,7 @@ pub(crate) fn project_metadata_events(
     if let Some((_, end)) = before {
         if end > visible_start_i64 {
             return Err(format!(
-                "媒体 edit 起点落在对象 {}:{} 的 ramp 内，无法无损导出",
+                "Media-edit start falls inside the ramp for object {}:{}; lossless export is impossible",
                 selected.substream_index, selected.object_index
             ));
         }

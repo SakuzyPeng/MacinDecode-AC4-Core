@@ -36,7 +36,7 @@ fn objects_error(code: DiagnosticCode, message: impl Into<String>) -> CliError {
 pub(crate) fn run(_args: ExportCorePcmArgs) -> Result<String, CliError> {
     Err(cli_error(
         DiagnosticCode::FeatureRequired,
-        "export-core-pcm 需要以 --features audio-decode 重新构建 macinac4",
+        "export-core-pcm requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 
@@ -50,7 +50,7 @@ pub(crate) fn run(args: ExportCorePcmArgs) -> Result<String, CliError> {
     let data = fs::read(&args.input).map_err(|error| {
         cli_error(
             DiagnosticCode::InputReadFailed,
-            format!("读取输入失败：{error}"),
+            format!("Failed to read input: {error}"),
         )
     })?;
     let selection = match args.presentation {
@@ -58,7 +58,7 @@ pub(crate) fn run(args: ExportCorePcmArgs) -> Result<String, CliError> {
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             cli_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
     };
@@ -81,7 +81,7 @@ pub(crate) fn run(args: ExportCorePcmArgs) -> Result<String, CliError> {
             _ => Err(cli_error(
                 DiagnosticCode::InternalInvariantFailed,
                 format!(
-                    "核心带导出的 substream {} 输出 {} 缺少传输声道来源",
+                    "Core-band export substream {} output {} has no transport-channel source",
                     item.substream_index, item.output_index
                 ),
             )),
@@ -102,7 +102,7 @@ pub(crate) fn run(args: ExportCorePcmArgs) -> Result<String, CliError> {
 pub(crate) fn run_aspx(_args: ExportAspxPcmArgs) -> Result<String, CliError> {
     Err(aspx_error(
         DiagnosticCode::FeatureRequired,
-        "export-aspx-pcm 需要以 --features audio-decode 重新构建 macinac4",
+        "export-aspx-pcm requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 
@@ -111,7 +111,7 @@ pub(crate) fn run_aspx(_args: ExportAspxPcmArgs) -> Result<String, CliError> {
 pub(crate) fn run_objects(_args: ExportObjectsPcmArgs) -> Result<String, CliError> {
     Err(objects_error(
         DiagnosticCode::FeatureRequired,
-        "export-objects-pcm 需要以 --features audio-decode 重新构建 macinac4",
+        "export-objects-pcm requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 
@@ -131,7 +131,7 @@ pub(crate) fn run_aspx(args: ExportAspxPcmArgs) -> Result<String, CliError> {
     let data = fs::read(&args.input).map_err(|error| {
         aspx_error(
             DiagnosticCode::InputReadFailed,
-            format!("读取输入失败：{error}"),
+            format!("Failed to read input: {error}"),
         )
     })?;
     let selection = match args.presentation {
@@ -139,7 +139,7 @@ pub(crate) fn run_aspx(args: ExportAspxPcmArgs) -> Result<String, CliError> {
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             aspx_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
     };
@@ -170,7 +170,7 @@ pub(crate) fn run_objects(args: ExportObjectsPcmArgs) -> Result<String, CliError
     let data = fs::read(&args.input).map_err(|error| {
         objects_error(
             DiagnosticCode::InputReadFailed,
-            format!("读取输入失败：{error}"),
+            format!("Failed to read input: {error}"),
         )
     })?;
     let selection = match args.presentation {
@@ -178,7 +178,7 @@ pub(crate) fn run_objects(args: ExportObjectsPcmArgs) -> Result<String, CliError
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             objects_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
     };
@@ -264,7 +264,7 @@ fn aspx_descriptors(pcm: &PcmBatch) -> Result<String, CliError> {
                 Err(aspx_error(
                     DiagnosticCode::InternalInvariantFailed,
                     format!(
-                        "带宽扩展导出的 substream {} 第 {} 路带有错误的来源语义",
+                        "Bandwidth-extended export substream {} channel {} has invalid source semantics",
                         item.substream_index, item.output_index
                     ),
                 ))
@@ -295,7 +295,7 @@ fn objects_descriptors(pcm: &PcmBatch) -> Result<String, CliError> {
                 Err(objects_error(
                     DiagnosticCode::InternalInvariantFailed,
                     format!(
-                        "对象导出的 substream {} 输出 {} 仍带下混侧来源语义",
+                        "Object export substream {} output {} still has downmix-side source semantics",
                         item.substream_index, item.output_index
                     ),
                 ))
@@ -312,13 +312,13 @@ fn ensure_output_absent_for(command: &str, output: &std::path::Path) -> Result<(
         Ok(_) => Err(CliError::new(
             command,
             DiagnosticCode::OutputExists,
-            format!("输出路径已存在：{}", output.display()),
+            format!("Output path already exists: {}", output.display()),
         )),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(CliError::new(
             command,
             DiagnosticCode::OutputCreateFailed,
-            format!("检查输出路径失败：{error}"),
+            format!("Failed to inspect output path: {error}"),
         )),
     }
 }
@@ -358,10 +358,10 @@ fn write_atomic_wave_for(
             {
                 Ok(file) => return Ok((candidate, file)),
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(error) => return Err(format!("创建临时 PCM 失败：{error}")),
+                Err(error) => return Err(format!("Failed to create temporary PCM file: {error}")),
             }
         }
-        Err("无法分配临时 PCM 文件".to_owned())
+        Err("Failed to allocate a unique temporary PCM file".to_owned())
     }
 
     let (temp, file) = create_temp_file(output)
@@ -375,7 +375,7 @@ fn write_atomic_wave_for(
             CliError::new(
                 command,
                 DiagnosticCode::OutputWriteFailed,
-                format!("写出失败：{error}"),
+                format!("Failed to write output: {error}"),
             )
         })?;
         drop(writer);
@@ -384,7 +384,7 @@ fn write_atomic_wave_for(
             CliError::new(
                 command,
                 DiagnosticCode::OutputCommitFailed,
-                format!("提交 PCM 失败：{error}"),
+                format!("Failed to commit PCM output: {error}"),
             )
         })?;
         Ok(())
@@ -408,7 +408,8 @@ fn json_quote(value: &str) -> String {
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
             value if value.is_control() => {
-                write!(&mut out, "\\u{:04x}", u32::from(value)).expect("写入 String 不会失败");
+                write!(&mut out, "\\u{:04x}", u32::from(value))
+                    .expect("writing to String cannot fail");
             }
             value => out.push(value),
         }
@@ -424,16 +425,16 @@ fn json_quote(value: &str) -> String {
 #[cfg(feature = "audio-decode")]
 fn layout(pcm: &PcmBatch) -> Result<(usize, usize), String> {
     let Some(first) = pcm.tracks.first() else {
-        return Err("解码结果不含任何声道".to_owned());
+        return Err("Decoded output contains no channels".to_owned());
     };
     let frames = first.samples.len();
     if frames == 0 {
-        return Err("解码结果不含任何样本".to_owned());
+        return Err("Decoded output contains no samples".to_owned());
     }
     for item in &pcm.tracks {
         if item.samples.len() != frames {
             return Err(format!(
-                "声道长度不一致：substream {} 输出 {} 有 {} 个样本，首个声道有 {frames} 个",
+                "Channel-length mismatch: substream {} output {} has {} samples; the first channel has {frames}",
                 item.substream_index,
                 item.output_index,
                 item.samples.len()
@@ -441,7 +442,7 @@ fn layout(pcm: &PcmBatch) -> Result<(usize, usize), String> {
         }
         if let Some(sample) = item.samples.iter().position(|value| !value.is_finite()) {
             return Err(format!(
-                "PCM 含非有限样本：substream {} 输出 {} 样本 {sample}",
+                "PCM contains a non-finite sample: substream {} output {} sample {sample}",
                 item.substream_index, item.output_index
             ));
         }
@@ -468,25 +469,25 @@ fn write_wave<W: std::io::Write>(
         0x71,
     ];
 
-    let channels_u16 = u16::try_from(channels).map_err(|_| "声道数超出 u16")?;
+    let channels_u16 = u16::try_from(channels).map_err(|_| "Channel count exceeds u16")?;
     let block_align = channels
         .checked_mul(BYTES_PER_SAMPLE)
         .and_then(|value| u16::try_from(value).ok())
-        .ok_or("blockAlign 超出 u16")?;
+        .ok_or("blockAlign exceeds u16")?;
     let data_size = frames
         .checked_mul(usize::from(block_align))
         .and_then(|value| u32::try_from(value).ok())
-        .ok_or("data 块超出 32 位 WAVE 的上限，需要 RF64")?;
-    let frames_u32 = u32::try_from(frames).map_err(|_| "fact 样本帧数超出 u32")?;
+        .ok_or("data chunk exceeds the 32-bit WAVE limit; RF64 is required")?;
+    let frames_u32 = u32::try_from(frames).map_err(|_| "fact sample-frame count exceeds u32")?;
     let riff_size = data_size
         .checked_add(72)
-        .ok_or("RIFF 大小超出 32 位 WAVE 的上限")?;
+        .ok_or("RIFF size exceeds the 32-bit WAVE limit")?;
     let bytes_per_second = pcm
         .sample_rate
         .checked_mul(u32::from(block_align))
-        .ok_or("bytesPerSecond 溢出")?;
+        .ok_or("bytesPerSecond overflow")?;
 
-    let io = |error: std::io::Error| format!("写出失败：{error}");
+    let io = |error: std::io::Error| format!("Failed to write output: {error}");
     writer.write_all(b"RIFF").map_err(io)?;
     writer.write_all(&riff_size.to_le_bytes()).map_err(io)?;
     writer.write_all(b"WAVEfmt ").map_err(io)?;
@@ -775,7 +776,11 @@ mod tests {
         })
         .expect_err("输入与输出相同必须在读取前失败");
         assert!(matches!(error.code, DiagnosticCode::OutputExists));
-        assert!(error.message.contains("输出路径已存在"), "{:?}", error);
+        assert!(
+            error.message.contains("Output path already exists"),
+            "{:?}",
+            error
+        );
         assert_eq!(std::fs::read(&path).unwrap(), b"keep me");
         std::fs::remove_file(path).expect("应能清理 fixture");
     }
@@ -788,7 +793,7 @@ mod tests {
             tracks: vec![track(0, &[1.0, 2.0]), track(1, &[3.0])],
         };
         let error = layout(&pcm).expect_err("不等长应被拒绝");
-        assert!(error.contains("声道长度不一致"), "{error}");
+        assert!(error.contains("Channel-length mismatch"), "{error}");
 
         let empty = PcmBatch {
             sample_rate: 48_000,
@@ -797,7 +802,7 @@ mod tests {
         assert!(
             layout(&empty)
                 .expect_err("空声道应被拒绝")
-                .contains("不含任何声道")
+                .contains("contains no channels")
         );
 
         let silent = PcmBatch {
@@ -807,7 +812,7 @@ mod tests {
         assert!(
             layout(&silent)
                 .expect_err("零样本应被拒绝")
-                .contains("不含任何样本")
+                .contains("contains no samples")
         );
 
         let nonfinite = PcmBatch {
@@ -817,7 +822,7 @@ mod tests {
         assert!(
             layout(&nonfinite)
                 .expect_err("非有限对象样本应被拒绝")
-                .contains("非有限样本")
+                .contains("non-finite sample")
         );
     }
 }

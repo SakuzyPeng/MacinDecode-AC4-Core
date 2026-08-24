@@ -1,4 +1,4 @@
-//! AC-4 检视、DAMF/ADM 试听探针与真实 full ADM 导出工具。
+//! AC-4 inspection, DAMF/ADM audition probes, and full ADM export tooling.
 
 mod adm;
 #[cfg(feature = "audio-decode")]
@@ -34,108 +34,111 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// 输出 AC-4 容器、拓扑与语法 trace JSON。
+    /// Emit an AC-4 container, topology, and syntax trace as JSON.
     Trace {
-        /// MP4/M4A 或裸 AC-4 输入。
+        /// MP4/M4A or raw AC-4 input.
         input: PathBuf,
     },
-    /// 用合成粉红噪声和 OAMD 元数据生成 DAMF 试听探针。
+    /// Generate a DAMF audition probe from synthetic pink noise and OAMD metadata.
     ExportDamf(ExportDamfArgs),
-    /// 把 full A-JOC 重建对象、full OAMD 与可选 LFE 导出为真实 DAMF。
+    /// Export full A-JOC objects, full OAMD, and optional LFE as a DAMF package.
     ExportFullDamf(ExportFullDamfArgs),
-    /// 用合成粉红噪声和 OAMD 元数据直接生成强制 64 位容器的 ADM BWF。
+    /// Generate an ADM BWF in a forced 64-bit container from pink noise and OAMD metadata.
     ExportAdmBwf(ExportAdmBwfArgs),
-    /// 把 full A-JOC 重建对象、full OAMD 与 LFE 导出为 ADM BW64/RF64。
+    /// Export full A-JOC objects, full OAMD, and LFE as ADM BW64/RF64.
     ExportFullAdmBwf(ExportFullAdmBwfArgs),
-    /// 把已验证的固定 core 对象网格直接写成带 Apple 扬声器布局的 Float32 CAF。
+    /// Write a verified fixed core-object grid as Float32 CAF with an Apple speaker layout.
     ExportCoreCaf(ExportCoreCafArgs),
-    /// 导出 A-JOC 下混信号的核心带 PCM，EXTENSIBLE 32 位浮点 WAVE。
+    /// Export core-band A-JOC downmix PCM as EXTENSIBLE 32-bit float WAVE.
     ExportCorePcm(ExportCorePcmArgs),
-    /// 同上，但再走一段 A-SPX 带宽扩展与终端 QMF 合成。
+    /// Export the same PCM after A-SPX bandwidth extension and final QMF synthesis.
     ExportAspxPcm(ExportAspxPcmArgs),
-    /// 导出 full A-JOC 重建对象及插回 LFE 的最终 PCM。
+    /// Export final PCM for full A-JOC objects with LFE reinserted.
     ExportObjectsPcm(ExportObjectsPcmArgs),
 }
 
-/// `export-objects-pcm` 的参数。
+/// Arguments for `export-objects-pcm`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportObjectsPcmArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     pub presentation: Option<usize>,
 
-    /// 新建的 WAVE_FORMAT_EXTENSIBLE 32 位浮点文件；不会覆盖已有路径。
+    /// New WAVE_FORMAT_EXTENSIBLE 32-bit float file; existing paths are never overwritten.
     ///
-    /// 样本保持内部 ±32 768 量级并应用 MP4 edit list。逐路顺序是 full A-JOC
-    /// 对象序列，LFE 按 `Pseudocode 15` 的位置插回；响应中的 `output_channel`
-    /// 与 WAVE 交织顺序相同。
+    /// Samples retain the internal ±32,768 scale and the MP4 edit list is applied. Channel
+    /// order follows the full A-JOC object sequence, with LFE reinserted at the position from
+    /// `Pseudocode 15`. `output_channel` in the response matches WAVE interleave order.
     #[arg(short, long)]
     pub output: PathBuf,
 }
 
-/// `export-aspx-pcm` 的参数。
+/// Arguments for `export-aspx-pcm`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportAspxPcmArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     pub presentation: Option<usize>,
 
-    /// 新建的 WAVE_FORMAT_EXTENSIBLE 32 位浮点文件；不会覆盖已有路径。
+    /// New WAVE_FORMAT_EXTENSIBLE 32-bit float file; existing paths are never overwritten.
     ///
-    /// 与 `export-core-pcm` 的量级、缩放与 edit list 处理完全相同，差别只有两处：
-    /// 内容多了 A-SPX 带宽扩展，**逐路顺序是 A-JOC 的输入顺序**（见
-    /// `Pseudocode 14a`），不进入 A-JOC 的 LFE 单独排在最后。响应中的
-    /// `role` 会把两者区分开；两条导出各自冻结基线，不可混比。
+    /// Scale, gain, and edit-list handling match `export-core-pcm`. The output additionally
+    /// includes A-SPX bandwidth extension, and channel order follows A-JOC input order (see
+    /// `Pseudocode 14a`). LFE that bypasses A-JOC is appended last. The response `role`
+    /// distinguishes the two; each export has its own regression baseline.
     ///
-    /// 仍**不是最终场景**：本命令停在 A-JOC 上混之前，这里的每一路都还是下混信号。
+    /// This is not the final scene: processing stops before A-JOC upmix, so every channel is
+    /// still a downmix signal.
     #[arg(short, long)]
     pub output: PathBuf,
 }
 
-/// `export-core-pcm` 的参数。
+/// Arguments for `export-core-pcm`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportCorePcmArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     pub presentation: Option<usize>,
 
-    /// 新建的 WAVE_FORMAT_EXTENSIBLE 32 位浮点文件；不会覆盖已有路径。
+    /// New WAVE_FORMAT_EXTENSIBLE 32-bit float file; existing paths are never overwritten.
     ///
-    /// 样本保持解码器内部的 ±32 768 量级，**不做缩放**；`data` 块逐样本直接写
-    /// f32::to_bits()，整个文件的 SHA-256 可直接当逐位回归基线。代价是直接播放
-    /// 会响约 90 dB，试听时请先降增益。
+    /// Samples retain the decoder's internal ±32,768 scale with no gain adjustment. Each sample
+    /// is written to the `data` chunk using `f32::to_bits()`, so the file SHA-256 can serve as a
+    /// bit-exact regression baseline. Direct playback is roughly 90 dB too loud; lower the gain
+    /// before listening.
     ///
-    /// MP4 edit list 会应用到输出，因而 priming 与尾部 padding 不进入呈现 PCM。
-    /// 内容是 A-JOC 下混信号的核心带重建，**不是最终场景**：本命令停在 A-SPX
-    /// 带宽扩展与 A-JOC 上混之前。
+    /// The MP4 edit list is applied, excluding priming and trailing padding from presentation
+    /// PCM. This is a core-band reconstruction of the A-JOC downmix, not the final scene:
+    /// processing stops before A-SPX bandwidth extension and A-JOC upmix.
     #[arg(short, long)]
     pub output: PathBuf,
 }
 
-/// `export-core-caf` 的参数。
+/// Arguments for `export-core-caf`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportCoreCafArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
-    /// 新建的 CoreAudio Float32 PCM CAF；不会覆盖已有路径。
+    /// New CoreAudio Float32 PCM CAF; existing paths are never overwritten.
     ///
-    /// 仅接受已验证的固定 5/7/9/11 点 core 网格与独立 LFE，自动写入
-    /// 5.1/5.1.2/5.1.4/7.1.4 channel layout tag。样本固定乘 `2^-15`，
-    /// 不归一化、不限幅；超过 ±1 的浮点样本原样保留，真峰值与响度请在外部处理。
+    /// Accepts only verified fixed 5/7/9/11-point core grids with independent LFE and writes the
+    /// corresponding 5.1/5.1.2/5.1.4/7.1.4 channel-layout tag. Samples are multiplied by `2^-15`
+    /// without normalization or clipping; values outside ±1 are preserved. Handle true peak and
+    /// loudness externally.
     #[arg(short, long)]
     pub output: PathBuf,
 
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     pub presentation: Option<usize>,
 }
@@ -172,9 +175,9 @@ impl DamfPresentationType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum AdmCompatibility {
-    /// 标准 ADM BW64、九位时钟，不加入厂商私有元数据。
+    /// Standard ADM BW64 with a nine-digit time reference and no vendor-private metadata.
     Standard,
-    /// Logic Pro 兼容 RF64、五位时钟及 Dolby `dbmd`。
+    /// Logic Pro-compatible RF64 with a five-digit time reference and Dolby `dbmd`.
     Logic,
 }
 
@@ -227,58 +230,58 @@ impl MasterFrameRate {
         .args(["object", "all_objects"])
 ))]
 struct ExportDamfArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     input: PathBuf,
-    /// 新建的 DAMF 包目录；该路径必须不存在。
+    /// New DAMF package directory; the path must not already exist.
     #[arg(short, long)]
     output: PathBuf,
-    /// 对象选择器，可重复或逗号分隔：OBJECT 或 SUBSTREAM:OBJECT。
+    /// Object selector; repeat or comma-separate OBJECT or SUBSTREAM:OBJECT values.
     #[arg(long, value_delimiter = ',', num_args = 1..)]
     object: Vec<String>,
-    /// 选择 presentation 内全部动态全频对象。
+    /// Select every dynamic full-range object in the presentation.
     #[arg(long)]
     all_objects: bool,
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     presentation: Option<usize>,
-    /// 选择 full 或 core 对象集合。
+    /// Select the full or core object set.
     #[arg(long, value_enum, default_value_t = DecodeMode::Full)]
     mode: DecodeMode,
-    /// DAMF 帧率。
+    /// DAMF frame rate.
     #[arg(long, value_enum, default_value = "24")]
     fps: MasterFrameRate,
-    /// 每路粉红噪声的理论峰值，单位 dBFS。
+    /// Theoretical peak level of each pink-noise channel, in dBFS.
     #[arg(long, default_value_t = -18.0, allow_hyphen_values = true)]
     probe_level_dbfs: f64,
-    /// 三件套文件名主干；默认使用输入文件名。
+    /// Base name for the three package files; defaults to the input file name.
     #[arg(long)]
     stem: Option<String>,
-    /// 发现无法精确映射的 AC-4 元数据时失败。
+    /// Fail when AC-4 metadata cannot be mapped exactly.
     #[arg(long)]
     strict_mapping: bool,
 }
 
-/// `export-full-damf` 的参数。
+/// Arguments for `export-full-damf`.
 #[derive(Debug, Args)]
 struct ExportFullDamfArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     input: PathBuf,
-    /// 新建的 DAMF package 目录；不会覆盖已有路径。
+    /// New DAMF package directory; existing paths are never overwritten.
     #[arg(short, long)]
     output: PathBuf,
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     presentation: Option<usize>,
-    /// DAMF presentation 类型；3DoF 只改变 manifest 声明。
+    /// DAMF presentation type; 3DoF changes only the manifest declaration.
     #[arg(long, value_enum, default_value_t = DamfPresentationType::Home)]
     presentation_type: DamfPresentationType,
-    /// DAMF 帧率。
+    /// DAMF frame rate.
     #[arg(long, value_enum, default_value = "24")]
     fps: MasterFrameRate,
-    /// 三件套文件名主干；默认使用输入文件名。
+    /// Base name for the three package files; defaults to the input file name.
     #[arg(long)]
     stem: Option<String>,
-    /// 发现无法精确映射的 AC-4 元数据时失败。
+    /// Fail when AC-4 metadata cannot be mapped exactly.
     #[arg(long)]
     strict_mapping: bool,
 }
@@ -291,55 +294,55 @@ struct ExportFullDamfArgs {
         .args(["object", "all_objects"])
 ))]
 struct ExportAdmBwfArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     input: PathBuf,
-    /// 新建的 ADM BWF 文件；始终使用带 ds64 的 64 位容器，通常使用 .wav 扩展名。
+    /// New ADM BWF file in a 64-bit container with ds64; usually uses a .wav extension.
     #[arg(short, long)]
     output: PathBuf,
-    /// 对象选择器，可重复或逗号分隔：OBJECT 或 SUBSTREAM:OBJECT。
+    /// Object selector; repeat or comma-separate OBJECT or SUBSTREAM:OBJECT values.
     #[arg(long, value_delimiter = ',', num_args = 1..)]
     object: Vec<String>,
-    /// 选择 presentation 内全部动态全频对象。
+    /// Select every dynamic full-range object in the presentation.
     #[arg(long)]
     all_objects: bool,
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     presentation: Option<usize>,
-    /// 选择 full 或 core 对象集合。
+    /// Select the full or core object set.
     #[arg(long, value_enum, default_value_t = DecodeMode::Full)]
     mode: DecodeMode,
-    /// Logic DBMD 帧率；标准 BW64 不使用该值。
+    /// Logic DBMD frame rate; ignored for standard BW64 output.
     #[arg(long, value_enum, default_value = "24")]
     fps: MasterFrameRate,
-    /// 每路粉红噪声的理论峰值，单位 dBFS。
+    /// Theoretical peak level of each pink-noise channel, in dBFS.
     #[arg(long, default_value_t = -18.0, allow_hyphen_values = true)]
     probe_level_dbfs: f64,
-    /// 选择标准 BW64 或 Logic Pro 兼容 RF64/dbmd 输出。
+    /// Select standard BW64 or Logic Pro-compatible RF64/dbmd output.
     #[arg(long, value_enum, default_value_t = AdmCompatibility::Standard)]
     compatibility: AdmCompatibility,
-    /// 发现无法精确映射的 AC-4 元数据时失败。
+    /// Fail when AC-4 metadata cannot be mapped exactly.
     #[arg(long)]
     strict_mapping: bool,
 }
 
-/// `export-full-adm-bwf` 的参数。
+/// Arguments for `export-full-adm-bwf`.
 #[derive(Debug, Args)]
 struct ExportFullAdmBwfArgs {
-    /// MP4/M4A 或裸 AC-4 输入。
+    /// MP4/M4A or raw AC-4 input.
     input: PathBuf,
-    /// 新建的 ADM BWF 文件；不会覆盖已有路径。
+    /// New ADM BWF file; existing paths are never overwritten.
     #[arg(short, long)]
     output: PathBuf,
-    /// 零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择。
+    /// Zero-based presentation index; omitted means auto-select only if exactly one is eligible.
     #[arg(long)]
     presentation: Option<usize>,
-    /// 选择标准 BW64 或 Logic Pro 兼容 RF64/dbmd 输出。
+    /// Select standard BW64 or Logic Pro-compatible RF64/dbmd output.
     #[arg(long, value_enum, default_value_t = AdmCompatibility::Standard)]
     compatibility: AdmCompatibility,
-    /// Logic DBMD 帧率；标准 BW64 不使用该值。
+    /// Logic DBMD frame rate; ignored for standard BW64 output.
     #[arg(long, value_enum, default_value = "24")]
     fps: MasterFrameRate,
-    /// 发现无法精确映射的 AC-4 元数据时失败。
+    /// Fail when AC-4 metadata cannot be mapped exactly.
     #[arg(long)]
     strict_mapping: bool,
 }
@@ -361,7 +364,7 @@ fn main() -> ExitCode {
             let diagnostic = wire::CliError::new(
                 command,
                 wire::DiagnosticCode::CliInvalidArguments,
-                "命令行参数无效",
+                "Invalid command-line arguments",
             )
             .with_context("detail", error.to_string());
             wire::write_error(&diagnostic);
@@ -400,7 +403,7 @@ fn run_trace(path: &PathBuf) -> Result<String, wire::CliError> {
         wire::CliError::new(
             "trace",
             wire::DiagnosticCode::InputReadFailed,
-            "无法读取输入文件",
+            "Failed to read input file",
         )
         .with_context("path", path.display().to_string())
         .with_context("cause", error.to_string())
@@ -409,7 +412,7 @@ fn run_trace(path: &PathBuf) -> Result<String, wire::CliError> {
         return Err(wire::CliError::new(
             "trace",
             wire::DiagnosticCode::InputInvalid,
-            "输入文件为空",
+            "Input file is empty",
         )
         .with_context("path", path.display().to_string()));
     }
@@ -417,7 +420,7 @@ fn run_trace(path: &PathBuf) -> Result<String, wire::CliError> {
         wire::CliError::new(
             "trace",
             wire::DiagnosticCode::ParseFailed,
-            "解析 AC-4 输入失败",
+            "Failed to parse AC-4 input",
         )
         .with_context("path", path.display().to_string())
         .with_context("cause", message)
@@ -668,11 +671,11 @@ mod tests {
                 .expect_err("--help 应提前退出参数解析")
                 .to_string();
             assert!(
-                help.contains(
-                    "零基 presentation 下标；省略时仅在 eligible presentation 唯一时自动选择"
-                ),
-                "{command} 必须公开 AutoUnique 的 eligible 选择语义：{help}"
-            );
+                    help.contains(
+                        "Zero-based presentation index; omitted means auto-select only if exactly one is eligible"
+                    ),
+                    "{command} must document AutoUnique eligible-presentation selection: {help}"
+                );
         }
     }
 

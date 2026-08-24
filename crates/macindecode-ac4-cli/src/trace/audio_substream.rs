@@ -106,7 +106,7 @@ fn push_context(
         slot.push(candidate);
         Ok(())
     } else {
-        Err("同一音频 substream 的解析上下文冲突")
+        Err("Conflicting parse contexts for the same audio substream")
     }
 }
 
@@ -123,7 +123,7 @@ fn select_parsed_candidate(
             .iter()
             .find_map(|(context, parsed)| (*context == expected).then_some(*parsed))
             .map(Some)
-            .ok_or("音频 substream 的解析上下文在帧间切换");
+            .ok_or("Audio-substream parse context changed between frames");
     }
 
     if let [(context, parsed)] = successful {
@@ -165,14 +165,20 @@ impl AudioTrace {
                 for offset in 0..group.frame_rate_factor {
                     let Some(substream_index) = first_substream_index.checked_add(offset) else {
                         frame_failed = true;
-                        self.remember_failure(index, "音频 substream 下标加帧率偏移后溢出");
+                        self.remember_failure(
+                            index,
+                            "Audio-substream index overflow after applying the frame-rate offset",
+                        );
                         continue;
                     };
 
                     let slot_index = usize::try_from(substream_index).unwrap_or(usize::MAX);
                     let Some(slot) = contexts.get_mut(slot_index) else {
                         frame_failed = true;
-                        self.remember_failure(index, "音频 substream 下标超出统计容量");
+                        self.remember_failure(
+                            index,
+                            "Audio-substream index exceeds statistics capacity",
+                        );
                         continue;
                     };
                     let candidate = SubstreamContext {
@@ -223,7 +229,7 @@ impl AudioTrace {
                     frame_located = false;
                     frame_parsed = false;
                     frame_failed = true;
-                    self.remember_failure(index, &format!("定位失败：{error}"));
+                    self.remember_failure(index, &format!("Location failed: {error}"));
                     continue;
                 }
             };
@@ -256,10 +262,10 @@ impl AudioTrace {
                 frame_parsed = false;
                 frame_failed = true;
                 let message = match selection {
-                    Err(error) => format!("音频 substream {substream_index}：{error}"),
+                    Err(error) => format!("Audio substream {substream_index}: {error}"),
                     Ok(_) => format!(
-                        "音频 substream {substream_index} 的所有解析上下文均失败：{}",
-                        candidate_errors.join("；")
+                        "Every parse context failed for audio substream {substream_index}: {}",
+                        candidate_errors.join("; ")
                     ),
                 };
                 self.remember_failure(index, &message);
@@ -325,7 +331,7 @@ impl AudioTrace {
 
     pub(super) fn remember_failure(&mut self, index: u32, message: &str) {
         if self.first_error.is_none() {
-            self.first_error = Some(format!("帧 {index}：{message}"));
+            self.first_error = Some(format!("Frame {index}: {message}"));
         }
     }
 

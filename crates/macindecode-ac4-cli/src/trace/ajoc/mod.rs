@@ -458,7 +458,7 @@ mod tests {
             trace
                 .first_error
                 .as_deref()
-                .is_some_and(|error| error.contains("解析上下文冲突")),
+                .is_some_and(|error| error.contains("Conflicting parse contexts")),
             "{:?}",
             trace.first_error
         );

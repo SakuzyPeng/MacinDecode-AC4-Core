@@ -218,9 +218,9 @@ pub enum DsiError {
 impl fmt::Display for DsiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            DsiError::Truncated(error) => write!(f, "dac4 数据不足：{error}"),
+            DsiError::Truncated(error) => write!(f, "Truncated dac4 data: {error}"),
             DsiError::UnsupportedSamplingFrequency { fs_index } => {
-                write!(f, "fs_index {fs_index} 未定义")
+                write!(f, "fs_index {fs_index} is undefined")
             }
         }
     }

@@ -65,13 +65,13 @@ pub enum AudioSubstreamError {
 impl fmt::Display for AudioSubstreamError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            AudioSubstreamError::Read(error) => write!(f, "ac4_substream 读取失败：{error}"),
+            AudioSubstreamError::Read(error) => write!(f, "Failed to read ac4_substream: {error}"),
             AudioSubstreamError::AudioSizeOutOfRange {
                 audio_size,
                 substream_len,
             } => write!(
                 f,
-                "audio_size 为 {audio_size} 字节，但 substream 只有 {substream_len} 字节"
+                "audio_size is {audio_size} bytes, but the substream is only {substream_len} bytes"
             ),
             AudioSubstreamError::InvalidExtensionSize {
                 declared,
@@ -79,14 +79,14 @@ impl fmt::Display for AudioSubstreamError {
                 bit_position,
             } => write!(
                 f,
-                "偏移 {bit_position} 处的 e_bits_size 为 {declared}，至少需要 {required} 比特"
+                "e_bits_size is {declared} at bit offset {bit_position}; at least {required} bits are required"
             ),
             AudioSubstreamError::TrailingBits { remaining_bits } => write!(
                 f,
-                "metadata 解析后仍剩 {remaining_bits} 比特，未落在 substream 末尾"
+                "{remaining_bits} bits remain after parsing metadata; parser did not end at the substream boundary"
             ),
             AudioSubstreamError::Unsupported { what, bit_position } => {
-                write!(f, "偏移 {bit_position} 处遇到未覆盖的分支：{what}")
+                write!(f, "Unsupported branch at bit offset {bit_position}: {what}")
             }
         }
     }
@@ -453,7 +453,7 @@ impl ExtendedMetadata {
         } else {
             // b_associated 由 P1 4.3.12.4.1 决定，当前不产生该分支的码流。
             return Err(AudioSubstreamError::Unsupported {
-                what: "extended_metadata 的 sus_ver == 0 关联音频分支",
+                what: "sus_ver == 0 audio branch associated with extended_metadata",
                 bit_position: reader.bit_position(),
             });
         }
@@ -594,7 +594,7 @@ impl Ac4AudioSubstream {
 
         if context.alternative && !context.ajoc {
             return Err(AudioSubstreamError::Unsupported {
-                what: "metadata 中的 oamd_dyndata_single（b_alternative 且非 A-JOC）",
+                what: "oamd_dyndata_single in metadata (b_alternative and non-A-JOC)",
                 bit_position: reader.bit_position(),
             });
         }

@@ -66,35 +66,38 @@ impl fmt::Display for BandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BandError::StartFrequencyOutOfRange { start_freq } => {
-                write!(f, "aspx_start_freq {start_freq} 超出 0–7")
+                write!(f, "aspx_start_freq {start_freq} is outside 0..7")
             }
             BandError::StopFrequencyOutOfRange { stop_freq } => {
-                write!(f, "aspx_stop_freq {stop_freq} 超出 0–3")
+                write!(f, "aspx_stop_freq {stop_freq} is outside 0..3")
             }
             BandError::EmptyMasterTable {
                 start_freq,
                 stop_freq,
             } => write!(
                 f,
-                "aspx_start_freq {start_freq} 与 aspx_stop_freq {stop_freq} 使主子带组表为空"
+                "aspx_start_freq {start_freq} and aspx_stop_freq {stop_freq} produce an empty master subband-group table"
             ),
             BandError::CrossoverOutOfRange {
                 xover,
                 num_sbg_master,
             } => write!(
                 f,
-                "aspx_xover_subband_offset {xover} 不小于主子带组数 {num_sbg_master}"
+                "aspx_xover_subband_offset {xover} is not less than master subband-group count {num_sbg_master}"
             ),
             BandError::CrossoverOffsetOutOfRange { xover } => {
-                write!(f, "aspx_xover_subband_offset {xover} 超出 0–7")
+                write!(f, "aspx_xover_subband_offset {xover} is outside 0..7")
             }
             BandError::NoiseSbgOutOfRange { noise_sbg } => {
-                write!(f, "aspx_noise_sbg {noise_sbg} 超出 0–3")
+                write!(f, "aspx_noise_sbg {noise_sbg} is outside 0..3")
             }
             BandError::TooManyNoiseGroups {
                 num_sbg_noise,
                 limit,
-            } => write!(f, "噪声子带组数 {num_sbg_noise} 超过上界 {limit}"),
+            } => write!(
+                f,
+                "Noise subband-group count {num_sbg_noise} exceeds limit {limit}"
+            ),
         }
     }
 }

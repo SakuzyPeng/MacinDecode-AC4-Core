@@ -21,7 +21,7 @@ pub enum TocError {
 impl fmt::Display for TocError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            TocError::Read(error) => write!(f, "TOC 读取失败：{error}"),
+            TocError::Read(error) => write!(f, "Failed to read TOC: {error}"),
         }
     }
 }

@@ -21,7 +21,7 @@ pub(crate) const VERSION: u8 = 1;
 macro_rules! diagnostic_codes {
     ($( $variant:ident => $name:literal, )+) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-        #[allow(dead_code, reason = "稳定诊断码集合跨默认构建与 audio-decode 构建共享")]
+        #[allow(dead_code, reason = "stable diagnostic codes are shared by all feature sets")]
         pub(crate) enum DiagnosticCode {
             $( #[serde(rename = $name)] $variant, )+
         }
@@ -160,7 +160,7 @@ impl PreparedSuccess {
                 "warning",
                 &self.command,
                 DiagnosticCode::MappingLossy,
-                "部分 AC-4 元数据无法无损映射",
+                "Some AC-4 metadata could not be mapped losslessly",
                 &context,
             );
         }
@@ -177,7 +177,7 @@ impl PreparedSuccess {
             CliError::new(
                 &self.command,
                 DiagnosticCode::SerializationFailed,
-                "序列化成功响应失败",
+                "Failed to serialize success response",
             )
             .with_context("cause", error.to_string())
         })?;
@@ -185,7 +185,7 @@ impl PreparedSuccess {
             CliError::new(
                 &self.command,
                 DiagnosticCode::OutputWriteFailed,
-                "写入标准输出失败",
+                "Failed to write to standard output",
             )
             .with_context("cause", error.to_string())
         })
@@ -285,7 +285,7 @@ pub(crate) fn prepare(command: &str, legacy: &str) -> Result<PreparedSuccess, Cl
         CliError::new(
             command,
             DiagnosticCode::SerializationFailed,
-            "内部结果不是有效 JSON",
+            "Internal result is not valid JSON",
         )
         .with_context("cause", error.to_string())
     })?;
@@ -722,7 +722,7 @@ fn export_result(command: &str, value: Value) -> Result<ExportResult, CliError> 
                 "export-core-pcm" => "core_pcm_wave",
                 "export-aspx-pcm" => "aspx_pcm_wave",
                 "export-objects-pcm" => "objects_pcm_wave",
-                _ => unreachable!("match arm 已限制 PCM 命令"),
+                _ => unreachable!("match arm is restricted to PCM commands"),
             };
             let artifacts = vec![artifact(kind, &path, command)?];
             let audio = ExportAudio {
@@ -756,7 +756,7 @@ fn export_result(command: &str, value: Value) -> Result<ExportResult, CliError> 
         _ => Err(CliError::new(
             command,
             DiagnosticCode::InternalInvariantFailed,
-            "未知命令结果",
+            "Unknown command result",
         )),
     }
 }
@@ -767,7 +767,7 @@ fn artifact(kind: &str, path: &str, command: &str) -> Result<Artifact, CliError>
             CliError::new(
                 command,
                 DiagnosticCode::InternalInvariantFailed,
-                "无法读取已生成 artifact 的大小",
+                "Failed to read the generated artifact size",
             )
             .with_context("path", path)
             .with_context("cause", error.to_string())
@@ -785,7 +785,7 @@ fn object(value: Value, command: &str) -> Result<Map<String, Value>, CliError> {
         CliError::new(
             command,
             DiagnosticCode::SerializationFailed,
-            "内部结果的 JSON 形状不正确",
+            "Internal result has an invalid JSON shape",
         )
     })
 }
@@ -801,7 +801,7 @@ fn missing(command: &str, key: &str) -> CliError {
     CliError::new(
         command,
         DiagnosticCode::InternalInvariantFailed,
-        "内部结果缺少必需字段",
+        "Internal result is missing a required field",
     )
     .with_context("field", key)
 }

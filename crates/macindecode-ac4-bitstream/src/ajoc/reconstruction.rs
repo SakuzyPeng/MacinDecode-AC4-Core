@@ -297,7 +297,7 @@ impl fmt::Display for ReconstructionError {
                 num_decorr,
             } => write!(
                 f,
-                "A-JOC 重建维度越界：objects={objects}, dpoints={num_dpoints}, dmx={num_dmx}, decorr={num_decorr}"
+                "A-JOC reconstruction dimensions out of range: objects={objects}, dpoints={num_dpoints}, dmx={num_dmx}, decorr={num_decorr}"
             ),
             Self::WorkspaceTooSmall {
                 objects,
@@ -308,14 +308,17 @@ impl fmt::Display for ReconstructionError {
                 output,
             } => write!(
                 f,
-                "A-JOC 重建需要 {objects} 对象/{num_dmx} 输入，control/raw/input/output 只有 {controls}/{raw}/{input}/{output}"
+                "A-JOC reconstruction requires {objects} objects/{num_dmx} inputs; control/raw/input/output provide {controls}/{raw}/{input}/{output}"
             ),
             Self::ShapeChangeRequiresReset { previous, current } => write!(
                 f,
-                "A-JOC 重建拓扑从 {previous:?} 变为 {current:?}，必须先 reset"
+                "A-JOC reconstruction topology changed from {previous:?} to {current:?}; reset is required"
             ),
             Self::MissingBandMap { object, num_bands } => {
-                write!(f, "A-JOC 对象 {object} 的 {num_bands} 带没有表 28 映射")
+                write!(
+                    f,
+                    "No Table 28 mapping for {num_bands} bands of A-JOC object {object}"
+                )
             }
             Self::MissingQuantizedValue {
                 kind,
@@ -325,7 +328,7 @@ impl fmt::Display for ReconstructionError {
                 band,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 缺量化频带 {band}"
+                "A-JOC object {object}, data point {data_point}, {kind:?} row {row} lacks quantized band {band}"
             ),
             Self::Diff(error) => write!(f, "{error}"),
             Self::Dequant {
@@ -336,7 +339,7 @@ impl fmt::Display for ReconstructionError {
                 source,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 行 {row} 频带 {band} 反量化失败：{source}"
+                "Dequantization failed for A-JOC object {object}, data point {data_point}, row {row}, band {band}: {source}"
             ),
             Self::Interpolation(error) => write!(f, "{error}"),
             Self::NonFiniteInput {
@@ -345,7 +348,7 @@ impl fmt::Display for ReconstructionError {
                 subband,
             } => write!(
                 f,
-                "A-JOC 输入 {channel} 时隙 {timeslot} 子带 {subband} 非有限"
+                "A-JOC input {channel}, timeslot {timeslot}, subband {subband} is non-finite"
             ),
             Self::NonFinitePreTarget {
                 data_point,
@@ -354,10 +357,13 @@ impl fmt::Display for ReconstructionError {
                 subband,
             } => write!(
                 f,
-                "A-JOC pre target 在数据点 {data_point}/decorrelator {decorrelator}/输入 {channel}/子带 {subband} 非有限"
+                "A-JOC pre target is non-finite at data point {data_point}/decorrelator {decorrelator}/input {channel}/subband {subband}"
             ),
             Self::NonFiniteCoefficient { group, index } => {
-                write!(f, "A-JOC {group:?} rolling 系数 {index} 非有限")
+                write!(
+                    f,
+                    "A-JOC {group:?} rolling coefficient {index} is non-finite"
+                )
             }
             Self::NonFiniteDecorrelatorInput {
                 decorrelator,
@@ -365,19 +371,19 @@ impl fmt::Display for ReconstructionError {
                 subband,
             } => write!(
                 f,
-                "A-JOC decorrelator {decorrelator} 输入在时隙 {timeslot}/子带 {subband} 非有限"
+                "A-JOC decorrelator {decorrelator} input is non-finite at timeslot {timeslot}/subband {subband}"
             ),
             Self::Decorrelator {
                 decorrelator,
                 source,
-            } => write!(f, "A-JOC decorrelator {decorrelator} 失败：{source}"),
+            } => write!(f, "A-JOC decorrelator {decorrelator} failed: {source}"),
             Self::NonFiniteOutput {
                 object,
                 timeslot,
                 subband,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 输出在时隙 {timeslot}/子带 {subband} 非有限"
+                "A-JOC object {object} output is non-finite at timeslot {timeslot}/subband {subband}"
             ),
         }
     }

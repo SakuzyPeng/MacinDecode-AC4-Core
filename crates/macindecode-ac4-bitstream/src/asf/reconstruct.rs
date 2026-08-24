@@ -105,29 +105,44 @@ impl fmt::Display for ReconstructError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ReconstructError::MissingScaleFactorDelta { group, sfb } => {
-                write!(f, "窗口组 {group} 的频带 {sfb} 缺少标度因子差值")
+                write!(
+                    f,
+                    "Window group {group}, band {sfb} lacks a scale-factor delta"
+                )
             }
             ReconstructError::ScaleFactorOutOfRange { group, sfb, value } => {
-                write!(f, "窗口组 {group} 的频带 {sfb} 还原出非法标度因子 {value}")
+                write!(
+                    f,
+                    "Window group {group}, band {sfb} reconstructs invalid scale factor {value}"
+                )
             }
             ReconstructError::OutputTooSmall { needed, provided } => {
-                write!(f, "输出缓冲需要 {needed} 条谱线，只提供了 {provided} 条")
+                write!(
+                    f,
+                    "Output buffer requires {needed} spectral lines, but only {provided} were provided"
+                )
             }
             ReconstructError::InputTooSmall { needed, provided } => {
-                write!(f, "解组输入需要 {needed} 条谱线，只提供了 {provided} 条")
+                write!(
+                    f,
+                    "Ungrouping input requires {needed} spectral lines, but only {provided} were provided"
+                )
             }
             ReconstructError::LayoutMismatch {
                 workspace_matches,
                 factors_match,
             } => write!(
                 f,
-                "缩放输入混用了不同窗口布局（工作区匹配：{workspace_matches}，标度因子匹配：{factors_match}）"
+                "Scaling input mixes window layouts (workspace match: {workspace_matches}, scale-factor match: {factors_match})"
             ),
-            ReconstructError::ScaleFactorSourceMismatch => {
-                f.write_str("标度因子与当前谱工作区中的码值不匹配")
-            }
+            ReconstructError::ScaleFactorSourceMismatch => f.write_str(
+                "Scale factors do not match code values in the current spectrum workspace",
+            ),
             ReconstructError::InvalidBandRange { group, sfb } => {
-                write!(f, "窗口组 {group} 的频带 {sfb} 无法映射到谱线范围")
+                write!(
+                    f,
+                    "Window group {group}, band {sfb} cannot be mapped to a spectral-line range"
+                )
             }
         }
     }
@@ -1114,7 +1129,7 @@ mod tests {
         );
         assert_eq!(
             error.to_string(),
-            "输出缓冲需要 1024 条谱线，只提供了 100 条"
+            "Output buffer requires 1024 spectral lines, but only 100 were provided"
         );
         assert!(out.iter().all(|v| *v == 7.0), "失败前不得改写调用方缓冲");
     }

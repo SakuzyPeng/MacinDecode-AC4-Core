@@ -40,7 +40,7 @@ pub(crate) fn presentation_media_span(
         )?;
         let end = cursor
             .checked_add(duration)
-            .ok_or("MP4 edit 呈现区间溢出")?;
+            .ok_or("MP4 edit presentation range overflow")?;
         if !entry.is_empty_edit() {
             media_span = Some(MediaSpan {
                 start_sample: scale_u64_round(
@@ -99,24 +99,26 @@ pub(crate) fn project_pcm_batch_to_presentation(
     let Some(mut pcm) = pcm else {
         return Ok(None);
     };
-    let output_frames = usize::try_from(output_frames).map_err(|_| "PCM 呈现时长超出 usize")?;
-    let source_start = usize::try_from(source_start).map_err(|_| "PCM edit 起点超出 usize")?;
+    let output_frames =
+        usize::try_from(output_frames).map_err(|_| "PCM presentation duration exceeds usize")?;
+    let source_start = usize::try_from(source_start).map_err(|_| "PCM edit start exceeds usize")?;
     let (visible_start, visible_end) = match media_span {
         Some(span) => (
-            usize::try_from(span.start_sample).map_err(|_| "PCM 可见区间起点超出 usize")?,
-            usize::try_from(span.end_sample).map_err(|_| "PCM 可见区间终点超出 usize")?,
+            usize::try_from(span.start_sample)
+                .map_err(|_| "PCM visible-range start exceeds usize")?,
+            usize::try_from(span.end_sample).map_err(|_| "PCM visible-range end exceeds usize")?,
         ),
         None => (0, 0),
     };
     if visible_start > visible_end || visible_end > output_frames {
-        return Err("PCM edit 可见区间超出呈现时间线".to_owned());
+        return Err("PCM edit visible range exceeds the presentation timeline".to_owned());
     }
     let visible_frames = visible_end
         .checked_sub(visible_start)
-        .ok_or("PCM edit 可见区间为负")?;
+        .ok_or("PCM edit visible range is negative")?;
     let source_end = source_start
         .checked_add(visible_frames)
-        .ok_or("PCM edit 源区间溢出")?;
+        .ok_or("PCM edit source-range overflow")?;
 
     // 不设「投影是恒等就跳过」的快路径：实测八条向量的 `media_time` 恒为 2 048
     // （一帧 priming），`source_start == 0` 这一支从不成立，其中的长度判断更是
@@ -125,16 +127,18 @@ pub(crate) fn project_pcm_batch_to_presentation(
     for track in &mut pcm.tracks {
         let visible = track.samples.get(source_start..source_end).ok_or_else(|| {
             format!(
-                "PCM edit 源区间 {source_start}..{source_end} 超出 substream {} 输出 {} 的 {} 个样本",
+                "PCM edit source range {source_start}..{source_end} exceeds the {} samples in substream {} output {}",
+                track.samples.len(),
                 track.substream_index,
-                track.output_index,
-                track.samples.len()
+                track.output_index
             )
         })?;
         let mut projected = Vec::new();
         projected
             .try_reserve_exact(output_frames)
-            .map_err(|error| format!("无法为呈现 PCM 分配 {output_frames} 个样本：{error}"))?;
+            .map_err(|error| {
+                format!("Failed to allocate {output_frames} presentation PCM samples: {error}")
+            })?;
         projected.resize(visible_start, 0.0);
         projected.extend_from_slice(visible);
         projected.resize(output_frames, 0.0);
@@ -144,50 +148,57 @@ pub(crate) fn project_pcm_batch_to_presentation(
 }
 
 #[cfg(feature = "audio-decode")]
-#[expect(clippy::arithmetic_side_effects, reason = "使用 i128 并逐步检查溢出")]
+#[expect(
+    clippy::arithmetic_side_effects,
+    reason = "uses i128 and checks overflow at every step"
+)]
 pub(crate) fn scale_i64_round(value: i64, numerator: i64, denominator: i64) -> Result<i64, String> {
     if numerator <= 0 || denominator <= 0 {
-        return Err("时间线比例必须为正数".to_owned());
+        return Err("Timeline ratio must be positive".to_owned());
     }
     let scaled = i128::from(value)
         .checked_mul(i128::from(numerator))
-        .ok_or("时间线乘法溢出")?;
+        .ok_or("Timeline multiplication overflow")?;
     let half = i128::from(denominator) / 2;
     let rounded = if scaled >= 0 {
-        scaled.checked_add(half).ok_or("时间线舍入溢出")?
+        scaled
+            .checked_add(half)
+            .ok_or("Timeline rounding overflow")?
     } else {
-        scaled.checked_sub(half).ok_or("时间线舍入溢出")?
+        scaled
+            .checked_sub(half)
+            .ok_or("Timeline rounding overflow")?
     } / i128::from(denominator);
-    i64::try_from(rounded).map_err(|_| "时间线超出 i64".to_owned())
+    i64::try_from(rounded).map_err(|_| "Timeline value exceeds i64".to_owned())
 }
 
 #[cfg(feature = "audio-decode")]
 pub(crate) fn scale_u64_round(value: u64, numerator: u64, denominator: u64) -> Result<u64, String> {
     if numerator == 0 || denominator == 0 {
-        return Err("时间线比例必须为正数".to_owned());
+        return Err("Timeline ratio must be positive".to_owned());
     }
     let scaled = u128::from(value)
         .checked_mul(u128::from(numerator))
-        .ok_or("时间线乘法溢出")?;
+        .ok_or("Timeline multiplication overflow")?;
     let rounded = scaled
         .checked_add(u128::from(denominator / 2))
-        .ok_or("时间线舍入溢出")?
+        .ok_or("Timeline rounding overflow")?
         .checked_div(u128::from(denominator))
-        .ok_or("时间线除数为零")?;
-    u64::try_from(rounded).map_err(|_| "时间线超出 u64".to_owned())
+        .ok_or("Timeline divisor is zero")?;
+    u64::try_from(rounded).map_err(|_| "Timeline value exceeds u64".to_owned())
 }
 
 #[cfg(feature = "audio-decode")]
 pub(crate) fn scale_u64_floor(value: u64, numerator: u64, denominator: u64) -> Result<u64, String> {
     if numerator == 0 || denominator == 0 {
-        return Err("时间线比例必须为正数".to_owned());
+        return Err("Timeline ratio must be positive".to_owned());
     }
     let scaled = u128::from(value)
         .checked_mul(u128::from(numerator))
-        .ok_or("时间线乘法溢出")?
+        .ok_or("Timeline multiplication overflow")?
         .checked_div(u128::from(denominator))
-        .ok_or("时间线除数为零")?;
-    u64::try_from(scaled).map_err(|_| "时间线超出 u64".to_owned())
+        .ok_or("Timeline divisor is zero")?;
+    u64::try_from(scaled).map_err(|_| "Timeline value exceeds u64".to_owned())
 }
 
 /// 在 `stsd` 中定位 `ac-4` sample entry。
@@ -427,6 +438,6 @@ mod tests {
             }),
         )
         .expect_err("源区间越界必须失败");
-        assert!(error.contains("源区间 3..6"), "{error}");
+        assert!(error.contains("source range 3..6"), "{error}");
     }
 }

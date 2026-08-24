@@ -86,20 +86,23 @@ impl fmt::Display for AsfError {
         match self {
             AsfError::Read(error) => write!(f, "{error}"),
             AsfError::UnsupportedFrameLenBase { frame_len_base } => {
-                write!(f, "frame_len_base {frame_len_base} 不在表 99 至 105 内")
+                write!(
+                    f,
+                    "frame_len_base {frame_len_base} is not in Tables 99 through 105"
+                )
             }
             AsfError::UnsupportedSamplingFrequency {
                 sampling_frequency_hz,
             } => write!(
                 f,
-                "ASF 成帧尚不支持 {sampling_frequency_hz} Hz，仅支持 44100 Hz 与 48000 Hz"
+                "ASF framing does not support {sampling_frequency_hz} Hz; only 44100 Hz and 48000 Hz are supported"
             ),
             AsfError::UnsupportedTransformIndex {
                 frame_len_base,
                 index,
             } => write!(
                 f,
-                "frame_len_base {frame_len_base} 下的 transf_length 索引 {index} 无对应变换长度"
+                "transf_length index {index} has no corresponding transform length for frame_len_base {frame_len_base}"
             ),
             AsfError::MaxSfbOutOfRange {
                 max_sfb,
@@ -107,15 +110,21 @@ impl fmt::Display for AsfError {
                 transform_length,
             } => write!(
                 f,
-                "变换长度 {transform_length} 的 max_sfb 为 {max_sfb}，上界为 {num_sfb}"
+                "max_sfb {max_sfb} for transform length {transform_length} exceeds limit {num_sfb}"
             ),
             AsfError::TooManyWindows { num_windows } => {
-                write!(f, "推导出 {num_windows} 个窗口，上界为 {MAX_WINDOWS}")
+                write!(
+                    f,
+                    "Derived {num_windows} windows, exceeding limit {MAX_WINDOWS}"
+                )
             }
             AsfError::LineCountExceedsFrame {
                 lines,
                 frame_len_base,
-            } => write!(f, "谱线总数 {lines} 超过帧长 {frame_len_base}"),
+            } => write!(
+                f,
+                "Total spectral-line count {lines} exceeds frame length {frame_len_base}"
+            ),
         }
     }
 }
@@ -562,7 +571,7 @@ impl AsfWindowLayout {
 
         if transform.different_framing() {
             let AsfFraming::Split { first, .. } = transform.framing else {
-                unreachable!("different_framing 蕴含 Split")
+                unreachable!("different_framing implies Split")
             };
             let windows_0 = usize::from(num_windows_first_half(first).ok_or(
                 AsfError::UnsupportedTransformIndex {

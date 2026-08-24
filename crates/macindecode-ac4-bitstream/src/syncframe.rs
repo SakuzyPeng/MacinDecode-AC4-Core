@@ -69,7 +69,7 @@ impl fmt::Display for SyncFrameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             SyncFrameError::InvalidSyncWord { offset, value } => {
-                write!(f, "偏移 {offset} 处 sync_word 非法：0x{value:04X}")
+                write!(f, "Invalid sync_word 0x{value:04X} at offset {offset}")
             }
             SyncFrameError::Truncated {
                 offset,
@@ -78,11 +78,11 @@ impl fmt::Display for SyncFrameError {
             } => {
                 write!(
                     f,
-                    "偏移 {offset} 处需要 {needed} 字节，实际可用 {available} 字节"
+                    "Need {needed} bytes at offset {offset}, but only {available} are available"
                 )
             }
             SyncFrameError::EmptyFrame { offset } => {
-                write!(f, "偏移 {offset} 处 frame_size 为 0")
+                write!(f, "frame_size is zero at offset {offset}")
             }
         }
     }
@@ -210,7 +210,10 @@ impl<'a> SyncFrameIter<'a> {
         }
 
         let header_bits = reader.bit_position();
-        debug_assert!(header_bits % 8 == 0, "sync frame 头部必须字节对齐");
+        debug_assert!(
+            header_bits % 8 == 0,
+            "sync-frame header must be byte-aligned"
+        );
         let header_len = (header_bits / 8) as usize;
 
         let payload_start = offset.saturating_add(header_len);

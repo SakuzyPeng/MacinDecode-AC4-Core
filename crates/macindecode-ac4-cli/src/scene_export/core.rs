@@ -75,14 +75,14 @@ pub(crate) fn select_core_sources(
 ) -> Result<CoreSourceSelection, CoreSceneError> {
     if batch.decode_mode != DecodeMode::Core {
         return Err(CoreSceneError::selection(
-            "core PCM 映射收到非 core Scene 批次",
+            "Core PCM mapping received a non-core scene batch",
         ));
     }
     let mut candidates = batch.elements.to_vec();
     candidates.sort_by_key(|item| (item.substream_index, item.object_index));
     if candidates.is_empty() {
         return Err(CoreSceneError::unsupported(
-            "所选 presentation 没有可映射的 A-JOC core 对象",
+            "Selected presentation has no mappable A-JOC core objects",
         ));
     }
 
@@ -92,14 +92,13 @@ pub(crate) fn select_core_sources(
         .collect::<BTreeSet<_>>();
     if substreams.len() != 1 {
         return Err(CoreSceneError::unsupported(format!(
-            "所选 presentation 引用了 {} 条 A-JOC core substream；当前只支持一条",
+            "Selected presentation references {} A-JOC core substreams; only one is currently supported",
             substreams.len()
         )));
     }
-    let substream = substreams
-        .first()
-        .copied()
-        .ok_or_else(|| CoreSceneError::invariant("A-JOC core substream 集合意外为空"))?;
+    let substream = substreams.first().copied().ok_or_else(|| {
+        CoreSceneError::invariant("A-JOC core substream set is unexpectedly empty")
+    })?;
 
     let mut lfe = None;
     let mut dynamic = Vec::new();
@@ -107,12 +106,12 @@ pub(crate) fn select_core_sources(
         if item.kind == MetadataElementKind::LfeBed {
             if lfe.is_some() {
                 return Err(CoreSceneError::unsupported(
-                    "同一 A-JOC core substream 声明了多条 LFE",
+                    "One A-JOC core substream declares multiple LFE objects",
                 ));
             }
             if item.object_index != 0 {
                 return Err(CoreSceneError::invariant(format!(
-                    "LFE {}:{} 必须是对象索引 0 的 BED",
+                    "LFE {}:{} must be a bed at object index 0",
                     item.substream_index, item.object_index
                 )));
             }
@@ -123,16 +122,16 @@ pub(crate) fn select_core_sources(
     }
     if dynamic.is_empty() {
         return Err(CoreSceneError::unsupported(
-            "所选 presentation 没有动态全频 core 对象",
+            "Selected presentation has no dynamic full-range core objects",
         ));
     }
     dynamic.sort_by_key(|item| item.object_index);
     for (index, item) in dynamic.iter().enumerate() {
         let expected = u8::try_from(index.saturating_add(1))
-            .map_err(|_| CoreSceneError::invariant("core 对象数量超出 u8"))?;
+            .map_err(|_| CoreSceneError::invariant("Core object count exceeds u8"))?;
         if item.object_index != expected {
             return Err(CoreSceneError::unsupported(format!(
-                "core 全频对象索引不是连续的 1..N：期待 {expected}，实际为 {}",
+                "Core full-range object indices are not contiguous from 1 through N: expected {expected}, got {}",
                 item.object_index
             )));
         }
@@ -152,12 +151,12 @@ pub(crate) fn map_core_pcm<'a>(
 ) -> Result<CoreMappedPcm<'a>, CoreSceneError> {
     if pcm.sample_rate != batch.sample_rate {
         return Err(CoreSceneError::invariant(format!(
-            "PCM 采样率 {} 与场景采样率 {} 不一致",
+            "PCM sample rate {} does not match scene sample rate {}",
             pcm.sample_rate, batch.sample_rate
         )));
     }
     let frames = usize::try_from(batch.duration_samples)
-        .map_err(|_| CoreSceneError::invariant("呈现时长超出 usize"))?;
+        .map_err(|_| CoreSceneError::invariant("Presentation duration exceeds usize"))?;
     let mut objects = Vec::new();
     let mut lfe = None;
     for channel in pcm
@@ -170,17 +169,17 @@ pub(crate) fn map_core_pcm<'a>(
             PcmTrackSource::Lfe if lfe.is_none() => lfe = Some(channel),
             PcmTrackSource::Lfe => {
                 return Err(CoreSceneError::invariant(
-                    "同一 core substream 解出了多条 LFE PCM",
+                    "One core substream decoded multiple LFE PCM tracks",
                 ));
             }
             PcmTrackSource::TransportChannel { .. } => {
                 return Err(CoreSceneError::invariant(
-                    "core 导出收到未经过 A-SPX 的传输侧元素 PCM",
+                    "Core export received transport-side element PCM that did not pass through A-SPX",
                 ));
             }
             PcmTrackSource::AjocObject { .. } => {
                 return Err(CoreSceneError::invariant(
-                    "core 导出收到已经过 full A-JOC 上混的对象 PCM",
+                    "Core export received object PCM that already passed through full A-JOC upmix",
                 ));
             }
         }
@@ -191,7 +190,7 @@ pub(crate) fn map_core_pcm<'a>(
     });
     if objects.len() != selection.objects.len() {
         return Err(CoreSceneError::invariant(format!(
-            "core OAMD 有 {} 个动态对象，PCM 有 {} 路 A-JOC 输入",
+            "Core OAMD has {} dynamic objects, but PCM has {} A-JOC inputs",
             selection.objects.len(),
             objects.len()
         )));
@@ -199,19 +198,19 @@ pub(crate) fn map_core_pcm<'a>(
     for (index, channel) in objects.iter().enumerate() {
         let PcmTrackSource::AjocInput { input_index } = channel.source else {
             return Err(CoreSceneError::invariant(
-                "core PCM 对象集合混入非 A-JOC input 来源",
+                "Core PCM object set contains a non-A-JOC-input source",
             ));
         };
         if input_index != index || channel.output_index != index {
             return Err(CoreSceneError::invariant(format!(
-                "A-JOC 输入顺序不连续：期待 q{index} / output {index}，实际 q{input_index} / output {}",
+                "A-JOC input order is not contiguous: expected q{index} / output {index}, got q{input_index} / output {}",
                 channel.output_index
             )));
         }
     }
     if selection.lfe.is_some() != lfe.is_some() {
         return Err(CoreSceneError::invariant(format!(
-            "core OAMD 的 LFE={}，PCM 的 LFE={}，两者不一致",
+            "Core OAMD LFE={} does not match PCM LFE={}",
             selection.lfe.is_some(),
             lfe.is_some()
         )));
@@ -219,7 +218,7 @@ pub(crate) fn map_core_pcm<'a>(
     if let Some(channel) = lfe {
         if channel.output_index != objects.len() {
             return Err(CoreSceneError::invariant(format!(
-                "LFE 必须排在 q0…qN-1 之后：期待 output {}，实际 output {}",
+                "LFE must follow q0 through qN-1: expected output {}, got output {}",
                 objects.len(),
                 channel.output_index
             )));
@@ -228,7 +227,7 @@ pub(crate) fn map_core_pcm<'a>(
     for channel in objects.iter().copied().chain(lfe) {
         if channel.samples.len() != frames {
             return Err(CoreSceneError::invariant(format!(
-                "substream {} 第 {} 路有 {} 个样本，呈现时长为 {frames}",
+                "Substream {} channel {} has {} samples; presentation duration is {frames}",
                 channel.substream_index,
                 channel.output_index,
                 channel.samples.len()
@@ -236,7 +235,7 @@ pub(crate) fn map_core_pcm<'a>(
         }
         if let Some(sample) = channel.samples.iter().find(|sample| !sample.is_finite()) {
             return Err(CoreSceneError::invariant(format!(
-                "core PCM 含非有限样本 {sample:?}"
+                "Core PCM contains a non-finite sample: {sample:?}"
             )));
         }
     }

@@ -233,7 +233,7 @@ impl TopologyTrace {
             Err(error) => {
                 self.failures = self.failures.saturating_add(1);
                 if self.first_error.is_none() {
-                    self.first_error = Some(format!("帧 {index}：{error}"));
+                    self.first_error = Some(format!("Frame {index}: {error}"));
                 }
                 self.state.mark_discontinuity(ResetReason::ParseFailure);
                 self.reset_decoder_history();
@@ -332,7 +332,7 @@ impl TopologyTrace {
     pub(super) fn record_parse_failure(&mut self, index: u32, message: &str) {
         self.failures = self.failures.saturating_add(1);
         if self.first_error.is_none() {
-            self.first_error = Some(format!("帧 {index}：{message}"));
+            self.first_error = Some(format!("Frame {index}: {message}"));
         }
         self.state.mark_discontinuity(ResetReason::ParseFailure);
         self.reset_decoder_history();

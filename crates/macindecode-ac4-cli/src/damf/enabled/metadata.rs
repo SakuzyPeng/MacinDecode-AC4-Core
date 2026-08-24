@@ -60,13 +60,13 @@ pub(super) fn append_object_event(
     let state = event.state;
     let render = state.render.ok_or_else(|| {
         format!(
-            "对象 {selector} 在 sample {} 缺少完整 render 状态",
+            "Object {selector} lacks a complete render state at sample {}",
             event.sample
         )
     })?;
     let basic = state.basic.ok_or_else(|| {
         format!(
-            "对象 {selector} 在 sample {} 缺少完整 basic 状态",
+            "Object {selector} lacks a complete basic state at sample {}",
             event.sample
         )
     })?;
@@ -83,7 +83,7 @@ pub(super) fn append_object_event(
             selector,
             i64::try_from(event.sample).ok(),
             "distance",
-            "DAMF 对象事件没有等价的 distance/infinity 字段",
+            "DAMF object events have no equivalent distance/infinity field",
         );
     }
     if other.divergence_mode.is_some()
@@ -92,13 +92,13 @@ pub(super) fn append_object_event(
     {
         if other.divergence_mode == Some(3) {
             return Err(format!(
-                "对象 {selector} 在 sample {} 使用保留 object_div_mode 3",
+                "Object {selector} uses reserved object_div_mode 3 at sample {}",
                 event.sample
             ));
         }
         if other.divergence_code == Some(0) {
             return Err(format!(
-                "对象 {selector} 在 sample {} 使用保留 object_div_code 0",
+                "Object {selector} uses reserved object_div_code 0 at sample {}",
                 event.sample
             ));
         }
@@ -106,7 +106,7 @@ pub(super) fn append_object_event(
             selector,
             i64::try_from(event.sample).ok(),
             "divergence",
-            "DAMF decorr 与 AC-4 divergence 语义不同，decorr 保持 0",
+            "DAMF decorr and AC-4 divergence have different semantics; decorr remains 0",
         );
     }
     let gain = match basic.gain {
@@ -131,7 +131,7 @@ pub(super) fn append_object_event(
             selector,
             i64::try_from(event.sample).ok(),
             "binaural_render_mode",
-            "AC-4 Mid 耳机模式不被 DAMF 0.5.1 接受，回落到 undefined",
+            "DAMF 0.5.1 does not accept AC-4 Mid headphone mode; falling back to undefined",
         );
     }
     let (head_track, binaural) = headphone_fields(event.additional, object.scene.common);
@@ -201,11 +201,11 @@ pub(super) fn zone_fields(
                 selector,
                 sample,
                 "zones",
-                "AC-4 only-proscenium 没有 DAMF zones 等价值，回落到 all",
+                "AC-4 only-proscenium has no DAMF zones equivalent; falling back to all",
             );
             "all"
         }
-        value => return Err(format!("对象 {selector} 使用保留 zone_mask {value}")),
+        value => return Err(format!("Object {selector} uses reserved zone_mask {value}")),
     };
     Ok((snap, elevation, zones))
 }

@@ -57,12 +57,21 @@ impl fmt::Display for AjocError {
             AjocError::DmxSignalsOutOfRange {
                 num_dmx_signals,
                 limit,
-            } => write!(f, "下混信号数 {num_dmx_signals} 超过上界 {limit}"),
+            } => write!(
+                f,
+                "Downmix signal count {num_dmx_signals} exceeds limit {limit}"
+            ),
             AjocError::UmxSignalsOutOfRange { num_umx_signals } => {
-                write!(f, "上混信号数 {num_umx_signals} 无法表示为工作区长度")
+                write!(
+                    f,
+                    "Upmix signal count {num_umx_signals} cannot be represented as a workspace length"
+                )
             }
             AjocError::ObjectWorkspaceTooSmall { needed, provided } => {
-                write!(f, "该元素需要 {needed} 个对象矩阵，只提供了 {provided} 个")
+                write!(
+                    f,
+                    "Element requires {needed} object matrices, but only {provided} were provided"
+                )
             }
         }
     }

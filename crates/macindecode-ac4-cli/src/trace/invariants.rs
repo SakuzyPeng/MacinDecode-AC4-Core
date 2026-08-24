@@ -86,8 +86,8 @@ impl ReconstructionInvariant {
         let counted = |count: u64, detail: Option<&str>, label: &str| {
             (count != 0).then(|| {
                 detail.map_or_else(
-                    || format!("{label} {count} 次"),
-                    |text| format!("{label} {count} 次：{text}"),
+                    || format!("{label}: {count} occurrence(s)"),
+                    |text| format!("{label}: {count} occurrence(s): {text}"),
                 )
             })
         };
@@ -95,50 +95,58 @@ impl ReconstructionInvariant {
             Self::State => counted(
                 u64::from(trace.state_failures),
                 trace.first_error.as_deref(),
-                "状态延续失败",
+                "State continuation failed",
             ),
             // `failures` 是帧级总括计数；状态失败也会让 FrameTally 失败，因此把
             // 更具体的 State 排在它之前。
             Self::Frame => counted(
                 u64::from(trace.failures),
                 trace.first_error.as_deref(),
-                "A-JOC 帧未完整落地",
+                "A-JOC frame was not completed",
             ),
             Self::ScaleFactor => counted(
                 u64::from(trace.scale_factor_failures),
                 trace.scale_factor_first_error.as_deref(),
-                "标度因子越界",
+                "Scale factor out of range",
             ),
             Self::Scale => counted(
                 stats.scale_failures,
                 stats.scale_first_error.as_deref(),
-                "缩放失败",
+                "Scaling failed",
             ),
             Self::Ungroup => counted(
                 stats.ungroup_failures,
                 stats.ungroup_first_error.as_deref(),
-                "解组失败",
+                "Ungrouping failed",
             ),
-            Self::UngroupCountMismatch => {
-                counted(stats.ungroup_count_mismatch, None, "解组前后非零谱线数不符")
-            }
+            Self::UngroupCountMismatch => counted(
+                stats.ungroup_count_mismatch,
+                None,
+                "Nonzero spectral-line count changed during ungrouping",
+            ),
             Self::UngroupEnergyDrift => (stats.ungroup_energy_drift >= 1e-12).then(|| {
                 format!(
-                    "解组能量漂移 {:e}，超出 f64 求和顺序的量级",
+                    "Ungrouping energy drift {:e} exceeds f64 summation-order noise",
                     stats.ungroup_energy_drift
                 )
             }),
-            Self::ScaledNonFinite => counted(stats.nonfinite, None, "缩放后出现非有限谱线"),
+            Self::ScaledNonFinite => counted(
+                stats.nonfinite,
+                None,
+                "Scaled spectrum contains non-finite values",
+            ),
             Self::Synthesis => counted(
                 stats.synthesis_failures,
                 stats.synthesis_first_error.as_deref(),
-                "IMDCT 合成失败",
+                "IMDCT synthesis failed",
             ),
-            Self::PcmNonFinite => counted(stats.pcm_nonfinite, None, "PCM 出现非有限样本"),
+            Self::PcmNonFinite => {
+                counted(stats.pcm_nonfinite, None, "PCM contains non-finite samples")
+            }
             Self::PcmSampleConservation => {
                 (stats.pcm_samples != stats.ungrouped_lines).then(|| {
                     format!(
-                        "PCM 样本数 {} 与解组谱线数 {} 不符",
+                        "PCM sample count {} does not match ungrouped spectral-line count {}",
                         stats.pcm_samples, stats.ungrouped_lines
                     )
                 })
@@ -146,22 +154,22 @@ impl ReconstructionInvariant {
             Self::AjocReconstruction => counted(
                 u64::from(trace.ajoc_reconstruction_failures),
                 trace.ajoc_reconstruction_first_error.as_deref(),
-                "A-JOC 对象重建失败",
+                "A-JOC object reconstruction failed",
             ),
             Self::ObjectsNonFinite => counted(
                 trace.objects_nonfinite,
                 trace.objects_nonfinite_first_error.as_deref(),
-                "对象 PCM 出现非有限样本",
+                "Object PCM contains non-finite samples",
             ),
             Self::ObjectShapeMismatch => counted(
                 u64::from(trace.object_shape_mismatches),
                 trace.object_shape_first_error.as_deref(),
-                "对象输出形状不匹配",
+                "Object output shape mismatch",
             ),
             Self::AspxDrive => counted(
                 u64::from(trace.aspx_failures),
                 trace.aspx_first_error.as_deref(),
-                "A-SPX PCM 驱动失败",
+                "A-SPX PCM drive failed",
             ),
         }
     }

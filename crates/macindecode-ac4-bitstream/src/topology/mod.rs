@@ -49,10 +49,10 @@ impl fmt::Display for Capacity {
         let text = match *self {
             Capacity::Presentations => "presentation",
             Capacity::SubstreamGroups => "substream group",
-            Capacity::GroupsPerPresentation => "presentation 引用的 group",
-            Capacity::LfSubstreams => "group 内 substream",
-            Capacity::Substreams => "substream index table 条目",
-            Capacity::AddEmdfSubstreams => "附加 EMDF substream",
+            Capacity::GroupsPerPresentation => "groups referenced by a presentation",
+            Capacity::LfSubstreams => "substreams in a group",
+            Capacity::Substreams => "substream index-table entries",
+            Capacity::AddEmdfSubstreams => "additional EMDF substreams",
         };
         f.write_str(text)
     }
@@ -86,14 +86,14 @@ impl fmt::Display for Unsupported {
         match *self {
             Unsupported::LegacyPresentationInfo { bitstream_version } => write!(
                 f,
-                "bitstream_version {bitstream_version} 使用 ac4_presentation_info()，本实现只覆盖版本 2"
+                "bitstream_version {bitstream_version} uses ac4_presentation_info(); only version 2 is supported"
             ),
             Unsupported::FutureBitstreamVersion { bitstream_version } => write!(
                 f,
-                "bitstream_version {bitstream_version} 尚未由当前规范定义，本实现只覆盖版本 2"
+                "bitstream_version {bitstream_version} is not defined by the current specification; only version 2 is supported"
             ),
             Unsupported::ReservedChannelMode { ch_mode } => {
-                write!(f, "ch_mode {ch_mode} 为保留取值")
+                write!(f, "ch_mode {ch_mode} is reserved")
             }
         }
     }
@@ -166,36 +166,51 @@ pub enum TopologyError {
 impl fmt::Display for TopologyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            TopologyError::Read(error) => write!(f, "拓扑读取失败：{error}"),
+            TopologyError::Read(error) => write!(f, "Failed to read topology: {error}"),
             TopologyError::OamdCommon(error) => {
-                write!(f, "A-JOC 内嵌 OAMD 公共数据解析失败：{error}")
+                write!(
+                    f,
+                    "Failed to parse embedded A-JOC OAMD common data: {error}"
+                )
             }
             TopologyError::CapacityExceeded {
                 what,
                 declared,
                 limit,
-            } => write!(f, "{what}数为 {declared}，超过本实现上限 {limit}"),
+            } => write!(
+                f,
+                "{what} count {declared} exceeds implementation limit {limit}"
+            ),
             TopologyError::Unsupported { what, bit_position } => {
-                write!(f, "偏移 {bit_position} 处：{what}")
+                write!(f, "At bit offset {bit_position}: {what}")
             }
             TopologyError::PresentationVersionTooLong { bit_position } => write!(
                 f,
-                "偏移 {bit_position} 处 presentation_version 的一元编码超过 {MAX_PRESENTATION_VERSION} 位"
+                "Unary presentation_version at bit offset {bit_position} exceeds {MAX_PRESENTATION_VERSION} bits"
             ),
             TopologyError::GroupIndexOutOfRange { group_index, total } => {
                 write!(
                     f,
-                    "presentation 引用 group {group_index}，但 TOC 只有 {total} 个"
+                    "Presentation references group {group_index}, but the TOC contains only {total} groups"
                 )
             }
             TopologyError::SubstreamIndexOutOfRange { index, total } => {
-                write!(f, "TOC 引用 substream {index}，但索引表只有 {total} 个")
+                write!(
+                    f,
+                    "TOC references substream {index}, but the index table contains only {total} entries"
+                )
             }
             TopologyError::UnreferencedSubstream { index } => {
-                write!(f, "索引表中的 substream {index} 未被 TOC 引用")
+                write!(
+                    f,
+                    "Substream {index} in the index table is not referenced by the TOC"
+                )
             }
             TopologyError::SubstreamSizesAbsent => {
-                write!(f, "索引表未传输 substream 尺寸，无法定位载荷")
+                write!(
+                    f,
+                    "Index table does not carry substream sizes, so payloads cannot be located"
+                )
             }
             TopologyError::SubstreamPayloadOutOfFrame {
                 index,
@@ -204,7 +219,7 @@ impl fmt::Display for TopologyError {
                 frame_len,
             } => write!(
                 f,
-                "substream {index} 的载荷区间 [{start}, {end}) 超出帧长度 {frame_len}"
+                "Payload range [{start}, {end}) for substream {index} exceeds frame length {frame_len}"
             ),
         }
     }

@@ -28,14 +28,14 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
     let data = fs::read(&args.input).map_err(|error| {
         full_error(
             DiagnosticCode::InputReadFailed,
-            format!("无法读取 {}：{error}", args.input.display()),
+            format!("Failed to read {}: {error}", args.input.display()),
         )
     })?;
     let presentation_selection = match args.presentation {
         Some(index) => PresentationSelection::Index(u32::try_from(index).map_err(|_| {
             full_error(
                 DiagnosticCode::SelectionInvalid,
-                "presentation 下标超出 u32",
+                "Presentation index exceeds u32",
             )
         })?),
         None => PresentationSelection::AutoUnique,
@@ -46,7 +46,7 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
         return Err(full_error(
             DiagnosticCode::UnsupportedCodingPath,
             format!(
-                "DAMF 固定要求 {OUTPUT_SAMPLE_RATE} Hz，full 对象 PCM 为 {} Hz；当前不重采样",
+                "DAMF requires {OUTPUT_SAMPLE_RATE} Hz, but full-object PCM is {} Hz; resampling is not supported",
                 pcm.sample_rate
             ),
         )
@@ -60,13 +60,13 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
     let duration = u64::try_from(audio.frames).map_err(|_| {
         full_error(
             DiagnosticCode::InternalInvariantFailed,
-            "full DAMF PCM 帧数超出 u64",
+            "Full DAMF PCM frame count exceeds u64",
         )
     })?;
     if duration == 0 {
         return Err(full_error(
             DiagnosticCode::InputInvalid,
-            "应用 edit 后的呈现时长为零",
+            "Presentation duration is zero after applying edits",
         ));
     }
     let stem = choose_stem_from(&args.input, args.stem.clone())
@@ -89,7 +89,7 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
         return Err(full_error(
             DiagnosticCode::MappingUnsupported,
             format!(
-                "严格映射拒绝 {} 类无法精确表示的元数据：{}",
+                "Strict mapping rejected {} class(es) of metadata that cannot be represented exactly: {}",
                 warnings.items.len(),
                 warnings
                     .items
@@ -107,7 +107,7 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
         .ok_or_else(|| {
             full_error(
                 DiagnosticCode::InternalInvariantFailed,
-                "full DAMF 声道数溢出",
+                "Full DAMF channel-count overflow",
             )
         })?;
     write_package_with_audio(
@@ -139,14 +139,17 @@ fn ensure_output(output: &Path) -> Result<(), CliError> {
     if fs::symlink_metadata(output).is_ok() {
         return Err(full_error(
             DiagnosticCode::OutputExists,
-            format!("输出路径已存在：{}", output.display()),
+            format!("Output path already exists: {}", output.display()),
         ));
     }
     let parent = output_parent(output);
     if !parent.is_dir() {
         return Err(full_error(
             DiagnosticCode::OutputCreateFailed,
-            format!("输出目录的父目录不存在：{}", parent.display()),
+            format!(
+                "Output parent directory does not exist: {}",
+                parent.display()
+            ),
         ));
     }
     Ok(())
@@ -194,7 +197,7 @@ fn select_full_objects(metadata: &MetadataBatch) -> Result<FullDamfSelection, Cl
         return Err(full_error(
             DiagnosticCode::UnsupportedCodingPath,
             format!(
-                "full A-JOC 含 {} 个对象，DAMF 7.1.2 bed 最多容纳 {MAX_PROBE_OBJECTS} 个对象",
+                "Full A-JOC has {} objects; the DAMF 7.1.2 bed supports at most {MAX_PROBE_OBJECTS}",
                 source.objects.len()
             ),
         ));
@@ -212,7 +215,7 @@ fn select_full_objects(metadata: &MetadataBatch) -> Result<FullDamfSelection, Cl
                 .ok_or_else(|| {
                     full_error(
                         DiagnosticCode::InternalInvariantFailed,
-                        "full DAMF 对象 ID 超出 u32",
+                        "Full DAMF object ID exceeds u32",
                     )
                 })?;
             Ok(SelectedObject { scene, damf_id })
@@ -231,7 +234,8 @@ fn summary_json(
     presentation_type: DamfPresentationType,
     warnings: &[MappingWarning],
 ) -> Result<String, String> {
-    let root = fs::canonicalize(output).map_err(|error| format!("无法规范化输出路径：{error}"))?;
+    let root = fs::canonicalize(output)
+        .map_err(|error| format!("Failed to canonicalize output path: {error}"))?;
     let file = |suffix: &str| root.join(format!("{stem}{suffix}"));
     let objects = selection
         .objects

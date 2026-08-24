@@ -13,7 +13,7 @@ pub(crate) fn run(_args: ExportDamfArgs) -> Result<String, CliError> {
     Err(CliError::new(
         COMMAND,
         DiagnosticCode::FeatureRequired,
-        "export-damf 需要以 --features audio-decode 重新构建 macinac4",
+        "export-damf requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 
@@ -22,7 +22,7 @@ pub(crate) fn run_full(_args: ExportFullDamfArgs) -> Result<String, CliError> {
     Err(CliError::new(
         FULL_COMMAND,
         DiagnosticCode::FeatureRequired,
-        "export-full-damf 需要以 --features audio-decode 重新构建 macinac4",
+        "export-full-damf requires rebuilding macinac4 with --features audio-decode",
     ))
 }
 

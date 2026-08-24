@@ -53,7 +53,9 @@ impl AjocTrace {
             }) || umx_timing.is_some_and(|timing| {
                 timing.num_obj_info_blocks != parsed.audio.umx_num_obj_info_blocks
             }) {
-                return Err("A-JOC 生效 timing 的块数与动态数据不一致".to_owned());
+                return Err(
+                    "A-JOC effective-timing block count does not match dynamic data".to_owned(),
+                );
             }
             scene_contexts.push(EffectiveSceneContext {
                 dmx_timing,
@@ -85,7 +87,7 @@ impl AjocTrace {
     /// 应用同一帧的 core/full 对象块；任一侧失败时两侧状态与统计均不提交。
     #[expect(
         clippy::too_many_arguments,
-        reason = "core/full 两套事务性输入必须并列传入"
+        reason = "core and full transactional inputs must be supplied together"
     )]
     fn apply_object_block_batches(
         &mut self,
@@ -99,28 +101,26 @@ impl AjocTrace {
         umx_timing: Option<OamdTimingData>,
     ) -> Result<(), String> {
         let index = usize::try_from(substream_index).unwrap_or(usize::MAX);
-        let dmx_initial = self
-            .dmx_objects
-            .get(index)
-            .copied()
-            .ok_or_else(|| "A-JOC substream 下标超出 core 对象状态容量".to_owned())?;
-        let umx_initial = self
-            .umx_objects
-            .get(index)
-            .copied()
-            .ok_or_else(|| "A-JOC substream 下标超出 full 对象状态容量".to_owned())?;
+        let dmx_initial =
+            self.dmx_objects.get(index).copied().ok_or_else(|| {
+                "A-JOC substream index exceeds core-object state capacity".to_owned()
+            })?;
+        let umx_initial =
+            self.umx_objects.get(index).copied().ok_or_else(|| {
+                "A-JOC substream index exceeds full-object state capacity".to_owned()
+            })?;
         let (next_dmx, dmx_stats) =
             resolve_oamd_blocks_timed(dmx_initial, dmx, dmx_num_obj_info_blocks, dmx_timing)
-                .map_err(|error| format!("core 状态延续失败：{error}"))?;
+                .map_err(|error| format!("Core state continuation failed: {error}"))?;
         let (next_umx, umx_stats) =
             resolve_oamd_blocks_timed(umx_initial, umx, umx_num_obj_info_blocks, umx_timing)
-                .map_err(|error| format!("full 状态延续失败：{error}"))?;
+                .map_err(|error| format!("Full state continuation failed: {error}"))?;
 
         let (Some(dmx_state), Some(umx_state)) = (
             self.dmx_objects.get_mut(index),
             self.umx_objects.get_mut(index),
         ) else {
-            return Err("A-JOC substream 下标超出对象状态容量".to_owned());
+            return Err("A-JOC substream index exceeds object-state capacity".to_owned());
         };
         *dmx_state = next_dmx;
         *umx_state = next_umx;

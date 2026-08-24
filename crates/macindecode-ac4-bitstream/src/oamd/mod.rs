@@ -85,30 +85,39 @@ pub enum OamdError {
 impl fmt::Display for OamdError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            OamdError::Read(error) => write!(f, "OAMD 读取失败：{error}"),
+            OamdError::Read(error) => write!(f, "Failed to read OAMD: {error}"),
             OamdError::Misaligned { remaining_bits } => write!(
                 f,
-                "oamd_substream 解析后残余 {remaining_bits} 比特，超过 byte_align 的 0…7"
+                "{remaining_bits} bits remain after parsing oamd_substream, exceeding byte_align range 0..7"
             ),
             OamdError::AdditionalDataUnderflow {
                 declared_bytes,
                 used_bits,
             } => write!(
                 f,
-                "add_data 声明 {declared_bytes} 字节，但子元素已消耗 {used_bits} 比特"
+                "add_data declares {declared_bytes} bytes, but child elements already consumed {used_bits} bits"
             ),
             OamdError::TooManyBlocks { declared } => write!(
                 f,
-                "num_obj_info_blocks 为 {declared}，超过本实现上限 {MAX_OBJ_INFO_BLOCKS}"
+                "num_obj_info_blocks is {declared}, exceeding implementation limit {MAX_OBJ_INFO_BLOCKS}"
             ),
             OamdError::TooManyObjects { limit } => {
-                write!(f, "substream group 的对象数超过本实现上限 {limit}")
+                write!(
+                    f,
+                    "Substream-group object count exceeds implementation limit {limit}"
+                )
             }
             OamdError::TooManyMetadataBlocks { limit } => {
-                write!(f, "OAMD 逐对象更新数超过本实现上限 {limit}")
+                write!(
+                    f,
+                    "Per-object OAMD update count exceeds implementation limit {limit}"
+                )
             }
             OamdError::TimingUnavailable => {
-                write!(f, "本帧未传输 oamd_timing_data，且无可延续的前序状态")
+                write!(
+                    f,
+                    "Frame carries no oamd_timing_data and has no prior state to continue"
+                )
             }
         }
     }

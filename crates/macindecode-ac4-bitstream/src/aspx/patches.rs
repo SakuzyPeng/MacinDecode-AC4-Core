@@ -134,8 +134,8 @@ impl PatchTable {
                     });
                 }
                 let start_sb = sba - odd - num_sb;
-                debug_assert!(start_sb >= 0, "patch 源起点落到低带之外");
-                debug_assert!(start_sb + num_sb <= sba, "patch 源区间越过 sba");
+                debug_assert!(start_sb >= 0, "patch source start falls below the low band");
+                debug_assert!(start_sb + num_sb <= sba, "patch source range crosses sba");
                 num_sb_out[count] = num_sb as u8;
                 start_sb_out[count] = start_sb as u8;
                 usb = sb;
@@ -181,8 +181,15 @@ impl PatchTable {
     /// 只做前缀和，不跑 `Pseudocode 71`——那条路径由本模块自己的判据覆盖。
     #[cfg(test)]
     pub(crate) fn from_parts(num_sb: &[u8], start_sb: &[u8], sbx: u8) -> Self {
-        assert_eq!(num_sb.len(), start_sb.len(), "两个数组必须等长");
-        assert!(num_sb.len() <= MAX_SBG_PATCHES, "段数超过规范上界");
+        assert_eq!(
+            num_sb.len(),
+            start_sb.len(),
+            "arrays must have equal length"
+        );
+        assert!(
+            num_sb.len() <= MAX_SBG_PATCHES,
+            "segment count exceeds the specification limit"
+        );
         let mut out = Self {
             num_sb: [0; MAX_SBG_PATCHES],
             start_sb: [0; MAX_SBG_PATCHES],

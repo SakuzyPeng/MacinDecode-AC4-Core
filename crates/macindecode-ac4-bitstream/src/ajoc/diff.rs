@@ -205,7 +205,10 @@ impl fmt::Display for DiffError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ObjectCountOutOfRange { objects } => {
-                write!(f, "A-JOC 对象数 {objects} 无法表示为工作区长度")
+                write!(
+                    f,
+                    "A-JOC object count {objects} cannot be represented as a workspace length"
+                )
             }
             Self::ObjectWorkspaceTooSmall {
                 needed,
@@ -215,7 +218,7 @@ impl fmt::Display for DiffError {
                 output,
             } => write!(
                 f,
-                "A-JOC 差分需要 {needed} 个对象，control/raw/state/output 只有 {controls}/{raw}/{states}/{output}"
+                "A-JOC differencing requires {needed} objects; control/raw/state/output provide {controls}/{raw}/{states}/{output}"
             ),
             Self::DimensionOutOfRange {
                 num_dpoints,
@@ -223,10 +226,13 @@ impl fmt::Display for DiffError {
                 num_decorr,
             } => write!(
                 f,
-                "A-JOC 差分维度越界：dpoints={num_dpoints}, dmx={num_dmx}, decorr={num_decorr}"
+                "A-JOC differencing dimensions out of range: dpoints={num_dpoints}, dmx={num_dmx}, decorr={num_decorr}"
             ),
             Self::BandCountOutOfRange { object, num_bands } => {
-                write!(f, "A-JOC 对象 {object} 的参数频带数 {num_bands} 越界")
+                write!(
+                    f,
+                    "Parameter-band count {num_bands} for A-JOC object {object} is out of range"
+                )
             }
             Self::MissingRawValue {
                 kind,
@@ -236,7 +242,7 @@ impl fmt::Display for DiffError {
                 band: Some(band),
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 缺原始频带 {band}"
+                "A-JOC object {object}, data point {data_point}, {kind:?} row {row} lacks raw band {band}"
             ),
             Self::MissingRawValue {
                 kind,
@@ -246,7 +252,7 @@ impl fmt::Display for DiffError {
                 band: None,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 缺差分方向"
+                "A-JOC object {object}, data point {data_point}, {kind:?} row {row} lacks a differential direction"
             ),
             Self::AbsoluteOutOfRange {
                 kind,
@@ -257,7 +263,7 @@ impl fmt::Display for DiffError {
                 levels,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 首值 {value} 越出 0..{levels}"
+                "Initial value {value} for A-JOC object {object}, data point {data_point}, {kind:?} row {row} is outside 0..{levels}"
             ),
             Self::IncompatibleHistory {
                 kind,
@@ -268,7 +274,7 @@ impl fmt::Display for DiffError {
                 coarse,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 没有兼容历史（bands={num_bands}, coarse={coarse}）"
+                "A-JOC object {object}, data point {data_point}, {kind:?} row {row} has no compatible history (bands={num_bands}, coarse={coarse})"
             ),
             Self::TimeResultOutOfRange {
                 kind,
@@ -281,7 +287,7 @@ impl fmt::Display for DiffError {
                 levels,
             } => write!(
                 f,
-                "A-JOC 对象 {object} 数据点 {data_point} 的 {kind:?} 行 {row} 频带 {band} 时间差分 {previous} + {delta} 越出 0..{levels}"
+                "Time differential {previous} + {delta} for A-JOC object {object}, data point {data_point}, {kind:?} row {row}, band {band} is outside 0..{levels}"
             ),
         }
     }

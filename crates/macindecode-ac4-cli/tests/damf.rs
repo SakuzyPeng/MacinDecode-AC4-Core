@@ -233,7 +233,7 @@ fn strict_mapping_fails_before_creating_the_package() {
         .expect("应能启动 CLI");
     assert!(!output.status.success());
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("严格映射拒绝"),
+        String::from_utf8_lossy(&output.stderr).contains("Strict mapping rejected"),
         "实际向量的九配置 trim 应作为无法无损映射项：{}",
         String::from_utf8_lossy(&output.stderr)
     );

@@ -53,7 +53,7 @@ where
                 return Err(package_error(
                     command,
                     DiagnosticCode::OutputCreateFailed,
-                    format!("无法创建临时 DAMF 目录：{error}"),
+                    format!("Failed to create temporary DAMF directory: {error}"),
                 ));
             }
         }
@@ -62,7 +62,7 @@ where
         package_error(
             command,
             DiagnosticCode::OutputCreateFailed,
-            "无法分配临时 DAMF 目录",
+            "Failed to allocate a unique temporary DAMF directory",
         )
     })?;
     let result = (|| {
@@ -70,14 +70,14 @@ where
             package_error(
                 command,
                 DiagnosticCode::OutputWriteFailed,
-                format!("写 manifest 失败：{error}"),
+                format!("Failed to write manifest: {error}"),
             )
         })?;
         fs::write(temp.join(format!("{stem}.atmos.metadata")), metadata).map_err(|error| {
             package_error(
                 command,
                 DiagnosticCode::OutputWriteFailed,
-                format!("写 metadata 失败：{error}"),
+                format!("Failed to write metadata: {error}"),
             )
         })?;
         write_audio(&temp.join(format!("{stem}.atmos.audio")))?;
@@ -87,14 +87,17 @@ where
                 return Err(package_error(
                     command,
                     DiagnosticCode::OutputExists,
-                    format!("输出路径在写入期间被创建：{}", output.display()),
+                    format!(
+                        "Output path was created while writing: {}",
+                        output.display()
+                    ),
                 ));
             }
             Err(error) => {
                 return Err(package_error(
                     command,
                     DiagnosticCode::OutputCommitFailed,
-                    format!("以原子 no-clobber 方式提交 DAMF 包失败：{error}"),
+                    format!("Failed to commit DAMF package atomically without clobbering: {error}"),
                 ));
             }
         }
@@ -130,7 +133,7 @@ pub(super) fn write_caf(
     let channels = BED_CHANNELS
         .len()
         .checked_add(selected.len())
-        .ok_or("CAF 声道数溢出")?;
+        .ok_or("CAF channel-count overflow")?;
     write_caf_with_audio(path, frames, channels, |writer| {
         let mut generators = selected
             .iter()
@@ -178,15 +181,18 @@ where
     F: FnOnce(&mut BufWriter<File>) -> Result<(), String>,
 {
     let bytes_per_packet = u64::try_from(channels)
-        .map_err(|_| "CAF 声道数超出 u64")?
+        .map_err(|_| "CAF channel count exceeds u64")?
         .checked_mul(BYTES_PER_SAMPLE)
-        .ok_or("CAF packet 字节数溢出")?;
+        .ok_or("CAF packet-byte-count overflow")?;
     let payload_bytes = frames
         .checked_mul(bytes_per_packet)
-        .ok_or("CAF payload 大小溢出")?;
-    let data_chunk_size = payload_bytes.checked_add(4).ok_or("CAF data chunk 溢出")?;
-    let mut writer =
-        BufWriter::new(File::create(path).map_err(|error| format!("创建 CAF 失败：{error}"))?);
+        .ok_or("CAF payload-size overflow")?;
+    let data_chunk_size = payload_bytes
+        .checked_add(4)
+        .ok_or("CAF data-chunk overflow")?;
+    let mut writer = BufWriter::new(
+        File::create(path).map_err(|error| format!("Failed to create CAF: {error}"))?,
+    );
     writer.write_all(b"caff").map_err(io_error)?;
     writer.write_all(&1u16.to_be_bytes()).map_err(io_error)?;
     writer.write_all(&0u16.to_be_bytes()).map_err(io_error)?;
@@ -200,7 +206,7 @@ where
     writer
         .write_all(
             &u32::try_from(bytes_per_packet)
-                .map_err(|_| "CAF packet 超出 u32")?
+                .map_err(|_| "CAF packet size exceeds u32")?
                 .to_be_bytes(),
         )
         .map_err(io_error)?;
@@ -208,7 +214,7 @@ where
     writer
         .write_all(
             &u32::try_from(channels)
-                .map_err(|_| "CAF 声道数超出 u32")?
+                .map_err(|_| "CAF channel count exceeds u32")?
                 .to_be_bytes(),
         )
         .map_err(io_error)?;
@@ -217,7 +223,7 @@ where
     writer
         .write_all(
             &i64::try_from(data_chunk_size)
-                .map_err(|_| "CAF data chunk 超出 i64")?
+                .map_err(|_| "CAF data chunk exceeds i64")?
                 .to_be_bytes(),
         )
         .map_err(io_error)?;

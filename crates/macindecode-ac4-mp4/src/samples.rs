@@ -49,18 +49,22 @@ impl fmt::Display for SampleTableError {
         match *self {
             SampleTableError::MissingBox { box_type } => {
                 let c = name(&box_type);
-                write!(f, "缺少 {}{}{}{}", c[0], c[1], c[2], c[3])
+                write!(f, "Missing {}{}{}{}", c[0], c[1], c[2], c[3])
             }
             SampleTableError::Truncated { box_type } => {
                 let c = name(&box_type);
-                write!(f, "{}{}{}{} 条目不完整", c[0], c[1], c[2], c[3])
+                write!(f, "Truncated {}{}{}{} entry", c[0], c[1], c[2], c[3])
             }
             SampleTableError::UnsupportedVersion { box_type, version } => {
                 let c = name(&box_type);
-                write!(f, "{}{}{}{} 版本 {version} 未定义", c[0], c[1], c[2], c[3])
+                write!(
+                    f,
+                    "Undefined {}{}{}{} version {version}",
+                    c[0], c[1], c[2], c[3]
+                )
             }
             SampleTableError::ChunkMappingInvalid { entry } => {
-                write!(f, "stsc 条目 {entry} 的 first_chunk 非法")
+                write!(f, "Invalid first_chunk in stsc entry {entry}")
             }
         }
     }

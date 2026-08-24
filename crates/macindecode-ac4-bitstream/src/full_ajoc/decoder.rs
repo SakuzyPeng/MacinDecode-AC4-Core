@@ -77,8 +77,8 @@ pub enum FullAjocFrontendError {
 impl core::fmt::Display for FullAjocFrontendError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Syntax(error) => write!(formatter, "音频语法：{error}"),
-            Self::Asf(error) => write!(formatter, "ASF 前端：{error}"),
+            Self::Syntax(error) => write!(formatter, "Audio syntax: {error}"),
+            Self::Asf(error) => write!(formatter, "ASF front end: {error}"),
         }
     }
 }
@@ -115,9 +115,9 @@ pub enum FullAjocAudioFrameError {
 impl core::fmt::Display for FullAjocAudioFrameError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Syntax(error) => write!(formatter, "音频语法：{error}"),
-            Self::Asf(error) => write!(formatter, "ASF 前端：{error}"),
-            Self::Decode(error) => write!(formatter, "对齐/OAMD/QMF/Full：{error}"),
+            Self::Syntax(error) => write!(formatter, "Audio syntax: {error}"),
+            Self::Asf(error) => write!(formatter, "ASF front end: {error}"),
+            Self::Decode(error) => write!(formatter, "Alignment/OAMD/QMF/Full: {error}"),
         }
     }
 }
@@ -370,29 +370,29 @@ impl ObjectOutputTopology {
         substream: u32,
     ) -> Result<Self, String> {
         let objects = usize::try_from(objects).map_err(|_| {
-            format!("substream {substream}：A-JOC 对象数 {objects} 无法表示为本机下标")
+            format!("Substream {substream}: A-JOC object count {objects} cannot be represented as a native index")
         })?;
         if objects > MAX_RECONSTRUCTED_OBJECTS {
             return Err(format!(
-                "substream {substream}：A-JOC 对象数 {objects} 超过 full 上限 {MAX_RECONSTRUCTED_OBJECTS}"
+                "Substream {substream}: A-JOC object count {objects} exceeds full limit {MAX_RECONSTRUCTED_OBJECTS}"
             ));
         }
         if element_has_lfe != lfe_position.is_some() {
             return Err(format!(
-                "substream {substream}：元素 LFE={}，Pseudocode 15 插回位置却为 {lfe_position:?}",
+                "Substream {substream}: element LFE={}, but Pseudocode 15 reinsertion position is {lfe_position:?}",
                 element_has_lfe
             ));
         }
         let lfe_position = lfe_position
             .map(|position| {
                 usize::try_from(position).map_err(|_| {
-                    format!("substream {substream}：LFE 插回位置 {position} 无法表示为本机下标")
+                    format!("Substream {substream}: LFE reinsertion position {position} cannot be represented as a native index")
                 })
             })
             .transpose()?;
         if lfe_position.is_some_and(|position| position > objects) {
             return Err(format!(
-                "substream {substream}：LFE 插回位置 {} 超过 {objects} 个 A-JOC 对象",
+                "Substream {substream}: LFE reinsertion position {} exceeds {objects} A-JOC objects",
                 lfe_position.unwrap_or(usize::MAX)
             ));
         }
@@ -498,7 +498,7 @@ impl FullAjocDecodeError {
         Self {
             kind: FullAjocDecodeErrorKind::Unsupported,
             unsupported: Some(FullAjocUnsupported::Aspx(reason)),
-            detail: format!("substream {substream}：{}", reason.detail()),
+            detail: format!("Substream {substream}: {}", reason.detail()),
         }
     }
 
@@ -506,7 +506,7 @@ impl FullAjocDecodeError {
         Self {
             kind: FullAjocDecodeErrorKind::Unsupported,
             unsupported: Some(FullAjocUnsupported::Full(reason)),
-            detail: format!("substream {substream}：{}", reason.detail()),
+            detail: format!("Substream {substream}: {}", reason.detail()),
         }
     }
 
@@ -684,7 +684,7 @@ fn validate_current_full_support(
                     dialogue_objects,
                 ) =>
         {
-            Err(format!("substream {substream}：A-JOC full 凭证与当前表 188/A-SPX 凭证错位").into())
+            Err(format!("Substream {substream}: A-JOC full token is misaligned with the current Table 188/A-SPX token").into())
         }
         Ok(_) | Err(_) => Ok(()),
     }
@@ -863,9 +863,11 @@ impl FullAjocSubstreamState {
         substream: u32,
     ) -> Result<(), FullAjocDecodeError> {
         match self.decode_mode {
-            Some(bound) if bound != requested => Err(FullAjocDecodeError::decode_mode_mismatch(
-                format!("substream {substream}：解码模式从 {bound:?} 变成 {requested:?}，需要重置"),
-            )),
+            Some(bound) if bound != requested => {
+                Err(FullAjocDecodeError::decode_mode_mismatch(format!(
+                    "Substream {substream}: decode mode changed from {bound:?} to {requested:?}; reset is required"
+                )))
+            }
             Some(_) => Ok(()),
             None => {
                 self.decode_mode = Some(requested);
@@ -1047,7 +1049,7 @@ fn shared_group_oamd_timing(
         .find(|state| state.effective_timing() != effective)
     {
         return Err(FullAjocDecodeError::oamd_state(format!(
-            "substream {substream}：presentation group {} 的有效 OAMD timing 与 group {} 不一致",
+            "Substream {substream}: effective OAMD timing for presentation group {} differs from group {}",
             first.group_index(),
             conflict.group_index()
         )));
@@ -1080,7 +1082,7 @@ fn validate_effective_oamd_timing(
     match timing.effective() {
         Some(effective) if effective.num_obj_info_blocks != num_obj_info_blocks => {
             Err(FullAjocDecodeError::oamd_state(format!(
-                "substream {substream}：{side} 有效 OAMD timing 声明 {} 个块，动态数据使用 {num_obj_info_blocks} 个",
+                "Substream {substream}: {side} effective OAMD timing declares {} blocks, but dynamic data uses {num_obj_info_blocks}",
                 effective.num_obj_info_blocks
             )))
         }
@@ -1139,7 +1141,7 @@ fn resolve_aligned_oamd(
     ] {
         if blocks.len() > MAX_OAMD_METADATA_BLOCKS {
             return Err(FullAjocDecodeError::oamd_state(format!(
-                "substream {substream}：{side} OAMD 有 {} 个更新，超过上限 {MAX_OAMD_METADATA_BLOCKS}",
+                "Substream {substream}: {side} OAMD has {} updates, exceeding limit {MAX_OAMD_METADATA_BLOCKS}",
                 blocks.len()
             )));
         }
@@ -1156,7 +1158,7 @@ fn resolve_aligned_oamd(
     )
     .map_err(|error| {
         FullAjocDecodeError::oamd_state(format!(
-            "substream {substream}：Core/downmix OAMD 状态延续失败：{error}"
+            "Substream {substream}: Core/downmix OAMD state continuation failed: {error}"
         ))
     })?;
     let umx_end = match resolve_oamd_updates(
@@ -1170,7 +1172,7 @@ fn resolve_aligned_oamd(
             drive.aligned_dmx_oamd_updates.clear();
             drive.aligned_umx_oamd_updates.clear();
             return Err(FullAjocDecodeError::oamd_state(format!(
-                "substream {substream}：Full/upmix OAMD 状态延续失败：{error}"
+                "Substream {substream}: Full/upmix OAMD state continuation failed: {error}"
             )));
         }
     };
@@ -2324,12 +2326,12 @@ fn prepare_decode_state(
 ) -> Result<&mut FullAjocSubstreamState, FullAjocDecodeError> {
     let slot = usize::try_from(substream_index).map_err(|_| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream_index}：下标无法表示为本机 usize"
+            "Substream {substream_index}: index cannot be represented as native usize"
         ))
     })?;
     if slot >= MAX_SUBSTREAMS {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream_index}：下标超过 decoder 容量 {MAX_SUBSTREAMS}"
+            "Substream {substream_index}: index exceeds decoder capacity {MAX_SUBSTREAMS}"
         )));
     }
     if substreams.len() <= slot {
@@ -2338,7 +2340,7 @@ fn prepare_decode_state(
     let available = substreams.len();
     substreams.get_mut(slot).ok_or_else(|| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream_index}：decoder 扩容后状态槽仍然缺失（现有 {available} 槽）"
+            "Substream {substream_index}: state slot is still missing after decoder expansion ({available} slots available)"
         ))
     })
 }
@@ -2354,7 +2356,7 @@ where
 {
     if frame_pcm.len() != channels {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：本帧留存 {} 路 PCM，元素声明 {channels} 路",
+            "Substream {substream}: frame retained {} PCM channels, but element declares {channels}",
             frame_pcm.len()
         )));
     }
@@ -2362,14 +2364,14 @@ where
     let expected = usize::from(frame_length);
     if samples != expected {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：第 0 路本帧有 {samples} 个样本，凭证帧长为 {expected}"
+            "Substream {substream}: channel 0 has {samples} samples in this frame, but token frame length is {expected}"
         )));
     }
     for (channel, data) in frame_pcm.iter().enumerate().skip(1) {
         let data = data.as_ref();
         if data.len() != samples {
             return Err(FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：第 {channel} 路本帧有 {} 个样本，第 0 路有 {samples} 个",
+                "Substream {substream}: channel {channel} has {} samples in this frame, while channel 0 has {samples}",
                 data.len()
             )));
         }
@@ -2385,7 +2387,7 @@ fn validate_aspx_payload<'a>(
     let expected = usize::from(element.aspx_elements());
     if aspx.len() != expected || expected > MAX_ASPX_ELEMENTS {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：元素声明 {expected} 份 A-SPX 数据，实际提供 {} 份",
+            "Substream {substream}: element declares {expected} A-SPX data sets, but {} were provided",
             aspx.len()
         )));
     }
@@ -2400,13 +2402,13 @@ fn validate_object_payloads<'a>(
 ) -> Result<(&'a [AjocObjectControl], &'a [AjocObjectMatrix]), FullAjocDecodeError> {
     let object_controls = object_controls.get(..objects).ok_or_else(|| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：A-JOC 声明 {objects} 个对象，只留存 {} 份控制",
+            "Substream {substream}: A-JOC declares {objects} objects, but only {} controls were retained",
             object_controls.len()
         ))
     })?;
     let matrices = matrices.get(..objects).ok_or_else(|| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：A-JOC 声明 {objects} 个对象，只留存 {} 份矩阵",
+            "Substream {substream}: A-JOC declares {objects} objects, but only {} matrices were retained",
             matrices.len()
         ))
     })?;
@@ -2456,27 +2458,27 @@ where
     let supported = aspx_support
         .map_err(|blocker| FullAjocDecodeError::unsupported_aspx(blocker, substream))?;
     if !supported.matches(element, frame_length) {
-        return Err(format!("substream {substream}：A-SPX 凭证不属于当前解析元素或帧长").into());
+        return Err(format!("Substream {substream}: A-SPX token does not belong to the current parsed element or frame length").into());
     }
     let alignment = supported.alignment();
     let control_delay = usize::from(alignment.control_delay_frames());
     if control_delay == 0 || control_delay > MAX_CONTROL_ALIGNMENT_DELAY_FRAMES {
         return Err(format!(
-            "substream {substream}：表 188 控制延迟 {control_delay} 不在 1..={MAX_CONTROL_ALIGNMENT_DELAY_FRAMES}"
+            "Substream {substream}: Table 188 control delay {control_delay} is outside 1..={MAX_CONTROL_ALIGNMENT_DELAY_FRAMES}"
         )
         .into());
     }
     if let Some(previous) = drive.alignment_config {
         if previous != alignment {
             return Err(format!(
-                "substream {substream}：表 188 延迟档从 {previous:?} 变成 {alignment:?}，需要重置"
+                "Substream {substream}: Table 188 delay configuration changed from {previous:?} to {alignment:?}; reset is required"
             )
             .into());
         }
     }
     if drive.controls.len() > control_delay {
         return Err(format!(
-            "substream {substream}：QMF 控制 FIFO 已有 {} 帧，超过表 188 的 {control_delay} 帧",
+            "Substream {substream}: QMF control FIFO contains {} frames, exceeding Table 188 delay of {control_delay}",
             drive.controls.len()
         )
         .into());
@@ -2486,19 +2488,19 @@ where
     if let Some(previous) = drive.input_topology {
         if previous != input_topology {
             return Err(FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：QMF 输入拓扑从 {previous:?} 变成 {input_topology:?}，需要重置"
+                "Substream {substream}: QMF input topology changed from {previous:?} to {input_topology:?}; reset is required"
             )));
         }
     }
     if ajoc.num_dmx_signals != element.n_dmx_signals {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：A-JOC 声明 {} 路输入，元素 QMF 出口为 {} 路",
+            "Substream {substream}: A-JOC declares {} inputs, but element QMF output has {} channels",
             ajoc.num_dmx_signals, element.n_dmx_signals
         )));
     }
     if element.b_has_lfe != lfe_position.is_some() {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：元素 LFE={}，Pseudocode 15 插回位置却为 {lfe_position:?}",
+            "Substream {substream}: element LFE={}, but Pseudocode 15 reinsertion position is {lfe_position:?}",
             element.b_has_lfe
         )));
     }
@@ -2517,7 +2519,7 @@ where
 
     let objects = usize::try_from(ajoc.num_umx_signals).map_err(|_| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：A-JOC 对象数 {} 无法表示为本机下标",
+            "Substream {substream}: A-JOC object count {} cannot be represented as a native index",
             ajoc.num_umx_signals
         ))
     })?;
@@ -2557,12 +2559,15 @@ where
     {
         output.resize(input.len(), 0.0);
         let Some(state) = drive.alignment.get_mut(channel) else {
-            return Err(
-                format!("substream {substream}：第 {channel} 路缺 frame-alignment 状态").into(),
-            );
+            return Err(format!(
+                "Substream {substream}: channel {channel} lacks frame-alignment state"
+            )
+            .into());
         };
         state.process(input, alignment, output).map_err(|error| {
-            format!("substream {substream}：第 {channel} 路 frame alignment 失败：{error:?}")
+            format!(
+                "Substream {substream}: frame alignment failed for channel {channel}: {error:?}"
+            )
         })?;
     }
     let mut pcm = [&[][..]; MAX_SIGNALS];
@@ -2571,20 +2576,20 @@ where
     }
     let pcm = pcm.get(..channels).ok_or_else(|| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：{channels} 路 QMF 输入超过固定上限 {MAX_SIGNALS}"
+            "Substream {substream}: {channels} QMF inputs exceed fixed limit {MAX_SIGNALS}"
         ))
     })?;
 
     let due_control = take_due_control(&mut drive.controls, control_delay).map_err(|queued| {
         format!(
-            "substream {substream}：QMF 控制 FIFO 已有 {queued} 帧，超过表 188 的 {control_delay} 帧"
+            "Substream {substream}: QMF control FIFO contains {queued} frames, exceeding Table 188 delay of {control_delay}"
         )
     })?;
     if let Some(queued) = due_control.as_ref() {
         let queued_topology = QmfInputTopology::from_element(&queued.element);
         if queued_topology != input_topology {
             return Err(format!(
-                "substream {substream}：到期控制属于 {queued_topology:?}，当前 frame-aligned PCM 属于 {input_topology:?}"
+                "Substream {substream}: due control belongs to {queued_topology:?}, but current frame-aligned PCM belongs to {input_topology:?}"
             )
             .into());
         }
@@ -2593,7 +2598,7 @@ where
                 .aspx_support
                 .matches(&queued.element, queued.frame_length)
         {
-            return Err(format!("substream {substream}：到期 A-SPX 控制凭证与当前信号错位").into());
+            return Err(format!("Substream {substream}: due A-SPX control token is misaligned with the current signal").into());
         }
         if let Ok(credential) = queued.full_support {
             if credential.aspx().alignment() != alignment
@@ -2607,13 +2612,13 @@ where
                 )
             {
                 return Err(format!(
-                    "substream {substream}：到期 A-JOC 控制的表 188 档与当前信号错位"
+                    "Substream {substream}: Table 188 configuration of due A-JOC control is misaligned with the current signal"
                 )
                 .into());
             }
         } else if full_requirement == FullAjocDecodeMode::RequireFull {
             let Err(blocker) = queued.full_support else {
-                return Err(format!("substream {substream}：A-JOC full 凭证缺失").into());
+                return Err(format!("Substream {substream}: A-JOC full token is missing").into());
             };
             return Err(FullAjocDecodeError::unsupported_full(blocker, substream));
         }
@@ -2671,7 +2676,7 @@ where
 
     let timeslots = samples / 64;
     let qmf_timeslots = u8::try_from(timeslots).map_err(|_| {
-        format!("substream {substream}：{timeslots} 个 QMF 时隙超出 A-JOC 帧级接口")
+        format!("Substream {substream}: {timeslots} QMF timeslots exceed the A-JOC frame interface")
     })?;
 
     // 诊断出口也先整帧暂存。后续 full 重建或任一路终端合成失败时，不会向 sink
@@ -2687,27 +2692,32 @@ where
     for slot in 0..diagnostic_channels {
         let (source, frame) = if slot < usize::from(output_element.n_dmx_signals) {
             let frame = out.get(slot).ok_or_else(|| {
-                format!("substream {substream}：第 {slot} 路 A-JOC 输入 QMF 缺失")
+                format!("Substream {substream}: A-JOC input QMF is missing for channel {slot}")
             })?;
             (FullAjocPcmSource::AjocInput, frame)
         } else {
             (FullAjocPcmSource::Lfe, &*lfe)
         };
         let Some(state) = drive.synthesis.get_mut(slot) else {
-            return Err(format!("substream {substream}：第 {slot} 路缺合成状态").into());
+            return Err(
+                format!("Substream {substream}: channel {slot} lacks synthesis state").into(),
+            );
         };
-        let target = diagnostic_pcm
-            .get_mut(slot)
-            .ok_or_else(|| format!("substream {substream}：第 {slot} 路诊断 PCM 缓冲缺失"))?;
+        let target = diagnostic_pcm.get_mut(slot).ok_or_else(|| {
+            format!("Substream {substream}: diagnostic PCM buffer is missing for channel {slot}")
+        })?;
         target.resize(samples, 0.0);
         let Some(slots) = frame.get(..timeslots) else {
-            return Err(format!("substream {substream}：第 {slot} 路时隙不足").into());
+            return Err(
+                format!("Substream {substream}: channel {slot} has too few timeslots").into(),
+            );
         };
-        synthesise_ac4_pcm(slots, state, target)
-            .map_err(|error| format!("substream {substream}：第 {slot} 路合成失败：{error:?}"))?;
+        synthesise_ac4_pcm(slots, state, target).map_err(|error| {
+            format!("Substream {substream}: synthesis failed for channel {slot}: {error:?}")
+        })?;
         if let Some(sample) = target.iter().position(|value| !value.is_finite()) {
             return Err(format!(
-                "substream {substream}：第 {slot} 路诊断 PCM 在样本 {sample} 非有限"
+                "Substream {substream}: diagnostic PCM for channel {slot} is non-finite at sample {sample}"
             )
             .into());
         }
@@ -2779,7 +2789,7 @@ where
 
     if object_sources.len() != object_pcm.len() {
         return Err(FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：对象来源有 {} 路，暂存 PCM 有 {} 路",
+            "Substream {substream}: object sources have {} channels, while staged PCM has {}",
             object_sources.len(),
             object_pcm.len()
         )));
@@ -2790,7 +2800,9 @@ where
     resolve_due_oamd(drive, due_control.as_ref(), substream)?;
 
     let buffers = drive.control_buffers.pop().ok_or_else(|| {
-        FullAjocDecodeError::from(format!("substream {substream}：表 188 预分配控制槽已耗尽"))
+        FullAjocDecodeError::from(format!(
+            "Substream {substream}: preallocated Table 188 control slots are exhausted"
+        ))
     })?;
     let current = QueuedQmfControl::capture(
         buffers,
@@ -2862,7 +2874,7 @@ fn drive_full_frame(
         .get(..usize::from(ajoc.num_dmx_signals))
         .ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：A-JOC 需要 {} 路 QMF 输入，只产出 {} 路",
+                "Substream {substream}: A-JOC requires {} QMF inputs, but only {} were produced",
                 ajoc.num_dmx_signals,
                 input.len()
             ))
@@ -2870,7 +2882,7 @@ fn drive_full_frame(
     let output_len = output.len();
     let output_slice = output.get_mut(..topology.objects).ok_or_else(|| {
         FullAjocDecodeError::object_shape(format!(
-            "substream {substream}：A-JOC 需要 {} 路对象 QMF，只预留 {} 路",
+            "Substream {substream}: A-JOC requires {} object-QMF channels, but only {} were reserved",
             topology.objects, output_len
         ))
     })?;
@@ -2886,7 +2898,7 @@ fn drive_full_frame(
     )
     .map_err(|error| {
         FullAjocDecodeError::reconstruction(format!(
-            "substream {substream}：A-JOC 对象重建失败：{error}"
+            "Substream {substream}: A-JOC object reconstruction failed: {error}"
         ))
     })?;
     synthesise_object_outputs(
@@ -3023,7 +3035,7 @@ fn install_output_topology(
     if let Some(previous) = drive.output_topology {
         if previous != topology {
             return Err(FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：A-JOC 输出拓扑从 {previous:?} 变成 {topology:?}，需要重置"
+                "Substream {substream}: A-JOC output topology changed from {previous:?} to {topology:?}; reset is required"
             )));
         }
     }
@@ -3054,7 +3066,7 @@ fn synthesise_object_outputs(
     for slot in 0..topology.channels() {
         let source = topology.source(slot).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：第 {slot} 路对象输出没有来源语义"
+                "Substream {substream}: object output channel {slot} has no source semantics"
             ))
         })?;
         let frame = match source {
@@ -3062,40 +3074,40 @@ fn synthesise_object_outputs(
                 .get(if reuse_first_object { 0 } else { object })
                 .ok_or_else(|| {
                     FullAjocDecodeError::object_shape(format!(
-                        "substream {substream}：对象 {object} 的 QMF 输出缺失"
+                        "Substream {substream}: QMF output for object {object} is missing"
                     ))
                 })?,
             FullAjocPcmSource::Lfe => lfe,
             FullAjocPcmSource::AjocInput => {
                 return Err(FullAjocDecodeError::object_shape(format!(
-                    "substream {substream}：对象终端第 {slot} 路错误标记为 A-JOC 输入"
+                    "Substream {substream}: object-terminal channel {slot} is incorrectly marked as an A-JOC input"
                 )));
             }
         };
         let state = drive.object_synthesis.get_mut(slot).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：第 {slot} 路对象终端合成状态缺失"
+                "Substream {substream}: object-terminal synthesis state is missing for channel {slot}"
             ))
         })?;
         let target = pcm.get_mut(slot).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：第 {slot} 路对象 PCM 缓冲缺失"
+                "Substream {substream}: object PCM buffer is missing for channel {slot}"
             ))
         })?;
         target.resize(samples, 0.0);
         let slots = frame.get(..timeslots).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：第 {slot} 路对象 QMF 时隙不足"
+                "Substream {substream}: object QMF channel {slot} has too few timeslots"
             ))
         })?;
         synthesise_ac4_pcm(slots, state, target).map_err(|error| {
             FullAjocDecodeError::object_shape(format!(
-                "substream {substream}：第 {slot} 路对象终端合成失败：{error:?}"
+                "Substream {substream}: object-terminal synthesis failed for channel {slot}: {error:?}"
             ))
         })?;
         if let Some(sample) = target.iter().position(|value| !value.is_finite()) {
             return Err(FullAjocDecodeError::objects_nonfinite(format!(
-                "substream {substream}：第 {slot} 路对象 PCM 在样本 {sample} 非有限"
+                "Substream {substream}: object PCM for channel {slot} is non-finite at sample {sample}"
             )));
         }
         sources.push(source);
@@ -3108,7 +3120,7 @@ fn enabled_wet_path(ajoc: &Ajoc) -> bool {
 }
 
 fn describe(substream: u32, error: DriveError) -> String {
-    format!("substream {substream}：A-SPX 驱动失败：{error:?}")
+    format!("Substream {substream}: A-SPX drive failed: {error:?}")
 }
 
 /// 取出刚好到期的控制帧；未攒满时返回 `None`，超量时返回实际长度。
@@ -3249,8 +3261,8 @@ mod tests {
             error.unsupported_reason(),
             Some(FullAjocUnsupported::Full(blocker))
         );
-        assert!(error.detail().contains("substream 2"));
-        assert!(error.detail().contains("dialogue enhancement"));
+        assert!(error.detail().contains("Substream 2"));
+        assert!(error.detail().contains("dialogue-enhancement"));
 
         for requirement in [
             FullAjocDecodeMode::AspxOnly,
@@ -3298,7 +3310,7 @@ mod tests {
         let error =
             validate_pcm_shape(&short, 1, 2_048, 2).expect_err("短 PCM 不得借用长帧凭证进入 A-SPX");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::ObjectShapeMismatch);
-        assert!(error.detail().contains("凭证帧长为 2048"));
+        assert!(error.detail().contains("token frame length is 2048"));
 
         let missing: Vec<Vec<f32>> = Vec::new();
         let error =
@@ -3326,12 +3338,12 @@ mod tests {
         let error = validate_object_payloads(&no_controls, &no_matrices, 1, 2)
             .expect_err("控制容量不足必须失败");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::ObjectShapeMismatch);
-        assert!(error.detail().contains("0 份控制"));
+        assert!(error.detail().contains("only 0 controls"));
 
         let error = validate_object_payloads(&controls, &no_matrices, 1, 2)
             .expect_err("矩阵容量不足必须失败");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::ObjectShapeMismatch);
-        assert!(error.detail().contains("0 份矩阵"));
+        assert!(error.detail().contains("only 0 matrices"));
     }
 
     #[test]
@@ -3341,7 +3353,7 @@ mod tests {
         let error =
             validate_aspx_payload(&one, &element, 2).expect_err("三路元素需要两份 A-SPX 数据");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::ObjectShapeMismatch);
-        assert!(error.detail().contains("声明 2 份"));
+        assert!(error.detail().contains("declares 2 A-SPX data sets"));
 
         let two = [AspxData::empty(), AspxData::empty()];
         assert_eq!(
@@ -3893,7 +3905,7 @@ mod tests {
         let error = resolve_aligned_oamd(&mut drive, &mismatch, 5)
             .expect_err("timing 块数与动态数据不一致必须失败");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::OamdState);
-        assert!(error.detail().contains("声明 2 个块"));
+        assert!(error.detail().contains("declares 2 blocks"));
         assert_eq!(drive.dmx_oamd, OamdState::new());
         assert_eq!(drive.umx_oamd, OamdState::new());
         assert_eq!(drive.dmx_oamd_timing, None);
@@ -4055,7 +4067,7 @@ mod tests {
             .bind_decode_mode(FullAjocDecodeMode::ObserveFull, 2)
             .expect_err("未经 reset 不得恢复未推进的 Full 状态");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::DecodeModeMismatch);
-        assert!(error.detail().contains("需要重置"));
+        assert!(error.detail().contains("reset is required"));
 
         drive.reset();
         drive
@@ -4251,12 +4263,12 @@ mod tests {
         assert!(
             ObjectOutputTopology::checked(3, Some(4), true, 2)
                 .expect_err("越过对象尾部必须失败")
-                .contains("超过 3 个")
+                .contains("exceeds 3 A-JOC objects")
         );
         assert!(
             ObjectOutputTopology::checked(3, None, true, 2)
                 .expect_err("元素与插回控制不一致必须失败")
-                .contains("元素 LFE=true")
+                .contains("element LFE=true")
         );
 
         let mut drive = FullAjocSubstreamState::new();
@@ -4267,7 +4279,7 @@ mod tests {
         let error =
             install_output_topology(&mut drive, changed, 2).expect_err("无 reset 改拓扑必须失败");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::ObjectShapeMismatch);
-        assert!(error.detail().contains("需要重置"));
+        assert!(error.detail().contains("reset is required"));
 
         drive.fresh = false;
         drive.input_topology = Some(QmfInputTopology {
@@ -4314,7 +4326,12 @@ mod tests {
         )
         .expect_err("非有限对象 PCM 必须失败");
         assert_eq!(error.kind(), FullAjocDecodeErrorKind::ObjectsNonFinite);
-        assert!(error.detail().contains("对象 PCM 在样本"), "{error}");
+        assert!(
+            error
+                .detail()
+                .contains("object PCM for channel 0 is non-finite at sample"),
+            "{error}"
+        );
         assert!(sources.is_empty(), "失败帧不得形成可提交的来源列表");
 
         drive.reset();
