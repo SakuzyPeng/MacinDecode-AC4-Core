@@ -32,6 +32,13 @@ respective owners and are referenced only to describe compatibility.
 
 - Rust ≥ 1.85 ([install](https://rustup.rs/))
 
+Prebuilt `macinac4` binaries with full audio decoding and ADM/DAMF export are also available
+from [GitHub Releases](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/releases). Automated
+releases cover x86_64 and ARM64 on Linux, macOS, and Windows; see
+[Multi-platform Binary Releases](docs/BINARY_RELEASE.md) for targets and SHA-256
+verification. The required static tables are generated from the pinned official specifications
+on each build runner, so end users do not need to download the specifications at runtime.
+
 ### Build & Test
 
 ```bash
@@ -47,9 +54,9 @@ cargo run --bin macinac4 -- trace path/to/input.m4a
 
 ### Full audio decoding
 
-Full audio support requires generating static tables locally from the official ETSI
-specifications and fetching their companion C tables. Neither the inputs nor generated files
-are tracked by Git or included in crates.io packages:
+When building from source, full audio support requires generating static tables locally from the
+official ETSI specifications and fetching their companion C tables. Neither the inputs nor
+generated files are tracked by Git or included in crates.io packages:
 
 ```bash
 python3 -m pip install -r scripts/requirements-spec.txt
@@ -148,6 +155,7 @@ For detailed progress, known limitations, and the audio reconstruction support m
 | [Architecture](docs/ARCHITECTURE.md) | Target boundaries, dependency direction, time model, numeric strategy |
 | [CLI Usage Guide](docs/CLI_USAGE.md) | Complete reference for all 10 subcommands |
 | [CLI Output Contract v1](docs/CLI_OUTPUT_CONTRACT.md) | Machine-readable JSON stdout/stderr specification |
+| [Multi-platform Binary Releases](docs/BINARY_RELEASE.md) | Six-target builds, GitHub Releases, and SHA-256 verification |
 | [crates.io Release Checklist](docs/CRATES_IO_RELEASE.md) | Package gates, manual release order, and post-release checks |
 | [Pre-render Output Contract](docs/OUTPUT_CONTRACT.md) | Scene frame semantics and pre-render boundary |
 | [Roadmap](docs/ROADMAP.md) | Milestone details, support matrix, known limitations |

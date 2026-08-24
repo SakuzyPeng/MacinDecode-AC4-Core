@@ -31,6 +31,12 @@ Dolby、Dolby Atmos 与 AC-4 是其各自权利人的商标；文中名称仅用
 
 - Rust ≥ 1.85（[安装](https://rustup.rs/)）
 
+也可以从 [GitHub Release](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/releases)
+下载带完整音频解码和 ADM/DAMF 导出的预编译 `macinac4`。自动发布覆盖
+Linux、macOS、Windows 的 x86_64 与 ARM64，产物及
+SHA-256 校验方式见[多平台二进制发布](docs/BINARY_RELEASE.md)。预编译二进制已在
+构建 runner 内从锁定的官方规范生成所需静态表，用户运行时不需要另行下载规范。
+
 ### 构建与测试
 
 ```bash
@@ -46,7 +52,8 @@ cargo run --bin macinac4 -- trace path/to/input.m4a
 
 ### 完整音频解码
 
-完整音频功能需要从官方 ETSI 规范在用户本地生成静态表，并获取规范随附 C 表。
+从源码构建时，完整音频功能需要从官方 ETSI 规范在用户本地生成静态表，
+并获取规范随附 C 表。
 这些输入与生成物均被 Git 忽略，也不会进入 crates.io 包：
 
 ```bash
@@ -146,6 +153,7 @@ MP4 / raw AC-4
 | [架构设计](docs/ARCHITECTURE.md) | 目标边界、依赖方向、时间模型、数值策略 |
 | [CLI 用法指南](docs/CLI_USAGE.md) | 全部 10 个子命令的完整参考 |
 | [CLI 输出契约 v1](docs/CLI_OUTPUT_CONTRACT.md) | 机器可读 JSON stdout/stderr 规范 |
+| [多平台二进制发布](docs/BINARY_RELEASE.md) | 六目标自动构建、GitHub Release 与 SHA-256 校验 |
 | [crates.io 发布检查](docs/CRATES_IO_RELEASE.md) | 包元数据、归档门禁、人工发布顺序与发布后抽查 |
 | [渲染前输出契约](docs/OUTPUT_CONTRACT.md) | 场景帧语义与渲染前边界 |
 | [实施路线图](docs/ROADMAP.md) | 里程碑详情、支持矩阵、已知限制 |
