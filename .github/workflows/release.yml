@@ -125,10 +125,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Python
+      - name: Set up native Python
+        if: matrix.target != 'aarch64-pc-windows-msvc'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: scripts/requirements-spec.txt
+
+      - name: Set up x64 Python on Windows ARM
+        if: matrix.target == 'aarch64-pc-windows-msvc'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.13"
+          architecture: x64
           cache: pip
           cache-dependency-path: scripts/requirements-spec.txt
 
