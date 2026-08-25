@@ -137,6 +137,36 @@ pub enum QmfError {
     SlotCountMismatch { expected: usize, provided: usize },
 }
 
+/// 多声道 QMF 合成的形状不成立。
+///
+/// 批量入口只在同一条 QMF 时间轴上并排处理声道；所有形状会在推进任一路跨帧
+/// 状态之前完整核对。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum QmfChannelsError {
+    /// 输入、状态与输出的声道数不同。
+    ChannelCountMismatch {
+        inputs: usize,
+        states: usize,
+        outputs: usize,
+    },
+    /// 时隙数无法换算为 PCM 样本数。
+    SampleCountOverflow { timeslots: usize },
+    /// 某路 QMF 帧不足以覆盖公共时隙数。
+    InputTooShort {
+        channel: usize,
+        needed: usize,
+        provided: usize,
+    },
+    /// 某路 PCM 输出长度不等于公共时隙数乘 64。
+    OutputLengthMismatch {
+        channel: usize,
+        expected: usize,
+        provided: usize,
+    },
+    /// 奇数路批次的末路标量回退失败。
+    ScalarTail { channel: usize, source: QmfError },
+}
+
 /// `Pseudocode 65` 的分析滤波。
 ///
 /// `pcm` 的长度必须是 64 的整数倍，每 64 个样本产出一个时隙；`slots` 的长度
@@ -228,13 +258,86 @@ fn modulate_synthesis_slot(slot: &QmfSlot, state: &mut QmfSynthesisState) {
     }
 }
 
+/// ARM64 NEON 与 portable x86-64 SSE2 都能一次容纳两个 `f64` lane。
+///
+/// 这里不用平台 intrinsic：固定宽度、连续的两 lane 算术允许 LLVM 在稳定 Rust
+/// 上做 SLP 向量化，同时继续满足 workspace 的 `unsafe_code = "forbid"` 与本 crate
+/// 的 `no_std` 边界。
+const SYNTHESIS_CHANNEL_LANES: usize = 2;
+
+/// 一个时隙的两路复数子带，转成 `f64` 后按声道 lane 排列。
+///
+/// 原始 [`QmfSlot`] 是单声道内的实/虚 SoA；终端合成需要跨声道 SIMD，因此只在
+/// 这个局部内核里转成 `[subband][channel]`。每个 f32 到 f64 的转换都是精确的，
+/// 不引入新的舍入。16 字节对齐让两 lane 可以直接作为一个 128-bit 向量装载。
+#[repr(C, align(16))]
+struct SynthesisChannelPair {
+    re: [[f64; SYNTHESIS_CHANNEL_LANES]; SUBBANDS],
+    im: [[f64; SYNTHESIS_CHANNEL_LANES]; SUBBANDS],
+}
+
+impl SynthesisChannelPair {
+    const fn new() -> Self {
+        Self {
+            re: [[0.0; SYNTHESIS_CHANNEL_LANES]; SUBBANDS],
+            im: [[0.0; SYNTHESIS_CHANNEL_LANES]; SUBBANDS],
+        }
+    }
+
+    fn load(&mut self, left: &QmfSlot, right: &QmfSlot) {
+        for sb in 0..SUBBANDS {
+            self.re[sb] = [f64::from(left.re[sb]), f64::from(right.re[sb])];
+            self.im[sb] = [f64::from(left.im[sb]), f64::from(right.im[sb])];
+        }
+    }
+}
+
+/// 两路声道并排执行合成调制。
+///
+/// lane 之间没有归约：每一路仍严格按 `sb=0..63` 前进，乘法、`imaginary-real`、
+/// `real+imaginary` 与累加顺序均与 [`modulate_synthesis_slot`] 相同。禁止 FMA 的
+/// 数值契约因此不变，区别只有相同相位只查一次、两路独立标量可由编译器装入一个
+/// SIMD 向量。
+#[inline(always)]
+fn modulate_synthesis_slot_pair(
+    left: &QmfSlot,
+    right: &QmfSlot,
+    left_state: &mut QmfSynthesisState,
+    right_state: &mut QmfSynthesisState,
+    pair: &mut SynthesisChannelPair,
+) {
+    pair.load(left, right);
+    for n in 0..SUBBANDS {
+        let (mut left_low, mut left_high) = (0.0f64, 0.0f64);
+        let (mut right_low, mut right_high) = (0.0f64, 0.0f64);
+        for sb in 0..SUBBANDS {
+            let (cos, sin) = modulation(sb, 2 * n as isize + 1);
+            let [left_re, right_re] = pair.re[sb];
+            let [left_im, right_im] = pair.im[sb];
+
+            let left_real = left_re * cos;
+            let left_imaginary = left_im * sin;
+            left_low += left_imaginary - left_real;
+            left_high += left_real + left_imaginary;
+
+            let right_real = right_re * cos;
+            let right_imaginary = right_im * sin;
+            right_low += right_imaginary - right_real;
+            right_high += right_real + right_imaginary;
+        }
+        left_state.filt[n] = (left_low / SUBBANDS as f64) as f32;
+        left_state.filt[FOLDED - 1 - n] = (left_high / SUBBANDS as f64) as f32;
+        right_state.filt[n] = (right_low / SUBBANDS as f64) as f32;
+        right_state.filt[FOLDED - 1 - n] = (right_high / SUBBANDS as f64) as f32;
+    }
+}
+
 #[cfg_attr(feature = "qmf-split-profile", inline(never))]
 #[cfg_attr(not(feature = "qmf-split-profile"), inline(always))]
 fn accumulate_synthesis_polyphase(
     state: &QmfSynthesisState,
     windowed: &mut [f64; NUM_QMF_WIN_COEF],
-    pcm: &mut [f32],
-    timeslot: usize,
+    pcm_slot: &mut [f32],
 ) {
     // 抽取 g、加窗、按 64 相位求和。
     for n in 0..5 {
@@ -246,12 +349,41 @@ fn accumulate_synthesis_polyphase(
                 * f64::from(QMF_WINDOW[high]);
         }
     }
-    for sb in 0..SUBBANDS {
+    for (sb, sample) in pcm_slot.iter_mut().enumerate() {
         let mut sum = 0.0f64;
         for n in 0..10 {
             sum += windowed[SUBBANDS * n + sb];
         }
-        pcm[timeslot * SUBBANDS + sb] = sum as f32;
+        *sample = sum as f32;
+    }
+}
+
+/// 已完成形状预检的两声道 AC-4 QMF 合成。
+fn synthesise_ac4_pcm_pair(
+    slots: [&[QmfSlot]; SYNTHESIS_CHANNEL_LANES],
+    states: [&mut QmfSynthesisState; SYNTHESIS_CHANNEL_LANES],
+    pcm: [&mut [f32]; SYNTHESIS_CHANNEL_LANES],
+) {
+    let [left_slots, right_slots] = slots;
+    let [left_state, right_state] = states;
+    let [left_pcm, right_pcm] = pcm;
+    let mut pair = SynthesisChannelPair::new();
+    let mut windowed = [0.0f64; NUM_QMF_WIN_COEF];
+
+    let slot_pairs = left_slots.iter().zip(right_slots);
+    let pcm_pairs = left_pcm
+        .chunks_exact_mut(SUBBANDS)
+        .zip(right_pcm.chunks_exact_mut(SUBBANDS));
+    for ((left, right), (left_pcm_slot, right_pcm_slot)) in slot_pairs.zip(pcm_pairs) {
+        advance_synthesis_state(left_state);
+        advance_synthesis_state(right_state);
+        modulate_synthesis_slot_pair(left, right, left_state, right_state, &mut pair);
+        accumulate_synthesis_polyphase(left_state, &mut windowed, left_pcm_slot);
+        accumulate_synthesis_polyphase(right_state, &mut windowed, right_pcm_slot);
+    }
+
+    for sample in left_pcm.iter_mut().chain(right_pcm) {
+        *sample *= AC4_PCM_INTERFACE_GAIN;
     }
 }
 
@@ -278,10 +410,10 @@ pub fn synthesise(
     }
 
     let mut windowed = [0.0f64; NUM_QMF_WIN_COEF];
-    for (ts, slot) in slots.iter().enumerate() {
+    for (slot, pcm_slot) in slots.iter().zip(pcm.chunks_exact_mut(SUBBANDS)) {
         advance_synthesis_state(state);
         modulate_synthesis_slot(slot, state);
-        accumulate_synthesis_polyphase(state, &mut windowed, pcm, ts);
+        accumulate_synthesis_polyphase(state, &mut windowed, pcm_slot);
     }
     Ok(())
 }
@@ -328,6 +460,123 @@ pub fn synthesise_ac4_pcm(
     synthesise(slots, state, pcm)?;
     for sample in pcm {
         *sample *= AC4_PCM_INTERFACE_GAIN;
+    }
+    Ok(())
+}
+
+/// 在同一条 QMF 时间轴上批量合成多路 AC-4 PCM。
+///
+/// 相邻两路使用跨声道 AoSoA 内核；奇数路批次的末路回退到
+/// [`synthesise_ac4_pcm`]。输入、状态与输出必须逐路对应，输入可以比当前帧更长
+/// （例如固定上限的 [`crate::element_drive::QmfChannelFrame`]），但输出必须恰好是
+/// `timeslots * 64` 个样本。
+///
+/// 所有形状会在推进任何状态之前核对。浮点路径保持每路原有的 f64 累加顺序，不
+/// 使用 FMA，也不在声道间做归约。
+pub(crate) fn synthesise_ac4_pcm_channels<I, O>(
+    slots: &[I],
+    timeslots: usize,
+    states: &mut [QmfSynthesisState],
+    pcm: &mut [O],
+) -> Result<(), QmfChannelsError>
+where
+    I: AsRef<[QmfSlot]>,
+    O: AsMut<[f32]>,
+{
+    let channels = slots.len();
+    if states.len() != channels || pcm.len() != channels {
+        return Err(QmfChannelsError::ChannelCountMismatch {
+            inputs: channels,
+            states: states.len(),
+            outputs: pcm.len(),
+        });
+    }
+    let samples = timeslots
+        .checked_mul(SUBBANDS)
+        .ok_or(QmfChannelsError::SampleCountOverflow { timeslots })?;
+    for (channel, input) in slots.iter().enumerate() {
+        let provided = input.as_ref().len();
+        if provided < timeslots {
+            return Err(QmfChannelsError::InputTooShort {
+                channel,
+                needed: timeslots,
+                provided,
+            });
+        }
+    }
+    for (channel, output) in pcm.iter_mut().enumerate() {
+        let provided = output.as_mut().len();
+        if provided != samples {
+            return Err(QmfChannelsError::OutputLengthMismatch {
+                channel,
+                expected: samples,
+                provided,
+            });
+        }
+    }
+
+    let paired_channels = channels / SYNTHESIS_CHANNEL_LANES * SYNTHESIS_CHANNEL_LANES;
+    let mut channel = 0;
+    while channel < paired_channels {
+        let Some(input_pair) = slots.get(channel..channel + SYNTHESIS_CHANNEL_LANES) else {
+            return Err(QmfChannelsError::ChannelCountMismatch {
+                inputs: channels,
+                states: states.len(),
+                outputs: pcm.len(),
+            });
+        };
+        let [left_input, right_input] = input_pair else {
+            return Err(QmfChannelsError::ChannelCountMismatch {
+                inputs: channels,
+                states: states.len(),
+                outputs: pcm.len(),
+            });
+        };
+        let Some(state_pair) = states.get_mut(channel..channel + SYNTHESIS_CHANNEL_LANES) else {
+            return Err(QmfChannelsError::ChannelCountMismatch {
+                inputs: channels,
+                states: states.len(),
+                outputs: pcm.len(),
+            });
+        };
+        let [left_state, right_state] = state_pair else {
+            return Err(QmfChannelsError::ChannelCountMismatch {
+                inputs: channels,
+                states: states.len(),
+                outputs: pcm.len(),
+            });
+        };
+        let Some(output_pair) = pcm.get_mut(channel..channel + SYNTHESIS_CHANNEL_LANES) else {
+            return Err(QmfChannelsError::ChannelCountMismatch {
+                inputs: channels,
+                states: states.len(),
+                outputs: pcm.len(),
+            });
+        };
+        let [left_output, right_output] = output_pair else {
+            return Err(QmfChannelsError::ChannelCountMismatch {
+                inputs: channels,
+                states: states.len(),
+                outputs: pcm.len(),
+            });
+        };
+
+        synthesise_ac4_pcm_pair(
+            [
+                &left_input.as_ref()[..timeslots],
+                &right_input.as_ref()[..timeslots],
+            ],
+            [left_state, right_state],
+            [left_output.as_mut(), right_output.as_mut()],
+        );
+        channel += SYNTHESIS_CHANNEL_LANES;
+    }
+
+    if channel < channels {
+        let input = &slots[channel].as_ref()[..timeslots];
+        let output = pcm[channel].as_mut();
+        synthesise_ac4_pcm(input, &mut states[channel], output)
+            .map_err(|source| QmfChannelsError::ScalarTail { channel, source })?;
     }
     Ok(())
 }
@@ -545,6 +794,114 @@ mod tests {
         }
     }
 
+    fn distinct_channel_slots(channels: usize, timeslots: usize) -> Vec<Vec<QmfSlot>> {
+        let mut out = Vec::with_capacity(channels);
+        for channel in 0..channels {
+            let mut frame = deterministic_slots(timeslots);
+            for (timeslot, slot) in frame.iter_mut().enumerate() {
+                slot.re.rotate_left((channel + timeslot) % SUBBANDS);
+                slot.im.rotate_right((3 * channel + timeslot) % SUBBANDS);
+                if channel % 2 != 0 {
+                    for value in slot.re.iter_mut().step_by(3) {
+                        *value = -*value;
+                    }
+                }
+            }
+            out.push(frame);
+        }
+        out
+    }
+
+    fn assert_synthesis_state_bit_exact(
+        actual: &QmfSynthesisState,
+        expected: &QmfSynthesisState,
+        context: &str,
+    ) {
+        for (index, (&actual, &expected)) in actual.filt.iter().zip(&expected.filt).enumerate() {
+            assert_eq!(
+                actual.to_bits(),
+                expected.to_bits(),
+                "{context} 的状态 {index} 必须逐位相同"
+            );
+        }
+    }
+
+    #[test]
+    fn channel_pair_synthesis_matches_scalar_across_calls_and_tail() {
+        const CHANNELS: usize = 5;
+        const TIMESLOTS: usize = 19;
+        let frames = distinct_channel_slots(CHANNELS, TIMESLOTS);
+        let mut batch_states = (0..CHANNELS)
+            .map(|_| QmfSynthesisState::new())
+            .collect::<Vec<_>>();
+        let mut scalar_states = (0..CHANNELS)
+            .map(|_| QmfSynthesisState::new())
+            .collect::<Vec<_>>();
+
+        for (call, range) in [0..7, 7..TIMESLOTS].into_iter().enumerate() {
+            let inputs = frames
+                .iter()
+                .map(|frame| &frame[range.clone()])
+                .collect::<Vec<_>>();
+            let samples = range.len() * SUBBANDS;
+            let mut batch_pcm = vec![vec![0.0f32; samples]; CHANNELS];
+            let mut scalar_pcm = vec![vec![0.0f32; samples]; CHANNELS];
+
+            synthesise_ac4_pcm_channels(&inputs, range.len(), &mut batch_states, &mut batch_pcm)
+                .expect("批量合成应成功");
+            for channel in 0..CHANNELS {
+                synthesise_ac4_pcm(
+                    inputs[channel],
+                    &mut scalar_states[channel],
+                    &mut scalar_pcm[channel],
+                )
+                .expect("标量合成应成功");
+                for (sample, (&batch, &scalar)) in batch_pcm[channel]
+                    .iter()
+                    .zip(&scalar_pcm[channel])
+                    .enumerate()
+                {
+                    assert_eq!(
+                        batch.to_bits(),
+                        scalar.to_bits(),
+                        "调用 {call} 声道 {channel} 样本 {sample} 必须逐位相同"
+                    );
+                }
+                assert_synthesis_state_bit_exact(
+                    &batch_states[channel],
+                    &scalar_states[channel],
+                    &format!("调用 {call} 声道 {channel}"),
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn channel_batch_shape_errors_do_not_advance_any_state() {
+        let inputs = distinct_channel_slots(2, 1);
+        let mut states = vec![QmfSynthesisState::new(), QmfSynthesisState::new()];
+        let mut outputs = vec![vec![7.0f32; SUBBANDS], vec![9.0f32; SUBBANDS - 1]];
+        let error = synthesise_ac4_pcm_channels(&inputs, 1, &mut states, &mut outputs)
+            .expect_err("第二路输出过短必须失败");
+        assert_eq!(
+            error,
+            QmfChannelsError::OutputLengthMismatch {
+                channel: 1,
+                expected: SUBBANDS,
+                provided: SUBBANDS - 1,
+            }
+        );
+        assert_eq!(outputs[0], [7.0; SUBBANDS]);
+        assert_eq!(outputs[1], [9.0; SUBBANDS - 1]);
+        for (channel, state) in states.iter().enumerate() {
+            assert_synthesis_state_bit_exact(
+                state,
+                &QmfSynthesisState::new(),
+                &format!("失败后的声道 {channel}"),
+            );
+        }
+    }
+
     fn benchmark_modulation(
         label: &str,
         iterations: usize,
@@ -605,6 +962,75 @@ mod tests {
         std::eprintln!(
             "median speedup: paired {:.3}x",
             direct[2].as_secs_f64() / paired[2].as_secs_f64(),
+        );
+    }
+
+    fn benchmark_scalar_channels(frames: &[Vec<QmfSlot>], iterations: usize) -> Duration {
+        let mut states = (0..frames.len())
+            .map(|_| QmfSynthesisState::new())
+            .collect::<Vec<_>>();
+        let mut pcm = vec![vec![0.0f32; frames[0].len() * SUBBANDS]; frames.len()];
+        let started = Instant::now();
+        for _ in 0..iterations {
+            for channel in 0..frames.len() {
+                synthesise_ac4_pcm(
+                    std::hint::black_box(&frames[channel]),
+                    std::hint::black_box(&mut states[channel]),
+                    std::hint::black_box(&mut pcm[channel]),
+                )
+                .expect("标量合成应成功");
+            }
+        }
+        std::hint::black_box((states, pcm));
+        started.elapsed()
+    }
+
+    fn benchmark_channel_pairs(frames: &[Vec<QmfSlot>], iterations: usize) -> Duration {
+        let mut states = (0..frames.len())
+            .map(|_| QmfSynthesisState::new())
+            .collect::<Vec<_>>();
+        let mut pcm = vec![vec![0.0f32; frames[0].len() * SUBBANDS]; frames.len()];
+        let started = Instant::now();
+        for _ in 0..iterations {
+            synthesise_ac4_pcm_channels(
+                std::hint::black_box(frames),
+                frames[0].len(),
+                std::hint::black_box(&mut states),
+                std::hint::black_box(&mut pcm),
+            )
+            .expect("批量合成应成功");
+        }
+        std::hint::black_box((states, pcm));
+        started.elapsed()
+    }
+
+    /// 手动运行：
+    /// `cargo test -p macindecode-ac4-bitstream --release --features audio-decode qmf_channel_pair_benchmark -- --ignored --nocapture`
+    #[test]
+    #[ignore = "手动运行的 20 声道 QMF 批量微基准"]
+    fn qmf_channel_pair_benchmark() {
+        const CHANNELS: usize = 20;
+        const TIMESLOTS: usize = 19;
+        const ITERATIONS: usize = 20;
+        let frames = distinct_channel_slots(CHANNELS, TIMESLOTS);
+        let mut scalar = Vec::with_capacity(5);
+        let mut paired = Vec::with_capacity(5);
+        for round in 0..5 {
+            if round % 2 == 0 {
+                scalar.push(benchmark_scalar_channels(&frames, ITERATIONS));
+                paired.push(benchmark_channel_pairs(&frames, ITERATIONS));
+            } else {
+                paired.push(benchmark_channel_pairs(&frames, ITERATIONS));
+                scalar.push(benchmark_scalar_channels(&frames, ITERATIONS));
+            }
+        }
+        scalar.sort_unstable();
+        paired.sort_unstable();
+        std::eprintln!(
+            "scalar {:.3} ms/frame, channel-pair {:.3} ms/frame, speedup {:.3}x",
+            scalar[2].as_secs_f64() * 1_000.0 / ITERATIONS as f64,
+            paired[2].as_secs_f64() * 1_000.0 / ITERATIONS as f64,
+            scalar[2].as_secs_f64() / paired[2].as_secs_f64(),
         );
     }
 

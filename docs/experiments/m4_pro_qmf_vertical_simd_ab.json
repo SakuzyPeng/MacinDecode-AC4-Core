@@ -1,0 +1,162 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-25T09:32:23Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "3cfa4af2753986423228f44daa8760aa9c974d75",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 24,
+    "modes": [
+      "core",
+      "full"
+    ],
+    "rounds_per_binary": 5,
+    "order": [
+      "after/before",
+      "before/after",
+      "after/before",
+      "before/after",
+      "after/before"
+    ],
+    "cold_runs": 20,
+    "warmup_passes": 1,
+    "min_passes": 5,
+    "min_time_ns": 2000000000,
+    "max_passes": 30,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit"
+  },
+  "binaries": {
+    "before_sha256": "58218f7b80c28f0800aec88dfa826f88f6402f3209d5accf8903605390b34066",
+    "after_sha256": "44857d7533690541fa2f5246a4533418d7b5644884238b95340b2a5e4ebb5cf0"
+  },
+  "candidate": {
+    "status": "retained",
+    "lane_axis": "channel",
+    "lanes": 2,
+    "lane_scalar": "f64",
+    "local_layout": "[subband][channel] AoSoA",
+    "local_aosoa_bytes": 2048,
+    "no_std": true,
+    "rayon": false,
+    "platform_intrinsics": false,
+    "unsafe_code": false,
+    "fma": false,
+    "fast_math": false,
+    "scalar_tail": true,
+    "fixed_pcm_chunks": true,
+    "isolated_scalar_ms_per_frame": 0.958,
+    "isolated_vertical_simd_ms_per_frame": 0.769,
+    "isolated_speedup": 1.245
+  },
+  "codegen": {
+    "architecture": "aarch64",
+    "vector_width_bits": 128,
+    "observed_instructions": [
+      "fcvtl v?.2d",
+      "fmul.2d",
+      "fadd.2d",
+      "fsub.2d"
+    ],
+    "observed_fma": false,
+    "observed_bounds_check_panic_calls": false
+  },
+  "standard_1500k": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "core": {
+      "before_median_ns_per_audio_sample": 1496.00860809113,
+      "after_median_ns_per_audio_sample": 1423.12656454873,
+      "improvement_percent": 4.87176632194589,
+      "speedup": 1.05121262251577,
+      "before_median_p99_ns": 3236667,
+      "after_median_p99_ns": 3139666,
+      "p99_improvement_percent": 2.99694098898651,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0
+    },
+    "full": {
+      "before_median_ns_per_audio_sample": 3163.9775137948,
+      "after_median_ns_per_audio_sample": 2920.79748825393,
+      "improvement_percent": 7.68589613802917,
+      "speedup": 1.08325809184609,
+      "before_median_p99_ns": 6793875,
+      "after_median_p99_ns": 6260167,
+      "p99_improvement_percent": 7.85572298577763,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0
+    }
+  },
+  "corpus_results": {
+    "all_total_improved": 24,
+    "all_p99_improved": 24,
+    "all_max_improved": 21,
+    "core": {
+      "aggregate_before_median_pass_ns": 2909228974.08854,
+      "aggregate_after_median_pass_ns": 2758797097.94986,
+      "aggregate_improvement_percent": 5.17085033452231,
+      "total_improvement_range_percent": [
+        4.63264533790627,
+        6.08867052733808
+      ],
+      "p99_improvement_range_percent": [
+        2.77067008421824,
+        7.16617498620367
+      ],
+      "max_improvement_range_percent": [
+        -112.05467158286,
+        61.3553080491723
+      ]
+    },
+    "full": {
+      "aggregate_before_median_pass_ns": 6566719810.07817,
+      "aggregate_after_median_pass_ns": 6066638454.20278,
+      "aggregate_improvement_percent": 7.6153904892958,
+      "total_improvement_range_percent": [
+        6.73513757491924,
+        8.40092501048553
+      ],
+      "p99_improvement_range_percent": [
+        6.96036220128024,
+        8.95267168962519
+      ],
+      "max_improvement_range_percent": [
+        6.6434751735279,
+        57.09860917278
+      ]
+    },
+    "before_deadline_misses": 0,
+    "after_deadline_misses": 0
+  },
+  "steady_allocations": {
+    "combinations": 24,
+    "allocations": 0,
+    "reallocations": 0,
+    "deallocations": 0,
+    "bytes_allocated": 0,
+    "bytes_reallocated": 0,
+    "bytes_deallocated": 0
+  },
+  "correctness": {
+    "differential_channels": 5,
+    "differential_timeslots": 19,
+    "split_calls": 2,
+    "state_values_per_channel": 1280,
+    "scalar_tail_covered": true,
+    "shape_errors_transactional": true,
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact"
+  }
+}

@@ -13,6 +13,7 @@
 - [Core QMF 分段 JSON](experiments/m4_pro_qmf_split_core.json)
 - [Full QMF 分段 JSON](experiments/m4_pro_qmf_split_full.json)
 - [QMF 成对调制 A/B JSON](experiments/m4_pro_qmf_paired_ab.json)
+- [QMF 跨声道垂直 SIMD A/B JSON](experiments/m4_pro_qmf_vertical_simd_ab.json)
 
 ## 结论
 
@@ -32,6 +33,9 @@
   `2.24%` / `2.08%`。
 - 最终保留的成对调制利用输出行的负共轭关系共享一半乘法和相位加载，逐位 PCM 与稳态零分配
   均不变。24/24 项总时长与 p99 都改善，Core 汇总提升 `20.94%`、Full 提升 `24.35%`。
+- 其上继续保留纯 `no_std` 的跨声道垂直 SIMD：相邻两路共享相位查表并用 2×f64 lane 独立
+  累加，五轮 A/B 的 24/24 项总时长与 p99 全部改善；Core 汇总再提升 `5.17%`，Full 再提升
+  `7.62%`，三层真实 PCM 基线仍逐位不变。
 
 ## 测量环境
 
@@ -209,6 +213,45 @@ p99 改善 24.90% 和定向复测结果，将其记录为未复现的单次 wall
 探索过的 128 点 FFT 前/后旋转虽有 `3.339×` 局部速度，但 2,432 个输出中 1,435 个（59.00%）
 位模式变化，违反逐位门禁，已否决。64 KiB 完整相位矩阵保持逐位输出，但只有 `1.181×`，收益
 和缓存代价都不如成对方案，也未保留。
+
+## QMF 跨声道垂直 SIMD（已保留）
+
+成对调制后，每一路输出仍按 `sb=0…63` 做独立 f64 累加。本候选不横向改写这棵加法树，而把
+相邻两路声道排成 `[subband][channel]` 的 2 KiB 局部 AoSoA：同一相位只查一次，两路 f32
+样本先精确提升为 f64，再执行与标量入口相同的乘、加、减与收窄。奇数尾声道和 LFE 边界继续
+走标量入口。PCM 形状在状态推进前统一预检，写回按固定 64-sample chunk 遍历。实现只使用
+safe Rust 固定数组，默认构建仍为 `no_std`，没有 Rayon、平台 intrinsic、`unsafe`、FMA
+或 fast-math。
+
+普通 ARM64 portable release 的反汇编确认调制循环使用 `fcvtl`、`fmul.2d`、`fadd.2d` 与
+`fsub.2d` 等 2×f64 NEON 指令，没有融合乘加，也没有 `panic_bounds_check` 调用。20 声道、
+19 时隙的五轮 release 微基准中，逐路标量为 `0.958 ms/frame`，声道对为
+`0.769 ms/frame`，局部内核提升 `1.245×`。
+
+正确性门禁分三层：五声道人造输入分两次调用，逐样本和每路全部 1,280 项合成状态逐位相同，
+同时覆盖两个声道对与一个标量尾声道；形状错误在任何状态推进前失败；`decode_check.py` 的 Core、
+A-SPX 与 A-JOC 对象三套真实媒体基线全部逐位通过，其中对象出口覆盖 16/21 路和 LFE 插回。
+稳态 allocation 构建复测 24/24 项，allocation/reallocation/deallocation/bytes 仍全部为零。
+
+A/B 的 before 是同一提交 `3cfa4af` 的干净 detached worktree，after 只含本候选；两个普通
+portable release 二进制的 SHA-256 分别为
+`58218f7b80c28f0800aec88dfa826f88f6402f3209d5accf8903605390b34066` 与
+`44857d7533690541fa2f5246a4533418d7b5644884238b95340b2a5e4ebb5cf0`。24 个“媒体 × 模式”
+组合各跑五轮，顺序为 after/before、before/after、after/before、before/after、after/before；
+以下每项均先在各自五轮中取中位数：
+
+| 模式 | 汇总 before | 汇总 after | 汇总提升 | 单项总时长提升范围 | p99 提升范围 | max 提升范围 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Core | 2.909 s/pass | 2.759 s/pass | 5.17% | 4.63%–6.09% | 2.77%–7.17% | -112.05%–61.36% |
+| Full | 6.567 s/pass | 6.067 s/pass | 7.62% | 6.74%–8.40% | 6.96%–8.95% | 6.64%–57.10% |
+
+24/24 项总时长与 p99 全部改善，两边 deadline miss 都为 0。max 对调度噪声敏感，21/24 项
+改善；三个 Core 项的离群峰值没有形成 deadline miss，也没有伴随总时长或 p99 回退。标准
+1500K 的 Full `ns/audio sample` 中位数为 `3163.978 → 2920.797`，提升 `7.686%`
+（`1.083×`），超过既有 `5%` 保留线，故进入默认路径。完整逐项数值见对应的 A/B JSON。
+
+这项优化只利用声道间独立性。若继续评估快速调制分解，仍须单独面对其改变单声道加法顺序、
+可能无法保持逐位 PCM 的问题，不能把两项收益或正确性结论合并。
 
 ## QMF 合成尾段实验（未保留）
 

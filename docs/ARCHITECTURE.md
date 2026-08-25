@@ -154,7 +154,7 @@ MP4 第一帧可能具有负 PTS、skip samples 或 edit list 偏移。这些信
 
 标量重建的数值格式由 [ADR-0002](decisions/0002-numeric-format-for-reconstruction.md) 确定：频域中间量与 PCM 用 `f32`，变换累加器用 `f64`，运行期超越函数一律查表或位构造，表值冻结摘要，禁用 FMA 与快速数学重排。变换所需的三角常量没有整数出口，来源另由 [ADR-0003](decisions/0003-trigonometric-tables-for-the-transform.md) 确定：构建期用锁定版本的 `libm` 生成，目标侧不链接它。IFFT 标量基线已按 [ADR-0004](decisions/0004-mixed-radix-stockham-ifft.md) 落地：使用 radix-4/2/3/5 的 Stockham autosort、一个 16 KiB 固定 scratch、正号且不在 IFFT 内归一化；前/后旋转与 KBD 窗表已按同一机制落地，三张变换常量表齐备，`5.5.2.2` 的六个步骤已接合为完整 IMDCT；Full engine 工作区与逐声道重叠状态现由 `Ac4DecoderSession` 间接持有并统一重置。其余约束是：
 
-QMF 合成的 portable 标量路径另按 [ADR-0008](decisions/0008-paired-qmf-synthesis-modulation.md) 成对处理负共轭输出行：共享乘法与相位加载，但每个输出仍按规范子带顺序执行 f64 累加，因此保持既有逐位 PCM。改变加法结合顺序的 FFT 分解不属于当前标量路径。
+QMF 合成的 portable 标量路径另按 [ADR-0008](decisions/0008-paired-qmf-synthesis-modulation.md) 成对处理负共轭输出行：共享乘法与相位加载，但每个输出仍按规范子带顺序执行 f64 累加，因此保持既有逐位 PCM。终端多声道入口再把相邻两路排成局部 2-lane AoSoA，让稳定编译器在 `no_std`、safe Rust 下沿声道轴生成 SIMD；lane 间没有归约，奇数尾声道仍调用同一标量入口。PCM 形状在状态推进前统一预检，热循环按固定 64-sample chunk 写回，portable ARM64 release 中不再保留越界 panic 慢路径。改变加法结合顺序的 FFT 分解不属于当前路径。
 
 - 所有规范量化值保留原始整数表示，避免过早转为浮点。
 - 元数据坐标同时保留量化码值和规范化表示。

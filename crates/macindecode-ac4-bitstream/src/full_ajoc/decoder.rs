@@ -42,7 +42,7 @@ use crate::{
     },
     aspx::{
         pipeline::{AspxIntermediates, MasterResetTracker},
-        qmf::{QmfSynthesisState, synthesise_ac4_pcm},
+        qmf::{QmfSynthesisState, synthesise_ac4_pcm, synthesise_ac4_pcm_channels},
         syntax::{AspxConfig, AspxData},
         workspace::AspxWorkspace,
     },
@@ -2681,8 +2681,8 @@ where
 
     // 诊断出口也先整帧暂存。后续 full 重建或任一路终端合成失败时，不会向 sink
     // 留下半帧；调用方随后 reset 所有已局部推进的状态。
-    let diagnostic_channels = usize::from(output_element.n_dmx_signals)
-        .saturating_add(usize::from(output_element.b_has_lfe));
+    let fullband = usize::from(output_element.n_dmx_signals);
+    let diagnostic_channels = fullband.saturating_add(usize::from(output_element.b_has_lfe));
     diagnostic_sources.clear();
     diagnostic_pcm.resize_with(diagnostic_channels, Vec::new);
     diagnostic_pcm.truncate(diagnostic_channels);
@@ -2690,38 +2690,75 @@ where
     // `then_some` 上，而不是回头拿 `slot` 与 `fullband` 再比一次。后者是同一
     // 件事的第二份推导，两处任一改动就会让 LFE 冒充 A-JOC 输入下标。
     for slot in 0..diagnostic_channels {
-        let (source, frame) = if slot < usize::from(output_element.n_dmx_signals) {
-            let frame = out.get(slot).ok_or_else(|| {
+        let frame = if slot < fullband {
+            out.get(slot).ok_or_else(|| {
                 format!("Substream {substream}: A-JOC input QMF is missing for channel {slot}")
-            })?;
-            (FullAjocPcmSource::AjocInput, frame)
+            })?
         } else {
-            (FullAjocPcmSource::Lfe, &*lfe)
+            &*lfe
         };
-        let Some(state) = drive.synthesis.get_mut(slot) else {
+        if drive.synthesis.get(slot).is_none() {
             return Err(
                 format!("Substream {substream}: channel {slot} lacks synthesis state").into(),
             );
-        };
+        }
         let target = diagnostic_pcm.get_mut(slot).ok_or_else(|| {
             format!("Substream {substream}: diagnostic PCM buffer is missing for channel {slot}")
         })?;
         target.resize(samples, 0.0);
-        let Some(slots) = frame.get(..timeslots) else {
+        if frame.get(..timeslots).is_none() {
             return Err(
                 format!("Substream {substream}: channel {slot} has too few timeslots").into(),
             );
-        };
-        synthesise_ac4_pcm(slots, state, target).map_err(|error| {
-            format!("Substream {substream}: synthesis failed for channel {slot}: {error:?}")
+        }
+    }
+
+    let states = drive.synthesis.get_mut(..diagnostic_channels).ok_or_else(|| {
+        format!(
+            "Substream {substream}: diagnostic synthesis workspace has fewer than {diagnostic_channels} channels"
+        )
+    })?;
+    let outputs = diagnostic_pcm
+        .get_mut(..diagnostic_channels)
+        .ok_or_else(|| {
+            format!(
+                "Substream {substream}: diagnostic PCM workspace has fewer than {diagnostic_channels} channels"
+            )
         })?;
+    let inputs = out.get(..fullband).ok_or_else(|| {
+        format!("Substream {substream}: A-JOC input QMF has fewer than {fullband} channels")
+    })?;
+    let (fullband_states, lfe_states) = states.split_at_mut(fullband);
+    let (fullband_outputs, lfe_outputs) = outputs.split_at_mut(fullband);
+    synthesise_ac4_pcm_channels(inputs, timeslots, fullband_states, fullband_outputs).map_err(
+        |error| format!("Substream {substream}: diagnostic batch synthesis failed: {error:?}"),
+    )?;
+    if output_element.b_has_lfe {
+        let Some(lfe_state) = lfe_states.first_mut() else {
+            return Err(format!("Substream {substream}: diagnostic LFE state is missing").into());
+        };
+        let Some(lfe_output) = lfe_outputs.first_mut() else {
+            return Err(format!("Substream {substream}: diagnostic LFE PCM is missing").into());
+        };
+        let lfe_frame = lfe.get(..timeslots).ok_or_else(|| {
+            format!("Substream {substream}: diagnostic LFE has too few timeslots")
+        })?;
+        synthesise_ac4_pcm(lfe_frame, lfe_state, lfe_output).map_err(|error| {
+            format!("Substream {substream}: diagnostic LFE synthesis failed: {error:?}")
+        })?;
+    }
+
+    for (slot, target) in outputs.iter().enumerate() {
         if let Some(sample) = target.iter().position(|value| !value.is_finite()) {
             return Err(format!(
                 "Substream {substream}: diagnostic PCM for channel {slot} is non-finite at sample {sample}"
             )
             .into());
         }
-        diagnostic_sources.push(source);
+    }
+    diagnostic_sources.extend((0..fullband).map(|_| FullAjocPcmSource::AjocInput));
+    if output_element.b_has_lfe {
+        diagnostic_sources.push(FullAjocPcmSource::Lfe);
     }
 
     let observation = if matches!(
@@ -3061,9 +3098,13 @@ fn synthesise_object_outputs(
     substream: u32,
 ) -> Result<(), FullAjocDecodeError> {
     sources.clear();
-    pcm.resize_with(topology.channels(), Vec::new);
-    pcm.truncate(topology.channels());
-    for slot in 0..topology.channels() {
+    let channels = topology.channels();
+    pcm.resize_with(channels, Vec::new);
+    pcm.truncate(channels);
+
+    // 先核对全部来源与容量；批量内核一旦开始便只做不会失败的定长 DSP。这样即使
+    // 后一声道形状损坏，也不会先推进前面声道的 QMF 历史。
+    for slot in 0..channels {
         let source = topology.source(slot).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
                 "Substream {substream}: object output channel {slot} has no source semantics"
@@ -3084,7 +3125,7 @@ fn synthesise_object_outputs(
                 )));
             }
         };
-        let state = drive.object_synthesis.get_mut(slot).ok_or_else(|| {
+        drive.object_synthesis.get(slot).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
                 "Substream {substream}: object-terminal synthesis state is missing for channel {slot}"
             ))
@@ -3095,21 +3136,144 @@ fn synthesise_object_outputs(
             ))
         })?;
         target.resize(samples, 0.0);
-        let slots = frame.get(..timeslots).ok_or_else(|| {
+        frame.get(..timeslots).ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
                 "Substream {substream}: object QMF channel {slot} has too few timeslots"
             ))
         })?;
-        synthesise_ac4_pcm(slots, state, target).map_err(|error| {
+    }
+
+    let states = drive
+        .object_synthesis
+        .get_mut(..channels)
+        .ok_or_else(|| {
             FullAjocDecodeError::object_shape(format!(
-                "Substream {substream}: object-terminal synthesis failed for channel {slot}: {error:?}"
+                "Substream {substream}: object-terminal synthesis state workspace has fewer than {channels} channels"
             ))
         })?;
+    let outputs = pcm.get_mut(..channels).ok_or_else(|| {
+        FullAjocDecodeError::object_shape(format!(
+            "Substream {substream}: object PCM workspace has fewer than {channels} channels"
+        ))
+    })?;
+
+    if reuse_first_object {
+        // 控制预热把同一张零 QMF 帧广播给全部对象；它不进入稳态性能路径，保留
+        // 标量实现可避免为广播形状另建一份描述数组。
+        for slot in 0..channels {
+            let source = topology.source(slot).ok_or_else(|| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object output channel {slot} has no source semantics"
+                ))
+            })?;
+            let frame = match source {
+                FullAjocPcmSource::AjocObject(_) => objects.first().ok_or_else(|| {
+                    FullAjocDecodeError::object_shape(format!(
+                        "Substream {substream}: broadcast QMF output for object channel {slot} is missing"
+                    ))
+                })?,
+                FullAjocPcmSource::Lfe => lfe,
+                FullAjocPcmSource::AjocInput => {
+                    return Err(FullAjocDecodeError::object_shape(format!(
+                        "Substream {substream}: object-terminal channel {slot} is incorrectly marked as an A-JOC input"
+                    )));
+                }
+            };
+            let frame = frame.get(..timeslots).ok_or_else(|| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal channel {slot} has too few QMF timeslots"
+                ))
+            })?;
+            let state = states.get_mut(slot).ok_or_else(|| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal channel {slot} lacks synthesis state"
+                ))
+            })?;
+            let output = outputs.get_mut(slot).ok_or_else(|| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal channel {slot} lacks PCM output"
+                ))
+            })?;
+            synthesise_ac4_pcm(frame, state, output).map_err(|error| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal synthesis failed for channel {slot}: {error:?}"
+                ))
+            })?;
+        }
+    } else if let Some(position) = topology.lfe_position {
+        let (before_states, lfe_and_after_states) = states.split_at_mut(position);
+        let Some((lfe_state, after_states)) = lfe_and_after_states.split_first_mut() else {
+            return Err(FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: LFE synthesis state is missing at channel {position}"
+            )));
+        };
+        let (before_outputs, lfe_and_after_outputs) = outputs.split_at_mut(position);
+        let Some((lfe_output, after_outputs)) = lfe_and_after_outputs.split_first_mut() else {
+            return Err(FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: LFE PCM output is missing at channel {position}"
+            )));
+        };
+        let before_objects = objects.get(..position).ok_or_else(|| {
+            FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: object QMF prefix before LFE channel {position} is missing"
+            ))
+        })?;
+        let after_objects = objects.get(position..topology.objects).ok_or_else(|| {
+            FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: object QMF suffix after LFE channel {position} is missing"
+            ))
+        })?;
+        synthesise_ac4_pcm_channels(before_objects, timeslots, before_states, before_outputs)
+            .map_err(|error| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal batch before LFE failed: {error:?}"
+                ))
+            })?;
+        let lfe_frame = lfe.get(..timeslots).ok_or_else(|| {
+            FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: object-terminal LFE has too few QMF timeslots"
+            ))
+        })?;
+        synthesise_ac4_pcm(lfe_frame, lfe_state, lfe_output).map_err(|error| {
+            FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: object-terminal LFE synthesis failed: {error:?}"
+            ))
+        })?;
+        synthesise_ac4_pcm_channels(after_objects, timeslots, after_states, after_outputs)
+            .map_err(|error| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal batch after LFE failed: {error:?}"
+                ))
+            })?;
+    } else {
+        let object_frames = objects.get(..topology.objects).ok_or_else(|| {
+            FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: object QMF output has fewer than {} channels",
+                topology.objects
+            ))
+        })?;
+        synthesise_ac4_pcm_channels(object_frames, timeslots, states, outputs).map_err(
+            |error| {
+                FullAjocDecodeError::object_shape(format!(
+                    "Substream {substream}: object-terminal batch synthesis failed: {error:?}"
+                ))
+            },
+        )?;
+    }
+
+    for (slot, target) in outputs.iter().enumerate() {
         if let Some(sample) = target.iter().position(|value| !value.is_finite()) {
             return Err(FullAjocDecodeError::objects_nonfinite(format!(
                 "Substream {substream}: object PCM for channel {slot} is non-finite at sample {sample}"
             )));
         }
+    }
+    for slot in 0..channels {
+        let source = topology.source(slot).ok_or_else(|| {
+            FullAjocDecodeError::object_shape(format!(
+                "Substream {substream}: object output channel {slot} has no source semantics"
+            ))
+        })?;
         sources.push(source);
     }
     Ok(())
