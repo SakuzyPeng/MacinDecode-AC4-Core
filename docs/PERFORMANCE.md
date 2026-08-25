@@ -13,10 +13,10 @@
 ## 结论
 
 - 24/24 组合均成功完成，无 decode error、`WaitingForRandomAccess`、空输入或非有限指标。
-- Core 为 `11.45x`–`22.81x` 实时且无 deadline miss；Full 为 `5.14x`–`7.16x` 实时，
-  记录到 1 次 deadline miss。
-- 最差单 AU 预算占用为 Core `24.59%`。Full 的绝大多数调用保有明显余量，但正式运行捕获到
-  一个 56.114 ms 极值，预算占用 `131.52%`；该样本未被过滤或隐藏。
+- Core 为 `11.64x`–`23.10x` 实时，Full 为 `5.22x`–`7.22x` 实时；当前正式运行均无
+  deadline miss。
+- 最差单 AU 预算占用为 Core `19.07%`、Full `48.09%`。上一版基线曾捕获一次 Full
+  56.114 ms 极值，但本轮没有复现；后续 A/B 重复测量继续保留并定位这类样本。
 - 完整预热并复用 `Ac4DecoderSession` 容量后，24/24 组合的 allocation、reallocation 和
   deallocation 都为零。
 - Core 和 Full 的第一热点都是 QMF；Full 的前三大 top-of-stack 符号依次为 QMF 合成、
@@ -33,9 +33,9 @@
 | Rust | 1.96.0 (`rustc 1.96.0 (ac68faa20 2026-05-25)`) |
 | Cargo | 1.96.0 |
 | 构建 | 普通 `--release`，`target_cpu = portable-default` |
-| timing 生成时间 | 2026-08-25 01:56:39 UTC |
+| timing 生成时间 | 2026-08-25 04:29:03 UTC |
 | allocation 生成时间 | 2026-08-25 01:40:33 UTC |
-| 被测提交 | `0ca1fdb408b2be43d418cddf3ad9c99bf6a0e813`；工作树包含本次性能工具改动 |
+| 被测提交 | `404ceded6e4f5cfa610cf360d070f6362332da7b`；工作树包含本次性能观测改动 |
 
 ## 测量边界与方法
 
@@ -47,9 +47,10 @@
 
 timing 对每个组合执行 20 次全新 Session 的首 AU 测量；随后完成一个完整预热 pass，调用
 `reset` 并复用 Session 容量。稳态测量至少运行 5 个完整 pass、累计至少 2 秒，最多 30 pass；
-本次实际范围为 Core 5–22 pass、Full 5–7 pass。百分位采用 nearest-rank。实时预算按每个 AU
+本次实际范围为 Core 5–23 pass、Full 5–7 pass。百分位采用 nearest-rank。实时预算按每个 AU
 实际解码采样数和 48 kHz 采样率计算；典型 2,048-sample AU 的预算为 42.67 ms，而不是对所有
-AU 使用固定常数。
+AU 使用固定常数。每个案例另按预算占用保存最差的 8 个 AU，包含零基 pass/AU 索引、延迟、
+预算、占用比和 miss 标志；排序与 JSON 整理均在计时区外。
 
 allocation 使用 `stats_alloc 0.1.10` 的独立构建。每个组合先完整预热并 `reset`，再统计一个完整
 pass；统计构建的执行时间不作为 timing 数据。所有 Session 都关闭 core-band diagnostics。
@@ -58,14 +59,14 @@ pass；统计构建的执行时间不作为 timing 数据。所有 Session 都�
 
 | 模式 | 实时倍速范围 | 最慢整案 | 最差 p99 | 最大单 AU | 最差预算占用 | deadline miss | 冷启动首 AU 最大值 |
 | --- | ---: | --- | --- | --- | ---: | ---: | --- |
-| Core | 11.45x–22.81x | DME L4 1500K：11.45x | 4.846 ms，DME L3 768K | 10.494 ms，DME L3 768K | 24.59% | 0 | 4.350 ms，标准 1500K |
-| Full | 5.14x–7.16x | 标准 1500K：5.14x | 9.578 ms，subframe control 768K | 56.114 ms，标准 1500K | 131.52% | 1 | 6.633 ms，标准 1500K |
+| Core | 11.64x–23.10x | DME L4 1500K：11.64x | 4.486 ms，ramp control 768K | 8.138 ms，ramp control 768K | 19.07% | 0 | 4.389 ms，标准 1500K |
+| Full | 5.22x–7.22x | DME L4 1500K：5.22x | 9.385 ms，ramp lengths 768K | 20.519 ms，DME L4 768K 3DoF | 48.09% | 0 | 6.713 ms，标准 1500K |
 
 这里的“最慢整案”按整个媒体的总解码时间计算；p99、max 和预算占用分别在同模式的 12 个案例中
 独立取最差值，因此不一定来自同一个媒体。每个案例的 ns/AU、p50、p95、p99、max、逐 AU
-计算的最坏预算比例及运行 pass 数均保存在 timing JSON 中。Full 的一次 miss 来自标准 1500K
-案例 715 次稳态调用中的单个 56.114 ms 样本；该案例 p99 为 9.026 ms，说明 max 是孤立极值，
-但本基线仍按实际观测保留并计为 miss。
+计算的最坏预算比例、8 个最差 AU 事件及运行 pass 数均保存在 timing JSON 中。上一版正式数据
+在标准 1500K 的 715 次 Full 调用中捕获过单个 56.114 ms miss，但当时尚未记录 AU 索引；本轮
+同案例 max 为 8.581 ms、0 miss，故目前只能记为未复现，不能追溯指定码流位置。
 
 ## 稳态分配
 

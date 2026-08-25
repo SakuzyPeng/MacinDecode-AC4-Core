@@ -3,14 +3,14 @@
   "schema_version": 1,
   "kind": "timing",
   "environment": {
-    "generated_at_utc": "2026-08-25T01:56:39Z",
+    "generated_at_utc": "2026-08-25T04:29:03Z",
     "architecture": "aarch64",
     "operating_system": "macOS 27.0",
     "cpu": "Apple M4 Pro",
     "memory_bytes": 51539607552,
     "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
     "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
-    "git_commit": "0ca1fdb408b2be43d418cddf3ad9c99bf6a0e813",
+    "git_commit": "404ceded6e4f5cfa610cf360d070f6362332da7b",
     "git_dirty": true,
     "build_profile": "release",
     "target_cpu": "portable-default",
@@ -27,6 +27,7 @@
     "min_passes": 5,
     "min_time_ns": 2000000000,
     "max_passes": 30,
+    "worst_access_unit_limit": 8,
     "timed_boundary": "Ac4DecoderSession::decode_access_unit"
   },
   "cases": [
@@ -38,28 +39,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3682058.35,
-        "p50_ns": 3629500,
-        "p95_ns": 3887834,
-        "p99_ns": 4349708,
-        "max_ns": 4349708
+        "mean_ns": 3552297.85,
+        "p50_ns": 3478709,
+        "p95_ns": 3661167,
+        "p99_ns": 4388625,
+        "max_ns": 4388625
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 2648439410,
-        "realtime_factor": 11.51873308918427,
-        "ns_per_audio_sample": 1808.6479799497379,
+        "total_decode_ns": 2573907705,
+        "realtime_factor": 11.852276834715278,
+        "ns_per_audio_sample": 1757.7494707440997,
         "latency": {
           "samples": 715,
-          "mean_ns": 3704111.062937063,
-          "p50_ns": 3704708,
-          "p95_ns": 3844208,
-          "p99_ns": 3888833,
-          "max_ns": 3943709
+          "mean_ns": 3599870.916083916,
+          "p50_ns": 3599417,
+          "p95_ns": 3747750,
+          "p99_ns": 3788708,
+          "max_ns": 3833250
         },
-        "worst_deadline_ratio": 0.0924306796875,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.089841796875,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 2,
+            "access_unit_index": 74,
+            "codec_samples": 2048,
+            "latency_ns": 3833250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.089841796875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 62,
+            "codec_samples": 2048,
+            "latency_ns": 3809000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08927343750000001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 100,
+            "codec_samples": 2048,
+            "latency_ns": 3804542,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.089168953125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 72,
+            "codec_samples": 2048,
+            "latency_ns": 3797625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0890068359375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 63,
+            "codec_samples": 2048,
+            "latency_ns": 3797250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.088998046875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 97,
+            "codec_samples": 2048,
+            "latency_ns": 3795417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08895508593750001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 108,
+            "codec_samples": 2048,
+            "latency_ns": 3791291,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08885838281250001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 56,
+            "codec_samples": 2048,
+            "latency_ns": 3788708,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08879784375000001,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -70,28 +145,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 6405193.7,
-        "p50_ns": 6389625,
-        "p95_ns": 6608084,
-        "p99_ns": 6632584,
-        "max_ns": 6632584
+        "mean_ns": 6373337.5,
+        "p50_ns": 6374583,
+        "p95_ns": 6585458,
+        "p99_ns": 6712834,
+        "max_ns": 6712834
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 5932078538,
-        "realtime_factor": 5.142660615709243,
-        "ns_per_audio_sample": 4051.0807323535837,
+        "total_decode_ns": 5771165115,
+        "realtime_factor": 5.286049880530348,
+        "ns_per_audio_sample": 3941.1912116204107,
         "latency": {
           "samples": 715,
-          "mean_ns": 8296613.339860139,
-          "p50_ns": 8189041,
-          "p95_ns": 8425792,
-          "p99_ns": 9025875,
-          "max_ns": 56114083
+          "mean_ns": 8071559.601398601,
+          "p50_ns": 8073125,
+          "p95_ns": 8334500,
+          "p99_ns": 8401417,
+          "max_ns": 8581000
         },
-        "worst_deadline_ratio": 1.3151738203125,
-        "deadline_misses": 1
+        "worst_deadline_ratio": 0.20111718750000002,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 0,
+            "access_unit_index": 71,
+            "codec_samples": 2048,
+            "latency_ns": 8581000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.20111718750000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 81,
+            "codec_samples": 2048,
+            "latency_ns": 8518750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19965820312500002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 95,
+            "codec_samples": 2048,
+            "latency_ns": 8443750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.197900390625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 75,
+            "codec_samples": 2048,
+            "latency_ns": 8437291,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19774900781250002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 58,
+            "codec_samples": 2048,
+            "latency_ns": 8434250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19767773437500002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 123,
+            "codec_samples": 2048,
+            "latency_ns": 8417917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1972949296875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 51,
+            "codec_samples": 2048,
+            "latency_ns": 8402083,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19692382031250003,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 72,
+            "codec_samples": 2048,
+            "latency_ns": 8401417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19690821093750002,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -102,28 +251,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3011087.55,
-        "p50_ns": 2990667,
-        "p95_ns": 3140000,
-        "p99_ns": 3162083,
-        "max_ns": 3162083
+        "mean_ns": 2937150.0,
+        "p50_ns": 2945625,
+        "p95_ns": 3020958,
+        "p99_ns": 3039416,
+        "max_ns": 3039416
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 2199503293,
-        "realtime_factor": 13.869798132949041,
-        "ns_per_audio_sample": 1502.064639559659,
+        "total_decode_ns": 2154396527,
+        "realtime_factor": 14.160191164598302,
+        "ns_per_audio_sample": 1471.2607401387675,
         "latency": {
           "samples": 715,
-          "mean_ns": 3076228.381818182,
-          "p50_ns": 3075417,
-          "p95_ns": 3193125,
-          "p99_ns": 3267916,
-          "max_ns": 3296417
+          "mean_ns": 3013141.9958041958,
+          "p50_ns": 3012833,
+          "p95_ns": 3133416,
+          "p99_ns": 3176417,
+          "max_ns": 3290958
         },
-        "worst_deadline_ratio": 0.0772597734375,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.07713182812500001,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 2,
+            "access_unit_index": 106,
+            "codec_samples": 2048,
+            "latency_ns": 3290958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07713182812500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 9,
+            "codec_samples": 2048,
+            "latency_ns": 3244458,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07604198437500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 134,
+            "codec_samples": 2048,
+            "latency_ns": 3198458,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07496385937500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 13,
+            "codec_samples": 2048,
+            "latency_ns": 3191042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.074790046875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 91,
+            "codec_samples": 2048,
+            "latency_ns": 3190750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.074783203125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 54,
+            "codec_samples": 2048,
+            "latency_ns": 3180958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07455370312500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 3177792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0744795,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 27,
+            "codec_samples": 2048,
+            "latency_ns": 3176417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0744472734375,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -134,28 +357,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5886762.55,
-        "p50_ns": 5875167,
-        "p95_ns": 6056583,
-        "p99_ns": 6062083,
-        "max_ns": 6062083
+        "mean_ns": 5832316.6,
+        "p50_ns": 5818375,
+        "p95_ns": 5939792,
+        "p99_ns": 5959083,
+        "max_ns": 5959083
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 5365288209,
-        "realtime_factor": 5.685932512533674,
-        "ns_per_audio_sample": 3664.0134731479457,
+        "total_decode_ns": 5256441448,
+        "realtime_factor": 5.8036728780216915,
+        "ns_per_audio_sample": 3589.6808402534966,
         "latency": {
           "samples": 715,
-          "mean_ns": 7503899.593006993,
-          "p50_ns": 7451250,
-          "p95_ns": 7660125,
-          "p99_ns": 9008166,
-          "max_ns": 18901625
+          "mean_ns": 7351666.360839161,
+          "p50_ns": 7359333,
+          "p95_ns": 7549958,
+          "p99_ns": 7628666,
+          "max_ns": 8317000
         },
-        "worst_deadline_ratio": 0.4430068359375,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.1949296875,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 0,
+            "access_unit_index": 2,
+            "codec_samples": 2048,
+            "latency_ns": 8317000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1949296875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 72,
+            "codec_samples": 2048,
+            "latency_ns": 7763666,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18196092187500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 84,
+            "codec_samples": 2048,
+            "latency_ns": 7650875,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1793173828125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 54,
+            "codec_samples": 2048,
+            "latency_ns": 7650833,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.17931639843750002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 141,
+            "codec_samples": 2048,
+            "latency_ns": 7639833,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.17905858593750001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 113,
+            "codec_samples": 2048,
+            "latency_ns": 7632959,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.17889747656250002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 7,
+            "codec_samples": 2048,
+            "latency_ns": 7631417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1788613359375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 105,
+            "codec_samples": 2048,
+            "latency_ns": 7628666,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.178796859375,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -166,28 +463,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 2482952.05,
-        "p50_ns": 2465917,
-        "p95_ns": 2603291,
-        "p99_ns": 2606000,
-        "max_ns": 2606000
+        "mean_ns": 2387447.9,
+        "p50_ns": 2377958,
+        "p95_ns": 2445125,
+        "p99_ns": 2576458,
+        "max_ns": 2576458
       },
       "steady": {
         "passes": 6,
         "calls": 858,
-        "total_decode_ns": 2158170709,
-        "realtime_factor": 16.96251359882579,
-        "ns_per_audio_sample": 1228.1984749462777,
+        "total_decode_ns": 2084396836,
+        "realtime_factor": 17.562874481354278,
+        "ns_per_audio_sample": 1186.2143270141316,
         "latency": {
           "samples": 858,
-          "mean_ns": 2515350.4766899766,
-          "p50_ns": 2462709,
-          "p95_ns": 2586416,
-          "p99_ns": 4846333,
-          "max_ns": 10493667
+          "mean_ns": 2429366.9417249416,
+          "p50_ns": 2426042,
+          "p95_ns": 2528959,
+          "p99_ns": 2574375,
+          "max_ns": 2659333
         },
-        "worst_deadline_ratio": 0.24594532031250002,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.062328117187500004,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 3,
+            "access_unit_index": 11,
+            "codec_samples": 2048,
+            "latency_ns": 2659333,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.062328117187500004,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 125,
+            "codec_samples": 2048,
+            "latency_ns": 2608916,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.06114646875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 95,
+            "codec_samples": 2048,
+            "latency_ns": 2606833,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.061097648437500006,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 19,
+            "codec_samples": 2048,
+            "latency_ns": 2601125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.06096386718750001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 57,
+            "codec_samples": 2048,
+            "latency_ns": 2594541,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0608095546875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 138,
+            "codec_samples": 2048,
+            "latency_ns": 2587166,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.060636703125000004,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 46,
+            "codec_samples": 2048,
+            "latency_ns": 2584375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.060571289062500006,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 52,
+            "codec_samples": 2048,
+            "latency_ns": 2581125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0604951171875,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -198,28 +569,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 4555422.95,
-        "p50_ns": 4516542,
-        "p95_ns": 4718625,
-        "p99_ns": 4765292,
-        "max_ns": 4765292
+        "mean_ns": 4570406.2,
+        "p50_ns": 4553417,
+        "p95_ns": 4686917,
+        "p99_ns": 4797625,
+        "max_ns": 4797625
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 4260424426,
-        "realtime_factor": 7.160475956455017,
-        "ns_per_audio_sample": 2909.4900199409967,
+        "total_decode_ns": 4226852612,
+        "realtime_factor": 7.217348099637657,
+        "ns_per_audio_sample": 2886.5634642701048,
         "latency": {
           "samples": 715,
-          "mean_ns": 5958635.560839161,
-          "p50_ns": 5958541,
-          "p95_ns": 6129041,
-          "p99_ns": 6186083,
-          "max_ns": 10724167
+          "mean_ns": 5911681.974825175,
+          "p50_ns": 5893583,
+          "p95_ns": 6059750,
+          "p99_ns": 6132833,
+          "max_ns": 14583041
         },
-        "worst_deadline_ratio": 0.25134766406250003,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.34179002343750003,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 0,
+            "access_unit_index": 97,
+            "codec_samples": 2048,
+            "latency_ns": 14583041,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.34179002343750003,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 96,
+            "codec_samples": 2048,
+            "latency_ns": 11501709,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.2695713046875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 98,
+            "codec_samples": 2048,
+            "latency_ns": 9266500,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.21718359375000001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 99,
+            "codec_samples": 2048,
+            "latency_ns": 8639541,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.2024892421875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 118,
+            "codec_samples": 2048,
+            "latency_ns": 6171125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1446357421875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 71,
+            "codec_samples": 2048,
+            "latency_ns": 6160667,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1443906328125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 72,
+            "codec_samples": 2048,
+            "latency_ns": 6145250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.14402929687500002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 34,
+            "codec_samples": 2048,
+            "latency_ns": 6132833,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1437382734375,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -230,28 +675,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3610227.1,
-        "p50_ns": 3586167,
-        "p95_ns": 3750208,
-        "p99_ns": 3774500,
-        "max_ns": 3774500
+        "mean_ns": 3529610.4,
+        "p50_ns": 3522667,
+        "p95_ns": 3603167,
+        "p99_ns": 3638708,
+        "max_ns": 3638708
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 2663580591,
-        "realtime_factor": 11.453254603876436,
-        "ns_per_audio_sample": 1818.988056572334,
+        "total_decode_ns": 2621264051,
+        "realtime_factor": 11.638150935243825,
+        "ns_per_audio_sample": 1790.0896327305506,
         "latency": {
           "samples": 715,
-          "mean_ns": 3725287.53986014,
-          "p50_ns": 3696125,
-          "p95_ns": 3871750,
-          "p99_ns": 3952959,
-          "max_ns": 9906625
+          "mean_ns": 3666103.5678321677,
+          "p50_ns": 3668542,
+          "p95_ns": 3780916,
+          "p99_ns": 3837792,
+          "max_ns": 3917334
         },
-        "worst_deadline_ratio": 0.23218652343750001,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.09181251562500001,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 0,
+            "access_unit_index": 50,
+            "codec_samples": 2048,
+            "latency_ns": 3917334,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.09181251562500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 128,
+            "codec_samples": 2048,
+            "latency_ns": 3866417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0906191484375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 50,
+            "codec_samples": 2048,
+            "latency_ns": 3861625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0905068359375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 3851208,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.09026268750000001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 105,
+            "codec_samples": 2048,
+            "latency_ns": 3845292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.09012403125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 78,
+            "codec_samples": 2048,
+            "latency_ns": 3842625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0900615234375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 80,
+            "codec_samples": 2048,
+            "latency_ns": 3839958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08999901562500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 27,
+            "codec_samples": 2048,
+            "latency_ns": 3837792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08994825000000001,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -262,28 +781,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 6385845.85,
-        "p50_ns": 6373959,
-        "p95_ns": 6542459,
-        "p99_ns": 6560667,
-        "max_ns": 6560667
+        "mean_ns": 6422000.0,
+        "p50_ns": 6416917,
+        "p95_ns": 6539417,
+        "p99_ns": 6609458,
+        "max_ns": 6609458
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 5885664415,
-        "realtime_factor": 5.183215439350982,
-        "ns_per_audio_sample": 4019.3840246667396,
+        "total_decode_ns": 5841965920,
+        "realtime_factor": 5.221986414235478,
+        "ns_per_audio_sample": 3989.5418487762236,
         "latency": {
           "samples": 715,
-          "mean_ns": 8231698.482517483,
-          "p50_ns": 8247625,
-          "p95_ns": 8459625,
-          "p99_ns": 8525708,
-          "max_ns": 8616125
+          "mean_ns": 8170581.706293706,
+          "p50_ns": 8183500,
+          "p95_ns": 8398334,
+          "p99_ns": 8477250,
+          "max_ns": 8597667
         },
-        "worst_deadline_ratio": 0.2019404296875,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.2015078203125,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 0,
+            "access_unit_index": 120,
+            "codec_samples": 2048,
+            "latency_ns": 8597667,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.2015078203125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 127,
+            "codec_samples": 2048,
+            "latency_ns": 8564041,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.20071971093750002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 131,
+            "codec_samples": 2048,
+            "latency_ns": 8542834,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.200222671875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 104,
+            "codec_samples": 2048,
+            "latency_ns": 8534792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.20003418750000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 70,
+            "codec_samples": 2048,
+            "latency_ns": 8502792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19928418750000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 52,
+            "codec_samples": 2048,
+            "latency_ns": 8501042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.199243171875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 97,
+            "codec_samples": 2048,
+            "latency_ns": 8500750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.199236328125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 48,
+            "codec_samples": 2048,
+            "latency_ns": 8477250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.198685546875,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -294,28 +887,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3012785.4,
-        "p50_ns": 2994000,
-        "p95_ns": 3129625,
-        "p99_ns": 3238833,
-        "max_ns": 3238833
+        "mean_ns": 2992610.3,
+        "p50_ns": 2975292,
+        "p95_ns": 3086583,
+        "p99_ns": 3097958,
+        "max_ns": 3097958
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 2199982046,
-        "realtime_factor": 13.866779832196261,
-        "ns_per_audio_sample": 1502.39158517264,
+        "total_decode_ns": 2187860751,
+        "realtime_factor": 13.943605255829496,
+        "ns_per_audio_sample": 1494.1138214324737,
         "latency": {
           "samples": 715,
-          "mean_ns": 3076897.9664335665,
-          "p50_ns": 3075750,
-          "p95_ns": 3206709,
-          "p99_ns": 3293500,
-          "max_ns": 3463208
+          "mean_ns": 3059945.106293706,
+          "p50_ns": 3059958,
+          "p95_ns": 3169625,
+          "p99_ns": 3213000,
+          "max_ns": 3275958
         },
-        "worst_deadline_ratio": 0.08116893750000001,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.07678026562500001,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 2,
+            "access_unit_index": 28,
+            "codec_samples": 2048,
+            "latency_ns": 3275958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07678026562500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 102,
+            "codec_samples": 2048,
+            "latency_ns": 3255166,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07629295312500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 3246041,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0760790859375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 125,
+            "codec_samples": 2048,
+            "latency_ns": 3242125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0759873046875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 49,
+            "codec_samples": 2048,
+            "latency_ns": 3228292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07566309375000001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 16,
+            "codec_samples": 2048,
+            "latency_ns": 3224917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0755839921875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 138,
+            "codec_samples": 2048,
+            "latency_ns": 3214250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07533398437500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 133,
+            "codec_samples": 2048,
+            "latency_ns": 3213000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07530468750000001,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -326,28 +993,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5870008.45,
-        "p50_ns": 5862875,
-        "p95_ns": 5996042,
-        "p99_ns": 6051500,
-        "max_ns": 6051500
+        "mean_ns": 5834712.6,
+        "p50_ns": 5833083,
+        "p95_ns": 5978208,
+        "p99_ns": 6002584,
+        "max_ns": 6002584
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 5327500523,
-        "realtime_factor": 5.726262538119448,
-        "ns_per_audio_sample": 3638.2078527917397,
+        "total_decode_ns": 5323411593,
+        "realtime_factor": 5.730660899258906,
+        "ns_per_audio_sample": 3635.4154781741695,
         "latency": {
           "samples": 715,
-          "mean_ns": 7451049.682517483,
-          "p50_ns": 7426334,
-          "p95_ns": 7641375,
-          "p99_ns": 8062583,
-          "max_ns": 16490000
+          "mean_ns": 7445330.899300699,
+          "p50_ns": 7433958,
+          "p95_ns": 7618667,
+          "p99_ns": 7711791,
+          "max_ns": 20518917
         },
-        "worst_deadline_ratio": 0.38648437500000005,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.48091211718750004,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 2,
+            "access_unit_index": 44,
+            "codec_samples": 2048,
+            "latency_ns": 20518917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.48091211718750004,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 45,
+            "codec_samples": 2048,
+            "latency_ns": 10870625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.25478027343750004,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 43,
+            "codec_samples": 2048,
+            "latency_ns": 10181834,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.23863673437500002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 102,
+            "codec_samples": 2048,
+            "latency_ns": 8110583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.19009178906250002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 46,
+            "codec_samples": 2048,
+            "latency_ns": 7970625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18681152343750002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 58,
+            "codec_samples": 2048,
+            "latency_ns": 7754000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.181734375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 57,
+            "codec_samples": 2048,
+            "latency_ns": 7735708,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18130565625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 55,
+            "codec_samples": 2048,
+            "latency_ns": 7711791,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1807451015625,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -358,28 +1099,102 @@
       "codec_samples_per_pass": 100352,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 1852110.4,
-        "p50_ns": 1836875,
-        "p95_ns": 1975750,
-        "p99_ns": 1981333,
-        "max_ns": 1981333
+        "mean_ns": 1866514.45,
+        "p50_ns": 1876083,
+        "p95_ns": 1952000,
+        "p99_ns": 1962791,
+        "max_ns": 1962791
       },
       "steady": {
-        "passes": 22,
-        "calls": 1078,
-        "total_decode_ns": 2015999974,
-        "realtime_factor": 22.8148151090535,
-        "ns_per_audio_sample": 913.1493388726229,
+        "passes": 23,
+        "calls": 1127,
+        "total_decode_ns": 2081634794,
+        "realtime_factor": 23.09979323555318,
+        "ns_per_audio_sample": 901.883974496728,
         "latency": {
-          "samples": 1078,
-          "mean_ns": 1870129.8460111318,
-          "p50_ns": 1866750,
-          "p95_ns": 1965584,
-          "p99_ns": 2008625,
-          "max_ns": 2064333
+          "samples": 1127,
+          "mean_ns": 1847058.379769299,
+          "p50_ns": 1842209,
+          "p95_ns": 1931958,
+          "p99_ns": 1977958,
+          "max_ns": 2018792
         },
-        "worst_deadline_ratio": 0.0483828046875,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.0473154375,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 7,
+            "access_unit_index": 1,
+            "codec_samples": 2048,
+            "latency_ns": 2018792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0473154375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 21,
+            "access_unit_index": 9,
+            "codec_samples": 2048,
+            "latency_ns": 2012708,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.047172843750000006,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 13,
+            "access_unit_index": 4,
+            "codec_samples": 2048,
+            "latency_ns": 2011166,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.047136703125000005,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 6,
+            "access_unit_index": 9,
+            "codec_samples": 2048,
+            "latency_ns": 1997500,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.046816406250000005,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 15,
+            "access_unit_index": 33,
+            "codec_samples": 2048,
+            "latency_ns": 1997167,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0468086015625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 18,
+            "access_unit_index": 23,
+            "codec_samples": 2048,
+            "latency_ns": 1994917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0467558671875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 20,
+            "access_unit_index": 9,
+            "codec_samples": 2048,
+            "latency_ns": 1990834,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.046660171875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 14,
+            "access_unit_index": 14,
+            "codec_samples": 2048,
+            "latency_ns": 1989833,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.046636710937500006,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -390,28 +1205,102 @@
       "codec_samples_per_pass": 100352,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 4772054.1,
-        "p50_ns": 4742583,
-        "p95_ns": 4909917,
-        "p99_ns": 4955875,
-        "max_ns": 4955875
+        "mean_ns": 4724037.6,
+        "p50_ns": 4702042,
+        "p95_ns": 4847042,
+        "p99_ns": 4893500,
+        "max_ns": 4893500
       },
       "steady": {
         "passes": 7,
         "calls": 343,
-        "total_decode_ns": 2063128670,
-        "realtime_factor": 7.093433812185193,
-        "ns_per_audio_sample": 2936.9884720071063,
+        "total_decode_ns": 2067924456,
+        "realtime_factor": 7.076983215805958,
+        "ns_per_audio_sample": 2943.8155635021867,
         "latency": {
           "samples": 343,
-          "mean_ns": 6014952.390670554,
-          "p50_ns": 6040458,
-          "p95_ns": 6219958,
-          "p99_ns": 6275000,
-          "max_ns": 6309791
+          "mean_ns": 6028934.274052478,
+          "p50_ns": 6051333,
+          "p95_ns": 6238708,
+          "p99_ns": 6312833,
+          "max_ns": 6498292
         },
-        "worst_deadline_ratio": 0.14788572656250001,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.15230371875,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 5,
+            "access_unit_index": 12,
+            "codec_samples": 2048,
+            "latency_ns": 6498292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.15230371875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 11,
+            "codec_samples": 2048,
+            "latency_ns": 6404583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1501074140625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 25,
+            "codec_samples": 2048,
+            "latency_ns": 6313208,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.14796581250000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 32,
+            "codec_samples": 2048,
+            "latency_ns": 6312833,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1479570234375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 6303375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1477353515625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 10,
+            "codec_samples": 2048,
+            "latency_ns": 6297125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1475888671875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 24,
+            "codec_samples": 2048,
+            "latency_ns": 6288417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1473847734375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 13,
+            "codec_samples": 2048,
+            "latency_ns": 6282750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.147251953125,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -422,28 +1311,102 @@
       "codec_samples_per_pass": 100352,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 2447799.85,
-        "p50_ns": 2433291,
-        "p95_ns": 2548291,
-        "p99_ns": 2591584,
-        "max_ns": 2591584
+        "mean_ns": 2431337.5,
+        "p50_ns": 2438708,
+        "p95_ns": 2483375,
+        "p99_ns": 2525250,
+        "max_ns": 2525250
       },
       "steady": {
         "passes": 17,
         "calls": 833,
-        "total_decode_ns": 2088659360,
-        "realtime_factor": 17.016337854791857,
-        "ns_per_audio_sample": 1224.313569177671,
+        "total_decode_ns": 2062081123,
+        "realtime_factor": 17.2356620391473,
+        "ns_per_audio_sample": 1208.7341516684799,
         "latency": {
           "samples": 833,
-          "mean_ns": 2507394.1896758704,
-          "p50_ns": 2487917,
-          "p95_ns": 2600583,
-          "p99_ns": 2737000,
-          "max_ns": 7077625
+          "mean_ns": 2475487.5426170467,
+          "p50_ns": 2475958,
+          "p95_ns": 2566708,
+          "p99_ns": 2606583,
+          "max_ns": 2651042
         },
-        "worst_deadline_ratio": 0.1658818359375,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.062133796875,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 12,
+            "access_unit_index": 21,
+            "codec_samples": 2048,
+            "latency_ns": 2651042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.062133796875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 14,
+            "access_unit_index": 4,
+            "codec_samples": 2048,
+            "latency_ns": 2635334,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.06176564062500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 35,
+            "codec_samples": 2048,
+            "latency_ns": 2634542,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.061747078125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 13,
+            "access_unit_index": 48,
+            "codec_samples": 2048,
+            "latency_ns": 2622125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.061456054687500004,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 15,
+            "access_unit_index": 42,
+            "codec_samples": 2048,
+            "latency_ns": 2622083,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.061455070312500006,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 16,
+            "access_unit_index": 6,
+            "codec_samples": 2048,
+            "latency_ns": 2620958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.061428703125000005,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 34,
+            "codec_samples": 2048,
+            "latency_ns": 2609917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.061169929687500006,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 18,
+            "codec_samples": 2048,
+            "latency_ns": 2609375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.06115722656250001,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -454,28 +1417,102 @@
       "codec_samples_per_pass": 100352,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5312489.55,
-        "p50_ns": 5303375,
-        "p95_ns": 5460958,
-        "p99_ns": 5549041,
-        "max_ns": 5549041
+        "mean_ns": 5329245.65,
+        "p50_ns": 5335292,
+        "p95_ns": 5452667,
+        "p99_ns": 5488958,
+        "max_ns": 5488958
       },
       "steady": {
         "passes": 7,
         "calls": 343,
-        "total_decode_ns": 2315693123,
-        "realtime_factor": 6.319778092058819,
-        "ns_per_audio_sample": 3296.5292498975036,
+        "total_decode_ns": 2313381465,
+        "realtime_factor": 6.326093161927649,
+        "ns_per_audio_sample": 3293.238464889304,
         "latency": {
           "samples": 343,
-          "mean_ns": 6751291.903790087,
-          "p50_ns": 6781917,
-          "p95_ns": 6953917,
-          "p99_ns": 7034083,
-          "max_ns": 7081250
+          "mean_ns": 6744552.3760932945,
+          "p50_ns": 6776667,
+          "p95_ns": 6923083,
+          "p99_ns": 6981542,
+          "max_ns": 7019958
         },
-        "worst_deadline_ratio": 0.16596679687500002,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.164530265625,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 3,
+            "access_unit_index": 38,
+            "codec_samples": 2048,
+            "latency_ns": 7019958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.164530265625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 12,
+            "codec_samples": 2048,
+            "latency_ns": 7004417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1641660234375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 40,
+            "codec_samples": 2048,
+            "latency_ns": 7003000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1641328125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 15,
+            "codec_samples": 2048,
+            "latency_ns": 6981542,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.163629890625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 1,
+            "codec_samples": 2048,
+            "latency_ns": 6979583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1635839765625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 10,
+            "codec_samples": 2048,
+            "latency_ns": 6973208,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.16343456250000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 6,
+            "access_unit_index": 9,
+            "codec_samples": 2048,
+            "latency_ns": 6957875,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1630751953125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 13,
+            "codec_samples": 2048,
+            "latency_ns": 6955583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.16302147656250002,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -486,28 +1523,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 2992247.95,
-        "p50_ns": 2986167,
-        "p95_ns": 3084667,
-        "p99_ns": 3102208,
-        "max_ns": 3102208
+        "mean_ns": 2961979.35,
+        "p50_ns": 2960292,
+        "p95_ns": 3021333,
+        "p99_ns": 3095583,
+        "max_ns": 3095583
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 2190231249,
-        "realtime_factor": 13.928514023619735,
-        "ns_per_audio_sample": 1495.7326602108828,
+        "total_decode_ns": 2177942864,
+        "realtime_factor": 14.007101458409364,
+        "ns_per_audio_sample": 1487.3407888986014,
         "latency": {
           "samples": 715,
-          "mean_ns": 3063260.488111888,
-          "p50_ns": 3061208,
-          "p95_ns": 3193791,
-          "p99_ns": 3250375,
-          "max_ns": 3327459
+          "mean_ns": 3046073.9356643357,
+          "p50_ns": 3047292,
+          "p95_ns": 3164042,
+          "p99_ns": 3204167,
+          "max_ns": 3253583
         },
-        "worst_deadline_ratio": 0.07798732031250001,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.0762558515625,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 1,
+            "access_unit_index": 91,
+            "codec_samples": 2048,
+            "latency_ns": 3253583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0762558515625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 66,
+            "codec_samples": 2048,
+            "latency_ns": 3233792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.075792,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 142,
+            "codec_samples": 2048,
+            "latency_ns": 3228042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07565723437500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 139,
+            "codec_samples": 2048,
+            "latency_ns": 3215708,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07536815625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 102,
+            "codec_samples": 2048,
+            "latency_ns": 3214958,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.075350578125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 94,
+            "codec_samples": 2048,
+            "latency_ns": 3214167,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07533203906250001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 100,
+            "codec_samples": 2048,
+            "latency_ns": 3210542,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.075247078125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 8,
+            "codec_samples": 2048,
+            "latency_ns": 3204167,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0750976640625,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -518,28 +1629,102 @@
       "codec_samples_per_pass": 292864,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5858852.1,
-        "p50_ns": 5865417,
-        "p95_ns": 6068917,
-        "p99_ns": 6147208,
-        "max_ns": 6147208
+        "mean_ns": 5829512.45,
+        "p50_ns": 5763792,
+        "p95_ns": 5994791,
+        "p99_ns": 6008708,
+        "max_ns": 6008708
       },
       "steady": {
         "passes": 5,
         "calls": 715,
-        "total_decode_ns": 5326533917,
-        "realtime_factor": 5.7273016828640735,
-        "ns_per_audio_sample": 3637.5477470771416,
+        "total_decode_ns": 5304767405,
+        "realtime_factor": 5.750801936747059,
+        "ns_per_audio_sample": 3622.683160101617,
         "latency": {
           "samples": 715,
-          "mean_ns": 7449697.786013986,
-          "p50_ns": 7461250,
-          "p95_ns": 7653791,
-          "p99_ns": 7708208,
-          "max_ns": 7733541
+          "mean_ns": 7419255.111888112,
+          "p50_ns": 7437166,
+          "p95_ns": 7595291,
+          "p99_ns": 7662750,
+          "max_ns": 7760667
         },
-        "worst_deadline_ratio": 0.1812548671875,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.1818906328125,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 4,
+            "access_unit_index": 46,
+            "codec_samples": 2048,
+            "latency_ns": 7760667,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1818906328125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 75,
+            "codec_samples": 2048,
+            "latency_ns": 7723708,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18102440625000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 69,
+            "codec_samples": 2048,
+            "latency_ns": 7714375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1808056640625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 66,
+            "codec_samples": 2048,
+            "latency_ns": 7697584,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.180412125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 60,
+            "codec_samples": 2048,
+            "latency_ns": 7685375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1801259765625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 46,
+            "codec_samples": 2048,
+            "latency_ns": 7681292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18003028125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 21,
+            "codec_samples": 2048,
+            "latency_ns": 7670250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.179771484375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 118,
+            "codec_samples": 2048,
+            "latency_ns": 7662750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.179595703125,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -550,28 +1735,102 @@
       "codec_samples_per_pass": 86016,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 2989470.8,
-        "p50_ns": 2961458,
-        "p95_ns": 3094625,
-        "p99_ns": 3342709,
-        "max_ns": 3342709
+        "mean_ns": 2979327.0,
+        "p50_ns": 2976750,
+        "p95_ns": 3051291,
+        "p99_ns": 3091458,
+        "max_ns": 3091458
       },
       "steady": {
         "passes": 16,
         "calls": 672,
-        "total_decode_ns": 2064605447,
-        "realtime_factor": 13.887399184024336,
-        "ns_per_audio_sample": 1500.160905383882,
+        "total_decode_ns": 2083377550,
+        "realtime_factor": 13.762267909625885,
+        "ns_per_audio_sample": 1513.8008844284784,
         "latency": {
           "samples": 672,
-          "mean_ns": 3072329.5342261903,
-          "p50_ns": 3070917,
-          "p95_ns": 3209792,
-          "p99_ns": 3250208,
-          "max_ns": 3330042
+          "mean_ns": 3100264.211309524,
+          "p50_ns": 3069291,
+          "p95_ns": 3202625,
+          "p99_ns": 4485583,
+          "max_ns": 8138167
         },
-        "worst_deadline_ratio": 0.078047859375,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.1907382890625,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 2,
+            "access_unit_index": 19,
+            "codec_samples": 2048,
+            "latency_ns": 8138167,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1907382890625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 22,
+            "codec_samples": 2048,
+            "latency_ns": 6265500,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.14684765625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 21,
+            "codec_samples": 2048,
+            "latency_ns": 5049583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1183496015625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 4919584,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.11530275000000001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 23,
+            "codec_samples": 2048,
+            "latency_ns": 4856416,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.11382225,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 29,
+            "codec_samples": 2048,
+            "latency_ns": 4751541,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1113642421875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 28,
+            "codec_samples": 2048,
+            "latency_ns": 4485583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1051308515625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 18,
+            "codec_samples": 2048,
+            "latency_ns": 4477708,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.10494628125000001,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -582,28 +1841,102 @@
       "codec_samples_per_pass": 86016,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5806760.4,
-        "p50_ns": 5803083,
-        "p95_ns": 5922916,
-        "p99_ns": 6055708,
-        "max_ns": 6055708
+        "mean_ns": 5811097.95,
+        "p50_ns": 5815708,
+        "p95_ns": 6008542,
+        "p99_ns": 6017125,
+        "max_ns": 6017125
       },
       "steady": {
         "passes": 7,
         "calls": 294,
-        "total_decode_ns": 2180394243,
-        "realtime_factor": 5.7530880207887245,
-        "ns_per_audio_sample": 3621.2436274314414,
+        "total_decode_ns": 2185478616,
+        "realtime_factor": 5.739703837944118,
+        "ns_per_audio_sample": 3629.687858737245,
         "latency": {
           "samples": 294,
-          "mean_ns": 7416306.948979592,
-          "p50_ns": 7443750,
-          "p95_ns": 7684208,
-          "p99_ns": 7769042,
-          "max_ns": 7793458
+          "mean_ns": 7433600.734693877,
+          "p50_ns": 7467042,
+          "p95_ns": 7648875,
+          "p99_ns": 7698167,
+          "max_ns": 7721375
         },
-        "worst_deadline_ratio": 0.182659171875,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.18096972656250002,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 2,
+            "access_unit_index": 30,
+            "codec_samples": 2048,
+            "latency_ns": 7721375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18096972656250002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 28,
+            "codec_samples": 2048,
+            "latency_ns": 7709083,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18068163281250002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 24,
+            "codec_samples": 2048,
+            "latency_ns": 7698167,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1804257890625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 7696208,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18037987500000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 15,
+            "codec_samples": 2048,
+            "latency_ns": 7692917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1803027421875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 8,
+            "codec_samples": 2048,
+            "latency_ns": 7687792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.180182625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 38,
+            "codec_samples": 2048,
+            "latency_ns": 7681416,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1800331875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 1,
+            "codec_samples": 2048,
+            "latency_ns": 7676250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.17991210937500002,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -614,28 +1947,102 @@
       "codec_samples_per_pass": 86016,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3006377.2,
-        "p50_ns": 3004042,
-        "p95_ns": 3100542,
-        "p99_ns": 3110583,
-        "max_ns": 3110583
+        "mean_ns": 3013204.1,
+        "p50_ns": 3024875,
+        "p95_ns": 3081166,
+        "p99_ns": 3107625,
+        "max_ns": 3107625
       },
       "steady": {
         "passes": 16,
         "calls": 672,
-        "total_decode_ns": 2079120833,
-        "realtime_factor": 13.790444280541726,
-        "ns_per_audio_sample": 1510.7079155331567,
+        "total_decode_ns": 2064220432,
+        "realtime_factor": 13.88998943887985,
+        "ns_per_audio_sample": 1499.8811500186011,
         "latency": {
           "samples": 672,
-          "mean_ns": 3093929.811011905,
-          "p50_ns": 3091625,
-          "p95_ns": 3219208,
-          "p99_ns": 3264458,
-          "max_ns": 3335333
+          "mean_ns": 3071756.595238095,
+          "p50_ns": 3070333,
+          "p95_ns": 3178958,
+          "p99_ns": 3237625,
+          "max_ns": 3273666
         },
-        "worst_deadline_ratio": 0.07817186718750001,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.07672654687500001,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 13,
+            "access_unit_index": 40,
+            "codec_samples": 2048,
+            "latency_ns": 3273666,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07672654687500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 10,
+            "codec_samples": 2048,
+            "latency_ns": 3249750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.076166015625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 7,
+            "access_unit_index": 36,
+            "codec_samples": 2048,
+            "latency_ns": 3247125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07610449218750001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 14,
+            "access_unit_index": 25,
+            "codec_samples": 2048,
+            "latency_ns": 3245209,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07605958593750001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 36,
+            "codec_samples": 2048,
+            "latency_ns": 3244250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07603710937500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 15,
+            "access_unit_index": 23,
+            "codec_samples": 2048,
+            "latency_ns": 3239000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0759140625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 11,
+            "access_unit_index": 35,
+            "codec_samples": 2048,
+            "latency_ns": 3237625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0758818359375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 13,
+            "access_unit_index": 20,
+            "codec_samples": 2048,
+            "latency_ns": 3233750,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.075791015625,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -646,28 +2053,102 @@
       "codec_samples_per_pass": 86016,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5879208.5,
-        "p50_ns": 5869584,
-        "p95_ns": 6103333,
-        "p99_ns": 6107959,
-        "max_ns": 6107959
+        "mean_ns": 5871831.2,
+        "p50_ns": 5871000,
+        "p95_ns": 6064750,
+        "p99_ns": 6112083,
+        "max_ns": 6112083
       },
       "steady": {
         "passes": 7,
         "calls": 294,
-        "total_decode_ns": 2175256577,
-        "realtime_factor": 5.76667604761367,
-        "ns_per_audio_sample": 3612.710886014562,
+        "total_decode_ns": 2192363803,
+        "realtime_factor": 5.721678118766131,
+        "ns_per_audio_sample": 3641.1229189918154,
         "latency": {
           "samples": 294,
-          "mean_ns": 7398831.894557823,
-          "p50_ns": 7415916,
-          "p95_ns": 7667917,
-          "p99_ns": 7840250,
-          "max_ns": 8232875
+          "mean_ns": 7457019.738095238,
+          "p50_ns": 7457166,
+          "p95_ns": 7680666,
+          "p99_ns": 9384625,
+          "max_ns": 11868125
         },
-        "worst_deadline_ratio": 0.1929580078125,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.27815917968750004,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 3,
+            "access_unit_index": 24,
+            "codec_samples": 2048,
+            "latency_ns": 11868125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.27815917968750004,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 28,
+            "codec_samples": 2048,
+            "latency_ns": 10263875,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.24055957031250003,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 25,
+            "codec_samples": 2048,
+            "latency_ns": 9384625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.21995214843750002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 9131917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.2140293046875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 29,
+            "codec_samples": 2048,
+            "latency_ns": 8019625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1879599609375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 3,
+            "codec_samples": 2048,
+            "latency_ns": 7881792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18472950000000002,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 7,
+            "codec_samples": 2048,
+            "latency_ns": 7769375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1820947265625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 41,
+            "codec_samples": 2048,
+            "latency_ns": 7752208,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18169237500000002,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -678,28 +2159,102 @@
       "codec_samples_per_pass": 102400,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3039498.05,
-        "p50_ns": 3055875,
-        "p95_ns": 3127542,
-        "p99_ns": 3181292,
-        "max_ns": 3181292
+        "mean_ns": 2974545.9,
+        "p50_ns": 2970375,
+        "p95_ns": 3095167,
+        "p99_ns": 3145333,
+        "max_ns": 3145333
       },
       "steady": {
         "passes": 13,
         "calls": 650,
-        "total_decode_ns": 2005413876,
-        "realtime_factor": 13.829231793613726,
-        "ns_per_audio_sample": 1506.4707602163462,
+        "total_decode_ns": 2001214773,
+        "realtime_factor": 13.858249353095962,
+        "ns_per_audio_sample": 1503.316385967548,
         "latency": {
           "samples": 650,
-          "mean_ns": 3085252.116923077,
-          "p50_ns": 3082666,
-          "p95_ns": 3209625,
-          "p99_ns": 3256750,
-          "max_ns": 3351833
+          "mean_ns": 3078791.9584615384,
+          "p50_ns": 3072208,
+          "p95_ns": 3190833,
+          "p99_ns": 3263375,
+          "max_ns": 3437292
         },
-        "worst_deadline_ratio": 0.07855858593750001,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.08056153125,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 4,
+            "access_unit_index": 12,
+            "codec_samples": 2048,
+            "latency_ns": 3437292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.08056153125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 18,
+            "codec_samples": 2048,
+            "latency_ns": 3381333,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0792499921875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 11,
+            "codec_samples": 2048,
+            "latency_ns": 3370000,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07898437500000001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 34,
+            "codec_samples": 2048,
+            "latency_ns": 3304375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0774462890625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 30,
+            "codec_samples": 2048,
+            "latency_ns": 3285417,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0770019609375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 8,
+            "codec_samples": 2048,
+            "latency_ns": 3282250,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.076927734375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 15,
+            "codec_samples": 2048,
+            "latency_ns": 3263375,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0764853515625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 37,
+            "codec_samples": 2048,
+            "latency_ns": 3261666,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.076445296875,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -710,28 +2265,102 @@
       "codec_samples_per_pass": 102400,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5862802.05,
-        "p50_ns": 5871958,
-        "p95_ns": 6013833,
-        "p99_ns": 6097167,
-        "max_ns": 6097167
+        "mean_ns": 5881083.35,
+        "p50_ns": 5881459,
+        "p95_ns": 6002791,
+        "p99_ns": 6021333,
+        "max_ns": 6021333
       },
       "steady": {
         "passes": 6,
         "calls": 300,
-        "total_decode_ns": 2248330840,
-        "realtime_factor": 5.6931123179362695,
-        "ns_per_audio_sample": 3659.392643229167,
+        "total_decode_ns": 2226829706,
+        "realtime_factor": 5.748082112211593,
+        "ns_per_audio_sample": 3624.3973079427083,
         "latency": {
           "samples": 300,
-          "mean_ns": 7494436.133333334,
-          "p50_ns": 7457666,
-          "p95_ns": 7672542,
-          "p99_ns": 9578458,
-          "max_ns": 14891292
+          "mean_ns": 7422765.6866666665,
+          "p50_ns": 7453625,
+          "p95_ns": 7633083,
+          "p99_ns": 7677125,
+          "max_ns": 7702875
         },
-        "worst_deadline_ratio": 0.34901465625,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.1805361328125,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 1,
+            "access_unit_index": 18,
+            "codec_samples": 2048,
+            "latency_ns": 7702875,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1805361328125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 48,
+            "codec_samples": 2048,
+            "latency_ns": 7702792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1805341875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 37,
+            "codec_samples": 2048,
+            "latency_ns": 7683292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.18007715625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 8,
+            "codec_samples": 2048,
+            "latency_ns": 7677125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1799326171875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 48,
+            "codec_samples": 2048,
+            "latency_ns": 7677125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1799326171875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 8,
+            "codec_samples": 2048,
+            "latency_ns": 7676292,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.17991309375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 46,
+            "codec_samples": 2048,
+            "latency_ns": 7658333,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1794921796875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 16,
+            "codec_samples": 2048,
+            "latency_ns": 7658084,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.17948634375,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -742,28 +2371,102 @@
       "codec_samples_per_pass": 102400,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 3009372.95,
-        "p50_ns": 2997333,
-        "p95_ns": 3118167,
-        "p99_ns": 3136250,
-        "max_ns": 3136250
+        "mean_ns": 3010872.85,
+        "p50_ns": 3011625,
+        "p95_ns": 3101375,
+        "p99_ns": 3104292,
+        "max_ns": 3104292
       },
       "steady": {
-        "passes": 13,
-        "calls": 650,
-        "total_decode_ns": 2000942935,
-        "realtime_factor": 13.860132064852381,
-        "ns_per_audio_sample": 1503.1121807391828,
+        "passes": 14,
+        "calls": 700,
+        "total_decode_ns": 2149224503,
+        "realtime_factor": 13.896485278749246,
+        "ns_per_audio_sample": 1499.1800383649554,
         "latency": {
-          "samples": 650,
-          "mean_ns": 3078373.7461538464,
-          "p50_ns": 3078708,
-          "p95_ns": 3222875,
-          "p99_ns": 3280000,
-          "max_ns": 3349375
+          "samples": 700,
+          "mean_ns": 3070320.7185714287,
+          "p50_ns": 3070875,
+          "p95_ns": 3183250,
+          "p99_ns": 3217042,
+          "max_ns": 3246042
         },
-        "worst_deadline_ratio": 0.0785009765625,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.07607910937500001,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 1,
+            "access_unit_index": 39,
+            "codec_samples": 2048,
+            "latency_ns": 3246042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07607910937500001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 5,
+            "access_unit_index": 11,
+            "codec_samples": 2048,
+            "latency_ns": 3236917,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0758652421875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 8,
+            "access_unit_index": 41,
+            "codec_samples": 2048,
+            "latency_ns": 3228125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07565917968750001,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 3,
+            "access_unit_index": 29,
+            "codec_samples": 2048,
+            "latency_ns": 3227042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.075633796875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 9,
+            "access_unit_index": 18,
+            "codec_samples": 2048,
+            "latency_ns": 3226500,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07562109375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 10,
+            "access_unit_index": 25,
+            "codec_samples": 2048,
+            "latency_ns": 3223459,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0755498203125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 17,
+            "codec_samples": 2048,
+            "latency_ns": 3221416,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.0755019375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 11,
+            "access_unit_index": 37,
+            "codec_samples": 2048,
+            "latency_ns": 3217042,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.07539942187500001,
+            "missed_deadline": false
+          }
+        ]
       }
     },
     {
@@ -774,28 +2477,102 @@
       "codec_samples_per_pass": 102400,
       "cold_first_au": {
         "samples": 20,
-        "mean_ns": 5847985.3,
-        "p50_ns": 5868583,
-        "p95_ns": 5987875,
-        "p99_ns": 6071166,
-        "max_ns": 6071166
+        "mean_ns": 5905258.35,
+        "p50_ns": 5936583,
+        "p95_ns": 6036709,
+        "p99_ns": 6057750,
+        "max_ns": 6057750
       },
       "steady": {
         "passes": 6,
         "calls": 300,
-        "total_decode_ns": 2234129639,
-        "realtime_factor": 5.729300474134214,
-        "ns_per_audio_sample": 3636.278709309896,
+        "total_decode_ns": 2229291468,
+        "realtime_factor": 5.741734620051037,
+        "ns_per_audio_sample": 3628.40408203125,
         "latency": {
           "samples": 300,
-          "mean_ns": 7447098.796666667,
-          "p50_ns": 7477750,
-          "p95_ns": 7652916,
-          "p99_ns": 7722958,
-          "max_ns": 7790833
+          "mean_ns": 7430971.56,
+          "p50_ns": 7470250,
+          "p95_ns": 7625333,
+          "p99_ns": 7708041,
+          "max_ns": 7776792
         },
-        "worst_deadline_ratio": 0.1825976484375,
-        "deadline_misses": 0
+        "worst_deadline_ratio": 0.1822685625,
+        "deadline_misses": 0,
+        "worst_access_units": [
+          {
+            "pass_index": 4,
+            "access_unit_index": 8,
+            "codec_samples": 2048,
+            "latency_ns": 7776792,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1822685625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 9,
+            "codec_samples": 2048,
+            "latency_ns": 7734875,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1812861328125,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 12,
+            "codec_samples": 2048,
+            "latency_ns": 7714125,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1807998046875,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 0,
+            "access_unit_index": 1,
+            "codec_samples": 2048,
+            "latency_ns": 7708041,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1806572109375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 25,
+            "codec_samples": 2048,
+            "latency_ns": 7691167,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1802617265625,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 1,
+            "access_unit_index": 26,
+            "codec_samples": 2048,
+            "latency_ns": 7684625,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1801083984375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 4,
+            "access_unit_index": 24,
+            "codec_samples": 2048,
+            "latency_ns": 7669834,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.179761734375,
+            "missed_deadline": false
+          },
+          {
+            "pass_index": 2,
+            "access_unit_index": 1,
+            "codec_samples": 2048,
+            "latency_ns": 7667583,
+            "budget_ns": 42666666.666666664,
+            "deadline_ratio": 0.1797089765625,
+            "missed_deadline": false
+          }
+        ]
       }
     }
   ]

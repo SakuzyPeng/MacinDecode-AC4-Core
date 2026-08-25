@@ -438,11 +438,12 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 退出条件：实时预算、内存上限、错误恢复和 ABI 生命周期均有自动测试；标量实现仍可作为独立参考路径运行。
 
 **状态：进行中。** 2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
-release 构建覆盖 12 条真实 A-JOC 向量的 Core/Full 共 24 个组合，Core 为
-`11.45x`–`22.81x` 实时且无 deadline miss，Full 为 `5.14x`–`7.16x` 实时并在正式运行中记录到
-1 次 56.114 ms 的单 AU miss；完整预热后复用 Session 的 24/24 组合均无 allocation、
-reallocation 或 deallocation。20 秒、1 ms 间隔的热点采样显示当前主要成本在 A-SPX/QMF，
-Full 的次要成本在 A-JOC 重建。工具、完整方法、原始 JSON 和热点前十见[性能基线报告](PERFORMANCE.md)。
+release 构建覆盖 12 条真实 A-JOC 向量的 Core/Full 共 24 个组合，当前 Core 为
+`11.64x`–`23.10x` 实时、Full 为 `5.22x`–`7.22x` 实时且均无 deadline miss；上一版数据捕获过
+1 次 56.114 ms 的 Full 单 AU miss，新增观测已开始保留最差事件的 pass/AU 索引。完整预热后
+复用 Session 的 24/24 组合均无 allocation、reallocation 或 deallocation。20 秒、1 ms 间隔的
+热点采样显示当前主要成本在 A-SPX/QMF，Full 的次要成本在 A-JOC 重建。工具、完整方法、原始
+JSON 和热点前十见[性能基线报告](PERFORMANCE.md)。
 本轮没有修改 DSP、引入 SIMD 或设置自动性能门禁；x86-64、公共 C ABI、fuzz、长期稳定性和经过
 等价验证的局部 SIMD 仍待后续。
 

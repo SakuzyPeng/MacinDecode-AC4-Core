@@ -2,7 +2,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use macindecode_ac4_perf::{
     BenchmarkMode, Consumption, ConsumptionReport, PerfResult, PreparedCase, ProfileReportSettings,
     ProfileResult, REPORT_SCHEMA, REPORT_SCHEMA_VERSION, TimingReport, TimingReportSettings,
-    TimingSettings, environment_report, load_manifest, run_timing_case,
+    TimingSettings, WORST_ACCESS_UNIT_LIMIT, environment_report, load_manifest, run_timing_case,
 };
 use macindecode_ac4_scene::PresentationSelection;
 use serde::Serialize;
@@ -206,6 +206,7 @@ fn run_timing(args: TimingArgs) -> PerfResult<()> {
             min_time_ns: u64::try_from(settings.min_time.as_nanos())
                 .map_err(|_| "minimum timing duration exceeds u64 nanoseconds".to_owned())?,
             max_passes: settings.max_passes,
+            worst_access_unit_limit: WORST_ACCESS_UNIT_LIMIT,
             timed_boundary: "Ac4DecoderSession::decode_access_unit",
         },
         cases,

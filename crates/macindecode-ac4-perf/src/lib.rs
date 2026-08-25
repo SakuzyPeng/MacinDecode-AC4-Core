@@ -23,6 +23,7 @@ use std::time::{Duration, Instant};
 
 pub const REPORT_SCHEMA: &str = "macindecode-ac4.performance";
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
+pub const WORST_ACCESS_UNIT_LIMIT: usize = 8;
 const AUDIO_SAMPLE_ENTRY_LEN: usize = 28;
 const MAX_EDIT_ENTRIES: usize = 8;
 const NANOS_PER_SECOND: u128 = 1_000_000_000;
@@ -352,6 +353,19 @@ pub struct LatencySummary {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct WorstAccessUnitTiming {
+    /// 本次案例/模式测量中从零起的完整 pass 索引。
+    pub pass_index: u32,
+    /// 预解析 MP4 sample table 中从零起的 access-unit 索引。
+    pub access_unit_index: u64,
+    pub codec_samples: u32,
+    pub latency_ns: u64,
+    pub budget_ns: f64,
+    pub deadline_ratio: f64,
+    pub missed_deadline: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct SteadyTiming {
     pub passes: u32,
     pub calls: u64,
@@ -361,6 +375,7 @@ pub struct SteadyTiming {
     pub latency: LatencySummary,
     pub worst_deadline_ratio: f64,
     pub deadline_misses: u64,
+    pub worst_access_units: Vec<WorstAccessUnitTiming>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -376,8 +391,17 @@ pub struct TimingCaseReport {
 
 #[derive(Debug, Clone, Copy)]
 struct TimedAccessUnit {
+    pass_index: u32,
+    access_unit_index: u64,
     latency_ns: u64,
     codec_samples: u32,
+}
+
+#[derive(Debug)]
+struct DeadlineSummary {
+    misses: u64,
+    worst_ratio: f64,
+    worst_access_units: Vec<WorstAccessUnitTiming>,
 }
 
 pub fn run_timing_case(
@@ -429,6 +453,8 @@ pub fn run_timing_case(
             let consumed = consume_decoded(&decoded);
             black_box(consumed);
             measured.push(TimedAccessUnit {
+                pass_index: passes,
+                access_unit_index: descriptor.context.index(),
                 latency_ns: elapsed,
                 codec_samples: descriptor.codec_samples,
             });
@@ -446,22 +472,7 @@ pub fn run_timing_case(
     }
 
     let mut latencies: Vec<u64> = measured.iter().map(|item| item.latency_ns).collect();
-    let mut deadline_misses = 0u64;
-    let mut worst_deadline_ratio = 0.0f64;
-    for item in &measured {
-        let budget_numerator = u128::from(item.codec_samples)
-            .checked_mul(NANOS_PER_SECOND)
-            .ok_or_else(|| "AU deadline numerator overflows".to_owned())?;
-        let elapsed_scaled = u128::from(item.latency_ns)
-            .checked_mul(u128::from(prepared.sample_rate))
-            .ok_or_else(|| "AU elapsed duration overflows".to_owned())?;
-        if elapsed_scaled > budget_numerator {
-            deadline_misses = deadline_misses.saturating_add(1);
-        }
-        let budget_ns =
-            item.codec_samples as f64 * NANOS_PER_SECOND as f64 / f64::from(prepared.sample_rate);
-        worst_deadline_ratio = worst_deadline_ratio.max(item.latency_ns as f64 / budget_ns);
-    }
+    let deadline = deadline_summary(&measured, prepared.sample_rate)?;
 
     let calls =
         u64::try_from(measured.len()).map_err(|_| "timing call count exceeds u64".to_owned())?;
@@ -475,7 +486,7 @@ pub fn run_timing_case(
     let ns_per_audio_sample = total_decode_ns as f64 / decoded_samples as f64;
     validate_finite("realtime_factor", realtime_factor)?;
     validate_finite("ns_per_audio_sample", ns_per_audio_sample)?;
-    validate_finite("worst_deadline_ratio", worst_deadline_ratio)?;
+    validate_finite("worst_deadline_ratio", deadline.worst_ratio)?;
 
     Ok(TimingCaseReport {
         input: prepared.key.clone(),
@@ -492,9 +503,69 @@ pub fn run_timing_case(
             realtime_factor,
             ns_per_audio_sample,
             latency: latency_summary(&mut latencies)?,
-            worst_deadline_ratio,
-            deadline_misses,
+            worst_deadline_ratio: deadline.worst_ratio,
+            deadline_misses: deadline.misses,
+            worst_access_units: deadline.worst_access_units,
         },
+    })
+}
+
+fn deadline_summary(measured: &[TimedAccessUnit], sample_rate: u32) -> PerfResult<DeadlineSummary> {
+    if measured.is_empty() {
+        return Err("cannot summarize deadlines without access units".to_owned());
+    }
+    if sample_rate == 0 {
+        return Err("cannot summarize deadlines at a zero sample rate".to_owned());
+    }
+
+    let mut misses = 0u64;
+    let mut worst_ratio = 0.0f64;
+    let mut worst_access_units = Vec::with_capacity(measured.len());
+    for item in measured {
+        if item.codec_samples == 0 {
+            return Err("cannot summarize an AU with zero codec samples".to_owned());
+        }
+        let budget_numerator = u128::from(item.codec_samples)
+            .checked_mul(NANOS_PER_SECOND)
+            .ok_or_else(|| "AU deadline numerator overflows".to_owned())?;
+        let elapsed_scaled = u128::from(item.latency_ns)
+            .checked_mul(u128::from(sample_rate))
+            .ok_or_else(|| "AU elapsed duration overflows".to_owned())?;
+        let missed_deadline = elapsed_scaled > budget_numerator;
+        if missed_deadline {
+            misses = misses
+                .checked_add(1)
+                .ok_or_else(|| "deadline miss count overflows u64".to_owned())?;
+        }
+        let budget_ns =
+            item.codec_samples as f64 * NANOS_PER_SECOND as f64 / f64::from(sample_rate);
+        let deadline_ratio = item.latency_ns as f64 / budget_ns;
+        validate_finite("AU budget_ns", budget_ns)?;
+        validate_finite("AU deadline_ratio", deadline_ratio)?;
+        worst_ratio = worst_ratio.max(deadline_ratio);
+        worst_access_units.push(WorstAccessUnitTiming {
+            pass_index: item.pass_index,
+            access_unit_index: item.access_unit_index,
+            codec_samples: item.codec_samples,
+            latency_ns: item.latency_ns,
+            budget_ns,
+            deadline_ratio,
+            missed_deadline,
+        });
+    }
+    worst_access_units.sort_unstable_by(|left, right| {
+        right
+            .deadline_ratio
+            .total_cmp(&left.deadline_ratio)
+            .then_with(|| right.latency_ns.cmp(&left.latency_ns))
+            .then_with(|| left.pass_index.cmp(&right.pass_index))
+            .then_with(|| left.access_unit_index.cmp(&right.access_unit_index))
+    });
+    worst_access_units.truncate(WORST_ACCESS_UNIT_LIMIT);
+    Ok(DeadlineSummary {
+        misses,
+        worst_ratio,
+        worst_access_units,
     })
 }
 
@@ -587,6 +658,7 @@ pub struct TimingReportSettings {
     pub min_passes: u32,
     pub min_time_ns: u64,
     pub max_passes: u32,
+    pub worst_access_unit_limit: usize,
     pub timed_boundary: &'static str,
 }
 
@@ -1046,6 +1118,52 @@ mod tests {
     }
 
     #[test]
+    fn worst_access_units_are_bounded_sorted_and_keep_source_indices() {
+        let measured: Vec<TimedAccessUnit> = (0u32..10)
+            .map(|index| TimedAccessUnit {
+                pass_index: index / 3,
+                access_unit_index: u64::from(100 + index),
+                latency_ns: u64::from(index + 1) * 1_000_000,
+                codec_samples: 1,
+            })
+            .collect();
+        let summary = deadline_summary(&measured, 1_000).expect("valid deadline samples");
+
+        assert_eq!(summary.misses, 9, "one sample is exactly on its deadline");
+        assert_eq!(summary.worst_ratio, 10.0);
+        assert_eq!(summary.worst_access_units.len(), WORST_ACCESS_UNIT_LIMIT);
+        let first = summary
+            .worst_access_units
+            .first()
+            .expect("bounded summary is non-empty");
+        assert_eq!(first.pass_index, 3);
+        assert_eq!(first.access_unit_index, 109);
+        assert_eq!(first.budget_ns, 1_000_000.0);
+        assert!(first.missed_deadline);
+        assert_eq!(
+            summary
+                .worst_access_units
+                .last()
+                .expect("bounded summary has eight entries")
+                .access_unit_index,
+            102
+        );
+        assert!(summary.worst_access_units.windows(2).all(
+            |pair| matches!(pair, [left, right] if left.deadline_ratio >= right.deadline_ratio)
+        ));
+
+        assert!(deadline_summary(&[], 1_000).is_err());
+        assert!(deadline_summary(&measured, 0).is_err());
+        let zero_samples = [TimedAccessUnit {
+            pass_index: 0,
+            access_unit_index: 0,
+            latency_ns: 1,
+            codec_samples: 0,
+        }];
+        assert!(deadline_summary(&zero_samples, 48_000).is_err());
+    }
+
+    #[test]
     fn reports_have_versioned_required_fields() {
         let timing = TimingReport::new(
             TimingReportSettings {
@@ -1056,6 +1174,7 @@ mod tests {
                 min_passes: 5,
                 min_time_ns: 2_000_000_000,
                 max_passes: 30,
+                worst_access_unit_limit: WORST_ACCESS_UNIT_LIMIT,
                 timed_boundary: "Ac4DecoderSession::decode_access_unit",
             },
             Vec::new(),
@@ -1127,5 +1246,42 @@ mod tests {
             assert!(report.get("settings").is_some());
             assert!(report.get(result_field).is_some());
         }
+
+        let steady = serde_json::to_value(SteadyTiming {
+            passes: 1,
+            calls: 1,
+            total_decode_ns: 1,
+            realtime_factor: 1.0,
+            ns_per_audio_sample: 1.0,
+            latency: LatencySummary {
+                samples: 1,
+                mean_ns: 1.0,
+                p50_ns: 1,
+                p95_ns: 1,
+                p99_ns: 1,
+                max_ns: 1,
+            },
+            worst_deadline_ratio: 0.5,
+            deadline_misses: 0,
+            worst_access_units: vec![WorstAccessUnitTiming {
+                pass_index: 0,
+                access_unit_index: 7,
+                codec_samples: 2_048,
+                latency_ns: 1,
+                budget_ns: 42_666_666.666_666_664,
+                deadline_ratio: 0.5,
+                missed_deadline: false,
+            }],
+        })
+        .expect("steady timing must serialize");
+        let worst = steady
+            .get("worst_access_units")
+            .and_then(serde_json::Value::as_array)
+            .expect("steady timing must expose worst access units");
+        assert_eq!(worst.len(), 1);
+        assert_eq!(
+            worst.first().and_then(|item| item.get("access_unit_index")),
+            Some(&serde_json::json!(7))
+        );
     }
 }
