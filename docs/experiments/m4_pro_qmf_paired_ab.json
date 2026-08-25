@@ -1,0 +1,154 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-25T07:43:02Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "14fe26dbda64dd11254ecfb4cee6a626d4535af1",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 24,
+    "modes": [
+      "core",
+      "full"
+    ],
+    "rounds_per_binary": 5,
+    "order": [
+      "before/after",
+      "after/before",
+      "before/after",
+      "after/before",
+      "before/after"
+    ],
+    "warmup_passes": 1,
+    "timed_passes_per_combination": 5,
+    "cold_runs": 20,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit"
+  },
+  "binaries": {
+    "before_sha256": "5f3b6c38b9493f833c45d91b452a9db2d0541afe63e5cb2eb0936a1c32c4cc5b",
+    "after_sha256": "58218f7b80c28f0800aec88dfa826f88f6402f3209d5accf8903605390b34066"
+  },
+  "candidate_selection": {
+    "paired_conjugate_rows": {
+      "status": "retained",
+      "isolated_median_before_ns_per_slot": 4012.994,
+      "isolated_median_after_ns_per_slot": 2360.331,
+      "isolated_speedup": 1.7001827286088265,
+      "bit_exact": true
+    },
+    "phase_matrix": {
+      "status": "rejected",
+      "exploratory_speedup": 1.1810990717657914,
+      "additional_read_only_bytes": 65536,
+      "bit_exact": true
+    },
+    "ifft_128": {
+      "status": "rejected_bit_exact",
+      "exploratory_speedup": 3.3385181980046355,
+      "compared_outputs": 2432,
+      "differing_outputs": 1435,
+      "differing_percent": 59.004934210526315,
+      "worst_absolute_difference": 1.4901161193847656e-8,
+      "relative_rms_error": 6.00105357795037e-8
+    }
+  },
+  "standard_1500k": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "core": {
+      "before_median_total_decode_ns": 2776420829,
+      "after_median_total_decode_ns": 2200885264,
+      "total_improvement_percent": 20.72940668750472,
+      "before_median_p99_ns": 4056834,
+      "after_median_p99_ns": 3234375,
+      "p99_improvement_percent": 20.273420110361922,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0
+    },
+    "full": {
+      "before_median_total_decode_ns": 6104797623,
+      "after_median_total_decode_ns": 4655995735,
+      "total_improvement_percent": 23.73218536420597,
+      "before_median_p99_ns": 8828292,
+      "after_median_p99_ns": 6780750,
+      "p99_improvement_percent": 23.19295736933033,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0
+    }
+  },
+  "corpus_results": {
+    "all_total_improved": 24,
+    "all_p99_improved": 24,
+    "core": {
+      "aggregate_before_median_total_ns": 18462633265,
+      "aggregate_after_median_total_ns": 14596441722,
+      "aggregate_improvement_percent": 20.94062903978719,
+      "total_improvement_range_percent": [
+        20.60634278509079,
+        21.253840250641108
+      ],
+      "p99_improvement_range_percent": [
+        18.845903508974033,
+        21.76881168611256
+      ]
+    },
+    "full": {
+      "aggregate_before_median_total_ns": 43611073442,
+      "aggregate_after_median_total_ns": 32993902650,
+      "aggregate_improvement_percent": 24.34512602887469,
+      "total_improvement_range_percent": [
+        23.31427471455882,
+        25.839130587721932
+      ],
+      "p99_improvement_range_percent": [
+        22.290358793355132,
+        27.57728044449098
+      ]
+    },
+    "before_deadline_misses": 0,
+    "after_deadline_misses": 1
+  },
+  "deadline_outlier": {
+    "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+    "mode": "full",
+    "after_round": 1,
+    "pass_index": 3,
+    "access_unit_index": 67,
+    "codec_samples": 2048,
+    "latency_ns": 60310042,
+    "budget_ns": 42666666.666666664,
+    "deadline_ratio": 1.413516609375,
+    "targeted_after_rerun_rounds": 5,
+    "targeted_after_rerun_calls": 3575,
+    "targeted_after_rerun_deadline_misses": 0,
+    "targeted_after_rerun_max_ns": 7719250
+  },
+  "steady_allocations": {
+    "combinations": 24,
+    "allocations": 0,
+    "reallocations": 0,
+    "deallocations": 0,
+    "bytes_allocated": 0,
+    "bytes_reallocated": 0,
+    "bytes_deallocated": 0
+  },
+  "correctness": {
+    "phase_pairs_checked": 4096,
+    "deterministic_nonzero_slots": 19,
+    "finite_edge_slots": 10,
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact"
+  }
+}

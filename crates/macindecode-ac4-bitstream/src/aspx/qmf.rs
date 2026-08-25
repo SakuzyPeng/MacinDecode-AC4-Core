@@ -4,10 +4,10 @@
 //! 原型窗 `QWIN`。窗取自规范随附 C 表，不经人工转写；构建期另核对两条与摘要
 //! 无关的结构判据，见 `build.rs` 的 `emit_qmf_window`。
 //!
-//! **调制按定义式直算，暂不做快速分解。** 分析每时隙是 `64 × 128` 次复数乘
-//! 累加，合成是 `128 × 64`；两者都能改写成 128 点 FFT 加前/后旋转，但那属于
-//! 另一次选型（参照 ADR-0004 对 IFFT 的处理），先把语义与判据钉住。三角值同样
-//! 查构建期生成的表，运行期不做求值。
+//! 分析调制仍按定义式直算。合成调制按 ADR-0008 利用输出 `n` 与 `127-n` 的精确
+//! 负共轭关系成对累加，共享一半乘法与相位加载；每个输出内部仍按原有子带顺序累加，
+//! 因此保持逐位 PCM。128 点 FFT 加前/后旋转虽更快，但会改变加法结合顺序，已因
+//! 无法通过逐位门禁而否决。三角值同样查构建期生成的表，运行期不做求值。
 //!
 //! 滤波器状态与工作区都由调用方提供，不分配；生存期与 `Ac4DecoderSession` 的
 //! 边界一起定，此处只固定「不分配」这一条。
@@ -208,13 +208,23 @@ fn advance_synthesis_state(state: &mut QmfSynthesisState) {
 #[cfg_attr(not(feature = "qmf-split-profile"), inline(always))]
 fn modulate_synthesis_slot(slot: &QmfSlot, state: &mut QmfSynthesisState) {
     // 复数子带经 N 矩阵回到 128 个实数样本；`1/64` 是规范写在矩阵里的。
-    for n in 0..FOLDED {
-        let mut sum = 0.0f64;
+    //
+    // 成对处理 n 与 127-n。令 q=2sb+1、a=q(2n+1)，两行的指数分别为
+    // a-256q ≡ a-256 与 -a，因此相位恰为 -exp(ja) 与 conj(exp(ja))。
+    // 一对输出共享 re*cos 和 im*sin；两个累加器仍各自按 sb=0…63 的定义顺序
+    // 前进，所以不会改变 f64 加法结合顺序或最终 f32 舍入。
+    for n in 0..SUBBANDS {
+        let mut low_sum = 0.0f64;
+        let mut high_sum = 0.0f64;
         for sb in 0..SUBBANDS {
-            let (cos, sin) = synthesis_phase(sb, n);
-            sum += f64::from(slot.re[sb]) * cos - f64::from(slot.im[sb]) * sin;
+            let (cos, sin) = modulation(sb, 2 * n as isize + 1);
+            let real = f64::from(slot.re[sb]) * cos;
+            let imaginary = f64::from(slot.im[sb]) * sin;
+            low_sum += imaginary - real;
+            high_sum += real + imaginary;
         }
-        state.filt[n] = (sum / SUBBANDS as f64) as f32;
+        state.filt[n] = (low_sum / SUBBANDS as f64) as f32;
+        state.filt[FOLDED - 1 - n] = (high_sum / SUBBANDS as f64) as f32;
     }
 }
 
@@ -328,6 +338,7 @@ fn analysis_phase(sb: usize, n: usize) -> (f64, f64) {
 }
 
 /// 合成调制的相位 `exp(j·(π/128)·(sb+0.5)·(2n−255))`。
+#[cfg(test)]
 fn synthesis_phase(sb: usize, n: usize) -> (f64, f64) {
     modulation(sb, 2 * (n as isize) - 255)
 }
@@ -348,6 +359,8 @@ mod tests {
     extern crate std;
 
     use super::*;
+    use std::format;
+    use std::time::{Duration, Instant};
     use std::vec;
     use std::vec::Vec;
 
@@ -447,6 +460,152 @@ mod tests {
                 .copy_from_slice(&values[start + SUBBANDS..start + 2 * SUBBANDS]);
         }
         slots
+    }
+
+    /// `Pseudocode 66` 合成调制的逐行定义式，作为候选实现的测试 oracle。
+    fn modulate_synthesis_slot_direct(slot: &QmfSlot, state: &mut QmfSynthesisState) {
+        for n in 0..FOLDED {
+            let mut sum = 0.0f64;
+            for sb in 0..SUBBANDS {
+                let (cos, sin) = synthesis_phase(sb, n);
+                sum += f64::from(slot.re[sb]) * cos - f64::from(slot.im[sb]) * sin;
+            }
+            state.filt[n] = (sum / SUBBANDS as f64) as f32;
+        }
+    }
+
+    fn finite_edge_slots() -> Vec<QmfSlot> {
+        let values = [
+            0.0f32,
+            -0.0f32,
+            f32::from_bits(1),
+            -f32::from_bits(1),
+            f32::MIN_POSITIVE,
+            -f32::MIN_POSITIVE,
+            1.0,
+            -1.0,
+            f32::MAX,
+            -f32::MAX,
+        ];
+        (0..values.len())
+            .map(|offset| {
+                let mut slot = QmfSlot::zero();
+                for sb in 0..SUBBANDS {
+                    slot.re[sb] = values[(sb + offset) % values.len()];
+                    slot.im[sb] = values[(3 * sb + offset + 1) % values.len()];
+                }
+                slot
+            })
+            .collect()
+    }
+
+    fn assert_synthesis_head_bit_exact(
+        actual: &QmfSynthesisState,
+        expected: &QmfSynthesisState,
+        context: &str,
+    ) {
+        for (index, (&actual, &expected)) in actual.filt[..FOLDED]
+            .iter()
+            .zip(&expected.filt[..FOLDED])
+            .enumerate()
+        {
+            assert_eq!(
+                actual.to_bits(),
+                expected.to_bits(),
+                "{context} 的调制输出 {index} 必须逐位相同"
+            );
+        }
+    }
+
+    #[test]
+    fn synthesis_phase_rows_form_exact_negated_conjugate_pairs() {
+        for n in 0..SUBBANDS {
+            for sb in 0..SUBBANDS {
+                let root = modulation(sb, 2 * n as isize + 1);
+                let low = synthesis_phase(sb, n);
+                let high = synthesis_phase(sb, FOLDED - 1 - n);
+                assert_eq!(low.0.to_bits(), (-root.0).to_bits());
+                assert_eq!(low.1.to_bits(), (-root.1).to_bits());
+                assert_eq!(high.0.to_bits(), root.0.to_bits());
+                assert_eq!(high.1.to_bits(), (-root.1).to_bits());
+            }
+        }
+    }
+
+    #[test]
+    fn paired_modulation_is_bit_exact_to_the_definition() {
+        let mut slots = deterministic_slots(19);
+        slots.extend(finite_edge_slots());
+        for (slot_index, slot) in slots.iter().enumerate() {
+            let mut direct = QmfSynthesisState::new();
+            let mut paired = QmfSynthesisState::new();
+            modulate_synthesis_slot_direct(slot, &mut direct);
+            modulate_synthesis_slot(slot, &mut paired);
+            assert_synthesis_head_bit_exact(&paired, &direct, &format!("paired slot {slot_index}"));
+        }
+    }
+
+    fn benchmark_modulation(
+        label: &str,
+        iterations: usize,
+        mut run: impl FnMut(&QmfSlot, &mut QmfSynthesisState),
+    ) -> Duration {
+        let slots = deterministic_slots(19);
+        let mut state = QmfSynthesisState::new();
+        let started = Instant::now();
+        for iteration in 0..iterations {
+            let slot = std::hint::black_box(&slots[iteration % slots.len()]);
+            run(slot, std::hint::black_box(&mut state));
+            std::hint::black_box(&state.filt[..FOLDED]);
+        }
+        let elapsed = started.elapsed();
+        std::eprintln!(
+            "{label}: {:.3} ns/slot",
+            elapsed.as_nanos() as f64 / iterations as f64
+        );
+        elapsed
+    }
+
+    /// 手动运行：
+    /// `cargo test -p macindecode-ac4-bitstream --release --features audio-decode qmf_paired_modulation_benchmark -- --ignored --nocapture`
+    #[test]
+    #[ignore = "手动运行的 QMF 成对调制微基准"]
+    fn qmf_paired_modulation_benchmark() {
+        const ITERATIONS: usize = 20_000;
+        let mut direct = Vec::with_capacity(5);
+        let mut paired = Vec::with_capacity(5);
+        for round in 0..5 {
+            if round % 2 == 0 {
+                direct.push(benchmark_modulation(
+                    "direct",
+                    ITERATIONS,
+                    modulate_synthesis_slot_direct,
+                ));
+                paired.push(benchmark_modulation(
+                    "paired",
+                    ITERATIONS,
+                    modulate_synthesis_slot,
+                ));
+            } else {
+                paired.push(benchmark_modulation(
+                    "paired",
+                    ITERATIONS,
+                    modulate_synthesis_slot,
+                ));
+                direct.push(benchmark_modulation(
+                    "direct",
+                    ITERATIONS,
+                    modulate_synthesis_slot_direct,
+                ));
+            }
+        }
+        direct.sort_unstable();
+        paired.sort_unstable();
+
+        std::eprintln!(
+            "median speedup: paired {:.3}x",
+            direct[2].as_secs_f64() / paired[2].as_secs_f64(),
+        );
     }
 
     #[test]
