@@ -64,7 +64,7 @@ struct BatchArgs {
     #[arg(long, default_value = "vectors/objects_baseline.json")]
     manifest: PathBuf,
 
-    /// Root containing <case>/encoded/<file> for manifest keys.
+    /// Root containing `<case>/encoded/<file>` for manifest keys.
     #[arg(long, default_value = "vectors")]
     vectors_root: PathBuf,
 
