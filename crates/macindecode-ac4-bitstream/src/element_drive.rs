@@ -43,9 +43,10 @@
 
 use crate::aspx::pipeline::{
     AspxIntermediates, EnvelopeInput, HfAdjustParams, HfGenParams, PipelineError, bypass_frame_qmf,
-    frame_with_balanced_scale_factors_qmf, frame_with_scale_factors_qmf, prime_control_delay_qmf,
+    frame_with_balanced_scale_factors_qmf, frame_with_scale_factors_pair_qmf,
+    frame_with_scale_factors_qmf, prime_control_delay_qmf,
 };
-use crate::aspx::qmf::{QmfError, QmfSlot, analyse_ac4_pcm};
+use crate::aspx::qmf::{QmfError, QmfSlot, analyse_ac4_pcm, analyse_ac4_pcm_pair};
 use crate::aspx::state::AspxChannelState;
 use crate::aspx::syntax::{AspxConfig, AspxData};
 use crate::aspx::tables::{NUM_QMF_SUBBANDS, num_qmf_timeslots};
@@ -299,7 +300,8 @@ pub fn drive_element(
 
     let mut lfe = lfe;
 
-    for job in element.aspx_jobs() {
+    let mut jobs = element.aspx_jobs().peekable();
+    while let Some(job) = jobs.next() {
         match job {
             AspxJob::LfeQmf(signal) => {
                 let source = source_of(element, signal)?;
@@ -320,6 +322,39 @@ pub fn drive_element(
                 }
             }
             AspxJob::SimpleQmf(signal) => {
+                if let Some(AspxJob::SimpleQmf(second_signal)) = jobs.peek().copied() {
+                    let _ = jobs.next();
+                    let sources = [
+                        source_of(element, signal)?,
+                        source_of(element, second_signal)?,
+                    ];
+                    let inputs = [
+                        pcm.get(sources[0])
+                            .copied()
+                            .ok_or(DriveError::InvalidElementRoute)?,
+                        pcm.get(sources[1])
+                            .copied()
+                            .ok_or(DriveError::InvalidElementRoute)?,
+                    ];
+                    let Some((first_state, second_state)) = pair_mut(states, sources) else {
+                        return Err(DriveError::InvalidElementRoute);
+                    };
+                    let targets = [
+                        validate_target(sources[0], &slot_of, out.len())?,
+                        validate_target(sources[1], &slot_of, out.len())?,
+                    ];
+                    let Some((first_target, second_target)) = pair_mut(out, targets) else {
+                        return Err(DriveError::InvalidElementRoute);
+                    };
+                    analyse_only_pair(
+                        inputs,
+                        [&mut first_state.aspx, &mut second_state.aspx],
+                        [first_workspace, second_workspace],
+                        [first_target, second_target],
+                        timeslots,
+                    )?;
+                    continue;
+                }
                 let source = source_of(element, signal)?;
                 let input = pcm.get(source).ok_or(DriveError::InvalidElementRoute)?;
                 let state = states
@@ -329,6 +364,67 @@ pub fn drive_element(
                 analyse_only(input, &mut state.aspx, first_workspace, target, timeslots)?;
             }
             AspxJob::Mono(signal) => {
+                if let Some(AspxJob::Mono(second_signal)) = jobs.peek().copied() {
+                    let _ = jobs.next();
+                    let signals = [signal, second_signal];
+                    let sources = [
+                        source_of(element, signals[0])?,
+                        source_of(element, signals[1])?,
+                    ];
+                    let (first_element, first_channel) =
+                        signals[0].aspx.ok_or(DriveError::InvalidElementRoute)?;
+                    let (second_element, second_channel) =
+                        signals[1].aspx.ok_or(DriveError::InvalidElementRoute)?;
+                    let first_element = usize::from(first_element);
+                    let second_element = usize::from(second_element);
+                    let first_data =
+                        aspx.get(first_element).ok_or(DriveError::MissingAspxData {
+                            element: first_element,
+                        })?;
+                    let second_data =
+                        aspx.get(second_element)
+                            .ok_or(DriveError::MissingAspxData {
+                                element: second_element,
+                            })?;
+                    let first_inputs =
+                        channel_inputs(first_data, config, usize::from(first_channel), params)?;
+                    let second_inputs =
+                        channel_inputs(second_data, config, usize::from(second_channel), params)?;
+                    let inputs = [
+                        pcm.get(sources[0])
+                            .copied()
+                            .ok_or(DriveError::InvalidElementRoute)?,
+                        pcm.get(sources[1])
+                            .copied()
+                            .ok_or(DriveError::InvalidElementRoute)?,
+                    ];
+                    let Some((first_state, second_state)) = pair_mut(states, sources) else {
+                        return Err(DriveError::InvalidElementRoute);
+                    };
+                    let Some((first_mid, second_mid)) = pair_mut(intermediates, sources) else {
+                        return Err(DriveError::InvalidElementRoute);
+                    };
+                    let produced = frame_with_scale_factors_pair_qmf(
+                        inputs,
+                        [&first_data.bands, &second_data.bands],
+                        [first_inputs.hf_gen, second_inputs.hf_gen],
+                        [first_inputs.envelopes, second_inputs.envelopes],
+                        [first_inputs.hf_adjust, second_inputs.hf_adjust],
+                        [&mut first_state.aspx, &mut second_state.aspx],
+                        [first_workspace, second_workspace],
+                        [first_mid, second_mid],
+                    )?;
+                    let targets = [
+                        validate_target(sources[0], &slot_of, out.len())?,
+                        validate_target(sources[1], &slot_of, out.len())?,
+                    ];
+                    let Some((first_target, second_target)) = pair_mut(out, targets) else {
+                        return Err(DriveError::InvalidElementRoute);
+                    };
+                    copy_frame(produced[0], first_target);
+                    copy_frame(produced[1], second_target);
+                    continue;
+                }
                 let source = source_of(element, signal)?;
                 let (element_index, channel) =
                     signal.aspx.ok_or(DriveError::InvalidElementRoute)?;
@@ -775,6 +871,41 @@ fn analyse_only(
     };
     analyse_ac4_pcm(pcm, &mut state.analysis, slots)?;
     copy_frame(slots, out);
+    Ok(())
+}
+
+/// 两路 SIMPLE 声道共用垂直 QMF 分析，其余状态与输出仍逐声道独立。
+fn analyse_only_pair(
+    pcm: [&[f32]; 2],
+    states: [&mut AspxChannelState; 2],
+    workspaces: [&mut AspxWorkspace; 2],
+    out: [&mut QmfChannelFrame; 2],
+    timeslots: usize,
+) -> Result<(), DriveError> {
+    let [first_state, second_state] = states;
+    let [first_workspace, second_workspace] = workspaces;
+    let [first_out, second_out] = out;
+    let first_slots = first_workspace
+        .q_in
+        .get_mut(..timeslots)
+        .ok_or(DriveError::Qmf(QmfError::SlotCountMismatch {
+            expected: timeslots,
+            provided: MAX_QMF_TIMESLOTS,
+        }))?;
+    let second_slots = second_workspace
+        .q_in
+        .get_mut(..timeslots)
+        .ok_or(DriveError::Qmf(QmfError::SlotCountMismatch {
+            expected: timeslots,
+            provided: MAX_QMF_TIMESLOTS,
+        }))?;
+    analyse_ac4_pcm_pair(
+        pcm,
+        [&mut first_state.analysis, &mut second_state.analysis],
+        [first_slots, second_slots],
+    )?;
+    copy_frame(first_slots, first_out);
+    copy_frame(second_slots, second_out);
     Ok(())
 }
 

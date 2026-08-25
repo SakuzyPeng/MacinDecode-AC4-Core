@@ -226,6 +226,129 @@ pub fn analyse(
     Ok(())
 }
 
+/// ARM64 NEON 与 portable x86-64 SSE2 的两路 `f64` 分析 lane。
+const ANALYSIS_CHANNEL_LANES: usize = 2;
+
+/// 两声道分析在加窗折叠后的局部 AoSoA。
+///
+/// 每个 lane 都保留 [`analyse`] 的五抽头求和与 128 项调制累加顺序；这里只把
+/// 两条互不相关的声道时间线并排，允许 LLVM 在 safe Rust 下生成垂直 SIMD。
+#[repr(C, align(16))]
+struct AnalysisChannelPair {
+    folded: [[f64; ANALYSIS_CHANNEL_LANES]; FOLDED],
+}
+
+impl AnalysisChannelPair {
+    const fn new() -> Self {
+        Self {
+            folded: [[0.0; ANALYSIS_CHANNEL_LANES]; FOLDED],
+        }
+    }
+}
+
+/// 两路相同帧布局的 Core PCM 一起分析到 QMF 域。
+///
+/// 两路形状会在任一分析状态推进之前完整核对。PCM 到 `f64` 的提升精确，lane
+/// 之间没有归约，也不使用 FMA；每路输出与依次调用 [`analyse_ac4_pcm`] 逐位相同。
+pub(crate) fn analyse_ac4_pcm_pair(
+    pcm: [&[f32]; ANALYSIS_CHANNEL_LANES],
+    states: [&mut QmfAnalysisState; ANALYSIS_CHANNEL_LANES],
+    slots: [&mut [QmfSlot]; ANALYSIS_CHANNEL_LANES],
+) -> Result<(), QmfError> {
+    let [left_pcm, right_pcm] = pcm;
+    let [left_state, right_state] = states;
+    let [left_slots, right_slots] = slots;
+
+    if left_pcm.len() % SUBBANDS != 0 {
+        return Err(QmfError::UnalignedInput {
+            samples: left_pcm.len(),
+        });
+    }
+    if right_pcm.len() % SUBBANDS != 0 {
+        return Err(QmfError::UnalignedInput {
+            samples: right_pcm.len(),
+        });
+    }
+    let timeslots = left_pcm.len() / SUBBANDS;
+    let right_timeslots = right_pcm.len() / SUBBANDS;
+    if right_timeslots != timeslots {
+        return Err(QmfError::SlotCountMismatch {
+            expected: timeslots,
+            provided: right_timeslots,
+        });
+    }
+    for provided in [left_slots.len(), right_slots.len()] {
+        if provided != timeslots {
+            return Err(QmfError::SlotCountMismatch {
+                expected: timeslots,
+                provided,
+            });
+        }
+    }
+
+    let mut pair = AnalysisChannelPair::new();
+    let pcm_chunks = left_pcm
+        .chunks_exact(SUBBANDS)
+        .zip(right_pcm.chunks_exact(SUBBANDS));
+    let slot_pairs = left_slots.iter_mut().zip(right_slots.iter_mut());
+    for ((left_pcm, right_pcm), (left_slot, right_slot)) in pcm_chunks.zip(slot_pairs) {
+        left_state
+            .filt
+            .copy_within(0..NUM_QMF_WIN_COEF - SUBBANDS, SUBBANDS);
+        right_state
+            .filt
+            .copy_within(0..NUM_QMF_WIN_COEF - SUBBANDS, SUBBANDS);
+        let state_heads = left_state.filt[..SUBBANDS]
+            .iter_mut()
+            .rev()
+            .zip(right_state.filt[..SUBBANDS].iter_mut().rev());
+        for ((left_state, right_state), (&left, &right)) in
+            state_heads.zip(left_pcm.iter().zip(right_pcm))
+        {
+            *left_state = left;
+            *right_state = right;
+        }
+
+        for n in 0..FOLDED {
+            let (mut left_sum, mut right_sum) = (0.0f64, 0.0f64);
+            for k in 0..5 {
+                let index = n + k * FOLDED;
+                let window = f64::from(QMF_WINDOW[index]);
+                left_sum += f64::from(left_state.filt[index]) * window;
+                right_sum += f64::from(right_state.filt[index]) * window;
+            }
+            pair.folded[n] = [left_sum, right_sum];
+        }
+
+        for sb in 0..SUBBANDS {
+            let (mut left_re, mut left_im) = (0.0f64, 0.0f64);
+            let (mut right_re, mut right_im) = (0.0f64, 0.0f64);
+            for n in 0..FOLDED {
+                let (cos, sin) = analysis_phase(sb, n);
+                let [left, right] = pair.folded[n];
+                left_re += left * cos;
+                left_im += left * sin;
+                right_re += right * cos;
+                right_im += right * sin;
+            }
+            left_slot.re[sb] = left_re as f32;
+            left_slot.im[sb] = left_im as f32;
+            right_slot.re[sb] = right_re as f32;
+            right_slot.im[sb] = right_im as f32;
+        }
+    }
+
+    for (left, right) in left_slots.iter_mut().zip(right_slots.iter_mut()) {
+        for sb in 0..SUBBANDS {
+            left.re[sb] /= AC4_PCM_INTERFACE_GAIN;
+            left.im[sb] /= AC4_PCM_INTERFACE_GAIN;
+            right.re[sb] /= AC4_PCM_INTERFACE_GAIN;
+            right.im[sb] /= AC4_PCM_INTERFACE_GAIN;
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(feature = "qmf-split-profile", inline(never))]
 #[cfg_attr(not(feature = "qmf-split-profile"), inline(always))]
 fn advance_synthesis_state(state: &mut QmfSynthesisState) {
@@ -794,6 +917,138 @@ mod tests {
         }
     }
 
+    fn distinct_channel_pcm(channels: usize, samples: usize) -> Vec<Vec<f32>> {
+        let mut out = Vec::with_capacity(channels);
+        for channel in 0..channels {
+            let mut signal = deterministic_signal(samples);
+            if samples != 0 {
+                signal.rotate_left((17 * channel) % samples);
+            }
+            for (index, sample) in signal.iter_mut().enumerate() {
+                if (index + 3 * channel) % 5 == 0 {
+                    *sample = -*sample;
+                }
+            }
+            out.push(signal);
+        }
+        out
+    }
+
+    fn assert_analysis_state_bit_exact(
+        actual: &QmfAnalysisState,
+        expected: &QmfAnalysisState,
+        context: &str,
+    ) {
+        for (index, (&actual, &expected)) in actual.filt.iter().zip(&expected.filt).enumerate() {
+            assert_eq!(
+                actual.to_bits(),
+                expected.to_bits(),
+                "{context} 的分析状态 {index} 必须逐位相同"
+            );
+        }
+    }
+
+    fn assert_qmf_slots_bit_exact(actual: &[QmfSlot], expected: &[QmfSlot], context: &str) {
+        assert_eq!(actual.len(), expected.len(), "{context} 的时隙数必须相同");
+        for (timeslot, (actual, expected)) in actual.iter().zip(expected).enumerate() {
+            for sb in 0..SUBBANDS {
+                assert_eq!(
+                    actual.re[sb].to_bits(),
+                    expected.re[sb].to_bits(),
+                    "{context} 时隙 {timeslot} 子带 {sb} 的实部必须逐位相同"
+                );
+                assert_eq!(
+                    actual.im[sb].to_bits(),
+                    expected.im[sb].to_bits(),
+                    "{context} 时隙 {timeslot} 子带 {sb} 的虚部必须逐位相同"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn channel_pair_analysis_matches_scalar_across_calls() {
+        const TIMESLOTS: usize = 19;
+        let signals = distinct_channel_pcm(2, TIMESLOTS * SUBBANDS);
+        let mut pair_states = [QmfAnalysisState::new(), QmfAnalysisState::new()];
+        let mut scalar_states = [QmfAnalysisState::new(), QmfAnalysisState::new()];
+
+        for (call, range) in [0..7, 7..TIMESLOTS].into_iter().enumerate() {
+            let sample_range = range.start * SUBBANDS..range.end * SUBBANDS;
+            let mut pair_slots = [
+                vec![QmfSlot::zero(); range.len()],
+                vec![QmfSlot::zero(); range.len()],
+            ];
+            let mut scalar_slots = [
+                vec![QmfSlot::zero(); range.len()],
+                vec![QmfSlot::zero(); range.len()],
+            ];
+            let [left_pair_state, right_pair_state] = &mut pair_states;
+            let [left_pair_slots, right_pair_slots] = &mut pair_slots;
+            analyse_ac4_pcm_pair(
+                [
+                    &signals[0][sample_range.clone()],
+                    &signals[1][sample_range.clone()],
+                ],
+                [left_pair_state, right_pair_state],
+                [left_pair_slots, right_pair_slots],
+            )
+            .expect("双声道分析应成功");
+
+            for channel in 0..2 {
+                analyse_ac4_pcm(
+                    &signals[channel][sample_range.clone()],
+                    &mut scalar_states[channel],
+                    &mut scalar_slots[channel],
+                )
+                .expect("标量分析应成功");
+                assert_qmf_slots_bit_exact(
+                    &pair_slots[channel],
+                    &scalar_slots[channel],
+                    &format!("调用 {call} 声道 {channel}"),
+                );
+                assert_analysis_state_bit_exact(
+                    &pair_states[channel],
+                    &scalar_states[channel],
+                    &format!("调用 {call} 声道 {channel}"),
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn channel_pair_analysis_shape_errors_are_transactional() {
+        let signals = distinct_channel_pcm(2, SUBBANDS);
+        let mut states = [QmfAnalysisState::new(), QmfAnalysisState::new()];
+        let sentinel = QmfSlot {
+            re: [7.0; SUBBANDS],
+            im: [9.0; SUBBANDS],
+        };
+        let mut outputs = [vec![sentinel], vec![sentinel]];
+        let [left_state, right_state] = &mut states;
+        let [left_output, right_output] = &mut outputs;
+        let error = analyse_ac4_pcm_pair(
+            [&signals[0], &signals[1][..SUBBANDS - 1]],
+            [left_state, right_state],
+            [left_output, right_output],
+        )
+        .expect_err("未对齐的第二路必须失败");
+        assert_eq!(
+            error,
+            QmfError::UnalignedInput {
+                samples: SUBBANDS - 1,
+            }
+        );
+        assert_eq!(outputs, [vec![sentinel], vec![sentinel]]);
+        for (channel, state) in states.iter().enumerate() {
+            assert_analysis_state_bit_exact(
+                state,
+                &QmfAnalysisState::new(),
+                &format!("失败后的声道 {channel}"),
+            );
+        }
+    }
+
     fn distinct_channel_slots(channels: usize, timeslots: usize) -> Vec<Vec<QmfSlot>> {
         let mut out = Vec::with_capacity(channels);
         for channel in 0..channels {
@@ -962,6 +1217,98 @@ mod tests {
         std::eprintln!(
             "median speedup: paired {:.3}x",
             direct[2].as_secs_f64() / paired[2].as_secs_f64(),
+        );
+    }
+
+    fn benchmark_scalar_analysis(signals: &[Vec<f32>], iterations: usize) -> Duration {
+        let mut states = (0..signals.len())
+            .map(|_| QmfAnalysisState::new())
+            .collect::<Vec<_>>();
+        let mut slots = vec![vec![QmfSlot::zero(); signals[0].len() / SUBBANDS]; signals.len()];
+        let started = Instant::now();
+        for _ in 0..iterations {
+            for channel in 0..signals.len() {
+                analyse_ac4_pcm(
+                    std::hint::black_box(&signals[channel]),
+                    std::hint::black_box(&mut states[channel]),
+                    std::hint::black_box(&mut slots[channel]),
+                )
+                .expect("标量分析应成功");
+            }
+        }
+        std::hint::black_box((states, slots));
+        started.elapsed()
+    }
+
+    fn benchmark_channel_pair_analysis(signals: &[Vec<f32>], iterations: usize) -> Duration {
+        let mut states = (0..signals.len())
+            .map(|_| QmfAnalysisState::new())
+            .collect::<Vec<_>>();
+        let mut slots = vec![vec![QmfSlot::zero(); signals[0].len() / SUBBANDS]; signals.len()];
+        let started = Instant::now();
+        for _ in 0..iterations {
+            for ((input_pair, state_pair), output_pair) in signals
+                .chunks_exact(ANALYSIS_CHANNEL_LANES)
+                .zip(states.chunks_exact_mut(ANALYSIS_CHANNEL_LANES))
+                .zip(slots.chunks_exact_mut(ANALYSIS_CHANNEL_LANES))
+            {
+                let [left_input, right_input] = input_pair else {
+                    unreachable!("chunks_exact 保证两路输入");
+                };
+                let [left_state, right_state] = state_pair else {
+                    unreachable!("chunks_exact_mut 保证两路状态");
+                };
+                let [left_output, right_output] = output_pair else {
+                    unreachable!("chunks_exact_mut 保证两路输出");
+                };
+                analyse_ac4_pcm_pair(
+                    [
+                        std::hint::black_box(left_input),
+                        std::hint::black_box(right_input),
+                    ],
+                    [
+                        std::hint::black_box(left_state),
+                        std::hint::black_box(right_state),
+                    ],
+                    [
+                        std::hint::black_box(left_output),
+                        std::hint::black_box(right_output),
+                    ],
+                )
+                .expect("双声道分析应成功");
+            }
+        }
+        std::hint::black_box((states, slots));
+        started.elapsed()
+    }
+
+    /// 手动运行：
+    /// `cargo test -p macindecode-ac4-bitstream --release --features audio-decode qmf_channel_pair_analysis_benchmark -- --ignored --nocapture`
+    #[test]
+    #[ignore = "手动运行的 20 声道 QMF 分析微基准"]
+    fn qmf_channel_pair_analysis_benchmark() {
+        const CHANNELS: usize = 20;
+        const TIMESLOTS: usize = 19;
+        const ITERATIONS: usize = 10;
+        let signals = distinct_channel_pcm(CHANNELS, TIMESLOTS * SUBBANDS);
+        let mut scalar = Vec::with_capacity(5);
+        let mut paired = Vec::with_capacity(5);
+        for round in 0..5 {
+            if round % 2 == 0 {
+                scalar.push(benchmark_scalar_analysis(&signals, ITERATIONS));
+                paired.push(benchmark_channel_pair_analysis(&signals, ITERATIONS));
+            } else {
+                paired.push(benchmark_channel_pair_analysis(&signals, ITERATIONS));
+                scalar.push(benchmark_scalar_analysis(&signals, ITERATIONS));
+            }
+        }
+        scalar.sort_unstable();
+        paired.sort_unstable();
+        std::eprintln!(
+            "scalar {:.3} ms/frame, channel-pair {:.3} ms/frame, speedup {:.3}x",
+            scalar[2].as_secs_f64() * 1_000.0 / ITERATIONS as f64,
+            paired[2].as_secs_f64() * 1_000.0 / ITERATIONS as f64,
+            scalar[2].as_secs_f64() / paired[2].as_secs_f64(),
         );
     }
 

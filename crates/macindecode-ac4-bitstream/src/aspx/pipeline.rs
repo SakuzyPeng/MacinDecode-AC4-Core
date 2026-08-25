@@ -87,7 +87,9 @@ use crate::aspx::lowband::{LowBandError, low_band};
 use crate::aspx::noisegen::{NoiseError, generate as generate_noise};
 use crate::aspx::patches::{PatchError, PatchTable};
 use crate::aspx::preflatten::{PreFlattenError, PreFlattenGains, pre_flatten};
-use crate::aspx::qmf::{QmfError, QmfSlot, analyse_ac4_pcm, synthesise_ac4_pcm};
+use crate::aspx::qmf::{
+    QmfError, QmfSlot, analyse_ac4_pcm, analyse_ac4_pcm_pair, synthesise_ac4_pcm,
+};
 use crate::aspx::state::AspxChannelState;
 use crate::aspx::syntax::{AspxChannelFraming, AspxConfig, AspxData, AspxEnvelopes};
 use crate::aspx::tables::{
@@ -148,6 +150,8 @@ pub enum PipelineError {
     BalancedFramingMismatch,
     /// `aspx_balance = 1` 的两声道 PCM 帧长不同。
     BalancedFrameLengthMismatch { first: usize, second: usize },
+    /// 独立双声道的 PCM 帧长不同，无法共用垂直分析内核。
+    PairedFrameLengthMismatch { first: usize, second: usize },
     /// `num_ts_in_ats` 不是表 192 定义的 1 或 2。
     TimeslotFactorOutOfRange { factor: u8 },
     /// 区间的名义时隙数与倍率不是表 189/192 的同一行。
@@ -746,6 +750,30 @@ fn generate_hf(
     timeslots: usize,
     ts_offset: u8,
 ) -> Result<(), PipelineError> {
+    let extended = analyse_and_filter_low_band(pcm, bands, state, workspace, timeslots, ts_offset)?;
+    generate_hf_from_low_band(
+        bands, params, tables, aspx, state, workspace, timeslots, extended,
+    )
+}
+
+/// 已有 `Q_low` 后执行 `5.7.6.4.1` 的其余步骤。
+///
+/// 分开这一层让双声道入口可以先用同一个垂直 SIMD 内核完成两路 QMF
+/// 分析，再各自沿规范的低带、预测器与 HF 创建时间线前进。
+#[expect(
+    clippy::too_many_arguments,
+    reason = "参数与 `generate_hf` 相同，只把 PCM/offset 换成已核对的 Q_low 长度"
+)]
+fn generate_hf_from_low_band(
+    bands: &AspxBandTables,
+    params: HfGenParams<'_>,
+    tables: &HfGenTables,
+    aspx: HighBandInterval,
+    state: &mut AspxChannelState,
+    workspace: &mut AspxWorkspace,
+    timeslots: usize,
+    extended: usize,
+) -> Result<(), PipelineError> {
     let HfGenTables {
         patches,
         noise_groups,
@@ -753,8 +781,6 @@ fn generate_hf(
     } = tables;
     let noise_groups = *noise_groups;
     let noise_borders = tables.borders()?;
-
-    let extended = analyse_and_filter_low_band(pcm, bands, state, workspace, timeslots, ts_offset)?;
 
     let mut chirp = [0.0f32; MAX_SBG_NOISE as usize];
     let Some(chirp) = chirp.get_mut(..noise_groups) else {
@@ -1368,6 +1394,204 @@ pub fn frame_with_scale_factors_qmf<'a>(
     )
 }
 
+/// 两条互相独立的单声道参数通路，共用一次垂直 QMF 分析。
+///
+/// 这不是 `aspx_balance = 1`：两路各自解包络、反量化并使用自己的频带表与状态，
+/// 只有逐 PCM 样本完全同构的 QMF 分析并排执行。输出与分别调用两次
+/// [`frame_with_scale_factors_qmf`] 逐位相同。
+///
+/// # Errors
+///
+/// 两路帧长必须相同。所有只依赖输入的检查都在任一路状态或工作区改写之前完成；
+/// 进入通路后的错误契约与单声道入口相同。
+#[expect(
+    clippy::too_many_arguments,
+    reason = "独立双声道入口的数组分别对应逐声道输入、状态、工作区与输出"
+)]
+pub fn frame_with_scale_factors_pair_qmf<'a>(
+    pcm: [&[f32]; 2],
+    bands: [&AspxBandTables; 2],
+    params: [HfGenParams<'_>; 2],
+    envelopes: [EnvelopeInput<'_>; 2],
+    hf_adjust: [HfAdjustParams<'_>; 2],
+    states: [&mut AspxChannelState; 2],
+    workspaces: [&'a mut AspxWorkspace; 2],
+    intermediates: [&mut AspxIntermediates; 2],
+) -> Result<[&'a [QmfSlot]; 2], PipelineError> {
+    let [first_pcm, second_pcm] = pcm;
+    let [first_bands, second_bands] = bands;
+    let [first_params, second_params] = params;
+    let [first_envelopes, second_envelopes] = envelopes;
+    let [first_adjust, second_adjust] = hf_adjust;
+    let [first_state, second_state] = states;
+    let [first_workspace, second_workspace] = workspaces;
+    let [first_intermediates, second_intermediates] = intermediates;
+
+    if first_pcm.len() != second_pcm.len() {
+        return Err(PipelineError::PairedFrameLengthMismatch {
+            first: first_pcm.len(),
+            second: second_pcm.len(),
+        });
+    }
+
+    let (next_first_history, first_qscf) =
+        decode_envelope_input(first_bands, first_envelopes, false, first_state.envelope)?;
+    let (next_second_history, second_qscf) =
+        decode_envelope_input(second_bands, second_envelopes, false, second_state.envelope)?;
+    let mut next_first_factors = ScaleFactors::new();
+    let mut next_second_factors = ScaleFactors::new();
+    dequantise(
+        &first_qscf,
+        first_envelopes.framing.qmode_env,
+        &mut next_first_factors,
+    )?;
+    dequantise(
+        &second_qscf,
+        second_envelopes.framing.qmode_env,
+        &mut next_second_factors,
+    )?;
+
+    let (first_timeslots, first_offset) = validate_frame(first_pcm, None)?;
+    let (second_timeslots, second_offset) = validate_frame(second_pcm, None)?;
+    let first_tables = hf_gen_tables(first_bands, first_params)?;
+    let second_tables = hf_gen_tables(second_bands, second_params)?;
+    let first_factor = frame_timeslot_factor(first_pcm.len())?;
+    let second_factor = frame_timeslot_factor(second_pcm.len())?;
+    let first_aspx = high_band_interval(
+        &first_envelopes.framing.interval,
+        first_timeslots,
+        first_factor,
+    )?;
+    let second_aspx = high_band_interval(
+        &second_envelopes.framing.interval,
+        second_timeslots,
+        second_factor,
+    )?;
+    let first_limiter = hf_adjust_limiter(first_bands, &first_tables, first_adjust)?;
+    let second_limiter = hf_adjust_limiter(second_bands, &second_tables, second_adjust)?;
+    validate_hf_carryover(first_aspx, first_state, first_factor, first_timeslots)?;
+    validate_hf_carryover(second_aspx, second_state, second_factor, second_timeslots)?;
+
+    first_workspace.prepare_frame();
+    second_workspace.prepare_frame();
+    let [first_extended, second_extended] = analyse_and_filter_low_band_pair(
+        [first_pcm, second_pcm],
+        [first_bands, second_bands],
+        [&mut *first_state, &mut *second_state],
+        [&mut *first_workspace, &mut *second_workspace],
+        first_timeslots,
+        [first_offset, second_offset],
+    )?;
+    generate_hf_from_low_band(
+        first_bands,
+        first_params,
+        &first_tables,
+        first_aspx,
+        first_state,
+        first_workspace,
+        first_timeslots,
+        first_extended,
+    )?;
+    let first_qmf = {
+        let first_q_high = first_workspace.q_high.get(..first_aspx.timeslots()).ok_or(
+            PipelineError::FrameTooLong {
+                timeslots: first_aspx.timeslots(),
+                capacity: MAX_EXTENDED_TIMESLOTS,
+            },
+        )?;
+        let (next_first_sines, first_estimate, first_gains) = adjust_high_band(
+            first_q_high,
+            first_bands,
+            &first_tables,
+            first_envelopes,
+            first_adjust,
+            first_limiter.as_ref(),
+            &next_first_factors,
+            first_factor,
+            first_state.sine,
+        )?;
+        let first_qmf_timeslots =
+            u8::try_from(first_timeslots).map_err(|_| PipelineError::FrameTooLong {
+                timeslots: first_timeslots,
+                capacity: MAX_QMF_TIMESLOTS,
+            })?;
+        assemble_high_band(
+            &first_gains,
+            first_bands,
+            &first_envelopes.framing.interval,
+            first_adjust,
+            first_aspx,
+            (first_factor, first_qmf_timeslots),
+            first_state,
+            first_workspace,
+        )?;
+        first_state.envelope = next_first_history;
+        first_state.sine = next_first_sines;
+        first_intermediates.scale_factors = next_first_factors;
+        first_intermediates.estimate = first_estimate;
+        first_intermediates.gains = first_gains;
+        combine_to_qmf(first_state, first_workspace, first_timeslots, first_offset)?
+    };
+
+    // 第一声道的大型包络矩阵已经移入诊断输出；再处理第二声道，让两路临时矩阵
+    // 共用同一段栈，而不是同时存活到函数末尾。
+    generate_hf_from_low_band(
+        second_bands,
+        second_params,
+        &second_tables,
+        second_aspx,
+        second_state,
+        second_workspace,
+        second_timeslots,
+        second_extended,
+    )?;
+    let second_q_high = second_workspace
+        .q_high
+        .get(..second_aspx.timeslots())
+        .ok_or(PipelineError::FrameTooLong {
+            timeslots: second_aspx.timeslots(),
+            capacity: MAX_EXTENDED_TIMESLOTS,
+        })?;
+    let (next_second_sines, second_estimate, second_gains) = adjust_high_band(
+        second_q_high,
+        second_bands,
+        &second_tables,
+        second_envelopes,
+        second_adjust,
+        second_limiter.as_ref(),
+        &next_second_factors,
+        second_factor,
+        second_state.sine,
+    )?;
+    let second_qmf_timeslots =
+        u8::try_from(second_timeslots).map_err(|_| PipelineError::FrameTooLong {
+            timeslots: second_timeslots,
+            capacity: MAX_QMF_TIMESLOTS,
+        })?;
+    assemble_high_band(
+        &second_gains,
+        second_bands,
+        &second_envelopes.framing.interval,
+        second_adjust,
+        second_aspx,
+        (second_factor, second_qmf_timeslots),
+        second_state,
+        second_workspace,
+    )?;
+    second_state.envelope = next_second_history;
+    second_state.sine = next_second_sines;
+    second_intermediates.scale_factors = next_second_factors;
+    second_intermediates.estimate = second_estimate;
+    second_intermediates.gains = second_gains;
+    let second_qmf = combine_to_qmf(
+        second_state,
+        second_workspace,
+        second_timeslots,
+        second_offset,
+    )?;
+    Ok([first_qmf, second_qmf])
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "内部实现同时服务 QMF 出口与带输出长度先验检查的 PCM 包装器"
@@ -1592,8 +1816,15 @@ fn frame_with_balanced_scale_factors_impl<'a>(
     validate_hf_carryover(aspx, second_state, factor, second_timeslots)?;
     first_workspace.prepare_frame();
     second_workspace.prepare_frame();
-    generate_hf(
-        first_pcm,
+    let [first_extended, second_extended] = analyse_and_filter_low_band_pair(
+        [first_pcm, second_pcm],
+        [bands, bands],
+        [&mut *first_state, &mut *second_state],
+        [&mut *first_workspace, &mut *second_workspace],
+        first_timeslots,
+        [first_offset, second_offset],
+    )?;
+    generate_hf_from_low_band(
         bands,
         first_params,
         &first_tables,
@@ -1601,10 +1832,9 @@ fn frame_with_balanced_scale_factors_impl<'a>(
         first_state,
         first_workspace,
         first_timeslots,
-        first_offset,
+        first_extended,
     )?;
-    generate_hf(
-        second_pcm,
+    generate_hf_from_low_band(
         bands,
         second_params,
         &second_tables,
@@ -1612,7 +1842,7 @@ fn frame_with_balanced_scale_factors_impl<'a>(
         second_state,
         second_workspace,
         second_timeslots,
-        second_offset,
+        second_extended,
     )?;
 
     let (Some(first_q_high), Some(second_q_high)) = (
@@ -1711,7 +1941,68 @@ fn analyse_and_filter_low_band(
         });
     };
     analyse_ac4_pcm(pcm, &mut state.analysis, q_in)?;
+    filter_low_band_after_analysis(bands, state, workspace, timeslots, ts_offset)
+}
 
+/// 两声道先并排完成 QMF 分析，再分别建立各自的 `Q_low`。
+fn analyse_and_filter_low_band_pair(
+    pcm: [&[f32]; 2],
+    bands: [&AspxBandTables; 2],
+    states: [&mut AspxChannelState; 2],
+    workspaces: [&mut AspxWorkspace; 2],
+    timeslots: usize,
+    ts_offsets: [u8; 2],
+) -> Result<[usize; 2], PipelineError> {
+    let [first_state, second_state] = states;
+    let [first_workspace, second_workspace] = workspaces;
+    let [first_bands, second_bands] = bands;
+    let [first_offset, second_offset] = ts_offsets;
+    let first_q_in =
+        first_workspace
+            .q_in
+            .get_mut(..timeslots)
+            .ok_or(PipelineError::FrameTooLong {
+                timeslots,
+                capacity: MAX_QMF_TIMESLOTS,
+            })?;
+    let second_q_in =
+        second_workspace
+            .q_in
+            .get_mut(..timeslots)
+            .ok_or(PipelineError::FrameTooLong {
+                timeslots,
+                capacity: MAX_QMF_TIMESLOTS,
+            })?;
+    analyse_ac4_pcm_pair(
+        pcm,
+        [&mut first_state.analysis, &mut second_state.analysis],
+        [first_q_in, second_q_in],
+    )?;
+    let first_extended = filter_low_band_after_analysis(
+        first_bands,
+        first_state,
+        first_workspace,
+        timeslots,
+        first_offset,
+    )?;
+    let second_extended = filter_low_band_after_analysis(
+        second_bands,
+        second_state,
+        second_workspace,
+        timeslots,
+        second_offset,
+    )?;
+    Ok([first_extended, second_extended])
+}
+
+/// 已完成 QMF 分析后执行 `5.7.6.3.2`。
+fn filter_low_band_after_analysis(
+    bands: &AspxBandTables,
+    state: &mut AspxChannelState,
+    workspace: &mut AspxWorkspace,
+    timeslots: usize,
+    ts_offset: u8,
+) -> Result<usize, PipelineError> {
     // `Q_low` 比本帧长 ts_offset 个时隙：前缀取自上一帧尾部。
     let extended =
         timeslots
@@ -3781,6 +4072,107 @@ mod tests {
         );
         assert_eq!(out, expected, "包装器只能在 QMF 出口之后增加一次合成");
         assert_eq!(pcm_state.synthesis, expected_synthesis);
+    }
+
+    #[test]
+    fn independent_channel_pair_matches_two_scalar_calls_bit_for_bit() {
+        let bands = hf_bands();
+        let modes = chirp_modes(&bands);
+        let (params, interval) = split_interval(SLOTS as u8);
+        let framing = framing(params, interval, false, false);
+        let first_data = envelope_data(&bands, 0);
+        let second_data = envelope_data(&bands, 3);
+        let first_pcm = ramp(FRAME * 2);
+        let second_pcm: Vec<f32> = ramp(FRAME * 2)
+            .into_iter()
+            .enumerate()
+            .map(|(index, sample)| sample * -0.625 + (index % 17) as f32 * 0.003)
+            .collect();
+
+        let mut scalar_states = [AspxChannelState::new(), AspxChannelState::new()];
+        let mut paired_states = [AspxChannelState::new(), AspxChannelState::new()];
+        let mut scalar_workspaces = [AspxWorkspace::new(), AspxWorkspace::new()];
+        let mut paired_workspaces = [AspxWorkspace::new(), AspxWorkspace::new()];
+        let mut scalar_intermediates = [AspxIntermediates::default(), AspxIntermediates::default()];
+        let mut paired_intermediates = [AspxIntermediates::default(), AspxIntermediates::default()];
+
+        for frame in 0..2 {
+            let start = frame * FRAME;
+            let end = start + FRAME;
+            let inputs = [&first_pcm[start..end], &second_pcm[start..end]];
+            let scalar_first = frame_with_scale_factors_qmf(
+                inputs[0],
+                &bands,
+                hf_params(&modes),
+                EnvelopeInput {
+                    framing: &framing,
+                    data: &first_data,
+                },
+                adjust_params(&bands),
+                &mut scalar_states[0],
+                &mut scalar_workspaces[0],
+                &mut scalar_intermediates[0],
+            )
+            .expect("第一路标量通路")
+            .to_vec();
+            let scalar_second = frame_with_scale_factors_qmf(
+                inputs[1],
+                &bands,
+                hf_params(&modes),
+                EnvelopeInput {
+                    framing: &framing,
+                    data: &second_data,
+                },
+                adjust_params(&bands),
+                &mut scalar_states[1],
+                &mut scalar_workspaces[1],
+                &mut scalar_intermediates[1],
+            )
+            .expect("第二路标量通路")
+            .to_vec();
+
+            let paired = {
+                let [first_state, second_state] = &mut paired_states;
+                let [first_workspace, second_workspace] = &mut paired_workspaces;
+                let [first_intermediates, second_intermediates] = &mut paired_intermediates;
+                let [first, second] = frame_with_scale_factors_pair_qmf(
+                    inputs,
+                    [&bands, &bands],
+                    [hf_params(&modes), hf_params(&modes)],
+                    [
+                        EnvelopeInput {
+                            framing: &framing,
+                            data: &first_data,
+                        },
+                        EnvelopeInput {
+                            framing: &framing,
+                            data: &second_data,
+                        },
+                    ],
+                    [adjust_params(&bands), adjust_params(&bands)],
+                    [first_state, second_state],
+                    [first_workspace, second_workspace],
+                    [first_intermediates, second_intermediates],
+                )
+                .expect("独立双声道通路");
+                [first.to_vec(), second.to_vec()]
+            };
+
+            assert_eq!(paired[0], scalar_first, "第 {frame} 帧第一路输出");
+            assert_eq!(paired[1], scalar_second, "第 {frame} 帧第二路输出");
+            assert_eq!(paired_states, scalar_states, "第 {frame} 帧跨帧状态");
+            for channel in 0..2 {
+                let scalar = &scalar_workspaces[channel];
+                let paired = &paired_workspaces[channel];
+                assert_eq!(paired.q_in, scalar.q_in, "声道 {channel} 的 Q_in");
+                assert_eq!(paired.q_low, scalar.q_low, "声道 {channel} 的 Q_low");
+                assert_eq!(paired.q_high, scalar.q_high, "声道 {channel} 的 Q_high");
+                assert_eq!(paired.noise, scalar.noise, "声道 {channel} 的噪声");
+                assert_eq!(paired.sine, scalar.sine, "声道 {channel} 的音调");
+                assert_eq!(paired.y, scalar.y, "声道 {channel} 的 Y");
+                assert_eq!(paired.q_out, scalar.q_out, "声道 {channel} 的 Q_out");
+            }
+        }
     }
 
     #[test]
