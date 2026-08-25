@@ -9,6 +9,8 @@
 
 - [timing JSON](experiments/m4_pro_decode_timing.json)
 - [allocation JSON](experiments/m4_pro_decode_allocations.json)
+- [Core QMF 分段 JSON](experiments/m4_pro_qmf_split_core.json)
+- [Full QMF 分段 JSON](experiments/m4_pro_qmf_split_full.json)
 
 ## 结论
 
@@ -24,6 +26,8 @@
   A-JOC 重建。
 - 首个 QMF 候选“融合合成尾段的加窗与相位求和”通过逐位 PCM 门禁，但五轮交替 A/B 在
   Full 标准 1500K 上仅提升 `0.186%`，未达到预先约定的 `5%` 保留线，代码已撤销。
+- 后续符号级拆分确认，合成调制占 `synthesise` 的 Core `96.57%`、Full `96.48%`；窗尾仅占
+  `2.24%` / `2.08%`。下一个有足够收益空间的候选是快速调制分解，不是继续微调窗尾。
 
 ## 测量环境
 
@@ -140,6 +144,30 @@ A-SPX/QMF；系统等待、内存 primitive 和未归类框架开销归入“其
 
 `__semwait_signal` 来自 profiler 在 3 秒 attach 窗口结束前捕获的少量等待样本，已归入“其他”。
 
+## QMF 合成分段归因
+
+为避免在 `no_std` DSP 中插入高频时钟读取，分段仍使用 macOS `sample`。内部
+`qmf-split-profile` feature 只在采样构建中把 `synthesise` 固定为父符号，并把每时隙拆成状态
+搬移、`128 × 64` 合成调制和多相窗尾三个 `inline(never)` helper；普通构建强制内联这些 helper。
+状态搬移后另有一个仅该 feature 启用的 `black_box` 读，用来阻止编译器把 helper 尾调用成
+`memmove` 而丢失栈帧。性能工具会拒绝在这种构建上运行 timing 或 allocations。
+
+Core/Full 沿用标准 1500K 输入，各运行约 30 秒，并以 1 ms 间隔采样其中 20 秒。汇总器只读取
+`sample` 的 `Call graph` 区段，按三个互斥 helper 的 inclusive 样本计数；原始 profiler 文本仍只
+保留在 `target/perf/`。专用二进制 SHA-256 为
+`84aa7fab810e75b9dce12436b68005dc2142085c533987fde544532d7a7f22e6`。
+
+| 模式 | 主线程样本 | QMF 合成 / 全程 | 状态搬移 / QMF（全程） | 合成调制 / QMF（全程） | 多相窗尾 / QMF（全程） | 未归类 / QMF |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Core | 16,594 | 7,108 / 42.83% | 83 / 1.17%（0.50%） | 6,864 / 96.57%（41.36%） | 159 / 2.24%（0.96%） | 2 / 0.03% |
+| Full | 14,384 | 7,578 / 52.68% | 109 / 1.44%（0.76%） | 7,311 / 96.48%（50.83%） | 158 / 2.08%（1.10%） | 0 / 0.00% |
+
+专用构建的 QMF 总占比与原始函数级采样的 Core `43.65%`、Full `53.84%` 接近；差值属于独立
+采样和函数边界变化，不能作为 timing 回归数据。两种模式中，调制本身都占整个解码约四至五成，
+而彻底消除窗尾的理论全程收益上限也只有约 `1%`，因此下一节 `0.186%` 的实测结果并不反常。
+后续若优化，应把快速调制分解作为独立候选，并继续以逐位 PCM 与普通 portable release A/B
+决定是否保留。
+
 ## QMF 合成尾段实验（未保留）
 
 首个候选删除 `synthesise` 中 640 项 `f64` 临时窗，把加窗乘法与最终 64 相位求和融合；每个
@@ -192,6 +220,23 @@ cargo run --release -p macindecode-ac4-perf --features audio-decode -- \
 
 ```bash
 sample <pid> 20 1 -file target/perf/m4-pro-full.sample.txt
+```
+
+QMF 分段归因使用专用构建；该 feature 不能用于 timing/allocation：
+
+```bash
+cargo build --release -p macindecode-ac4-perf \
+  --features audio-decode,qmf-split-profile
+
+target/release/macinac4-perf profile --mode full --duration-seconds 30 \
+  --output target/perf/qmf-split-full-profile.json
+
+sample <pid> 20 1 -file target/perf/qmf-split-full.sample.txt
+
+target/release/macinac4-perf qmf-sample-summary \
+  --sample target/perf/qmf-split-full.sample.txt \
+  --profile target/perf/qmf-split-full-profile.json \
+  --output target/perf/qmf-split-full-summary.json
 ```
 
 不要把 `target/perf/*.sample.txt` 加入版本控制；其中包含本机 profiler 元数据。正式 JSON 只记录

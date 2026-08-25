@@ -1,0 +1,53 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "qmf_sample_summary",
+  "environment": {
+    "generated_at_utc": "2026-08-25T05:41:31Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "280ab4b243ad1f91f1f5bad3aa1818237b14256b",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "sample_interval_us": 1000,
+    "attribution": "macOS sample Call graph inclusive symbols",
+    "required_feature": "qmf-split-profile"
+  },
+  "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+  "mode": "core",
+  "profile_duration_ns": 30050023625,
+  "access_unit_calls": 7579,
+  "profile_thread_samples": 16594,
+  "qmf_synthesis_inclusive_samples": 7108,
+  "qmf_synthesis_share_of_profile_percent": 42.83475955164517,
+  "phases": {
+    "state_advance": {
+      "inclusive_samples": 83,
+      "share_of_qmf_synthesis_percent": 1.1676983680360158,
+      "share_of_profile_percent": 0.5001807882367121
+    },
+    "modulation": {
+      "inclusive_samples": 6864,
+      "share_of_qmf_synthesis_percent": 96.56724817107485,
+      "share_of_profile_percent": 41.36434855972038
+    },
+    "polyphase_tail": {
+      "inclusive_samples": 159,
+      "share_of_qmf_synthesis_percent": 2.236916150815982,
+      "share_of_profile_percent": 0.9581776545739424
+    },
+    "unclassified": {
+      "inclusive_samples": 2,
+      "share_of_qmf_synthesis_percent": 0.028137310073157007,
+      "share_of_profile_percent": 0.01205254911413764
+    }
+  }
+}

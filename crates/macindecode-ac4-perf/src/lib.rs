@@ -30,7 +30,7 @@ const NANOS_PER_SECOND: u128 = 1_000_000_000;
 
 pub type PerfResult<T> = Result<T, String>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BenchmarkMode {
     Core,
@@ -633,7 +633,7 @@ pub fn nearest_rank(sorted: &[u64], percentile: u32) -> PerfResult<u64> {
         .ok_or_else(|| "nearest-rank result escaped sample bounds".to_owned())
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EnvironmentReport {
     pub generated_at_utc: Option<String>,
     pub architecture: String,
@@ -644,8 +644,8 @@ pub struct EnvironmentReport {
     pub cargo: Option<String>,
     pub git_commit: Option<String>,
     pub git_dirty: Option<bool>,
-    pub build_profile: &'static str,
-    pub target_cpu: &'static str,
+    pub build_profile: String,
+    pub target_cpu: String,
     pub instrumented_allocator: bool,
 }
 
@@ -758,6 +758,7 @@ pub struct ProfileReportSettings {
     pub warmup_passes: u32,
     pub startup_delay_ns: u64,
     pub requested_duration_ns: u64,
+    pub qmf_split_symbols: bool,
     pub loop_boundary: &'static str,
 }
 
@@ -777,6 +778,206 @@ pub struct ProfileResult {
     pub passes: u64,
     pub access_unit_calls: u64,
     pub consumption: ConsumptionReport,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct QmfPhaseSampleCount {
+    pub inclusive_samples: u64,
+    pub share_of_qmf_synthesis_percent: f64,
+    pub share_of_profile_percent: f64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct QmfSynthesisPhaseSamples {
+    pub state_advance: QmfPhaseSampleCount,
+    pub modulation: QmfPhaseSampleCount,
+    pub polyphase_tail: QmfPhaseSampleCount,
+    pub unclassified: QmfPhaseSampleCount,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct QmfSampleSummarySettings {
+    pub sample_interval_us: u64,
+    pub attribution: &'static str,
+    pub required_feature: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct QmfSampleSummary {
+    pub schema: &'static str,
+    pub schema_version: u32,
+    pub kind: &'static str,
+    pub environment: EnvironmentReport,
+    pub settings: QmfSampleSummarySettings,
+    pub input: String,
+    pub mode: BenchmarkMode,
+    pub profile_duration_ns: u64,
+    pub access_unit_calls: u64,
+    pub profile_thread_samples: u64,
+    pub qmf_synthesis_inclusive_samples: u64,
+    pub qmf_synthesis_share_of_profile_percent: f64,
+    pub phases: QmfSynthesisPhaseSamples,
+}
+
+const QMF_SYNTHESIS_SAMPLE_SYMBOL: &str = "macindecode_ac4_bitstream::aspx::qmf::synthesise::h";
+const QMF_STATE_ADVANCE_SAMPLE_SYMBOL: &str =
+    "macindecode_ac4_bitstream::aspx::qmf::advance_synthesis_state::h";
+const QMF_MODULATION_SAMPLE_SYMBOL: &str =
+    "macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::h";
+const QMF_POLYPHASE_SAMPLE_SYMBOL: &str =
+    "macindecode_ac4_bitstream::aspx::qmf::accumulate_synthesis_polyphase::h";
+
+/// 汇总 macOS `sample` 调用树中的 QMF 合成分段 inclusive 样本。
+///
+/// 只读取 `Call graph:` 到 `Total number in stack` 之间的调用树，不读取文件路径、
+/// Binary Images 或 profiler 元数据。三个阶段在同一时刻互斥，因此可从父级
+/// `synthesise` inclusive 样本中扣出未归类的循环/调用开销。
+pub fn summarize_qmf_sample(
+    sample: &str,
+    environment: EnvironmentReport,
+    input: String,
+    mode: BenchmarkMode,
+    profile_duration_ns: u64,
+    access_unit_calls: u64,
+    sample_interval_us: u64,
+) -> PerfResult<QmfSampleSummary> {
+    if input.is_empty() {
+        return Err("QMF sample summary input label must not be empty".to_owned());
+    }
+    if profile_duration_ns == 0 || access_unit_calls == 0 || sample_interval_us == 0 {
+        return Err("QMF sample summary counts and durations must be non-zero".to_owned());
+    }
+    let call_graph = sample_call_graph(sample)?;
+    let profile_thread_samples = call_graph.thread_samples;
+    let qmf_synthesis = call_graph.symbol_samples(QMF_SYNTHESIS_SAMPLE_SYMBOL)?;
+    let state_advance = call_graph.symbol_samples(QMF_STATE_ADVANCE_SAMPLE_SYMBOL)?;
+    let modulation = call_graph.symbol_samples(QMF_MODULATION_SAMPLE_SYMBOL)?;
+    let polyphase_tail = call_graph.symbol_samples(QMF_POLYPHASE_SAMPLE_SYMBOL)?;
+    let classified = state_advance
+        .checked_add(modulation)
+        .and_then(|value| value.checked_add(polyphase_tail))
+        .ok_or_else(|| "QMF phase sample count overflows u64".to_owned())?;
+    let unclassified = qmf_synthesis.checked_sub(classified).ok_or_else(|| {
+        format!("QMF phase samples ({classified}) exceed synthesis samples ({qmf_synthesis})")
+    })?;
+    let phase = |samples| qmf_phase_sample_count(samples, qmf_synthesis, profile_thread_samples);
+    let qmf_synthesis_share_of_profile_percent =
+        sample_percent(qmf_synthesis, profile_thread_samples)?;
+
+    Ok(QmfSampleSummary {
+        schema: REPORT_SCHEMA,
+        schema_version: REPORT_SCHEMA_VERSION,
+        kind: "qmf_sample_summary",
+        environment,
+        settings: QmfSampleSummarySettings {
+            sample_interval_us,
+            attribution: "macOS sample Call graph inclusive symbols",
+            required_feature: "qmf-split-profile",
+        },
+        input,
+        mode,
+        profile_duration_ns,
+        access_unit_calls,
+        profile_thread_samples,
+        qmf_synthesis_inclusive_samples: qmf_synthesis,
+        qmf_synthesis_share_of_profile_percent,
+        phases: QmfSynthesisPhaseSamples {
+            state_advance: phase(state_advance)?,
+            modulation: phase(modulation)?,
+            polyphase_tail: phase(polyphase_tail)?,
+            unclassified: phase(unclassified)?,
+        },
+    })
+}
+
+fn qmf_phase_sample_count(
+    samples: u64,
+    qmf_synthesis_samples: u64,
+    profile_samples: u64,
+) -> PerfResult<QmfPhaseSampleCount> {
+    Ok(QmfPhaseSampleCount {
+        inclusive_samples: samples,
+        share_of_qmf_synthesis_percent: sample_percent(samples, qmf_synthesis_samples)?,
+        share_of_profile_percent: sample_percent(samples, profile_samples)?,
+    })
+}
+
+fn sample_percent(numerator: u64, denominator: u64) -> PerfResult<f64> {
+    if denominator == 0 {
+        return Err("sample percentage denominator must be non-zero".to_owned());
+    }
+    let percent = numerator as f64 * 100.0 / denominator as f64;
+    validate_finite("sample percentage", percent)?;
+    Ok(percent)
+}
+
+#[derive(Debug)]
+struct SampleCallGraph<'a> {
+    thread_samples: u64,
+    lines: Vec<&'a str>,
+}
+
+impl SampleCallGraph<'_> {
+    fn symbol_samples(&self, symbol: &str) -> PerfResult<u64> {
+        let mut total = 0u64;
+        let mut found = false;
+        for line in &self.lines {
+            if let Some((prefix, _)) = line.split_once(symbol) {
+                let samples = prefix
+                    .split_whitespace()
+                    .rev()
+                    .find_map(|token| token.parse::<u64>().ok())
+                    .ok_or_else(|| format!("sample call-graph symbol {symbol:?} has no count"))?;
+                total = total
+                    .checked_add(samples)
+                    .ok_or_else(|| format!("sample call-graph count for {symbol:?} overflows"))?;
+                found = true;
+            }
+        }
+        if !found {
+            return Err(format!("sample call graph is missing symbol {symbol:?}"));
+        }
+        Ok(total)
+    }
+}
+
+fn sample_call_graph(sample: &str) -> PerfResult<SampleCallGraph<'_>> {
+    let mut in_call_graph = false;
+    let mut thread_samples = None;
+    let mut lines = Vec::new();
+    for line in sample.lines() {
+        if line.trim() == "Call graph:" {
+            in_call_graph = true;
+            continue;
+        }
+        if !in_call_graph {
+            continue;
+        }
+        if line.starts_with("Total number in stack") || line.starts_with("Sort by top of stack") {
+            break;
+        }
+        if thread_samples.is_none() && line.contains(" Thread_") {
+            thread_samples = line
+                .split_whitespace()
+                .find_map(|token| token.parse::<u64>().ok());
+        }
+        lines.push(line);
+    }
+    if !in_call_graph {
+        return Err("sample text has no Call graph section".to_owned());
+    }
+    if lines.is_empty() {
+        return Err("sample Call graph section is empty".to_owned());
+    }
+    let thread_samples = thread_samples
+        .ok_or_else(|| "sample Call graph has no main Thread_ sample count".to_owned())?;
+    if thread_samples == 0 {
+        return Err("sample Call graph main thread has zero samples".to_owned());
+    }
+    Ok(SampleCallGraph {
+        thread_samples,
+        lines,
+    })
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -826,8 +1027,9 @@ pub fn environment_report(instrumented_allocator: bool) -> EnvironmentReport {
             "debug"
         } else {
             "release"
-        },
-        target_cpu: "portable-default",
+        }
+        .to_owned(),
+        target_cpu: "portable-default".to_owned(),
         instrumented_allocator,
     }
 }
@@ -1163,6 +1365,75 @@ mod tests {
         assert!(deadline_summary(&zero_samples, 48_000).is_err());
     }
 
+    const QMF_SAMPLE_FIXTURE: &str = r#"
+Analysis of sampling macinac4-perf every 1 millisecond
+Call graph:
+    1000 Thread_123 DispatchQueue_1: com.apple.main-thread
+      + 800 macindecode_ac4_bitstream::aspx::qmf::synthesise::hparent
+      + ! 20 macindecode_ac4_bitstream::aspx::qmf::advance_synthesis_state::hstate
+      + ! : 500 macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::hmod
+      + ! : 230 macindecode_ac4_bitstream::aspx::qmf::accumulate_synthesis_polyphase::htail
+      + 100 macindecode_ac4_bitstream::aspx::qmf::synthesise::hsecond
+      + ! 80 macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::hsecond
+      + ! 20 macindecode_ac4_bitstream::aspx::qmf::accumulate_synthesis_polyphase::hsecond
+
+Total number in stack (recursive counted multiple, when >=5):
+        999 macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::hignored
+"#;
+
+    #[test]
+    fn qmf_sample_summary_uses_inclusive_call_graph_counts_only() {
+        let summary = summarize_qmf_sample(
+            QMF_SAMPLE_FIXTURE,
+            environment_report(false),
+            "case/input.m4a".to_owned(),
+            BenchmarkMode::Full,
+            20_000_000_000,
+            3_432,
+            1_000,
+        )
+        .expect("synthetic macOS sample call graph should summarize");
+
+        assert_eq!(summary.profile_thread_samples, 1_000);
+        assert_eq!(summary.qmf_synthesis_inclusive_samples, 900);
+        assert_eq!(summary.phases.state_advance.inclusive_samples, 20);
+        assert_eq!(summary.phases.modulation.inclusive_samples, 580);
+        assert_eq!(summary.phases.polyphase_tail.inclusive_samples, 250);
+        assert_eq!(summary.phases.unclassified.inclusive_samples, 50);
+        assert_eq!(summary.qmf_synthesis_share_of_profile_percent, 90.0);
+        assert_eq!(
+            summary.phases.modulation.share_of_qmf_synthesis_percent,
+            580.0 * 100.0 / 900.0
+        );
+
+        assert!(
+            summarize_qmf_sample(
+                "no call graph",
+                environment_report(false),
+                "case/input.m4a".to_owned(),
+                BenchmarkMode::Core,
+                1,
+                1,
+                1,
+            )
+            .is_err()
+        );
+        let impossible = QMF_SAMPLE_FIXTURE.replacen("+ 800", "+ 10", 1);
+        assert!(
+            summarize_qmf_sample(
+                &impossible,
+                environment_report(false),
+                "case/input.m4a".to_owned(),
+                BenchmarkMode::Core,
+                1,
+                1,
+                1,
+            )
+            .is_err(),
+            "三个阶段的 inclusive 样本不得超过父级 synthesis"
+        );
+    }
+
     #[test]
     fn reports_have_versioned_required_fields() {
         let timing = TimingReport::new(
@@ -1198,6 +1469,7 @@ mod tests {
                 warmup_passes: 1,
                 startup_delay_ns: 3_000_000_000,
                 requested_duration_ns: 30_000_000_000,
+                qmf_split_symbols: false,
                 loop_boundary: "PreparedCase::decode_pass",
             },
             input: "case/input.m4a".to_owned(),
@@ -1215,6 +1487,16 @@ mod tests {
                 token: 0,
             },
         };
+        let qmf_summary = summarize_qmf_sample(
+            QMF_SAMPLE_FIXTURE,
+            environment_report(false),
+            "case/input.m4a".to_owned(),
+            BenchmarkMode::Full,
+            20_000_000_000,
+            3_432,
+            1_000,
+        )
+        .expect("QMF summary fixture must parse");
 
         for (report, kind, result_field) in [
             (
@@ -1231,6 +1513,11 @@ mod tests {
                 serde_json::to_value(profile).expect("profile report must serialize"),
                 "profile",
                 "access_unit_calls",
+            ),
+            (
+                serde_json::to_value(qmf_summary).expect("QMF summary must serialize"),
+                "qmf_sample_summary",
+                "phases",
             ),
         ] {
             assert_eq!(

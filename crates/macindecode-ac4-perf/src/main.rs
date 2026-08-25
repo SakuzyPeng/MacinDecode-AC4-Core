@@ -3,9 +3,10 @@ use macindecode_ac4_perf::{
     BenchmarkMode, Consumption, ConsumptionReport, PerfResult, PreparedCase, ProfileReportSettings,
     ProfileResult, REPORT_SCHEMA, REPORT_SCHEMA_VERSION, TimingReport, TimingReportSettings,
     TimingSettings, WORST_ACCESS_UNIT_LIMIT, environment_report, load_manifest, run_timing_case,
+    summarize_qmf_sample,
 };
 use macindecode_ac4_scene::PresentationSelection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::hint::black_box;
 use std::io::{self, Write};
@@ -41,6 +42,8 @@ enum Command {
     Allocations(AllocationArgs),
     /// Run one prepared input repeatedly so an external sampling profiler can attach.
     Profile(ProfileArgs),
+    /// Summarize QMF split symbols from a macOS sample call graph.
+    QmfSampleSummary(QmfSampleSummaryArgs),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -143,6 +146,25 @@ struct ProfileArgs {
     output: Option<PathBuf>,
 }
 
+#[derive(Debug, Args)]
+struct QmfSampleSummaryArgs {
+    /// Raw text emitted by macOS `sample` for a qmf-split-profile build.
+    #[arg(long)]
+    sample: PathBuf,
+
+    /// Profile JSON emitted by the sampled process.
+    #[arg(long)]
+    profile: PathBuf,
+
+    /// Sampling interval used by macOS `sample`, in microseconds.
+    #[arg(long, default_value_t = 1_000)]
+    sample_interval_us: u64,
+
+    /// Pretty-printed, path-sanitized JSON destination.
+    #[arg(long, default_value = "target/perf/m4-pro-qmf-sample-summary.json")]
+    output: PathBuf,
+}
+
 fn main() -> ExitCode {
     match run(Cli::parse()) {
         Ok(()) => ExitCode::SUCCESS,
@@ -158,6 +180,7 @@ fn run(cli: Cli) -> PerfResult<()> {
         Command::Timing(args) => run_timing(args),
         Command::Allocations(args) => run_allocations(args),
         Command::Profile(args) => run_profile(args),
+        Command::QmfSampleSummary(args) => run_qmf_sample_summary(args),
     }
 }
 
@@ -165,6 +188,12 @@ fn run_timing(args: TimingArgs) -> PerfResult<()> {
     if cfg!(feature = "allocation-stats") {
         return Err(
             "timing must be built without allocation-stats so allocator instrumentation cannot skew latency"
+                .to_owned(),
+        );
+    }
+    if cfg!(feature = "qmf-split-profile") {
+        return Err(
+            "timing must be built without qmf-split-profile so no-inline markers cannot skew latency"
                 .to_owned(),
         );
     }
@@ -215,6 +244,12 @@ fn run_timing(args: TimingArgs) -> PerfResult<()> {
 }
 
 fn run_allocations(args: AllocationArgs) -> PerfResult<()> {
+    if cfg!(feature = "qmf-split-profile") {
+        return Err(
+            "allocations must be built without qmf-split-profile so profiling markers stay isolated"
+                .to_owned(),
+        );
+    }
     #[cfg(not(feature = "allocation-stats"))]
     {
         let _ = args;
@@ -358,6 +393,7 @@ fn run_profile(args: ProfileArgs) -> PerfResult<()> {
             warmup_passes: 1,
             startup_delay_ns: duration_ns(startup_delay)?,
             requested_duration_ns: duration_ns(duration)?,
+            qmf_split_symbols: cfg!(feature = "qmf-split-profile"),
             loop_boundary: "PreparedCase::decode_pass",
         },
         input: prepared.key().to_owned(),
@@ -373,6 +409,66 @@ fn run_profile(args: ProfileArgs) -> PerfResult<()> {
         consumption: ConsumptionReport::from(consumption),
     };
     write_json(&result, args.output.as_deref())
+}
+
+#[derive(Debug, Deserialize)]
+struct ProfileSummaryInput {
+    schema: String,
+    schema_version: u32,
+    kind: String,
+    environment: macindecode_ac4_perf::EnvironmentReport,
+    settings: ProfileSummarySettingsInput,
+    input: String,
+    mode: BenchmarkMode,
+    duration_ns: u64,
+    access_unit_calls: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProfileSummarySettingsInput {
+    qmf_split_symbols: bool,
+}
+
+fn run_qmf_sample_summary(args: QmfSampleSummaryArgs) -> PerfResult<()> {
+    let profile_bytes = fs::read(&args.profile).map_err(|error| {
+        format!(
+            "cannot read QMF profile metadata {}: {error}",
+            args.profile.display()
+        )
+    })?;
+    let profile: ProfileSummaryInput = serde_json::from_slice(&profile_bytes).map_err(|error| {
+        format!(
+            "invalid QMF profile metadata {}: {error}",
+            args.profile.display()
+        )
+    })?;
+    if profile.schema != REPORT_SCHEMA
+        || profile.schema_version != REPORT_SCHEMA_VERSION
+        || profile.kind != "profile"
+    {
+        return Err("QMF sample summary requires a compatible profile JSON".to_owned());
+    }
+    if !profile.settings.qmf_split_symbols {
+        return Err(
+            "QMF sample summary requires a profile built with qmf-split-profile".to_owned(),
+        );
+    }
+    let sample = fs::read_to_string(&args.sample).map_err(|error| {
+        format!(
+            "cannot read macOS sample text {}: {error}",
+            args.sample.display()
+        )
+    })?;
+    let summary = summarize_qmf_sample(
+        &sample,
+        profile.environment,
+        profile.input,
+        profile.mode,
+        profile.duration_ns,
+        profile.access_unit_calls,
+        args.sample_interval_us,
+    )?;
+    write_json(&summary, Some(&args.output))
 }
 
 fn duration_ns(duration: Duration) -> PerfResult<u64> {

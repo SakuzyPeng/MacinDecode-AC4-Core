@@ -196,11 +196,61 @@ pub fn analyse(
     Ok(())
 }
 
+#[cfg_attr(feature = "qmf-split-profile", inline(never))]
+#[cfg_attr(not(feature = "qmf-split-profile"), inline(always))]
+fn advance_synthesis_state(state: &mut QmfSynthesisState) {
+    state.filt.copy_within(0..SYNTH_STATE - FOLDED, FOLDED);
+    #[cfg(feature = "qmf-split-profile")]
+    core::hint::black_box(state.filt[FOLDED]);
+}
+
+#[cfg_attr(feature = "qmf-split-profile", inline(never))]
+#[cfg_attr(not(feature = "qmf-split-profile"), inline(always))]
+fn modulate_synthesis_slot(slot: &QmfSlot, state: &mut QmfSynthesisState) {
+    // 复数子带经 N 矩阵回到 128 个实数样本；`1/64` 是规范写在矩阵里的。
+    for n in 0..FOLDED {
+        let mut sum = 0.0f64;
+        for sb in 0..SUBBANDS {
+            let (cos, sin) = synthesis_phase(sb, n);
+            sum += f64::from(slot.re[sb]) * cos - f64::from(slot.im[sb]) * sin;
+        }
+        state.filt[n] = (sum / SUBBANDS as f64) as f32;
+    }
+}
+
+#[cfg_attr(feature = "qmf-split-profile", inline(never))]
+#[cfg_attr(not(feature = "qmf-split-profile"), inline(always))]
+fn accumulate_synthesis_polyphase(
+    state: &QmfSynthesisState,
+    windowed: &mut [f64; NUM_QMF_WIN_COEF],
+    pcm: &mut [f32],
+    timeslot: usize,
+) {
+    // 抽取 g、加窗、按 64 相位求和。
+    for n in 0..5 {
+        for sb in 0..SUBBANDS {
+            let low = FOLDED * n + sb;
+            let high = FOLDED * n + SUBBANDS + sb;
+            windowed[low] = f64::from(state.filt[2 * FOLDED * n + sb]) * f64::from(QMF_WINDOW[low]);
+            windowed[high] = f64::from(state.filt[2 * FOLDED * n + 3 * SUBBANDS + sb])
+                * f64::from(QMF_WINDOW[high]);
+        }
+    }
+    for sb in 0..SUBBANDS {
+        let mut sum = 0.0f64;
+        for n in 0..10 {
+            sum += windowed[SUBBANDS * n + sb];
+        }
+        pcm[timeslot * SUBBANDS + sb] = sum as f32;
+    }
+}
+
 /// `Pseudocode 66` 的合成滤波。
 ///
 /// # Errors
 ///
 /// 长度不成立时返回 [`QmfError`]，且不改写状态。
+#[cfg_attr(feature = "qmf-split-profile", inline(never))]
 pub fn synthesise(
     slots: &[QmfSlot],
     state: &mut QmfSynthesisState,
@@ -219,36 +269,9 @@ pub fn synthesise(
 
     let mut windowed = [0.0f64; NUM_QMF_WIN_COEF];
     for (ts, slot) in slots.iter().enumerate() {
-        state.filt.copy_within(0..SYNTH_STATE - FOLDED, FOLDED);
-
-        // 复数子带经 N 矩阵回到 128 个实数样本；`1/64` 是规范写在矩阵里的。
-        for n in 0..FOLDED {
-            let mut sum = 0.0f64;
-            for sb in 0..SUBBANDS {
-                let (cos, sin) = synthesis_phase(sb, n);
-                sum += f64::from(slot.re[sb]) * cos - f64::from(slot.im[sb]) * sin;
-            }
-            state.filt[n] = (sum / SUBBANDS as f64) as f32;
-        }
-
-        // 抽取 g、加窗、按 64 相位求和。
-        for n in 0..5 {
-            for sb in 0..SUBBANDS {
-                let low = FOLDED * n + sb;
-                let high = FOLDED * n + SUBBANDS + sb;
-                windowed[low] =
-                    f64::from(state.filt[2 * FOLDED * n + sb]) * f64::from(QMF_WINDOW[low]);
-                windowed[high] = f64::from(state.filt[2 * FOLDED * n + 3 * SUBBANDS + sb])
-                    * f64::from(QMF_WINDOW[high]);
-            }
-        }
-        for sb in 0..SUBBANDS {
-            let mut sum = 0.0f64;
-            for n in 0..10 {
-                sum += windowed[SUBBANDS * n + sb];
-            }
-            pcm[ts * SUBBANDS + sb] = sum as f32;
-        }
+        advance_synthesis_state(state);
+        modulate_synthesis_slot(slot, state);
+        accumulate_synthesis_polyphase(state, &mut windowed, pcm, ts);
     }
     Ok(())
 }
@@ -374,6 +397,90 @@ mod tests {
                 ((state >> 40) as i32 - 8_388_608) as f32 / 8_388_608.0
             })
             .collect()
+    }
+
+    /// 拆分前 `Pseudocode 66` 的字面实现，仅用于锁定符号级归因改写的逐位等价性。
+    fn synthesise_monolithic_reference(
+        slots: &[QmfSlot],
+        state: &mut QmfSynthesisState,
+        pcm: &mut [f32],
+    ) {
+        assert_eq!(pcm.len(), slots.len() * SUBBANDS);
+        let mut windowed = [0.0f64; NUM_QMF_WIN_COEF];
+        for (ts, slot) in slots.iter().enumerate() {
+            state.filt.copy_within(0..SYNTH_STATE - FOLDED, FOLDED);
+            for n in 0..FOLDED {
+                let mut sum = 0.0f64;
+                for sb in 0..SUBBANDS {
+                    let (cos, sin) = synthesis_phase(sb, n);
+                    sum += f64::from(slot.re[sb]) * cos - f64::from(slot.im[sb]) * sin;
+                }
+                state.filt[n] = (sum / SUBBANDS as f64) as f32;
+            }
+            for n in 0..5 {
+                for sb in 0..SUBBANDS {
+                    let low = FOLDED * n + sb;
+                    let high = FOLDED * n + SUBBANDS + sb;
+                    windowed[low] =
+                        f64::from(state.filt[2 * FOLDED * n + sb]) * f64::from(QMF_WINDOW[low]);
+                    windowed[high] = f64::from(state.filt[2 * FOLDED * n + 3 * SUBBANDS + sb])
+                        * f64::from(QMF_WINDOW[high]);
+                }
+            }
+            for sb in 0..SUBBANDS {
+                let mut sum = 0.0f64;
+                for n in 0..10 {
+                    sum += windowed[SUBBANDS * n + sb];
+                }
+                pcm[ts * SUBBANDS + sb] = sum as f32;
+            }
+        }
+    }
+
+    fn deterministic_slots(count: usize) -> Vec<QmfSlot> {
+        let values = deterministic_signal(count * 2 * SUBBANDS);
+        let mut slots = vec![QmfSlot::zero(); count];
+        for (index, slot) in slots.iter_mut().enumerate() {
+            let start = index * 2 * SUBBANDS;
+            slot.re.copy_from_slice(&values[start..start + SUBBANDS]);
+            slot.im
+                .copy_from_slice(&values[start + SUBBANDS..start + 2 * SUBBANDS]);
+        }
+        slots
+    }
+
+    #[test]
+    fn split_synthesis_phases_are_bit_exact_to_monolithic_reference() {
+        let slots = deterministic_slots(19);
+        let mut split_state = QmfSynthesisState::new();
+        let mut reference_state = QmfSynthesisState::new();
+
+        for (call_index, frame) in [&slots[..7], &slots[7..]].into_iter().enumerate() {
+            let mut split = vec![0.0f32; frame.len() * SUBBANDS];
+            let mut reference = vec![0.0f32; frame.len() * SUBBANDS];
+            synthesise(frame, &mut split_state, &mut split).expect("拆分实现应成功");
+            synthesise_monolithic_reference(frame, &mut reference_state, &mut reference);
+
+            for (sample_index, (split, reference)) in split.iter().zip(&reference).enumerate() {
+                assert_eq!(
+                    split.to_bits(),
+                    reference.to_bits(),
+                    "调用 {call_index} 的 PCM 样本 {sample_index} 必须逐位相同"
+                );
+            }
+            for (state_index, (split, reference)) in split_state
+                .filt
+                .iter()
+                .zip(&reference_state.filt)
+                .enumerate()
+            {
+                assert_eq!(
+                    split.to_bits(),
+                    reference.to_bits(),
+                    "调用 {call_index} 的状态 {state_index} 必须逐位相同"
+                );
+            }
+        }
     }
 
     /// 分析接合成必须重建原信号，只差固定延迟。
