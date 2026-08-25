@@ -1,0 +1,439 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "allocations",
+  "environment": {
+    "generated_at_utc": "2026-08-25T01:40:33Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "0ca1fdb408b2be43d418cddf3ad9c99bf6a0e813",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": true
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "modes": [
+      "core",
+      "full"
+    ],
+    "warmup_passes": 1,
+    "measured_passes": 1,
+    "measured_boundary": "Ac4DecoderSession::decode_access_unit"
+  },
+  "cases": [
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples": 100352,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples": 100352,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples": 100352,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples": 100352,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples": 292864,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples": 86016,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples": 86016,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples": 86016,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples": 86016,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples": 102400,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples": 102400,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples": 102400,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples": 102400,
+      "stats": {
+        "allocations": 0,
+        "deallocations": 0,
+        "reallocations": 0,
+        "bytes_allocated": 0,
+        "bytes_deallocated": 0,
+        "bytes_reallocated": 0
+      },
+      "allocation_free": true,
+      "heap_operation_free": true
+    }
+  ]
+}

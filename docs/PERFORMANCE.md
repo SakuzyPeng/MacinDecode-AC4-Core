@@ -1,0 +1,175 @@
+# AC-4 解码性能基线
+
+本报告记录 2026-08-25 在 Apple M4 Pro ARM64 上完成的首份 Core/Full 解码性能基线。范围是
+`vectors/objects_baseline.json` 中 12 条真实 A-JOC 媒体及其 `presentation_overrides`，共 24 个
+“媒体 × 模式”组合。本轮只建立测量工具和人工分析基线，没有修改 DSP、PCM 数值路径或公共 API，
+也没有引入 SIMD 和自动性能门禁。
+
+原始结果：
+
+- [timing JSON](experiments/m4_pro_decode_timing.json)
+- [allocation JSON](experiments/m4_pro_decode_allocations.json)
+
+## 结论
+
+- 24/24 组合均成功完成，无 decode error、`WaitingForRandomAccess`、空输入或非有限指标。
+- Core 为 `11.45x`–`22.81x` 实时且无 deadline miss；Full 为 `5.14x`–`7.16x` 实时，
+  记录到 1 次 deadline miss。
+- 最差单 AU 预算占用为 Core `24.59%`。Full 的绝大多数调用保有明显余量，但正式运行捕获到
+  一个 56.114 ms 极值，预算占用 `131.52%`；该样本未被过滤或隐藏。
+- 完整预热并复用 `Ac4DecoderSession` 容量后，24/24 组合的 allocation、reallocation 和
+  deallocation 都为零。
+- Core 和 Full 的第一热点都是 QMF；Full 的前三大 top-of-stack 符号依次为 QMF 合成、
+  A-JOC 重建和 QMF 分析。因此后续若单独立项优化，首先应验证 QMF 分析/合成，再评估
+  A-JOC 重建；本轮不据此改变实现。
+
+## 测量环境
+
+| 项目 | 值 |
+| --- | --- |
+| CPU / 架构 | Apple M4 Pro / ARM64 (`aarch64`) |
+| 内存 | 51,539,607,552 bytes（约 48 GiB） |
+| 系统 | macOS 27.0 |
+| Rust | 1.96.0 (`rustc 1.96.0 (ac68faa20 2026-05-25)`) |
+| Cargo | 1.96.0 |
+| 构建 | 普通 `--release`，`target_cpu = portable-default` |
+| timing 生成时间 | 2026-08-25 01:56:39 UTC |
+| allocation 生成时间 | 2026-08-25 01:40:33 UTC |
+| 被测提交 | `0ca1fdb408b2be43d418cddf3ad9c99bf6a0e813`；工作树包含本次性能工具改动 |
+
+## 测量边界与方法
+
+`macindecode-ac4-perf` 是 `publish = false` 的内部 workspace crate。它先通过
+`macindecode-ac4-mp4` 使用的同一组 MP4 primitive 读取 sample table，把整个文件和 AU 保存为
+已检查的字节范围，并预先构造准确的 `AccessUnitContext`。文件 I/O、MP4 sample table、edit
+计算、manifest/presentation 选择和 JSON 序列化全部在计时区外；计时边界只包围
+`Ac4DecoderSession::decode_access_unit`，Core 模式不启用 core-band diagnostics。
+
+timing 对每个组合执行 20 次全新 Session 的首 AU 测量；随后完成一个完整预热 pass，调用
+`reset` 并复用 Session 容量。稳态测量至少运行 5 个完整 pass、累计至少 2 秒，最多 30 pass；
+本次实际范围为 Core 5–22 pass、Full 5–7 pass。百分位采用 nearest-rank。实时预算按每个 AU
+实际解码采样数和 48 kHz 采样率计算；典型 2,048-sample AU 的预算为 42.67 ms，而不是对所有
+AU 使用固定常数。
+
+allocation 使用 `stats_alloc 0.1.10` 的独立构建。每个组合先完整预热并 `reset`，再统计一个完整
+pass；统计构建的执行时间不作为 timing 数据。所有 Session 都关闭 core-band diagnostics。
+
+## 稳态延迟
+
+| 模式 | 实时倍速范围 | 最慢整案 | 最差 p99 | 最大单 AU | 最差预算占用 | deadline miss | 冷启动首 AU 最大值 |
+| --- | ---: | --- | --- | --- | ---: | ---: | --- |
+| Core | 11.45x–22.81x | DME L4 1500K：11.45x | 4.846 ms，DME L3 768K | 10.494 ms，DME L3 768K | 24.59% | 0 | 4.350 ms，标准 1500K |
+| Full | 5.14x–7.16x | 标准 1500K：5.14x | 9.578 ms，subframe control 768K | 56.114 ms，标准 1500K | 131.52% | 1 | 6.633 ms，标准 1500K |
+
+这里的“最慢整案”按整个媒体的总解码时间计算；p99、max 和预算占用分别在同模式的 12 个案例中
+独立取最差值，因此不一定来自同一个媒体。每个案例的 ns/AU、p50、p95、p99、max、逐 AU
+计算的最坏预算比例及运行 pass 数均保存在 timing JSON 中。Full 的一次 miss 来自标准 1500K
+案例 715 次稳态调用中的单个 56.114 ms 样本；该案例 p99 为 9.026 ms，说明 max 是孤立极值，
+但本基线仍按实际观测保留并计为 miss。
+
+## 稳态分配
+
+24/24 组合在一个完整稳态 pass 内均得到以下结果：
+
+| 指标 | 合计 |
+| --- | ---: |
+| allocations | 0 |
+| reallocations | 0 |
+| deallocations | 0 |
+| bytes allocated | 0 |
+| bytes reallocated | 0 |
+| bytes deallocated | 0 |
+
+这只证明当前 12 条媒体、Core/Full 两种模式在“完整预热后复用同一 Session”的边界内无堆操作；
+不代表 Session 创建、首次容量增长、MP4 预解析、出口制品组装或其他尚未覆盖码流也无分配。
+
+## CPU 热点
+
+固定输入为 `probe_axes_single_object/master_ac4_1500K.m4a`。每种模式先完整预热，再循环解码约
+30 秒；macOS `sample` 以 1 ms 间隔抓取 20 秒。Full profile 完成 24 pass / 3,432 次 AU 调用，
+Core 完成 52 pass / 7,436 次 AU 调用。原始 `sample` 文本保留在 `target/perf/`，不进入版本控制。
+
+### 组件归并
+
+| 组件 | Core 样本 | Core 占比 | Full 样本 | Full 占比 |
+| --- | ---: | ---: | ---: | ---: |
+| 解析 / 熵解码 | 54 | 0.33% | 28 | 0.17% |
+| ASF / IMDCT | 1,162 | 7.00% | 541 | 3.25% |
+| A-SPX / QMF | 14,629 | 88.19% | 12,283 | 73.75% |
+| A-JOC 重建 | 0 | 0.00% | 3,084 | 18.52% |
+| Scene 组装 | 163 | 0.98% | 105 | 0.63% |
+| 其他 | 581 | 3.50% | 613 | 3.68% |
+| 合计 | 16,589 | 100.00% | 16,654 | 100.00% |
+
+归并基于 top-of-stack 符号的 namespace 和调用祖先。由 A-SPX 调用的通用 `math` 符号归入
+A-SPX/QMF；系统等待、内存 primitive 和未归类框架开销归入“其他”。这是采样归因，用于识别
+热点优先级，不是插桩得到的精确阶段耗时。
+
+### Core top-of-stack 前十
+
+| 排名 | 符号（省略 crate 前缀与 hash） | 样本 | 占比 |
+| ---: | --- | ---: | ---: |
+| 1 | `aspx::qmf::synthesise` | 7,241 | 43.65% |
+| 2 | `aspx::qmf::analyse` | 6,232 | 37.57% |
+| 3 | `asf::imdct::ifft::stockham_stage` | 612 | 3.69% |
+| 4 | `_platform_memmove` | 361 | 2.18% |
+| 5 | `math::log2` | 359 | 2.16% |
+| 6 | `asf::imdct::transform::transform` | 221 | 1.33% |
+| 7 | `full_ajoc::asf::FullAjocAsfDecoder::decode_frame` | 199 | 1.20% |
+| 8 | `aspx::tna::prediction_filters` | 179 | 1.08% |
+| 9 | `frame_alignment::FrameAlignmentState::process` | 114 | 0.69% |
+| 10 | `aspx::preflatten::pre_flatten` | 96 | 0.58% |
+
+### Full top-of-stack 前十
+
+| 排名 | 符号（省略 crate 前缀与 hash） | 样本 | 占比 |
+| ---: | --- | ---: | ---: |
+| 1 | `aspx::qmf::synthesise` | 8,966 | 53.84% |
+| 2 | `ajoc::reconstruction::reconstruct_frame` | 2,919 | 17.53% |
+| 3 | `aspx::qmf::analyse` | 2,831 | 17.00% |
+| 4 | `_platform_memmove` | 325 | 1.95% |
+| 5 | `asf::imdct::ifft::stockham_stage` | 278 | 1.67% |
+| 6 | `math::log2` | 162 | 0.97% |
+| 7 | `ajoc::decorrelator::process_timeslot` | 141 | 0.85% |
+| 8 | `__semwait_signal` | 101 | 0.61% |
+| 9 | `asf::imdct::transform::transform` | 100 | 0.60% |
+| 10 | `full_ajoc::asf::FullAjocAsfDecoder::decode_frame` | 99 | 0.59% |
+
+`__semwait_signal` 来自 profiler 在 3 秒 attach 窗口结束前捕获的少量等待样本，已归入“其他”。
+
+## 复现命令
+
+从仓库根目录运行普通 portable release 构建：
+
+```bash
+cargo run --release -p macindecode-ac4-perf --features audio-decode -- \
+  timing --output target/perf/m4-pro-timing.json
+
+cargo run --release -p macindecode-ac4-perf \
+  --features audio-decode,allocation-stats -- \
+  allocations --output target/perf/m4-pro-allocations.json
+```
+
+热点采样分别把 `--mode` 设为 `core` 和 `full`：
+
+```bash
+cargo run --release -p macindecode-ac4-perf --features audio-decode -- \
+  profile --mode full --duration-seconds 30 \
+  --output target/perf/m4-pro-full-profile.json
+```
+
+看到 `PROFILE_READY pid=<pid>` 后，在另一个终端执行：
+
+```bash
+sample <pid> 20 1 -file target/perf/m4-pro-full.sample.txt
+```
+
+不要把 `target/perf/*.sample.txt` 加入版本控制；其中包含本机 profiler 元数据。正式 JSON 只记录
+相对输入标识、运行参数、机器信息和指标，不记录媒体内容或私有工具路径。
+
+## 基线边界
+
+本数据仅代表当前 M4 Pro、当前 12 条 A-JOC 长帧向量和当前 portable release 实现，是人工分析
+基线，不是 CI 门禁。它尚未覆盖 x86-64、短帧、channel-based、direct-object、C ABI、fuzz、
+长期运行或未来 SIMD 路径。任何后续性能改动都应独立立项，并继续通过现有逐位 PCM 基线后再
+与本报告比较。

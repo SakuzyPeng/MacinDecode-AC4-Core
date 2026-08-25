@@ -5,6 +5,7 @@ members = [
     "crates/macindecode-ac4-scene",
     "crates/macindecode-ac4-mp4",
     "crates/macindecode-ac4-cli",
+    "crates/macindecode-ac4-perf",
 ]
 
 [workspace.package]

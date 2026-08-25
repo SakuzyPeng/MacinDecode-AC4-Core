@@ -1,0 +1,34 @@
+[package]
+name = "macindecode-ac4-perf"
+description = "Internal performance harness for MacinDecode AC-4"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "macinac4-perf"
+path = "src/main.rs"
+required-features = ["audio-decode"]
+
+[features]
+default = []
+audio-decode = [
+    "macindecode-ac4-bitstream/audio-decode",
+    "macindecode-ac4-scene/audio-decode",
+]
+allocation-stats = ["dep:stats_alloc"]
+
+[dependencies]
+clap = { version = "4.6", features = ["derive"] }
+macindecode-ac4-bitstream.workspace = true
+macindecode-ac4-mp4.workspace = true
+macindecode-ac4-scene.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+stats_alloc = { version = "0.1.10", optional = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,802 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "timing",
+  "environment": {
+    "generated_at_utc": "2026-08-25T01:56:39Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "0ca1fdb408b2be43d418cddf3ad9c99bf6a0e813",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "modes": [
+      "core",
+      "full"
+    ],
+    "cold_runs": 20,
+    "warmup_passes": 1,
+    "min_passes": 5,
+    "min_time_ns": 2000000000,
+    "max_passes": 30,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit"
+  },
+  "cases": [
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3682058.35,
+        "p50_ns": 3629500,
+        "p95_ns": 3887834,
+        "p99_ns": 4349708,
+        "max_ns": 4349708
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 2648439410,
+        "realtime_factor": 11.51873308918427,
+        "ns_per_audio_sample": 1808.6479799497379,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 3704111.062937063,
+          "p50_ns": 3704708,
+          "p95_ns": 3844208,
+          "p99_ns": 3888833,
+          "max_ns": 3943709
+        },
+        "worst_deadline_ratio": 0.0924306796875,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 6405193.7,
+        "p50_ns": 6389625,
+        "p95_ns": 6608084,
+        "p99_ns": 6632584,
+        "max_ns": 6632584
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 5932078538,
+        "realtime_factor": 5.142660615709243,
+        "ns_per_audio_sample": 4051.0807323535837,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 8296613.339860139,
+          "p50_ns": 8189041,
+          "p95_ns": 8425792,
+          "p99_ns": 9025875,
+          "max_ns": 56114083
+        },
+        "worst_deadline_ratio": 1.3151738203125,
+        "deadline_misses": 1
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3011087.55,
+        "p50_ns": 2990667,
+        "p95_ns": 3140000,
+        "p99_ns": 3162083,
+        "max_ns": 3162083
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 2199503293,
+        "realtime_factor": 13.869798132949041,
+        "ns_per_audio_sample": 1502.064639559659,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 3076228.381818182,
+          "p50_ns": 3075417,
+          "p95_ns": 3193125,
+          "p99_ns": 3267916,
+          "max_ns": 3296417
+        },
+        "worst_deadline_ratio": 0.0772597734375,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5886762.55,
+        "p50_ns": 5875167,
+        "p95_ns": 6056583,
+        "p99_ns": 6062083,
+        "max_ns": 6062083
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 5365288209,
+        "realtime_factor": 5.685932512533674,
+        "ns_per_audio_sample": 3664.0134731479457,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 7503899.593006993,
+          "p50_ns": 7451250,
+          "p95_ns": 7660125,
+          "p99_ns": 9008166,
+          "max_ns": 18901625
+        },
+        "worst_deadline_ratio": 0.4430068359375,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 2482952.05,
+        "p50_ns": 2465917,
+        "p95_ns": 2603291,
+        "p99_ns": 2606000,
+        "max_ns": 2606000
+      },
+      "steady": {
+        "passes": 6,
+        "calls": 858,
+        "total_decode_ns": 2158170709,
+        "realtime_factor": 16.96251359882579,
+        "ns_per_audio_sample": 1228.1984749462777,
+        "latency": {
+          "samples": 858,
+          "mean_ns": 2515350.4766899766,
+          "p50_ns": 2462709,
+          "p95_ns": 2586416,
+          "p99_ns": 4846333,
+          "max_ns": 10493667
+        },
+        "worst_deadline_ratio": 0.24594532031250002,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 4555422.95,
+        "p50_ns": 4516542,
+        "p95_ns": 4718625,
+        "p99_ns": 4765292,
+        "max_ns": 4765292
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 4260424426,
+        "realtime_factor": 7.160475956455017,
+        "ns_per_audio_sample": 2909.4900199409967,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 5958635.560839161,
+          "p50_ns": 5958541,
+          "p95_ns": 6129041,
+          "p99_ns": 6186083,
+          "max_ns": 10724167
+        },
+        "worst_deadline_ratio": 0.25134766406250003,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3610227.1,
+        "p50_ns": 3586167,
+        "p95_ns": 3750208,
+        "p99_ns": 3774500,
+        "max_ns": 3774500
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 2663580591,
+        "realtime_factor": 11.453254603876436,
+        "ns_per_audio_sample": 1818.988056572334,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 3725287.53986014,
+          "p50_ns": 3696125,
+          "p95_ns": 3871750,
+          "p99_ns": 3952959,
+          "max_ns": 9906625
+        },
+        "worst_deadline_ratio": 0.23218652343750001,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 6385845.85,
+        "p50_ns": 6373959,
+        "p95_ns": 6542459,
+        "p99_ns": 6560667,
+        "max_ns": 6560667
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 5885664415,
+        "realtime_factor": 5.183215439350982,
+        "ns_per_audio_sample": 4019.3840246667396,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 8231698.482517483,
+          "p50_ns": 8247625,
+          "p95_ns": 8459625,
+          "p99_ns": 8525708,
+          "max_ns": 8616125
+        },
+        "worst_deadline_ratio": 0.2019404296875,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3012785.4,
+        "p50_ns": 2994000,
+        "p95_ns": 3129625,
+        "p99_ns": 3238833,
+        "max_ns": 3238833
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 2199982046,
+        "realtime_factor": 13.866779832196261,
+        "ns_per_audio_sample": 1502.39158517264,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 3076897.9664335665,
+          "p50_ns": 3075750,
+          "p95_ns": 3206709,
+          "p99_ns": 3293500,
+          "max_ns": 3463208
+        },
+        "worst_deadline_ratio": 0.08116893750000001,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5870008.45,
+        "p50_ns": 5862875,
+        "p95_ns": 5996042,
+        "p99_ns": 6051500,
+        "max_ns": 6051500
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 5327500523,
+        "realtime_factor": 5.726262538119448,
+        "ns_per_audio_sample": 3638.2078527917397,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 7451049.682517483,
+          "p50_ns": 7426334,
+          "p95_ns": 7641375,
+          "p99_ns": 8062583,
+          "max_ns": 16490000
+        },
+        "worst_deadline_ratio": 0.38648437500000005,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples_per_pass": 100352,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 1852110.4,
+        "p50_ns": 1836875,
+        "p95_ns": 1975750,
+        "p99_ns": 1981333,
+        "max_ns": 1981333
+      },
+      "steady": {
+        "passes": 22,
+        "calls": 1078,
+        "total_decode_ns": 2015999974,
+        "realtime_factor": 22.8148151090535,
+        "ns_per_audio_sample": 913.1493388726229,
+        "latency": {
+          "samples": 1078,
+          "mean_ns": 1870129.8460111318,
+          "p50_ns": 1866750,
+          "p95_ns": 1965584,
+          "p99_ns": 2008625,
+          "max_ns": 2064333
+        },
+        "worst_deadline_ratio": 0.0483828046875,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples_per_pass": 100352,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 4772054.1,
+        "p50_ns": 4742583,
+        "p95_ns": 4909917,
+        "p99_ns": 4955875,
+        "max_ns": 4955875
+      },
+      "steady": {
+        "passes": 7,
+        "calls": 343,
+        "total_decode_ns": 2063128670,
+        "realtime_factor": 7.093433812185193,
+        "ns_per_audio_sample": 2936.9884720071063,
+        "latency": {
+          "samples": 343,
+          "mean_ns": 6014952.390670554,
+          "p50_ns": 6040458,
+          "p95_ns": 6219958,
+          "p99_ns": 6275000,
+          "max_ns": 6309791
+        },
+        "worst_deadline_ratio": 0.14788572656250001,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples_per_pass": 100352,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 2447799.85,
+        "p50_ns": 2433291,
+        "p95_ns": 2548291,
+        "p99_ns": 2591584,
+        "max_ns": 2591584
+      },
+      "steady": {
+        "passes": 17,
+        "calls": 833,
+        "total_decode_ns": 2088659360,
+        "realtime_factor": 17.016337854791857,
+        "ns_per_audio_sample": 1224.313569177671,
+        "latency": {
+          "samples": 833,
+          "mean_ns": 2507394.1896758704,
+          "p50_ns": 2487917,
+          "p95_ns": 2600583,
+          "p99_ns": 2737000,
+          "max_ns": 7077625
+        },
+        "worst_deadline_ratio": 0.1658818359375,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 49,
+      "codec_samples_per_pass": 100352,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5312489.55,
+        "p50_ns": 5303375,
+        "p95_ns": 5460958,
+        "p99_ns": 5549041,
+        "max_ns": 5549041
+      },
+      "steady": {
+        "passes": 7,
+        "calls": 343,
+        "total_decode_ns": 2315693123,
+        "realtime_factor": 6.319778092058819,
+        "ns_per_audio_sample": 3296.5292498975036,
+        "latency": {
+          "samples": 343,
+          "mean_ns": 6751291.903790087,
+          "p50_ns": 6781917,
+          "p95_ns": 6953917,
+          "p99_ns": 7034083,
+          "max_ns": 7081250
+        },
+        "worst_deadline_ratio": 0.16596679687500002,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 2992247.95,
+        "p50_ns": 2986167,
+        "p95_ns": 3084667,
+        "p99_ns": 3102208,
+        "max_ns": 3102208
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 2190231249,
+        "realtime_factor": 13.928514023619735,
+        "ns_per_audio_sample": 1495.7326602108828,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 3063260.488111888,
+          "p50_ns": 3061208,
+          "p95_ns": 3193791,
+          "p99_ns": 3250375,
+          "max_ns": 3327459
+        },
+        "worst_deadline_ratio": 0.07798732031250001,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 143,
+      "codec_samples_per_pass": 292864,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5858852.1,
+        "p50_ns": 5865417,
+        "p95_ns": 6068917,
+        "p99_ns": 6147208,
+        "max_ns": 6147208
+      },
+      "steady": {
+        "passes": 5,
+        "calls": 715,
+        "total_decode_ns": 5326533917,
+        "realtime_factor": 5.7273016828640735,
+        "ns_per_audio_sample": 3637.5477470771416,
+        "latency": {
+          "samples": 715,
+          "mean_ns": 7449697.786013986,
+          "p50_ns": 7461250,
+          "p95_ns": 7653791,
+          "p99_ns": 7708208,
+          "max_ns": 7733541
+        },
+        "worst_deadline_ratio": 0.1812548671875,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples_per_pass": 86016,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 2989470.8,
+        "p50_ns": 2961458,
+        "p95_ns": 3094625,
+        "p99_ns": 3342709,
+        "max_ns": 3342709
+      },
+      "steady": {
+        "passes": 16,
+        "calls": 672,
+        "total_decode_ns": 2064605447,
+        "realtime_factor": 13.887399184024336,
+        "ns_per_audio_sample": 1500.160905383882,
+        "latency": {
+          "samples": 672,
+          "mean_ns": 3072329.5342261903,
+          "p50_ns": 3070917,
+          "p95_ns": 3209792,
+          "p99_ns": 3250208,
+          "max_ns": 3330042
+        },
+        "worst_deadline_ratio": 0.078047859375,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples_per_pass": 86016,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5806760.4,
+        "p50_ns": 5803083,
+        "p95_ns": 5922916,
+        "p99_ns": 6055708,
+        "max_ns": 6055708
+      },
+      "steady": {
+        "passes": 7,
+        "calls": 294,
+        "total_decode_ns": 2180394243,
+        "realtime_factor": 5.7530880207887245,
+        "ns_per_audio_sample": 3621.2436274314414,
+        "latency": {
+          "samples": 294,
+          "mean_ns": 7416306.948979592,
+          "p50_ns": 7443750,
+          "p95_ns": 7684208,
+          "p99_ns": 7769042,
+          "max_ns": 7793458
+        },
+        "worst_deadline_ratio": 0.182659171875,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples_per_pass": 86016,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3006377.2,
+        "p50_ns": 3004042,
+        "p95_ns": 3100542,
+        "p99_ns": 3110583,
+        "max_ns": 3110583
+      },
+      "steady": {
+        "passes": 16,
+        "calls": 672,
+        "total_decode_ns": 2079120833,
+        "realtime_factor": 13.790444280541726,
+        "ns_per_audio_sample": 1510.7079155331567,
+        "latency": {
+          "samples": 672,
+          "mean_ns": 3093929.811011905,
+          "p50_ns": 3091625,
+          "p95_ns": 3219208,
+          "p99_ns": 3264458,
+          "max_ns": 3335333
+        },
+        "worst_deadline_ratio": 0.07817186718750001,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 42,
+      "codec_samples_per_pass": 86016,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5879208.5,
+        "p50_ns": 5869584,
+        "p95_ns": 6103333,
+        "p99_ns": 6107959,
+        "max_ns": 6107959
+      },
+      "steady": {
+        "passes": 7,
+        "calls": 294,
+        "total_decode_ns": 2175256577,
+        "realtime_factor": 5.76667604761367,
+        "ns_per_audio_sample": 3612.710886014562,
+        "latency": {
+          "samples": 294,
+          "mean_ns": 7398831.894557823,
+          "p50_ns": 7415916,
+          "p95_ns": 7667917,
+          "p99_ns": 7840250,
+          "max_ns": 8232875
+        },
+        "worst_deadline_ratio": 0.1929580078125,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples_per_pass": 102400,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3039498.05,
+        "p50_ns": 3055875,
+        "p95_ns": 3127542,
+        "p99_ns": 3181292,
+        "max_ns": 3181292
+      },
+      "steady": {
+        "passes": 13,
+        "calls": 650,
+        "total_decode_ns": 2005413876,
+        "realtime_factor": 13.829231793613726,
+        "ns_per_audio_sample": 1506.4707602163462,
+        "latency": {
+          "samples": 650,
+          "mean_ns": 3085252.116923077,
+          "p50_ns": 3082666,
+          "p95_ns": 3209625,
+          "p99_ns": 3256750,
+          "max_ns": 3351833
+        },
+        "worst_deadline_ratio": 0.07855858593750001,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples_per_pass": 102400,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5862802.05,
+        "p50_ns": 5871958,
+        "p95_ns": 6013833,
+        "p99_ns": 6097167,
+        "max_ns": 6097167
+      },
+      "steady": {
+        "passes": 6,
+        "calls": 300,
+        "total_decode_ns": 2248330840,
+        "realtime_factor": 5.6931123179362695,
+        "ns_per_audio_sample": 3659.392643229167,
+        "latency": {
+          "samples": 300,
+          "mean_ns": 7494436.133333334,
+          "p50_ns": 7457666,
+          "p95_ns": 7672542,
+          "p99_ns": 9578458,
+          "max_ns": 14891292
+        },
+        "worst_deadline_ratio": 0.34901465625,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "mode": "core",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples_per_pass": 102400,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 3009372.95,
+        "p50_ns": 2997333,
+        "p95_ns": 3118167,
+        "p99_ns": 3136250,
+        "max_ns": 3136250
+      },
+      "steady": {
+        "passes": 13,
+        "calls": 650,
+        "total_decode_ns": 2000942935,
+        "realtime_factor": 13.860132064852381,
+        "ns_per_audio_sample": 1503.1121807391828,
+        "latency": {
+          "samples": 650,
+          "mean_ns": 3078373.7461538464,
+          "p50_ns": 3078708,
+          "p95_ns": 3222875,
+          "p99_ns": 3280000,
+          "max_ns": 3349375
+        },
+        "worst_deadline_ratio": 0.0785009765625,
+        "deadline_misses": 0
+      }
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "mode": "full",
+      "sample_rate_hz": 48000,
+      "access_units": 50,
+      "codec_samples_per_pass": 102400,
+      "cold_first_au": {
+        "samples": 20,
+        "mean_ns": 5847985.3,
+        "p50_ns": 5868583,
+        "p95_ns": 5987875,
+        "p99_ns": 6071166,
+        "max_ns": 6071166
+      },
+      "steady": {
+        "passes": 6,
+        "calls": 300,
+        "total_decode_ns": 2234129639,
+        "realtime_factor": 5.729300474134214,
+        "ns_per_audio_sample": 3636.278709309896,
+        "latency": {
+          "samples": 300,
+          "mean_ns": 7447098.796666667,
+          "p50_ns": 7477750,
+          "p95_ns": 7652916,
+          "p99_ns": 7722958,
+          "max_ns": 7790833
+        },
+        "worst_deadline_ratio": 0.1825976484375,
+        "deadline_misses": 0
+      }
+    }
+  ]
+}
