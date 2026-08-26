@@ -45,7 +45,7 @@ MACINDECODE_AC4_SPEC_DIR=/absolute/path/to/spec \
 构建脚本使用 crate 内置摘要校验实际读入的三个文件；缺失、版本不匹配或内容变化
 都会直接终止构建。官方 PDF、C 表和生成文件均保持在用户本地。
 
-MSRV 为 Rust 1.85，禁止 unsafe Rust。完整设计、支持矩阵和规范追踪见
+MSRV 为 Rust 1.98，禁止 unsafe Rust。完整设计、支持矩阵和规范追踪见
 [项目仓库](https://github.com/SakuzyPeng/MacinDecode-AC4-Core)。
 
 ## License

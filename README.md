@@ -2,7 +2,7 @@
 
 [English](README.en.md) | 中文
 
-Dolby AC-4 对象音频解码核心 · Rust 2024 · MSRV 1.85 · `unsafe` 禁用
+Dolby AC-4 对象音频解码核心 · Rust 2024 · MSRV 1.98 · `unsafe` 禁用
 
 ## 这是什么
 
@@ -29,7 +29,7 @@ Dolby、Dolby Atmos 与 AC-4 是其各自权利人的商标；文中名称仅用
 
 ### 前置条件
 
-- Rust ≥ 1.85（[安装](https://rustup.rs/)）
+- Rust ≥ 1.98（[安装](https://rustup.rs/)）
 
 也可以从 [GitHub Release](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/releases)
 下载带完整音频解码和 ADM/DAMF 导出的预编译 `macinac4`。自动发布覆盖

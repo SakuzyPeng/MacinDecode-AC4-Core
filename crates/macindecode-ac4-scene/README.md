@@ -22,7 +22,7 @@ macindecode-ac4-scene = { version = "0.1.0", features = ["audio-decode"] }
 目录格式与获取方式见
 [`macindecode-ac4-bitstream` 文档](https://docs.rs/macindecode-ac4-bitstream)。
 
-MSRV 为 Rust 1.85，禁止 unsafe Rust。容器 sample table、priming 与 edit list
+MSRV 为 Rust 1.98，禁止 unsafe Rust。容器 sample table、priming 与 edit list
 换算不属于本 crate，相关功能由 `macindecode-ac4-mp4` 提供。
 
 ## License

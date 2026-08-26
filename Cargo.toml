@@ -11,7 +11,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.98"
 license = "MIT"
 repository = "https://github.com/SakuzyPeng/MacinDecode-AC4-Core"
 
@@ -27,3 +27,9 @@ missing_debug_implementations = "warn"
 [workspace.lints.clippy]
 indexing_slicing = "warn"
 arithmetic_side_effects = "warn"
+# 工具链升级不机械改写既有切片迭代；保留现有 chunks_exact 审计形态。
+chunks_exact_to_as_chunks = "allow"
+# 同理保留现有取模判据，不为工具链升级改写生产与测试源码。
+manual_is_multiple_of = "allow"
+# Rust 1.98 会建议 let-chain；本次只升级工具链，不重排既有控制流。
+collapsible_if = "allow"

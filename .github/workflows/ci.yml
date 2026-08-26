@@ -38,29 +38,29 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install stable Rust
+      - name: Install repository Rust toolchain
         run: |
-          rustup toolchain install stable --profile minimal --component rustfmt,clippy
-          rustup target add --toolchain stable thumbv7em-none-eabi
+          rustc --version --verbose
+          rustup target add thumbv7em-none-eabi
 
       - name: Check formatting
-        run: cargo +stable fmt --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Check Scene no_std API
-        run: cargo +stable check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features
+        run: cargo check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features
 
       - name: Lint default features
-        run: cargo +stable clippy --locked --workspace --all-targets -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Test default features
-        run: cargo +stable test --locked --workspace
+        run: cargo test --locked --workspace
 
       - name: Verify crates.io packages
         run: |
           for crate_license in crates/*/LICENSE; do
             cmp LICENSE "$crate_license"
           done
-          cargo +stable package --locked --workspace
+          cargo package --locked --workspace
 
       - name: Audit specification distribution boundary
         run: python3 scripts/check_spec_distribution.py
@@ -102,10 +102,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install stable Rust
+      - name: Install repository Rust toolchain
         run: |
-          rustup toolchain install stable --profile minimal --component clippy
-          rustup target add --toolchain stable thumbv7em-none-eabi
+          rustc --version --verbose
+          rustup target add thumbv7em-none-eabi
 
       - name: Generate local specification tables
         run: |
@@ -118,26 +118,26 @@ jobs:
           python3 scripts/check_spec_distribution.py --generated
 
       - name: Check Scene no_std decoder
-        run: cargo +stable check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features --features audio-decode
+        run: cargo check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features --features audio-decode
 
       - name: Check public API documentation
         env:
           RUSTDOCFLAGS: "-D warnings"
-        run: cargo +stable doc --locked --workspace --no-deps --features audio-decode
+        run: cargo doc --locked --workspace --no-deps --features audio-decode
 
       - name: Lint audio-decode feature
-        run: cargo +stable clippy --locked --workspace --all-targets --features audio-decode -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --features audio-decode -- -D warnings
 
       - name: Test audio-decode feature
-        run: cargo +stable test --locked --workspace --features audio-decode
+        run: cargo test --locked --workspace --features audio-decode
 
       - name: Verify crates.io packages with audio-decode
         env:
           MACINDECODE_AC4_SPEC_DIR: ${{ github.workspace }}/spec
-        run: cargo +stable package --locked --workspace --all-features
+        run: cargo package --locked --workspace --all-features
 
   msrv:
-    name: msrv-1.85
+    name: msrv
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -146,8 +146,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust 1.85.0
-        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Install repository Rust toolchain
+        run: rustc --version --verbose
 
       - name: Generate local specification tables
         run: |
@@ -156,5 +156,5 @@ jobs:
           python3 scripts/generate_spec_tables.py
           python3 scripts/check_spec_distribution.py --generated
 
-      - name: Test on Rust 1.85.0
-        run: cargo +1.85.0 test --locked --workspace --features audio-decode
+      - name: Test on MSRV
+        run: cargo test --locked --workspace --features audio-decode

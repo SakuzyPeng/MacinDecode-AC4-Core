@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This Rust 2024 workspace has an MSRV of 1.85. Workspace crates live under `crates/`: `crates/macindecode-ac4-bitstream/` owns syntax and reconstruction, `crates/macindecode-ac4-scene/` owns the public scene API, `crates/macindecode-ac4-mp4/` owns containers and timing, and `crates/macindecode-ac4-cli/` owns trace, validation, and exports. Tests sit beside implementations. Use `docs/` for design records, `scripts/` for utilities, and `vectors/<case_id>/` for case metadata. `spec/MANIFEST.json` pins specification sources.
+This Rust 2024 workspace has an MSRV of 1.98. Workspace crates live under `crates/`: `crates/macindecode-ac4-bitstream/` owns syntax and reconstruction, `crates/macindecode-ac4-scene/` owns the public scene API, `crates/macindecode-ac4-mp4/` owns containers and timing, and `crates/macindecode-ac4-cli/` owns trace, validation, and exports. Tests sit beside implementations. Use `docs/` for design records, `scripts/` for utilities, and `vectors/<case_id>/` for case metadata. `spec/MANIFEST.json` pins specification sources.
 
 ## Build, Test, and Development Commands
 

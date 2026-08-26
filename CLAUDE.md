@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Dolby AC-4 对象音频解码核心（Rust 2024、`no_std`、MSRV 1.85），输出渲染前音频场景，不做渲染。
+Dolby AC-4 对象音频解码核心（Rust 2024、`no_std`、MSRV 1.98），输出渲染前音频场景，不做渲染。
 
 `AGENTS.md` 已给出命令清单、代码风格、测试与提交约定，本文不重复，只补它没有的架构大图与易踩的坑。
 
@@ -24,7 +24,7 @@ cargo test -p macindecode-ac4-bitstream --features audio-decode aspx::dequant
 cargo test -p macindecode-ac4-cli --features audio-decode -- --exact wire::tests::nonfinite_numbers_become_json_null
 ```
 
-CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 中配置的无 PDF Python 审计和检查器测试；`audio-decode` 跑该 feature 的 clippy / test，`msrv-1.85` 只在 1.85.0 上跑 `--features audio-decode` 的 test。PDF 支持的 SFB/A-SPX/A-JOC 审计仍需本地运行。**`fmt` 只在第一个 job 检查，MSRV 只在开启 feature 时验证**——本地只跑一个配置时这两处最容易漏。
+CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 中配置的无 PDF Python 审计和检查器测试；`audio-decode` 跑该 feature 的 clippy / test，`msrv` 在锁定的 1.98.0 上独立复验 `--features audio-decode`。PDF 支持的 SFB/A-SPX/A-JOC 审计仍需本地运行。**`fmt` 只在第一个 job 检查，MSRV 只在开启 feature 时验证**——本地只跑一个配置时这两处最容易漏。
 
 ## 依赖边界（ADR-0003）
 

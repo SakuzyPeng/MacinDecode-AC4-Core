@@ -30,7 +30,7 @@ MACINDECODE_AC4_SPEC_DIR=/absolute/path/to/spec \
 [CLI 使用指南](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/blob/main/docs/CLI_USAGE.md)
 与随包分发的 [`schema/`](schema/)。
 
-MSRV 为 Rust 1.85。
+MSRV 为 Rust 1.98。
 
 ## License
 

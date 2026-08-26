@@ -2,7 +2,7 @@
 
 English | [中文](README.md)
 
-Dolby AC-4 object audio decoding core · Rust 2024 · MSRV 1.85 · `unsafe` forbidden
+Dolby AC-4 object audio decoding core · Rust 2024 · MSRV 1.98 · `unsafe` forbidden
 
 ## What is this?
 
@@ -30,7 +30,7 @@ respective owners and are referenced only to describe compatibility.
 
 ### Prerequisites
 
-- Rust ≥ 1.85 ([install](https://rustup.rs/))
+- Rust ≥ 1.98 ([install](https://rustup.rs/))
 
 Prebuilt `macinac4` binaries with full audio decoding and ADM/DAMF export are also available
 from [GitHub Releases](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/releases). Automated

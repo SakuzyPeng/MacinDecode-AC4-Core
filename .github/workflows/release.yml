@@ -142,10 +142,10 @@ jobs:
           cache: pip
           cache-dependency-path: scripts/requirements-spec.txt
 
-      - name: Install stable Rust target
+      - name: Install repository Rust target
         run: |
-          rustup toolchain install stable --profile minimal
-          rustup target add --toolchain stable ${{ matrix.target }}
+          rustc --version --verbose
+          rustup target add ${{ matrix.target }}
 
       - name: Install musl tools
         if: runner.os == 'Linux'
@@ -163,7 +163,7 @@ jobs:
       - name: Build full release binary
         env:
           MACINDECODE_AC4_SPEC_DIR: ${{ github.workspace }}/spec
-        run: cargo +stable build --locked --release -p macindecode-ac4-cli --bin macinac4 --features audio-decode --target ${{ matrix.target }}
+        run: cargo build --locked --release -p macindecode-ac4-cli --bin macinac4 --features audio-decode --target ${{ matrix.target }}
 
       - name: Smoke test release binary
         if: runner.os != 'Windows'
