@@ -19,6 +19,7 @@
 - [A-JOC rolling 校验融合 A/B JSON](experiments/m4_pro_ajoc_rolling_validation_fusion_ab.json)
 - [A-JOC rolling 拓扑可达遍历 A/B JSON](experiments/m4_pro_ajoc_topology_reachable_rolling_ab.json)
 - [A-JOC 跨对象 f64 lane A/B JSON](experiments/m4_pro_ajoc_cross_object_f64_lane_ab.json)
+- [A-JOC rolling 对象对主存储筛选 JSON](experiments/m4_pro_ajoc_direct_rolling_aosoa_probe.json)
 
 ## 结论
 
@@ -473,6 +474,29 @@ rolling 从 `1282/6006` 到 `1314/6149`，只变化 +0.11%，可视为保持不�
 原因是散布镜像写污染了 rolling 热循环，已完整撤销。因此下一轮若继续动 rolling 布局，应直接
 设计顺序可遍历的主存储，而不是附加同步镜像。完整逐项数字、异常轮序列、汇编和采样摘要见对应
 A/B JSON；原始 timing 与 `sample` 文件仍只保留在 `target/perf/`。
+
+## A-JOC rolling 对象对主存储实验（未保留）
+
+最后一次布局候选不维护同步镜像，而是把 dry/wet rolling 主存储直接改成
+`[object pair][coefficient][object lane]`，pre 继续保持 decorrelator-major。target closure 和
+错误报告仍映射回原 object-major fixed-stride 逻辑索引；奇数尾对象只推进最后一对的 lane 0，
+帧级候选/提交边界不变。
+
+第一版让输出矩阵直接从相邻 `RollingCoefficient` 读取 current。由于每个状态仍是
+current/target/delta 共 12 bytes 的 AoS，LLVM 没有保留上一轮的 `f64×2` 输出指令；单轮 12 项
+Full 筛选汇总回退 0.70%，仅 1/12 项改善。第二版保留直接 rolling 主存储，但恢复只含当前时隙
+current 的局部 AoSoA staging；它不是跨时隙持久镜像，ARM64 也重新出现 `fcvtl`、`fmul.2d` 与
+`fadd.2d`。结果仍只有 `4.604596 → 4.601873 s`，汇总提升 0.06%，5/12 项改善，单项范围为
+回退 1.64% 到提升 4.33%。其中 DME L3 的正值伴随 before 单 pass 漂到 471.499 ms，而相邻运行
+约为 443 ms，不能视为稳定收益。
+
+该候选的保留门槛预先设为 Full 汇总至少提升 2%，因此没有追加多轮，也没有用噪声项解释成收益。
+直接布局版本通过 Core、A-SPX、A-JOC 对象真实 PCM 逐位门禁；对象对逻辑错误顺序、奇数尾 lane
+和 124 个 A-JOC 测试通过。性能门槛失败后源代码已完整撤销，正式 release SHA-256 恢复为
+`dd0cd8b24bdd99613572dfeaa88e70fe78970ccd5cb0fbc33d3aa2548e47390c`。两版完整逐项筛选数字见对应
+JSON。
+在不把 `RollingCoefficient` 本身拆成更激进的 SoA 状态、或引入平台专用实现之前，不再继续这条
+rolling 微布局路线。
 
 ## QMF 合成尾段实验（未保留）
 

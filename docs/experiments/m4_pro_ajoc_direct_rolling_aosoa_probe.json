@@ -1,0 +1,355 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-26T09:04:34Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "5dace601221129a9d471f941607a68d5de22a923",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 12,
+    "modes": [
+      "full"
+    ],
+    "screening_rounds_per_binary": 1,
+    "cold_runs": 1,
+    "warmup_passes": 1,
+    "min_passes": 3,
+    "min_time_ns": 1000000,
+    "max_passes": 3,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit",
+    "comparison_unit": "steady.total_decode_ns / steady.passes",
+    "retention_gate": "aggregate Full improvement >= 2%"
+  },
+  "binaries": {
+    "before_commit": "5dace601221129a9d471f941607a68d5de22a923",
+    "before_sha256": "dd0cd8b24bdd99613572dfeaa88e70fe78970ccd5cb0fbc33d3aa2548e47390c",
+    "direct_without_current_staging_sha256": "62c8a24ec4794caf074a7efa8b9e2b6a21463dbd23ca797f226b9ea3c80efd62",
+    "direct_with_current_staging_sha256": "c83dc112cc083d6e5b0412737f0c68b3d70ac756b0675aa90419c27e2453dd0e"
+  },
+  "candidate": {
+    "status": "rejected",
+    "change": "store dry/wet rolling directly as [object pair][coefficient][object lane] while keeping pre decorrelator-major",
+    "persistent_secondary_mirror": false,
+    "logical_target_index_preserved": true,
+    "logical_error_order_preserved": true,
+    "odd_object_tail_lane_zero_only": true,
+    "frame_transactional": true,
+    "no_std": true,
+    "unsafe_code": false
+  },
+  "variants": {
+    "direct_without_current_staging": {
+      "order": "before/after",
+      "f64x2_output_vectorization": false,
+      "aggregate_before_pass_ns": 4551655647.333333,
+      "aggregate_after_pass_ns": 4583416640.999999,
+      "aggregate_improvement_percent": -0.6977899060811809,
+      "improved_cases": 1,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0,
+      "improvement_range_percent": [
+        -2.0232012483272936,
+        0.9160317001533131
+      ],
+      "conclusion": "direct RollingCoefficient current loads lost the existing f64x2 output instructions",
+      "cases": [
+        {
+          "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+          "before_pass_ns": 649371625.3333334,
+          "after_pass_ns": 650421836.6666666,
+          "improvement_percent": -0.16172732105351273,
+          "before_p95_ns": 4702583,
+          "after_p95_ns": 4711458,
+          "before_p99_ns": 4754333,
+          "after_p99_ns": 4749250
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_pass_ns": 582852827.6666666,
+          "after_pass_ns": 577513711,
+          "improvement_percent": 0.9160317001533133,
+          "before_p95_ns": 4180125,
+          "after_p95_ns": 4177083,
+          "before_p99_ns": 6732375,
+          "after_p99_ns": 4240917
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_pass_ns": 443165906.3333333,
+          "after_pass_ns": 449226072.6666667,
+          "improvement_percent": -1.3674712442285972,
+          "before_p95_ns": 3219375,
+          "after_p95_ns": 3271833,
+          "before_p99_ns": 3272750,
+          "after_p99_ns": 3303208
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+          "before_pass_ns": 651716053.6666666,
+          "after_pass_ns": 664901581,
+          "improvement_percent": -2.0232012483272936,
+          "before_p95_ns": 4708750,
+          "after_p95_ns": 4786625,
+          "before_p99_ns": 4776167,
+          "after_p99_ns": 6874375
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_pass_ns": 577151583.6666666,
+          "after_pass_ns": 578717358.6666666,
+          "improvement_percent": -0.2712935464982301,
+          "before_p95_ns": 4188042,
+          "after_p95_ns": 4205333,
+          "before_p99_ns": 4236791,
+          "after_p99_ns": 4286125
+        },
+        {
+          "input": "probe_bed_only/master_ac4_256K.m4a",
+          "before_pass_ns": 151913459.33333334,
+          "after_pass_ns": 153095955.33333334,
+          "improvement_percent": -0.7784010746574664,
+          "before_p95_ns": 3226417,
+          "after_p95_ns": 3250333,
+          "before_p99_ns": 3269000,
+          "after_p99_ns": 3278916
+        },
+        {
+          "input": "probe_bed_only/master_ac4_448K.m4a",
+          "before_pass_ns": 175408901.66666666,
+          "after_pass_ns": 177473083,
+          "improvement_percent": -1.1767825428015914,
+          "before_p95_ns": 3730750,
+          "after_p95_ns": 3751584,
+          "before_p99_ns": 3780875,
+          "after_p99_ns": 3789416
+        },
+        {
+          "input": "probe_delayed_onset/master_ac4_768K.m4a",
+          "before_pass_ns": 577544194.6666666,
+          "after_pass_ns": 584785626,
+          "improvement_percent": -1.2538315509366018,
+          "before_p95_ns": 4164542,
+          "after_p95_ns": 4189958,
+          "before_p99_ns": 4316916,
+          "after_p99_ns": 5118625
+        },
+        {
+          "input": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_pass_ns": 170502708.66666666,
+          "after_pass_ns": 171124889,
+          "improvement_percent": -0.3649093543432837,
+          "before_p95_ns": 4285334,
+          "after_p95_ns": 4240209,
+          "before_p99_ns": 4485917,
+          "after_p99_ns": 4486875
+        },
+        {
+          "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_pass_ns": 171285456,
+          "after_pass_ns": 171378151.33333334,
+          "improvement_percent": -0.05411745719574887,
+          "before_p95_ns": 4230667,
+          "after_p95_ns": 4220750,
+          "before_p99_ns": 5698000,
+          "after_p99_ns": 4435584
+        },
+        {
+          "input": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_pass_ns": 200088610,
+          "after_pass_ns": 202863293,
+          "improvement_percent": -1.3867271105536694,
+          "before_p95_ns": 4181875,
+          "after_p95_ns": 4211416,
+          "before_p99_ns": 4219084,
+          "after_p99_ns": 4329417
+        },
+        {
+          "input": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_pass_ns": 200654320.33333334,
+          "after_pass_ns": 201915083.33333334,
+          "improvement_percent": -0.628325868042901,
+          "before_p95_ns": 4159500,
+          "after_p95_ns": 4189583,
+          "before_p99_ns": 4242541,
+          "after_p99_ns": 4222375
+        }
+      ]
+    },
+    "direct_with_current_staging": {
+      "order": "after/before",
+      "f64x2_output_vectorization": true,
+      "arm64_hot_instructions": [
+        "fcvtl",
+        "fmul.2d",
+        "fadd.2d"
+      ],
+      "aggregate_before_pass_ns": 4604596356.333333,
+      "aggregate_after_pass_ns": 4601872896.666667,
+      "aggregate_improvement_percent": 0.059146545232354256,
+      "improved_cases": 5,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0,
+      "improvement_range_percent": [
+        -1.6362159095870483,
+        4.327767825468492
+      ],
+      "cases": [
+        {
+          "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+          "before_pass_ns": 661676737.3333334,
+          "after_pass_ns": 659260056,
+          "improvement_percent": 0.36523595238862383,
+          "before_p95_ns": 4742625,
+          "after_p95_ns": 4761875,
+          "before_p99_ns": 8086708,
+          "after_p99_ns": 4896875
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_pass_ns": 577478060.6666666,
+          "after_pass_ns": 583454666.3333334,
+          "improvement_percent": -1.0349493900715612,
+          "before_p95_ns": 4155375,
+          "after_p95_ns": 4199292,
+          "before_p99_ns": 4215375,
+          "after_p99_ns": 4315416
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_pass_ns": 471499169,
+          "after_pass_ns": 451093779.6666667,
+          "improvement_percent": 4.327767825468492,
+          "before_p95_ns": 3592166,
+          "after_p95_ns": 3247084,
+          "before_p99_ns": 8127292,
+          "after_p99_ns": 3293792
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+          "before_pass_ns": 661463014.6666666,
+          "after_pass_ns": 665011488.6666666,
+          "improvement_percent": -0.5364584143511327,
+          "before_p95_ns": 4789417,
+          "after_p95_ns": 4742500,
+          "before_p99_ns": 5045833,
+          "after_p99_ns": 5607542
+        },
+        {
+          "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_pass_ns": 575861487,
+          "after_pass_ns": 583054073,
+          "improvement_percent": -1.249013202371007,
+          "before_p95_ns": 4182916,
+          "after_p95_ns": 4196875,
+          "before_p99_ns": 4228458,
+          "after_p99_ns": 4239375
+        },
+        {
+          "input": "probe_bed_only/master_ac4_256K.m4a",
+          "before_pass_ns": 154740515.33333334,
+          "after_pass_ns": 156271306,
+          "improvement_percent": -0.9892630015927718,
+          "before_p95_ns": 3302959,
+          "after_p95_ns": 3268500,
+          "before_p99_ns": 5964000,
+          "after_p99_ns": 4035708
+        },
+        {
+          "input": "probe_bed_only/master_ac4_448K.m4a",
+          "before_pass_ns": 177545211.66666666,
+          "after_pass_ns": 180450234.66666666,
+          "improvement_percent": -1.6362159095870483,
+          "before_p95_ns": 3771542,
+          "after_p95_ns": 3768209,
+          "before_p99_ns": 3831166,
+          "after_p99_ns": 4564666
+        },
+        {
+          "input": "probe_delayed_onset/master_ac4_768K.m4a",
+          "before_pass_ns": 579647151.3333334,
+          "after_pass_ns": 576051277.6666666,
+          "improvement_percent": 0.6203556177918477,
+          "before_p95_ns": 4173875,
+          "after_p95_ns": 4138917,
+          "before_p99_ns": 4263042,
+          "after_p99_ns": 4170541
+        },
+        {
+          "input": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_pass_ns": 169977844.66666666,
+          "after_pass_ns": 169691473.33333334,
+          "improvement_percent": 0.1684756821660488,
+          "before_p95_ns": 4193250,
+          "after_p95_ns": 4160042,
+          "before_p99_ns": 4240458,
+          "after_p99_ns": 4178584
+        },
+        {
+          "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_pass_ns": 169950429,
+          "after_pass_ns": 169230904.66666666,
+          "improvement_percent": 0.42337306093728266,
+          "before_p95_ns": 4186875,
+          "after_p95_ns": 4127125,
+          "before_p99_ns": 4247083,
+          "after_p99_ns": 4172541
+        },
+        {
+          "input": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_pass_ns": 202564873,
+          "after_pass_ns": 204980680.66666666,
+          "improvement_percent": -1.192609375400767,
+          "before_p95_ns": 4187083,
+          "after_p95_ns": 4259125,
+          "before_p99_ns": 4266583,
+          "after_p99_ns": 6108833
+        },
+        {
+          "input": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_pass_ns": 202191862.66666666,
+          "after_pass_ns": 203322956,
+          "improvement_percent": -0.5594158530494686,
+          "before_p95_ns": 4183834,
+          "after_p95_ns": 4185292,
+          "before_p99_ns": 4232209,
+          "after_p99_ns": 4268125
+        }
+      ]
+    }
+  },
+  "anomaly_note": {
+    "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+    "comparison_variant": "direct_without_current_staging",
+    "comparison_before_pass_ns": 443165906.3333333,
+    "observation": "the apparent +4.33% staged result coincided with a 471.499 ms before pass versus the roughly 443 ms neighborhood in adjacent runs, so it is not evidence of a stable win"
+  },
+  "correctness_screening": {
+    "direct_layout_core_pcm_baseline": "bit_exact",
+    "direct_layout_aspx_pcm_baseline": "bit_exact",
+    "direct_layout_ajoc_object_pcm_baseline": "bit_exact",
+    "staged_layout_ajoc_unit_tests": "124 passed",
+    "object_pair_logical_error_and_odd_tail_test": "passed",
+    "targeted_clippy_before_staging": "passed",
+    "full_workspace_gates": "not run because the performance gate failed"
+  },
+  "decision": {
+    "retained": false,
+    "measured_aggregate_improvement_percent": 0.059146545232354256,
+    "required_aggregate_improvement_percent": 2,
+    "reason": "0.06% aggregate improvement and only 5/12 improved cases do not justify changing persistent rolling identity and interpolation traversal",
+    "source_reverted": true,
+    "production_release_restored_sha256": "dd0cd8b24bdd99613572dfeaa88e70fe78970ccd5cb0fbc33d3aa2548e47390c"
+  }
+}
