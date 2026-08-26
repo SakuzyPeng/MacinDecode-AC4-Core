@@ -16,6 +16,7 @@
 - [QMF 跨声道垂直 SIMD A/B JSON](experiments/m4_pro_qmf_vertical_simd_ab.json)
 - [QMF 分析镜像子带成对 A/B JSON](experiments/m4_pro_qmf_analysis_subband_pairs_ab.json)
 - [A-JOC 重建分段采样 JSON](experiments/m4_pro_ajoc_reconstruction_split_full.json)
+- [A-JOC rolling 校验融合 A/B JSON](experiments/m4_pro_ajoc_rolling_validation_fusion_ab.json)
 
 ## 结论
 
@@ -43,7 +44,9 @@
   24/24 项总时长与 p99 均改善，六次全套运行双方均无 deadline miss。
 - 当前版本的 Full 采样中，全部 QMF 合成仍是第一阶段，A-JOC 重建已是最大的非 QMF 阶段。
   对重建再做 profile-only 分段后，rolling 有限性全量扫描、最终对象矩阵和插值推进分别占重建
-  `38.69%`、`31.28%` 和 `16.62%`；下一项实验应先消除独立全量扫描，但不能删除非有限错误门禁。
+  `38.69%`、`31.28%` 和 `16.62%`。现在有限性判断已融合到 rolling 更新循环，仍保留组/索引
+  错误上下文和帧级事务；三轮交替 A/B 的 12/12 个 Full 案例总时长与 p99 全部改善，汇总提升
+  `5.71%`，标准 1500K 提升 `5.53%`，三层真实 PCM 继续逐位一致。
 
 ## 测量环境
 
@@ -335,6 +338,40 @@ JSON；原始逐轮 timing 文件只保留在 `target/perf/`。
 事务性。单纯删除检查不成立。第二目标才是最终对象矩阵的跨对象独立 lane；它可以复用此前
 QMF 跨声道垂直 SIMD 的 safe Rust 方法，但必须保持每个对象内部 channel 后 decorrelator 的
 既有 f64 累加顺序。
+
+## A-JOC rolling 校验融合（已保留）
+
+候选删除每个时隙末尾独立执行的 `validate_rolling` 全容量扫描，但没有删除数值门禁。推进旧 ramp
+时只在同一循环内检查本次改变的 `current`，并且仍在最后一步钉到 target **之后**检查；安装新
+target 时在原循环内检查 current/target/delta。该证明依赖封闭状态不变量：`new/reset` 产生有限
+状态，失败候选不提交，只有经过上述检查的候选才能成为下一帧起点。首次错误仍携带
+`CoefficientGroup` 与固定存储索引，公共插值入口签名和帧级事务边界均不变。
+
+A/B 的 before 是提交 `80a28c0`，after 只含本候选。两个普通 portable release 冻结二进制的
+SHA-256 分别为 `77b7590270a8dfa03235c91f4b8d81ea3adc2736988cc1b8fd5b038627c64568` 与
+`95f6ec14e3c7b3f2e1d708eac0fbd7988a680729b697044c357a301354028526`。12 个 Full 案例各固定
+3 个完整 pass，跑三轮交替 A/B，顺序为 before/after、after/before、before/after；每项先取
+自身三轮单 pass 中位数，再做汇总：
+
+| 判据 | before | after | 变化 |
+| --- | ---: | ---: | ---: |
+| 12 项单 pass 中位数汇总 | 5.383 s | 5.076 s | 提升 5.71% |
+| 单项总时长提升范围 | — | — | 5.28%–6.37% |
+| 单项 p99 提升范围 | — | — | 4.81%–21.61% |
+| Full 标准 1500K 单 pass | 755.260 ms | 713.516 ms | 提升 5.53% |
+| deadline miss（三轮合计） | 0 | 0 | 不变 |
+
+12/12 项总时长和 12/12 项 p99 均改善。Core、A-SPX、A-JOC 对象三层真实 PCM 基线全部逐位
+一致；工作区测试、全目标 Clippy 与 Rust 1.85 MSRV 检查通过。allocation 构建复测 24/24 项，
+allocation/reallocation/deallocation 和字节计数继续全部为零。实现仍是 safe Rust、默认
+`no_std`，没有 Rayon、平台 intrinsic、FMA 或 fast-math。
+
+优化后用 split-profile 再采集一次：主线程 14,848 个样本中，A-JOC 重建为 3,963 个
+（26.69%）；rolling 推进/安装为 1,710 个（重建内 43.15%、全程 11.52%），最终对象矩阵为
+1,603 个（重建内 40.45%、全程 10.80%）。两者已经同量级。继续优化时，可以先让 rolling 只
+遍历拓扑可达系数，或把独立输出对象排成 f64 lane；前者必须保持固定 stride 的跨帧系数身份，
+后者必须保持每个对象内部 channel 后 decorrelator 的累加顺序。完整逐项数字与采样摘要见对应
+A/B JSON，原始 timing 与 `sample` 文件仍只保留在 `target/perf/`。
 
 ## QMF 合成尾段实验（未保留）
 

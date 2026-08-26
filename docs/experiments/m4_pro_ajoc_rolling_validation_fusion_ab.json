@@ -1,0 +1,257 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-26T03:52:29Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "80a28c0134cb73987f98b402d58a6e2d5de4b260",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 12,
+    "modes": [
+      "full"
+    ],
+    "rounds_per_binary": 3,
+    "order": [
+      "before/after",
+      "after/before",
+      "before/after"
+    ],
+    "cold_runs": 1,
+    "warmup_passes": 1,
+    "min_passes": 3,
+    "min_time_ns": 1000000,
+    "max_passes": 3,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit",
+    "comparison_unit": "steady.total_decode_ns / steady.passes",
+    "aggregation": "per-case three-round median, then sum"
+  },
+  "binaries": {
+    "before_commit": "80a28c0134cb73987f98b402d58a6e2d5de4b260",
+    "before_sha256": "77b7590270a8dfa03235c91f4b8d81ea3adc2736988cc1b8fd5b038627c64568",
+    "after_sha256": "95f6ec14e3c7b3f2e1d708eac0fbd7988a680729b697044c357a301354028526"
+  },
+  "candidate": {
+    "status": "retained",
+    "removed_pass": "validate_rolling full-capacity current/target/delta scan after every QMF timeslot",
+    "advance_check": "current only, after the final-target snap",
+    "install_check": "current/target/delta in the target-installation loop",
+    "state_invariant": "new/reset states are finite and only successfully checked candidates are committed",
+    "first_error_context": "CoefficientGroup plus fixed-storage index",
+    "frame_transactional": true,
+    "public_interpolation_signature_unchanged": true,
+    "no_std": true,
+    "rayon": false,
+    "platform_intrinsics": false,
+    "unsafe_code": false,
+    "fma": false,
+    "fast_math": false
+  },
+  "corpus_results": {
+    "all_total_improved": 12,
+    "all_p99_improved": 12,
+    "aggregate_before_median_pass_ns": 5382881235.999999,
+    "aggregate_after_median_pass_ns": 5075724666.333334,
+    "aggregate_improvement_percent": 5.7061740023621965,
+    "total_improvement_range_percent": [
+      5.283293262829202,
+      6.374134346977733
+    ],
+    "p99_improvement_range_percent": [
+      4.806443170710195,
+      21.613156366102825
+    ],
+    "before_deadline_misses": 0,
+    "after_deadline_misses": 0
+  },
+  "cases": [
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "before_median_pass_ns": 755260443.6666666,
+      "after_median_pass_ns": 713516405.3333334,
+      "improvement_percent": 5.527105077908323,
+      "before_median_p99_ns": 6970250,
+      "after_median_p99_ns": 5747000,
+      "p99_improvement_percent": 17.549585739392416
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "before_median_pass_ns": 677794023.3333334,
+      "after_median_pass_ns": 640752385.6666666,
+      "improvement_percent": 5.465028665271953,
+      "before_median_p99_ns": 4952334,
+      "after_median_p99_ns": 4672958,
+      "p99_improvement_percent": 5.641299637706176
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "before_median_pass_ns": 555376249.6666666,
+      "after_median_pass_ns": 521157442.6666667,
+      "improvement_percent": 6.161373847105967,
+      "before_median_p99_ns": 4856417,
+      "after_median_p99_ns": 3806792,
+      "p99_improvement_percent": 21.613156366102825
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "before_median_pass_ns": 755558085.6666666,
+      "after_median_pass_ns": 715339001.3333334,
+      "improvement_percent": 5.323096277613915,
+      "before_median_p99_ns": 5509958,
+      "after_median_p99_ns": 5245125,
+      "p99_improvement_percent": 4.806443170710195
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "before_median_pass_ns": 684736822.6666666,
+      "after_median_pass_ns": 641090777.6666666,
+      "improvement_percent": 6.374134346977733,
+      "before_median_p99_ns": 5169500,
+      "after_median_p99_ns": 4672875,
+      "p99_improvement_percent": 9.606828513395882
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "before_median_pass_ns": 190280806.66666666,
+      "after_median_pass_ns": 179585558.33333334,
+      "improvement_percent": 5.62077096512904,
+      "before_median_p99_ns": 4059000,
+      "after_median_p99_ns": 3836500,
+      "p99_improvement_percent": 5.481645725548168
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "before_median_pass_ns": 211492916.33333334,
+      "after_median_pass_ns": 200319125.33333334,
+      "improvement_percent": 5.283293262829202,
+      "before_median_p99_ns": 4514208,
+      "after_median_p99_ns": 4284125,
+      "p99_improvement_percent": 5.096863059921031
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "before_median_pass_ns": 677580860.6666666,
+      "after_median_pass_ns": 638857332.6666666,
+      "improvement_percent": 5.714967799105219,
+      "before_median_p99_ns": 4909084,
+      "after_median_p99_ns": 4637750,
+      "p99_improvement_percent": 5.527181853070761
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "before_median_pass_ns": 199358223,
+      "after_median_pass_ns": 188544878,
+      "improvement_percent": 5.424077741704192,
+      "before_median_p99_ns": 4953500,
+      "after_median_p99_ns": 4690750,
+      "p99_improvement_percent": 5.304330271525181
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "before_median_pass_ns": 199472610,
+      "after_median_pass_ns": 188318790,
+      "improvement_percent": 5.591654914426602,
+      "before_median_p99_ns": 4938792,
+      "after_median_p99_ns": 4662417,
+      "p99_improvement_percent": 5.596004043093938
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "before_median_pass_ns": 238353915.33333334,
+      "after_median_pass_ns": 224558942.66666666,
+      "improvement_percent": 5.787600613723787,
+      "before_median_p99_ns": 4987834,
+      "after_median_p99_ns": 4652625,
+      "p99_improvement_percent": 6.720532399434298
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "before_median_pass_ns": 237616279,
+      "after_median_pass_ns": 223684026.66666666,
+      "improvement_percent": 5.863340841783549,
+      "before_median_p99_ns": 4987833,
+      "after_median_p99_ns": 4671208,
+      "p99_improvement_percent": 6.347947094459661
+    }
+  ],
+  "standard_1500k": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "before_median_pass_ns": 755260443.6666666,
+    "after_median_pass_ns": 713516405.3333334,
+    "improvement_percent": 5.527105077908323,
+    "round_improvement_percent": [
+      6.819691442838682,
+      5.106731302352241,
+      5.080755341434129
+    ],
+    "before_median_p99_ns": 6970250,
+    "after_median_p99_ns": 5747000,
+    "p99_improvement_percent": 17.549585739392416
+  },
+  "correctness": {
+    "checked_install_non_finite_context": "group/index exact",
+    "checked_advance_overflow": "detected",
+    "final_target_snap_before_validation": "preserved",
+    "frame_transactional_failure": "passed",
+    "rolling_expanded_reference": "bit_exact",
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact",
+    "workspace_tests": "passed",
+    "clippy_all_targets": "passed",
+    "msrv_1_85": "passed"
+  },
+  "steady_allocations": {
+    "combinations": 24,
+    "allocation_free": 24,
+    "heap_operation_free": 24,
+    "allocations": 0,
+    "reallocations": 0,
+    "deallocations": 0,
+    "bytes_allocated": 0,
+    "bytes_reallocated": 0,
+    "bytes_deallocated": 0
+  },
+  "post_optimization_attribution": {
+    "performance_use": "stage ranking only; split-profile timing is not a production benchmark",
+    "split_binary_sha256": "0c2309978f2bdc486a9a85047555130cb86c5c0408175f2d1c988d26c03a9048",
+    "profile_thread_samples": 14848,
+    "ajoc_reconstruction_samples": 3963,
+    "ajoc_reconstruction_share_of_profile_percent": 26.690463362068964,
+    "phases": {
+      "rolling_advance_and_install": {
+        "inclusive_samples": 1710,
+        "share_of_reconstruction_percent": 43.14912944738834,
+        "share_of_profile_percent": 11.516702586206897
+      },
+      "reconstruct_output": {
+        "inclusive_samples": 1603,
+        "share_of_reconstruction_percent": 40.44915468079738,
+        "share_of_profile_percent": 10.796066810344827
+      },
+      "decorrelator": 304,
+      "decorrelator_input": 121,
+      "prepare_targets": 104,
+      "prepare_candidate": 31,
+      "validate_input": 31,
+      "diff_decode": 31,
+      "commit_candidate": 24,
+      "unclassified": 4
+    },
+    "next_candidates": [
+      "restrict rolling traversal to topology-reachable coefficients without changing fixed-stride state identity",
+      "pair independent output objects as f64 lanes without changing per-object accumulation order"
+    ]
+  }
+}

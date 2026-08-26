@@ -761,7 +761,7 @@ fn process_timeslots(
 
     for timeslot in 0..dimensions.timeslots {
         let mut rolling = RollingCoefficients::new(&mut *dry, &mut *wet, &mut *pre);
-        interpolation.interpolate_timeslot(
+        let non_finite = interpolation.interpolate_timeslot_checked(
             u8::try_from(timeslot).unwrap_or(u8::MAX),
             schedule,
             &mut rolling,
@@ -779,7 +779,12 @@ fn process_timeslots(
                 )
             },
         )?;
-        validate_rolling(&rolling)?;
+        if let Some(non_finite) = non_finite {
+            return Err(ReconstructionError::NonFiniteCoefficient {
+                group: non_finite.group,
+                index: non_finite.index,
+            });
+        }
 
         for decorrelator in 0..dimensions.num_decorr {
             u[decorrelator] =
@@ -878,25 +883,6 @@ fn target_for(
             pre_targets[pre_target_index(data_point, decorrelator, channel, subband)]
         }
     }
-}
-
-#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
-fn validate_rolling(rolling: &RollingCoefficients<'_>) -> Result<(), ReconstructionError> {
-    for (group, coefficients) in [
-        (CoefficientGroup::Dry, rolling.dry()),
-        (CoefficientGroup::Wet, rolling.wet()),
-        (CoefficientGroup::Pre, rolling.pre()),
-    ] {
-        for (index, coefficient) in coefficients.iter().enumerate() {
-            if !coefficient.current().is_finite()
-                || !coefficient.target().is_finite()
-                || !coefficient.delta().is_finite()
-            {
-                return Err(ReconstructionError::NonFiniteCoefficient { group, index });
-            }
-        }
-    }
-    Ok(())
 }
 
 #[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]

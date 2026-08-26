@@ -28,6 +28,15 @@ pub enum CoefficientGroup {
     Pre,
 }
 
+/// 一次 rolling 更新后首个非有限系数的位置。
+///
+/// 仅在 A-JOC 帧级重建内部传播；公共插值原语仍保持原有错误接口。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct NonFiniteCoefficient {
+    pub group: CoefficientGroup,
+    pub index: usize,
+}
+
 /// 一个数据点的插值控制。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RampPoint {
@@ -256,6 +265,10 @@ impl RollingCoefficient {
         self.target = target;
         self.delta = (target - self.current) / f32::from(ramp_len);
     }
+
+    fn is_finite(&self) -> bool {
+        self.current.is_finite() && self.target.is_finite() && self.delta.is_finite()
+    }
 }
 
 impl Default for RollingCoefficient {
@@ -308,39 +321,96 @@ impl<'a> RollingCoefficients<'a> {
         self.pre.fill(RollingCoefficient::ZERO);
     }
 
-    fn advance(&mut self, final_increment: bool) {
-        for coefficient in self.dry.iter_mut() {
-            coefficient.advance(final_increment);
-        }
-        for coefficient in self.wet.iter_mut() {
-            coefficient.advance(final_increment);
-        }
-        for coefficient in self.pre.iter_mut() {
-            coefficient.advance(final_increment);
-        }
+    fn advance<const CHECK_FINITE: bool>(
+        &mut self,
+        final_increment: bool,
+        first_non_finite: &mut Option<NonFiniteCoefficient>,
+    ) {
+        advance_group::<CHECK_FINITE>(
+            self.dry,
+            CoefficientGroup::Dry,
+            final_increment,
+            first_non_finite,
+        );
+        advance_group::<CHECK_FINITE>(
+            self.wet,
+            CoefficientGroup::Wet,
+            final_increment,
+            first_non_finite,
+        );
+        advance_group::<CHECK_FINITE>(
+            self.pre,
+            CoefficientGroup::Pre,
+            final_increment,
+            first_non_finite,
+        );
     }
 
-    fn install<F>(&mut self, data_point: usize, ramp_len: u8, target_for: &F)
-    where
+    fn install<F, const CHECK_FINITE: bool>(
+        &mut self,
+        data_point: usize,
+        ramp_len: u8,
+        target_for: &F,
+        first_non_finite: &mut Option<NonFiniteCoefficient>,
+    ) where
         F: Fn(CoefficientGroup, usize, usize) -> f32,
     {
-        for (index, coefficient) in self.dry.iter_mut().enumerate() {
-            coefficient.install(
-                target_for(CoefficientGroup::Dry, data_point, index),
-                ramp_len,
-            );
+        install_group::<F, CHECK_FINITE>(
+            self.dry,
+            CoefficientGroup::Dry,
+            data_point,
+            ramp_len,
+            target_for,
+            first_non_finite,
+        );
+        install_group::<F, CHECK_FINITE>(
+            self.wet,
+            CoefficientGroup::Wet,
+            data_point,
+            ramp_len,
+            target_for,
+            first_non_finite,
+        );
+        install_group::<F, CHECK_FINITE>(
+            self.pre,
+            CoefficientGroup::Pre,
+            data_point,
+            ramp_len,
+            target_for,
+            first_non_finite,
+        );
+    }
+}
+
+fn advance_group<const CHECK_FINITE: bool>(
+    coefficients: &mut [RollingCoefficient],
+    group: CoefficientGroup,
+    final_increment: bool,
+    first_non_finite: &mut Option<NonFiniteCoefficient>,
+) {
+    for (index, coefficient) in coefficients.iter_mut().enumerate() {
+        coefficient.advance(final_increment);
+        // target/delta 在安装时已经验证，推进只会改变 current。
+        if CHECK_FINITE && first_non_finite.is_none() && !coefficient.current().is_finite() {
+            *first_non_finite = Some(NonFiniteCoefficient { group, index });
         }
-        for (index, coefficient) in self.wet.iter_mut().enumerate() {
-            coefficient.install(
-                target_for(CoefficientGroup::Wet, data_point, index),
-                ramp_len,
-            );
-        }
-        for (index, coefficient) in self.pre.iter_mut().enumerate() {
-            coefficient.install(
-                target_for(CoefficientGroup::Pre, data_point, index),
-                ramp_len,
-            );
+    }
+}
+
+fn install_group<F, const CHECK_FINITE: bool>(
+    coefficients: &mut [RollingCoefficient],
+    group: CoefficientGroup,
+    data_point: usize,
+    ramp_len: u8,
+    target_for: &F,
+    first_non_finite: &mut Option<NonFiniteCoefficient>,
+) where
+    F: Fn(CoefficientGroup, usize, usize) -> f32,
+{
+    for (index, coefficient) in coefficients.iter_mut().enumerate() {
+        coefficient.install(target_for(group, data_point, index), ramp_len);
+        if CHECK_FINITE && first_non_finite.is_none() && !coefficient.is_finite() {
+            *first_non_finite = Some(NonFiniteCoefficient { group, index });
         }
     }
 }
@@ -393,7 +463,6 @@ impl InterpolationState {
     ///
     /// `timeslot` 不在日程绑定的当前帧实际 QMF 时隙内时返回
     /// [`InterpolationError`]；返回前不会推进游标或系数。
-    #[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
     pub fn interpolate_timeslot<F>(
         &mut self,
         timeslot: u8,
@@ -404,15 +473,48 @@ impl InterpolationState {
     where
         F: Fn(CoefficientGroup, usize, usize) -> f32,
     {
+        self.interpolate_timeslot_inner::<F, false>(timeslot, schedule, coefficients, target_for)
+            .map(|_| ())
+    }
+
+    /// 推进一个时隙，并在更新循环内检查本次被修改的 rolling 状态。
+    ///
+    /// 帧级重建从全零或此前已验证的提交状态开始，只提交经过本入口验证的候选，
+    /// 因此未修改字段沿用已有有限值不变量，无需在每个时隙之后再次完整扫描三组系数。
+    #[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
+    pub(super) fn interpolate_timeslot_checked<F>(
+        &mut self,
+        timeslot: u8,
+        schedule: &InterpolationSchedule,
+        coefficients: &mut RollingCoefficients<'_>,
+        target_for: F,
+    ) -> Result<Option<NonFiniteCoefficient>, InterpolationError>
+    where
+        F: Fn(CoefficientGroup, usize, usize) -> f32,
+    {
+        self.interpolate_timeslot_inner::<F, true>(timeslot, schedule, coefficients, target_for)
+    }
+
+    fn interpolate_timeslot_inner<F, const CHECK_FINITE: bool>(
+        &mut self,
+        timeslot: u8,
+        schedule: &InterpolationSchedule,
+        coefficients: &mut RollingCoefficients<'_>,
+        target_for: F,
+    ) -> Result<Option<NonFiniteCoefficient>, InterpolationError>
+    where
+        F: Fn(CoefficientGroup, usize, usize) -> f32,
+    {
         if timeslot >= schedule.num_qmf_timeslots() {
             return Err(InterpolationError::TimeslotOutOfRange {
                 timeslot,
                 num_qmf_timeslots: schedule.num_qmf_timeslots(),
             });
         }
+        let mut first_non_finite = None;
         if self.completed < self.ramp_len {
             let next = self.completed.saturating_add(1);
-            coefficients.advance(next == self.ramp_len);
+            coefficients.advance::<CHECK_FINITE>(next == self.ramp_len, &mut first_non_finite);
             // 游标只在这里、且每个时隙至多推进一次。
             self.completed = next;
         }
@@ -421,11 +523,16 @@ impl InterpolationState {
             if timeslot != point.start_pos() {
                 continue;
             }
-            coefficients.install(data_point, point.ramp_len(), &target_for);
+            coefficients.install::<F, CHECK_FINITE>(
+                data_point,
+                point.ramp_len(),
+                &target_for,
+                &mut first_non_finite,
+            );
             self.completed = 0;
             self.ramp_len = point.ramp_len();
         }
-        Ok(())
+        Ok(first_non_finite)
     }
 }
 
@@ -800,6 +907,86 @@ mod tests {
     fn rolling_storage_is_three_scalars_not_a_timeslot_matrix() {
         assert_eq!(core::mem::size_of::<RollingCoefficient>(), 3 * 4);
         assert_eq!(core::mem::size_of::<InterpolationState>(), 2);
+    }
+
+    #[test]
+    fn checked_install_reports_first_non_finite_group_and_index() {
+        let schedule =
+            InterpolationSchedule::new(&[RampPoint::new(0, 4, 32).expect("合法 ramp")], 32)
+                .expect("合法日程");
+        let mut state = InterpolationState::new();
+        let mut dry = [RollingCoefficient::ZERO; 2];
+        let mut wet = [RollingCoefficient::ZERO; 3];
+        let mut pre = [RollingCoefficient::ZERO; 1];
+        let mut coefficients = RollingCoefficients::new(&mut dry, &mut wet, &mut pre);
+
+        let non_finite = state
+            .interpolate_timeslot_checked(0, &schedule, &mut coefficients, |group, _, index| {
+                if group == CoefficientGroup::Wet && index == 1 {
+                    f32::INFINITY
+                } else {
+                    1.0
+                }
+            })
+            .expect("合法时隙");
+
+        assert_eq!(
+            non_finite,
+            Some(NonFiniteCoefficient {
+                group: CoefficientGroup::Wet,
+                index: 1,
+            })
+        );
+        assert!(coefficients.wet()[1].target().is_infinite());
+        assert_eq!(
+            coefficients.pre()[0].target(),
+            1.0,
+            "发现错误后仍完整更新候选"
+        );
+    }
+
+    #[test]
+    fn checked_advance_reports_overflow_but_accepts_final_target_snap() {
+        let schedule = InterpolationSchedule::empty(32).expect("合法空日程");
+        let mut dry = [RollingCoefficient {
+            current: f32::MAX,
+            target: 1.0,
+            delta: f32::MAX,
+        }];
+        let mut wet = [];
+        let mut pre = [RollingCoefficient {
+            current: f32::MAX,
+            target: f32::MAX,
+            delta: f32::MAX,
+        }];
+        let mut coefficients = RollingCoefficients::new(&mut dry, &mut wet, &mut pre);
+
+        let mut final_snap = InterpolationState {
+            completed: 0,
+            ramp_len: 1,
+        };
+        assert_eq!(
+            final_snap
+                .interpolate_timeslot_checked(0, &schedule, &mut coefficients, |_, _, _| 0.0)
+                .expect("合法时隙"),
+            None,
+            "最终增量应按既有语义先钉到有限 target 再验证"
+        );
+        assert_eq!(coefficients.dry()[0].current(), 1.0);
+
+        let mut overflow = InterpolationState {
+            completed: 0,
+            ramp_len: 2,
+        };
+        assert_eq!(
+            overflow
+                .interpolate_timeslot_checked(1, &schedule, &mut coefficients, |_, _, _| 0.0)
+                .expect("合法时隙"),
+            Some(NonFiniteCoefficient {
+                group: CoefficientGroup::Pre,
+                index: 0,
+            })
+        );
     }
 
     #[test]
