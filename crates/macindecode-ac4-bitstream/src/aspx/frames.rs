@@ -344,10 +344,10 @@ impl AspxInterval {
 
     /// 两组边界都必须严格递增，否则相对边界越过了对侧。
     fn check_monotonic(&self) -> Result<(), FrameError> {
-        if let Some(&first) = self.sig.first() {
-            if first < 0 {
-                return Err(FrameError::NegativeStartBorder { border: first });
-            }
+        if let Some(&first) = self.sig.first()
+            && first < 0
+        {
+            return Err(FrameError::NegativeStartBorder { border: first });
         }
         for index in 0..usize::from(self.num_atsg_sig) {
             let low = self.sig.get(index).copied().unwrap_or(0);

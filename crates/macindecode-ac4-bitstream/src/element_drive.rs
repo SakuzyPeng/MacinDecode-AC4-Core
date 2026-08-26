@@ -283,14 +283,14 @@ pub fn drive_element(
 
     let timeslots = validate_common_frame(pcm)?;
     for (channel, state) in states.iter().take(channels).enumerate() {
-        if let Some(previous_aspx) = state.codec_mode_aspx {
-            if previous_aspx != element.codec_mode_aspx {
-                return Err(DriveError::CodecModeChangeRequiresReset {
-                    channel,
-                    previous_aspx,
-                    current_aspx: element.codec_mode_aspx,
-                });
-            }
+        if let Some(previous_aspx) = state.codec_mode_aspx
+            && previous_aspx != element.codec_mode_aspx
+        {
+            return Err(DriveError::CodecModeChangeRequiresReset {
+                channel,
+                previous_aspx,
+                current_aspx: element.codec_mode_aspx,
+            });
         }
     }
 

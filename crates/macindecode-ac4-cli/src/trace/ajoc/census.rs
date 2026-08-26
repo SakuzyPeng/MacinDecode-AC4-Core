@@ -184,10 +184,9 @@ impl AjocMatrixCensus {
             if let Some(index) = PARAMETER_BANDS
                 .iter()
                 .position(|&bands| bands == control.num_bands)
+                && let Some(slot) = self.parameter_bands.get_mut(index)
             {
-                if let Some(slot) = self.parameter_bands.get_mut(index) {
-                    *slot = slot.saturating_add(1);
-                }
+                *slot = slot.saturating_add(1);
             }
             if control.coarse {
                 self.coarse_objects = self.coarse_objects.saturating_add(1);

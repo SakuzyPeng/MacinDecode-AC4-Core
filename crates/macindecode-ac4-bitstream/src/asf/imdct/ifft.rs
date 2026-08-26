@@ -153,11 +153,11 @@ impl IfftPlan {
             plan.take_factor(&mut remaining, 5)?;
             plan.take_factor(&mut remaining, 3)?;
         }
-        while remaining % 4 == 0 {
+        while remaining.is_multiple_of(4) {
             plan.push(4)?;
             remaining /= 4;
         }
-        if remaining % 2 == 0 {
+        if remaining.is_multiple_of(2) {
             plan.push(2)?;
             remaining /= 2;
         }
@@ -170,7 +170,7 @@ impl IfftPlan {
 
     #[cfg(test)]
     fn take_factor(&mut self, remaining: &mut usize, radix: usize) -> Option<()> {
-        while *remaining % radix == 0 {
+        while (*remaining).is_multiple_of(radix) {
             self.push(u8::try_from(radix).ok()?)?;
             *remaining /= radix;
         }

@@ -2468,13 +2468,13 @@ where
         )
         .into());
     }
-    if let Some(previous) = drive.alignment_config {
-        if previous != alignment {
-            return Err(format!(
+    if let Some(previous) = drive.alignment_config
+        && previous != alignment
+    {
+        return Err(format!(
                 "Substream {substream}: Table 188 delay configuration changed from {previous:?} to {alignment:?}; reset is required"
             )
             .into());
-        }
     }
     if drive.controls.len() > control_delay {
         return Err(format!(
@@ -2485,12 +2485,12 @@ where
     }
 
     let input_topology = QmfInputTopology::from_element(element);
-    if let Some(previous) = drive.input_topology {
-        if previous != input_topology {
-            return Err(FullAjocDecodeError::object_shape(format!(
-                "Substream {substream}: QMF input topology changed from {previous:?} to {input_topology:?}; reset is required"
-            )));
-        }
+    if let Some(previous) = drive.input_topology
+        && previous != input_topology
+    {
+        return Err(FullAjocDecodeError::object_shape(format!(
+            "Substream {substream}: QMF input topology changed from {previous:?} to {input_topology:?}; reset is required"
+        )));
     }
     if ajoc.num_dmx_signals != element.n_dmx_signals {
         return Err(FullAjocDecodeError::object_shape(format!(
@@ -3069,12 +3069,12 @@ fn install_output_topology(
     topology: ObjectOutputTopology,
     substream: u32,
 ) -> Result<(), FullAjocDecodeError> {
-    if let Some(previous) = drive.output_topology {
-        if previous != topology {
-            return Err(FullAjocDecodeError::object_shape(format!(
-                "Substream {substream}: A-JOC output topology changed from {previous:?} to {topology:?}; reset is required"
-            )));
-        }
+    if let Some(previous) = drive.output_topology
+        && previous != topology
+    {
+        return Err(FullAjocDecodeError::object_shape(format!(
+            "Substream {substream}: A-JOC output topology changed from {previous:?} to {topology:?}; reset is required"
+        )));
     }
     drive.ensure_output(topology.channels());
     drive.output_topology = Some(topology);

@@ -677,7 +677,7 @@ mod tests {
         }
 
         fn byte_align(&mut self) {
-            while self.bits % 8 != 0 {
+            while !self.bits.is_multiple_of(8) {
                 self.push_bits(0, 1);
             }
         }

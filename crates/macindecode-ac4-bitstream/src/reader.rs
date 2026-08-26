@@ -118,7 +118,7 @@ impl<'a> BitReader<'a> {
     /// 当前是否位于字节边界。
     #[must_use]
     pub const fn is_byte_aligned(&self) -> bool {
-        self.bit_position % 8 == 0
+        self.bit_position.is_multiple_of(8)
     }
 
     /// 读取 `n` 个比特，最高位在前。

@@ -279,14 +279,13 @@ impl GroupOamdDecoder {
             if let (Some(inline), Some(external)) = (
                 inline_current,
                 external.and_then(|update| update.current_common),
-            ) {
-                if inline != external {
-                    return Err(common_conflict(
-                        scope,
-                        group_index,
-                        group.oamd_substream.and_then(|item| item.substream_index),
-                    ));
-                }
+            ) && inline != external
+            {
+                return Err(common_conflict(
+                    scope,
+                    group_index,
+                    group.oamd_substream.and_then(|item| item.substream_index),
+                ));
             }
 
             let current_common =

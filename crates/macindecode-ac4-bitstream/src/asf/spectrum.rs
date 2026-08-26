@@ -304,20 +304,20 @@ impl AsfWorkspace {
 
                 for sfb in band..end {
                     let slot = usize::try_from(sfb).unwrap_or(0);
-                    if let Some(row) = self.sfb_cb.get_mut(group) {
-                        if let Some(cell) = row.get_mut(slot) {
-                            *cell = codebook;
-                        }
+                    if let Some(row) = self.sfb_cb.get_mut(group)
+                        && let Some(cell) = row.get_mut(slot)
+                    {
+                        *cell = codebook;
                     }
                 }
-                if let Some(row) = self.sections.get_mut(group) {
-                    if let Some(cell) = row.get_mut(count) {
-                        *cell = Section {
-                            codebook,
-                            start: u8::try_from(band).unwrap_or(u8::MAX),
-                            end: u8::try_from(end).unwrap_or(u8::MAX),
-                        };
-                    }
+                if let Some(row) = self.sections.get_mut(group)
+                    && let Some(cell) = row.get_mut(count)
+                {
+                    *cell = Section {
+                        codebook,
+                        start: u8::try_from(band).unwrap_or(u8::MAX),
+                        end: u8::try_from(end).unwrap_or(u8::MAX),
+                    };
                 }
                 band = end;
                 count = count.saturating_add(1);
@@ -423,10 +423,10 @@ impl AsfWorkspace {
 
                         sfb = advance_sfb(layout, group, sfb, usize::from(section.end), position);
                         let absolute = u16::try_from(signed.abs()).unwrap_or(u16::MAX);
-                        if let Some(row) = self.max_quant_idx.get_mut(group) {
-                            if let Some(target) = row.get_mut(sfb) {
-                                *target = (*target).max(absolute);
-                            }
+                        if let Some(row) = self.max_quant_idx.get_mut(group)
+                            && let Some(target) = row.get_mut(sfb)
+                        {
+                            *target = (*target).max(absolute);
                         }
                     }
 
@@ -461,10 +461,10 @@ impl AsfWorkspace {
                     continue;
                 }
                 let symbol = tables::ASF_HCB_SCALEFAC.decode(reader)?;
-                if let Some(row) = self.dpcm_sf.get_mut(group) {
-                    if let Some(cell) = row.get_mut(sfb) {
-                        *cell = Some(u8::try_from(symbol).unwrap_or(u8::MAX));
-                    }
+                if let Some(row) = self.dpcm_sf.get_mut(group)
+                    && let Some(cell) = row.get_mut(sfb)
+                {
+                    *cell = Some(u8::try_from(symbol).unwrap_or(u8::MAX));
                 }
             }
         }
@@ -491,10 +491,10 @@ impl AsfWorkspace {
                     continue;
                 }
                 let symbol = tables::ASF_HCB_SNF.decode(reader)?;
-                if let Some(row) = self.dpcm_snf.get_mut(group) {
-                    if let Some(cell) = row.get_mut(sfb) {
-                        *cell = Some(u8::try_from(symbol).unwrap_or(u8::MAX));
-                    }
+                if let Some(row) = self.dpcm_snf.get_mut(group)
+                    && let Some(cell) = row.get_mut(sfb)
+                {
+                    *cell = Some(u8::try_from(symbol).unwrap_or(u8::MAX));
                 }
             }
         }

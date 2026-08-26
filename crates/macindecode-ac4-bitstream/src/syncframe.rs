@@ -211,7 +211,7 @@ impl<'a> SyncFrameIter<'a> {
 
         let header_bits = reader.bit_position();
         debug_assert!(
-            header_bits % 8 == 0,
+            header_bits.is_multiple_of(8),
             "sync-frame header must be byte-aligned"
         );
         let header_len = (header_bits / 8) as usize;

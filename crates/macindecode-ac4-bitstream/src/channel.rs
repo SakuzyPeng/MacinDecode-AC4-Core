@@ -386,10 +386,10 @@ impl ChparamInfo {
             for group in 0..usize::from(layout.num_window_groups()) {
                 for sfb in 0..usize::from(layout.max_sfb(group).unwrap_or(0)) {
                     let bit = reader.read_flag()?;
-                    if let Some(row) = out.ms_used.get_mut(group) {
-                        if let Some(slot) = row.get_mut(sfb) {
-                            *slot = bit;
-                        }
+                    if let Some(row) = out.ms_used.get_mut(group)
+                        && let Some(slot) = row.get_mut(sfb)
+                    {
+                        *slot = bit;
                     }
                 }
             }
@@ -438,10 +438,10 @@ fn parse_sap_data(
                     *slot = used;
                 }
                 // 奇数频带沿用相邻偶数频带的标志，不单独传输。
-                if let Some(slot) = row.get_mut(sfb.saturating_add(1)) {
-                    if sfb.saturating_add(1) < max_sfb {
-                        *slot = used;
-                    }
+                if let Some(slot) = row.get_mut(sfb.saturating_add(1))
+                    && sfb.saturating_add(1) < max_sfb
+                {
+                    *slot = used;
                 }
             }
             sfb = sfb.saturating_add(2);
@@ -458,10 +458,10 @@ fn parse_sap_data(
         while sfb < max_sfb {
             if out.coeff_used.get(group).and_then(|row| row.get(sfb)) == Some(&true) {
                 let symbol = tables::ASF_HCB_SCALEFAC.decode(reader)?;
-                if let Some(row) = out.dpcm_alpha_q.get_mut(group) {
-                    if let Some(slot) = row.get_mut(sfb) {
-                        *slot = Some(u8::try_from(symbol).unwrap_or(u8::MAX));
-                    }
+                if let Some(row) = out.dpcm_alpha_q.get_mut(group)
+                    && let Some(slot) = row.get_mut(sfb)
+                {
+                    *slot = Some(u8::try_from(symbol).unwrap_or(u8::MAX));
                 }
             }
             sfb = sfb.saturating_add(2);

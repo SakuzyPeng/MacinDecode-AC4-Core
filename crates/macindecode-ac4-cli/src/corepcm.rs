@@ -745,8 +745,10 @@ mod tests {
 
         // 交织必须是「帧内按声道升序」，不是按声道拼接。
         let samples: Vec<f32> = out[80..]
-            .chunks_exact(4)
-            .map(|bytes| f32::from_le_bytes(bytes.try_into().unwrap()))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|bytes| f32::from_le_bytes(*bytes))
             .collect();
         assert_eq!(samples, [1.0, 2.0, 3.0, 4.0]);
         assert_eq!(out.len(), 80 + 16);

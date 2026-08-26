@@ -359,9 +359,9 @@ fn exports_full_home_and_3dof_with_identical_metadata_and_real_adm_pcm() {
     let caf_pcm = home_audio.get(68..).expect("CAF payload 应从 68 开始");
     assert_eq!(caf_pcm.len(), 288_000 * 30 * 3);
     let mut nonzero = [false; 30];
-    for frame in caf_pcm.chunks_exact(30 * 3) {
-        for (track, sample) in frame.chunks_exact(3).enumerate() {
-            nonzero[track] |= sample != [0, 0, 0];
+    for frame in caf_pcm.as_chunks::<{ 30 * 3 }>().0 {
+        for (track, sample) in frame.as_chunks::<3>().0.iter().enumerate() {
+            nonzero[track] |= *sample != [0, 0, 0];
         }
     }
     for track in [0usize, 1, 2, 4, 5, 6, 7, 8, 9] {

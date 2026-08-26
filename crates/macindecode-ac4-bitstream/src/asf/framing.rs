@@ -515,10 +515,10 @@ impl AsfWindowLayout {
             let Some(value) = offsets.get(sfb).copied() else {
                 break;
             };
-            if let Some(row) = layout.sect_sfb_offset.get_mut(0) {
-                if let Some(slot) = row.get_mut(sfb) {
-                    *slot = value;
-                }
+            if let Some(row) = layout.sect_sfb_offset.get_mut(0)
+                && let Some(slot) = row.get_mut(sfb)
+            {
+                *slot = value;
             }
         }
         layout.total_lines = u32::from(offsets.get(usize::from(max_sfb)).copied().unwrap_or(0));
@@ -653,10 +653,10 @@ impl AsfWindowLayout {
             for sfb in 0..=usize::from(max_sfb) {
                 let base = u32::from(offsets.get(sfb).copied().unwrap_or(0));
                 let value = group_offset.saturating_add(base.saturating_mul(windows));
-                if let Some(row) = self.sect_sfb_offset.get_mut(group) {
-                    if let Some(slot) = row.get_mut(sfb) {
-                        *slot = u16::try_from(value).unwrap_or(u16::MAX);
-                    }
+                if let Some(row) = self.sect_sfb_offset.get_mut(group)
+                    && let Some(slot) = row.get_mut(sfb)
+                {
+                    *slot = u16::try_from(value).unwrap_or(u16::MAX);
                 }
             }
 

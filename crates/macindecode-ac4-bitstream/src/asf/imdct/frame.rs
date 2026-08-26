@@ -193,7 +193,7 @@ mod tests {
     impl Bits {
         fn push(&mut self, value: u32, width: u32) {
             for shift in (0..width).rev() {
-                if self.len % 8 == 0 {
+                if self.len.is_multiple_of(8) {
                     self.bytes.push(0);
                 }
                 if (value >> shift) & 1 == 1 {

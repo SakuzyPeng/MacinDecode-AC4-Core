@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn columns_within_a_table_share_their_prefix() {
         // 表 B.4、B.5、B.6 各一组；B.7 虽排成六列，实际是两组独立的三列。
-        for group in TRANSFORM_LENGTHS_48.chunks_exact(3) {
+        for group in TRANSFORM_LENGTHS_48.as_chunks::<3>().0 {
             let Some((&longest, rest)) = group.split_first() else {
                 unreachable!()
             };

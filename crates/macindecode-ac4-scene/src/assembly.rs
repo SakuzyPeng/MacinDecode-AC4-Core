@@ -998,10 +998,10 @@ fn register_metadata_update_sample(
     let slot = last_update_samples
         .get_mut(object_index)
         .ok_or(MetadataUpdateTimeError::ObjectIndex)?;
-    if let Some(previous) = *slot {
-        if current < previous {
-            return Err(MetadataUpdateTimeError::Reordered { previous, current });
-        }
+    if let Some(previous) = *slot
+        && current < previous
+    {
+        return Err(MetadataUpdateTimeError::Reordered { previous, current });
     }
     *slot = Some(current);
     Ok(())

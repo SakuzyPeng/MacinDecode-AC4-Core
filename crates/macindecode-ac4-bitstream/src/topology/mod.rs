@@ -345,10 +345,10 @@ mod tests {
         for part in parts {
             for ch in part.chars() {
                 if ch == '0' || ch == '1' {
-                    if ch == '1' {
-                        if let Some(slot) = joined.get_mut(bits / 8) {
-                            *slot |= 1 << (7 - bits % 8);
-                        }
+                    if ch == '1'
+                        && let Some(slot) = joined.get_mut(bits / 8)
+                    {
+                        *slot |= 1 << (7 - bits % 8);
                     }
                     bits = bits.saturating_add(1);
                 }

@@ -170,10 +170,10 @@ pub fn hf_generate(
                     filters: filters.subbands(),
                 });
             }
-            if let Some(gains) = gains {
-                if gains.gain(source).is_none() {
-                    return Err(HfGenError::MissingGain { source });
-                }
+            if let Some(gains) = gains
+                && gains.gain(source).is_none()
+            {
+                return Err(HfGenError::MissingGain { source });
             }
         }
         probe += num_sb;

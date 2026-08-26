@@ -126,13 +126,13 @@ impl FrameAlignmentState {
                 output: output.len(),
             });
         }
-        if let Some(previous) = self.delay {
-            if previous != alignment.pcm_delay {
-                return Err(FrameAlignmentError::DelayChanged {
-                    previous,
-                    current: alignment.pcm_delay,
-                });
-            }
+        if let Some(previous) = self.delay
+            && previous != alignment.pcm_delay
+        {
+            return Err(FrameAlignmentError::DelayChanged {
+                previous,
+                current: alignment.pcm_delay,
+            });
         }
 
         let delay = usize::from(alignment.pcm_delay);

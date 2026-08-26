@@ -511,15 +511,15 @@ fn append_object_block(
     }
 
     let importance = importance(basic.priority);
-    if let ObjectPriorityState::Quantized(code) = basic.priority {
-        if u16::from(code).saturating_mul(10) != u16::from(importance).saturating_mul(31) {
-            warnings.push(
-                selector,
-                i64::try_from(event.sample).ok(),
-                "importance",
-                "Five-bit OAMD priority was rounded to ADM importance 0..10",
-            );
-        }
+    if let ObjectPriorityState::Quantized(code) = basic.priority
+        && u16::from(code).saturating_mul(10) != u16::from(importance).saturating_mul(31)
+    {
+        warnings.push(
+            selector,
+            i64::try_from(event.sample).ok(),
+            "importance",
+            "Five-bit OAMD priority was rounded to ADM importance 0..10",
+        );
     }
     xml.element("importance", &[], &importance.to_string())?;
 

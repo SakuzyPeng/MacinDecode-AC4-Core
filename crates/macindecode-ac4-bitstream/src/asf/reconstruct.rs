@@ -262,10 +262,10 @@ pub fn scale_factors(
                     value: scale_factor,
                 });
             }
-            if let Some(row) = out.values.get_mut(group) {
-                if let Some(cell) = row.get_mut(sfb) {
-                    *cell = Some(u8::try_from(scale_factor).unwrap_or(u8::MAX));
-                }
+            if let Some(row) = out.values.get_mut(group)
+                && let Some(cell) = row.get_mut(sfb)
+            {
+                *cell = Some(u8::try_from(scale_factor).unwrap_or(u8::MAX));
             }
         }
     }

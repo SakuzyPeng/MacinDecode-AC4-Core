@@ -181,7 +181,7 @@ pub fn analyse(
     state: &mut QmfAnalysisState,
     slots: &mut [QmfSlot],
 ) -> Result<(), QmfError> {
-    if pcm.len() % SUBBANDS != 0 {
+    if !pcm.len().is_multiple_of(SUBBANDS) {
         return Err(QmfError::UnalignedInput { samples: pcm.len() });
     }
     let timeslots = pcm.len() / SUBBANDS;
@@ -380,8 +380,10 @@ pub(crate) fn analyse_ac4_pcm_pair(
 
     let mut pair = AnalysisChannelPair::new();
     let pcm_chunks = left_pcm
-        .chunks_exact(SUBBANDS)
-        .zip(right_pcm.chunks_exact(SUBBANDS));
+        .as_chunks::<SUBBANDS>()
+        .0
+        .iter()
+        .zip(right_pcm.as_chunks::<SUBBANDS>().0.iter());
     let slot_pairs = left_slots.iter_mut().zip(right_slots.iter_mut());
     for ((left_pcm, right_pcm), (left_slot, right_slot)) in pcm_chunks.zip(slot_pairs) {
         left_state
@@ -572,8 +574,10 @@ fn synthesise_ac4_pcm_pair(
 
     let slot_pairs = left_slots.iter().zip(right_slots);
     let pcm_pairs = left_pcm
-        .chunks_exact_mut(SUBBANDS)
-        .zip(right_pcm.chunks_exact_mut(SUBBANDS));
+        .as_chunks_mut::<SUBBANDS>()
+        .0
+        .iter_mut()
+        .zip(right_pcm.as_chunks_mut::<SUBBANDS>().0.iter_mut());
     for ((left, right), (left_pcm_slot, right_pcm_slot)) in slot_pairs.zip(pcm_pairs) {
         advance_synthesis_state(left_state);
         advance_synthesis_state(right_state);
@@ -598,7 +602,7 @@ pub fn synthesise(
     state: &mut QmfSynthesisState,
     pcm: &mut [f32],
 ) -> Result<(), QmfError> {
-    if pcm.len() % SUBBANDS != 0 {
+    if !pcm.len().is_multiple_of(SUBBANDS) {
         return Err(QmfError::UnalignedInput { samples: pcm.len() });
     }
     let timeslots = pcm.len() / SUBBANDS;
@@ -610,7 +614,10 @@ pub fn synthesise(
     }
 
     let mut windowed = [0.0f64; NUM_QMF_WIN_COEF];
-    for (slot, pcm_slot) in slots.iter().zip(pcm.chunks_exact_mut(SUBBANDS)) {
+    for (slot, pcm_slot) in slots
+        .iter()
+        .zip(pcm.as_chunks_mut::<SUBBANDS>().0.iter_mut())
+    {
         advance_synthesis_state(state);
         modulate_synthesis_slot(slot, state);
         accumulate_synthesis_polyphase(state, &mut windowed, pcm_slot);
@@ -879,7 +886,7 @@ mod tests {
     fn analyse_direct_reference(pcm: &[f32], state: &mut QmfAnalysisState, slots: &mut [QmfSlot]) {
         assert_eq!(pcm.len(), slots.len() * SUBBANDS);
         let mut folded = [0.0f64; FOLDED];
-        for (pcm, slot) in pcm.chunks_exact(SUBBANDS).zip(slots) {
+        for (pcm, slot) in pcm.as_chunks::<SUBBANDS>().0.iter().zip(slots) {
             state
                 .filt
                 .copy_within(0..NUM_QMF_WIN_COEF - SUBBANDS, SUBBANDS);
@@ -901,7 +908,9 @@ mod tests {
     fn deterministic_folded(count: usize) -> Vec<[f64; FOLDED]> {
         let values = deterministic_signal(count * FOLDED);
         values
-            .chunks_exact(FOLDED)
+            .as_chunks::<FOLDED>()
+            .0
+            .iter()
             .map(|chunk| core::array::from_fn(|index| f64::from(chunk[index])))
             .collect()
     }
@@ -1452,19 +1461,20 @@ mod tests {
         let started = Instant::now();
         for _ in 0..iterations {
             for ((input_pair, state_pair), output_pair) in signals
-                .chunks_exact(ANALYSIS_CHANNEL_LANES)
-                .zip(states.chunks_exact_mut(ANALYSIS_CHANNEL_LANES))
-                .zip(slots.chunks_exact_mut(ANALYSIS_CHANNEL_LANES))
+                .as_chunks::<ANALYSIS_CHANNEL_LANES>()
+                .0
+                .iter()
+                .zip(
+                    states
+                        .as_chunks_mut::<ANALYSIS_CHANNEL_LANES>()
+                        .0
+                        .iter_mut(),
+                )
+                .zip(slots.as_chunks_mut::<ANALYSIS_CHANNEL_LANES>().0.iter_mut())
             {
-                let [left_input, right_input] = input_pair else {
-                    unreachable!("chunks_exact 保证两路输入");
-                };
-                let [left_state, right_state] = state_pair else {
-                    unreachable!("chunks_exact_mut 保证两路状态");
-                };
-                let [left_output, right_output] = output_pair else {
-                    unreachable!("chunks_exact_mut 保证两路输出");
-                };
+                let [left_input, right_input] = input_pair;
+                let [left_state, right_state] = state_pair;
+                let [left_output, right_output] = output_pair;
                 analyse_ac4_pcm_pair(
                     [
                         std::hint::black_box(left_input),

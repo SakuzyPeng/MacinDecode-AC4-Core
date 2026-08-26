@@ -613,13 +613,13 @@ fn validate_frame(
         num_dmx: ajoc.num_dmx_signals,
         num_decorr: ajoc.num_decorr,
     };
-    if let Some(previous) = state.shape {
-        if previous != shape {
-            return Err(ReconstructionError::ShapeChangeRequiresReset {
-                previous,
-                current: shape,
-            });
-        }
+    if let Some(previous) = state.shape
+        && previous != shape
+    {
+        return Err(ReconstructionError::ShapeChangeRequiresReset {
+            previous,
+            current: shape,
+        });
     }
 
     let mut decorr_enabled = [false; MAX_DECORRELATORS];
@@ -1020,13 +1020,23 @@ fn reconstruct_output(
     let paired_wet = &wet[..paired_objects * WET_OBJECT_STRIDE];
 
     let pairs = paired_output
-        .chunks_exact_mut(OUTPUT_OBJECT_LANES)
-        .zip(paired_dry.chunks_exact(OUTPUT_OBJECT_LANES * DRY_OBJECT_STRIDE))
-        .zip(paired_wet.chunks_exact(OUTPUT_OBJECT_LANES * WET_OBJECT_STRIDE));
+        .as_chunks_mut::<OUTPUT_OBJECT_LANES>()
+        .0
+        .iter_mut()
+        .zip(
+            paired_dry
+                .as_chunks::<{ OUTPUT_OBJECT_LANES * DRY_OBJECT_STRIDE }>()
+                .0
+                .iter(),
+        )
+        .zip(
+            paired_wet
+                .as_chunks::<{ OUTPUT_OBJECT_LANES * WET_OBJECT_STRIDE }>()
+                .0
+                .iter(),
+        );
     for (pair_index, ((output_pair, dry_pair), wet_pair)) in pairs.enumerate() {
-        let [first_output, second_output] = output_pair else {
-            unreachable!("A-JOC output pair has a fixed two-object width");
-        };
+        let [first_output, second_output] = output_pair;
         let (first_dry, second_dry) = dry_pair.split_at(DRY_OBJECT_STRIDE);
         let (first_wet, second_wet) = wet_pair.split_at(WET_OBJECT_STRIDE);
         reconstruct_output_pair(

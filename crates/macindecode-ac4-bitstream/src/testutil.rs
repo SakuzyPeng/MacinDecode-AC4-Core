@@ -31,12 +31,10 @@ impl BitBuf {
     pub(crate) fn push(&mut self, bit: bool) {
         let index = self.len / 8;
         let shift = 7usize.saturating_sub(self.len % 8);
-        if bit {
-            if let Some(slot) = self.bytes.get_mut(index) {
-                *slot |= 1u8
-                    .checked_shl(u32::try_from(shift).unwrap_or(0))
-                    .unwrap_or(0);
-            }
+        if bit && let Some(slot) = self.bytes.get_mut(index) {
+            *slot |= 1u8
+                .checked_shl(u32::try_from(shift).unwrap_or(0))
+                .unwrap_or(0);
         }
         self.len = self.len.saturating_add(1);
     }
@@ -49,7 +47,7 @@ impl BitBuf {
 
     /// 补足到字节边界。
     pub(crate) fn byte_align(&mut self) {
-        while self.len % 8 != 0 {
+        while !self.len.is_multiple_of(8) {
             self.push(false);
         }
     }

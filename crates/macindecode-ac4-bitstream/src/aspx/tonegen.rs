@@ -312,7 +312,11 @@ mod tests {
     #[track_caller]
     fn recover_index(slot: &QmfSlot, sb: usize, sbx: usize, level: f32) -> usize {
         assert!(level != 0.0, "电平为零时无法反查下标");
-        let sign = if (sb + sbx) % 2 == 0 { 1.0f32 } else { -1.0 };
+        let sign = if (sb + sbx).is_multiple_of(2) {
+            1.0f32
+        } else {
+            -1.0
+        };
         let re = slot.re[sb + sbx];
         let im = slot.im[sb + sbx];
         let mut found = None;

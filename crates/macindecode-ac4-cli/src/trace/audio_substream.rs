@@ -196,17 +196,15 @@ impl AudioTrace {
 
                     if channel_mode.is_some_and(|mode| {
                         group_needs_dee_ims_stereo_candidate(topology, group_index, mode)
-                    }) {
-                        if let Err(error) = push_context(
-                            slot,
-                            SubstreamContext {
-                                channel_mode: Some(1),
-                                ..candidate
-                            },
-                        ) {
-                            frame_failed = true;
-                            self.remember_failure(index, error);
-                        }
+                    }) && let Err(error) = push_context(
+                        slot,
+                        SubstreamContext {
+                            channel_mode: Some(1),
+                            ..candidate
+                        },
+                    ) {
+                        frame_failed = true;
+                        self.remember_failure(index, error);
                     }
                 }
             }

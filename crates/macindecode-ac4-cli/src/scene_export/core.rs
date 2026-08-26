@@ -215,14 +215,14 @@ pub(crate) fn map_core_pcm<'a>(
             lfe.is_some()
         )));
     }
-    if let Some(channel) = lfe {
-        if channel.output_index != objects.len() {
-            return Err(CoreSceneError::invariant(format!(
-                "LFE must follow q0 through qN-1: expected output {}, got output {}",
-                objects.len(),
-                channel.output_index
-            )));
-        }
+    if let Some(channel) = lfe
+        && channel.output_index != objects.len()
+    {
+        return Err(CoreSceneError::invariant(format!(
+            "LFE must follow q0 through qN-1: expected output {}, got output {}",
+            objects.len(),
+            channel.output_index
+        )));
     }
     for channel in objects.iter().copied().chain(lfe) {
         if channel.samples.len() != frames {

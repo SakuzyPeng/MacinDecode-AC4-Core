@@ -122,8 +122,10 @@ fn exports_real_768k_grid_as_float_514_caf() {
     let source_for_track = [0usize, 1, 2, 9, 3, 4, 5, 6, 7, 8];
     let mut nonzero = [false; 10];
     for (frame, (source, actual)) in source_pcm
-        .chunks_exact(10 * 4)
-        .zip(caf_pcm.chunks_exact(10 * 4))
+        .as_chunks::<{ 10 * 4 }>()
+        .0
+        .iter()
+        .zip(caf_pcm.as_chunks::<{ 10 * 4 }>().0.iter())
         .enumerate()
     {
         for (track, source_channel) in source_for_track.iter().copied().enumerate() {

@@ -58,19 +58,18 @@ pub(crate) fn resolve_oamd_blocks(
         if block.info.diff_pos_coding {
             stats.differential_positions = stats.differential_positions.saturating_add(1);
         }
-        if let (Some(old), Some(new)) = (old, new) {
-            if old.position.x != new.position.x
+        if let (Some(old), Some(new)) = (old, new)
+            && (old.position.x != new.position.x
                 || old.position.y != new.position.y
-                || old.position.z != new.position.z
-            {
-                stats.position_changes.push(PositionChange {
-                    object_index: block.object_index,
-                    block_index: block.block_index,
-                    x: new.position.x,
-                    y: new.position.y,
-                    z: new.position.z,
-                });
-            }
+                || old.position.z != new.position.z)
+        {
+            stats.position_changes.push(PositionChange {
+                object_index: block.object_index,
+                block_index: block.block_index,
+                x: new.position.x,
+                y: new.position.y,
+                z: new.position.z,
+            });
         }
     }
     next.apply_blocks(&[], Some(num_obj_info_blocks))?;
@@ -325,13 +324,13 @@ impl OamdTrace {
             if matches!((inline_current, external_current), (Some(a), Some(b)) if a != b) {
                 common_conflict = true;
             }
-            if let Some(current) = inline_current.or(external_current) {
-                if let Some(slot) = self.group_common.get_mut(group_index) {
-                    *slot = GroupCommonState {
-                        common: Some(current),
-                        conflict: common_conflict,
-                    };
-                }
+            if let Some(current) = inline_current.or(external_current)
+                && let Some(slot) = self.group_common.get_mut(group_index)
+            {
+                *slot = GroupCommonState {
+                    common: Some(current),
+                    conflict: common_conflict,
+                };
             }
             let common = self
                 .group_common

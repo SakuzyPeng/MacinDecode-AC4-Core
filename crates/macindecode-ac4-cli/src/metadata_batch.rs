@@ -189,13 +189,13 @@ pub(crate) fn project_metadata_events(
         }
     }
 
-    if let Some((_, end)) = before {
-        if end > visible_start_i64 {
-            return Err(format!(
-                "Media-edit start falls inside the ramp for object {}:{}; lossless export is impossible",
-                selected.substream_index, selected.object_index
-            ));
-        }
+    if let Some((_, end)) = before
+        && end > visible_start_i64
+    {
+        return Err(format!(
+            "Media-edit start falls inside the ramp for object {}:{}; lossless export is impossible",
+            selected.substream_index, selected.object_index
+        ));
     }
 
     let mut mapped = Vec::new();

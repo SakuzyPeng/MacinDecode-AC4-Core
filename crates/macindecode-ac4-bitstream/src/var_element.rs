@@ -873,7 +873,7 @@ fn parse_into(
 fn channel_element_count(n_dmx_signals: u8, b_has_lfe: bool) -> usize {
     let lfe = usize::from(b_has_lfe);
     let pairs = usize::from(n_dmx_signals / 2);
-    if n_dmx_signals % 2 == 0 {
+    if n_dmx_signals.is_multiple_of(2) {
         return lfe.saturating_add(pairs);
     }
     if n_dmx_signals == 1 {
@@ -918,12 +918,10 @@ mod tests {
         fn push(&mut self, bit: bool) {
             let index = self.len / 8;
             let shift = 7usize.saturating_sub(self.len % 8);
-            if bit {
-                if let Some(slot) = self.bytes.get_mut(index) {
-                    *slot |= 1u8
-                        .checked_shl(u32::try_from(shift).unwrap_or(0))
-                        .unwrap_or(0);
-                }
+            if bit && let Some(slot) = self.bytes.get_mut(index) {
+                *slot |= 1u8
+                    .checked_shl(u32::try_from(shift).unwrap_or(0))
+                    .unwrap_or(0);
             }
             self.len = self.len.saturating_add(1);
         }

@@ -345,19 +345,19 @@ impl AjocTrace {
                     frame_index,
                 ) {
                     Ok(observation) => {
-                        if let Some(asf) = decoder.last_asf_observation() {
-                            if let Err(shape) = append_engine_asf_observation(
+                        if let Some(asf) = decoder.last_asf_observation()
+                            && let Err(shape) = append_engine_asf_observation(
                                 asf,
                                 &mut self.scale_factor_bands,
                                 &mut self.scale_factor_min,
                                 &mut self.scale_factor_max,
                                 &mut self.scaled_stats,
-                            ) {
-                                self.object_shape_mismatches =
-                                    self.object_shape_mismatches.saturating_add(1);
-                                self.object_shape_first_error
-                                    .get_or_insert_with(|| format!("Frame {frame_index}: {shape}"));
-                            }
+                            )
+                        {
+                            self.object_shape_mismatches =
+                                self.object_shape_mismatches.saturating_add(1);
+                            self.object_shape_first_error
+                                .get_or_insert_with(|| format!("Frame {frame_index}: {shape}"));
                         }
                         if let Err(blocker) = aspx_support {
                             if let FullAjocAudioFrameError::Asf(asf) = error {

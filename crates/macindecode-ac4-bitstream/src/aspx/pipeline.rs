@@ -364,16 +364,16 @@ fn prepare(
 
 /// 只核对帧布局，不改写状态或工作区；双声道入口用它先验完两路再一起准备。
 fn validate_frame(pcm: &[f32], output_len: Option<usize>) -> Result<(usize, u8), PipelineError> {
-    if pcm.len() % SUBBANDS != 0 {
+    if !pcm.len().is_multiple_of(SUBBANDS) {
         return Err(PipelineError::UnalignedInput { samples: pcm.len() });
     }
-    if let Some(provided) = output_len {
-        if provided != pcm.len() {
-            return Err(PipelineError::OutputLengthMismatch {
-                expected: pcm.len(),
-                provided,
-            });
-        }
+    if let Some(provided) = output_len
+        && provided != pcm.len()
+    {
+        return Err(PipelineError::OutputLengthMismatch {
+            expected: pcm.len(),
+            provided,
+        });
     }
     let timeslots = pcm.len() / SUBBANDS;
     if timeslots > MAX_QMF_TIMESLOTS {
