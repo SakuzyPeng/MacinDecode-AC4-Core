@@ -430,7 +430,7 @@ safe Rust、默认 `no_std`，没有 Rayon、平台 intrinsic、FMA 或 fast-mat
 ## A-JOC 最终对象跨对象 f64 lane（已验证）
 
 候选继续保留 rolling 的 object-major fixed-stride 持久布局；每个时隙只把一对对象的活动 dry/wet
-系数装入 8,704-byte、`[coefficient][object lane]` 的局部 `f32` AoSoA 工作区。系数暂存不改变
+系数装入 11,776-byte、`[coefficient][object lane]` 的局部 `f32` AoSoA 工作区。系数暂存不改变
 `f32` 位模式，热核再把两个系数精确提升为两个独立 `f64` lane。每个 lane 内仍按原顺序先累加
 全部 dry channel，再累加启用的 wet decorrelator；对象间没有归约，也没有 FMA、fast-math 或
 对象内加法树重排。奇数对象尾部继续走原标量路径，并单独测试了并排计算仍按 object-major、

@@ -51,7 +51,7 @@
     "change": "stage pairs of object-major rolling rows as local f32 AoSoA, then accumulate independent object outputs as two f64 lanes",
     "object_lanes": 2,
     "local_aosoa_layout": "coefficient-major [coefficient][object_lane]",
-    "local_workspace_bytes": 8704,
+    "local_workspace_bytes": 11776,
     "persistent_rolling_layout_unchanged": true,
     "coefficient_bits_preserved_during_staging": true,
     "accumulation_order_per_lane": "all dry channels in original order, then enabled wet decorrelators in original order",
