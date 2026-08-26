@@ -49,8 +49,11 @@ use core::fmt;
 /// 矩阵共同冻结的产品边界，不冒充规范上限。
 pub const MAX_RECONSTRUCTED_OBJECTS: usize = 20;
 
-const DRY_ROLLING_LEN: usize = MAX_RECONSTRUCTED_OBJECTS * MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS;
-const WET_ROLLING_LEN: usize = MAX_RECONSTRUCTED_OBJECTS * MAX_DECORRELATORS * NUM_QMF_SUBBANDS;
+const OUTPUT_OBJECT_LANES: usize = 2;
+const DRY_OBJECT_STRIDE: usize = MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS;
+const WET_OBJECT_STRIDE: usize = MAX_DECORRELATORS * NUM_QMF_SUBBANDS;
+const DRY_ROLLING_LEN: usize = MAX_RECONSTRUCTED_OBJECTS * DRY_OBJECT_STRIDE;
+const WET_ROLLING_LEN: usize = MAX_RECONSTRUCTED_OBJECTS * WET_OBJECT_STRIDE;
 const PRE_ROLLING_LEN: usize = MAX_DECORRELATORS * MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS;
 
 const DRY_TARGET_LEN: usize =
@@ -157,6 +160,54 @@ impl Default for AjocReconstructionState {
     }
 }
 
+/// 最终对象矩阵的一对 fixed-stride 系数行，按 `[coefficient][object]` 排列。
+///
+/// rolling 的持久身份仍保持 object-major；这里只在一个时隙、一个对象对的局部
+/// 工作区里转成 AoSoA，使热乘加能够连续装载两个对象系数，再精确提升为两个
+/// `f64` lane。
+#[derive(Debug)]
+#[repr(C, align(16))]
+struct OutputPairWorkspace {
+    dry: [[f32; OUTPUT_OBJECT_LANES]; DRY_OBJECT_STRIDE],
+    wet: [[f32; OUTPUT_OBJECT_LANES]; WET_OBJECT_STRIDE],
+}
+
+impl OutputPairWorkspace {
+    const fn new() -> Self {
+        Self {
+            dry: [[0.0; OUTPUT_OBJECT_LANES]; DRY_OBJECT_STRIDE],
+            wet: [[0.0; OUTPUT_OBJECT_LANES]; WET_OBJECT_STRIDE],
+        }
+    }
+
+    fn load(
+        &mut self,
+        dry: [&[RollingCoefficient]; OUTPUT_OBJECT_LANES],
+        wet: [&[RollingCoefficient]; OUTPUT_OBJECT_LANES],
+        dimensions: FrameDimensions,
+    ) {
+        let [first_dry, second_dry] = dry;
+        let dry_len = dimensions.num_dmx * NUM_QMF_SUBBANDS;
+        let dry_rows = self.dry[..dry_len]
+            .iter_mut()
+            .zip(&first_dry[..dry_len])
+            .zip(&second_dry[..dry_len]);
+        for ((target, first), second) in dry_rows {
+            *target = [first.current(), second.current()];
+        }
+
+        let [first_wet, second_wet] = wet;
+        let wet_len = dimensions.num_decorr * NUM_QMF_SUBBANDS;
+        let wet_rows = self.wet[..wet_len]
+            .iter_mut()
+            .zip(&first_wet[..wet_len])
+            .zip(&second_wet[..wet_len]);
+        for ((target, first), second) in wet_rows {
+            *target = [first.current(), second.current()];
+        }
+    }
+}
+
 /// A-JOC 帧级候选状态与矩阵工作区。
 ///
 /// 大型候选与 target 缓冲在构造时分配到堆上，同样应由调用方长期复用；逐帧入口
@@ -171,6 +222,7 @@ pub struct AjocWorkspace {
     pre_targets: Box<[f32]>,
     u: [QmfSlot; MAX_DECORRELATORS],
     y: [QmfSlot; MAX_DECORRELATORS],
+    output_pair: Box<OutputPairWorkspace>,
 }
 
 impl AjocWorkspace {
@@ -186,6 +238,7 @@ impl AjocWorkspace {
             pre_targets: vec![0.0; PRE_TARGET_LEN].into_boxed_slice(),
             u: [QmfSlot::zero(); MAX_DECORRELATORS],
             y: [QmfSlot::zero(); MAX_DECORRELATORS],
+            output_pair: Box::new(OutputPairWorkspace::new()),
         }
     }
 
@@ -748,6 +801,7 @@ fn process_timeslots(
         pre_targets,
         u,
         y,
+        output_pair,
         ..
     } = workspace;
     let AjocReconstructionState {
@@ -821,6 +875,7 @@ fn process_timeslots(
             rolling.wet(),
             input,
             y,
+            output_pair,
             output,
         )?;
     }
@@ -945,6 +1000,10 @@ fn decorrelator_input(
 }
 
 #[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "输出热核显式区分持久 rolling、局部 AoSoA、共享输入和调用方输出"
+)]
 fn reconstruct_output(
     timeslot: usize,
     dimensions: FrameDimensions,
@@ -952,51 +1011,238 @@ fn reconstruct_output(
     wet: &[RollingCoefficient],
     input: &[QmfChannelFrame],
     y: &[QmfSlot; MAX_DECORRELATORS],
+    coefficient_pair: &mut OutputPairWorkspace,
     output: &mut [QmfChannelFrame],
 ) -> Result<(), ReconstructionError> {
-    for object in 0..dimensions.objects {
-        for subband in 0..NUM_QMF_SUBBANDS {
-            let mut re = 0.0f64;
-            let mut im = 0.0f64;
-            for channel in 0..dimensions.num_dmx {
-                let coefficient = dry[dry_rolling_index(object, channel, subband)].current();
-                re += f64::from(coefficient) * f64::from(input[channel][timeslot].re[subband]);
-                im += f64::from(coefficient) * f64::from(input[channel][timeslot].im[subband]);
+    let paired_objects = dimensions.objects / OUTPUT_OBJECT_LANES * OUTPUT_OBJECT_LANES;
+    let (paired_output, scalar_output) = output[..dimensions.objects].split_at_mut(paired_objects);
+    let paired_dry = &dry[..paired_objects * DRY_OBJECT_STRIDE];
+    let paired_wet = &wet[..paired_objects * WET_OBJECT_STRIDE];
+
+    let pairs = paired_output
+        .chunks_exact_mut(OUTPUT_OBJECT_LANES)
+        .zip(paired_dry.chunks_exact(OUTPUT_OBJECT_LANES * DRY_OBJECT_STRIDE))
+        .zip(paired_wet.chunks_exact(OUTPUT_OBJECT_LANES * WET_OBJECT_STRIDE));
+    for (pair_index, ((output_pair, dry_pair), wet_pair)) in pairs.enumerate() {
+        let [first_output, second_output] = output_pair else {
+            unreachable!("A-JOC output pair has a fixed two-object width");
+        };
+        let (first_dry, second_dry) = dry_pair.split_at(DRY_OBJECT_STRIDE);
+        let (first_wet, second_wet) = wet_pair.split_at(WET_OBJECT_STRIDE);
+        reconstruct_output_pair(
+            pair_index * OUTPUT_OBJECT_LANES,
+            timeslot,
+            dimensions,
+            [first_dry, second_dry],
+            [first_wet, second_wet],
+            input,
+            y,
+            coefficient_pair,
+            [&mut first_output[timeslot], &mut second_output[timeslot]],
+        )?;
+    }
+
+    if let Some(output) = scalar_output.first_mut() {
+        let object = paired_objects;
+        let dry_start = object * DRY_OBJECT_STRIDE;
+        let wet_start = object * WET_OBJECT_STRIDE;
+        reconstruct_single_output(
+            object,
+            timeslot,
+            dimensions,
+            &dry[dry_start..dry_start + DRY_OBJECT_STRIDE],
+            &wet[wet_start..wet_start + WET_OBJECT_STRIDE],
+            input,
+            y,
+            &mut output[timeslot],
+        )?;
+    }
+    Ok(())
+}
+
+/// 一个子带上两个对象的独立复数 `f64` 累加器。
+///
+/// 固定宽度和 16 字节对齐让 stable Rust 的循环向量器可以把对象维映射到
+/// ARM64 NEON / x86-64 SSE2；每个 lane 仍是各自的标量加法时间线。
+#[repr(C, align(16))]
+struct OutputObjectPair {
+    re: [f64; OUTPUT_OBJECT_LANES],
+    im: [f64; OUTPUT_OBJECT_LANES],
+}
+
+impl OutputObjectPair {
+    const fn new() -> Self {
+        Self {
+            re: [0.0; OUTPUT_OBJECT_LANES],
+            im: [0.0; OUTPUT_OBJECT_LANES],
+        }
+    }
+
+    #[inline(always)]
+    fn accumulate(
+        &mut self,
+        coefficients: [f32; OUTPUT_OBJECT_LANES],
+        input_re: f64,
+        input_im: f64,
+    ) {
+        let coefficients = [f64::from(coefficients[0]), f64::from(coefficients[1])];
+        for lane in 0..OUTPUT_OBJECT_LANES {
+            self.re[lane] += coefficients[lane] * input_re;
+            self.im[lane] += coefficients[lane] * input_im;
+        }
+    }
+}
+
+/// 两个互不相关的对象并排执行最终 dry/wet 矩阵。
+///
+/// 每个对象 lane 内仍先按 channel、再按 decorrelator 的既有顺序更新独立的
+/// `f64` 累加器；共享的输入只提升到 `f64` 一次，允许 LLVM 在 safe Rust 下生成
+/// 2×f64 垂直 SIMD。对象间没有归约，也不使用 FMA 或重排对象内加法树。
+#[inline(always)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "双对象热内核显式接收 fixed-stride 行、共享输入和两个输出，避免伪装成可变形 DTO"
+)]
+fn reconstruct_output_pair(
+    first_object: usize,
+    timeslot: usize,
+    dimensions: FrameDimensions,
+    dry: [&[RollingCoefficient]; OUTPUT_OBJECT_LANES],
+    wet: [&[RollingCoefficient]; OUTPUT_OBJECT_LANES],
+    input: &[QmfChannelFrame],
+    y: &[QmfSlot; MAX_DECORRELATORS],
+    coefficient_pair: &mut OutputPairWorkspace,
+    output: [&mut QmfSlot; OUTPUT_OBJECT_LANES],
+) -> Result<(), ReconstructionError> {
+    let [first_output, second_output] = output;
+    let mut first_non_finite = None;
+    let mut second_non_finite = None;
+    coefficient_pair.load(dry, wet, dimensions);
+
+    for subband in 0..NUM_QMF_SUBBANDS {
+        let mut accumulator = OutputObjectPair::new();
+        for channel in 0..dimensions.num_dmx {
+            let coefficient_index = channel * NUM_QMF_SUBBANDS + subband;
+            let input_re = f64::from(input[channel][timeslot].re[subband]);
+            let input_im = f64::from(input[channel][timeslot].im[subband]);
+            accumulator.accumulate(coefficient_pair.dry[coefficient_index], input_re, input_im);
+        }
+        for decorrelator in 0..dimensions.num_decorr {
+            // P2 6.3.6.2.1：dense 语法即使在该路禁用时仍携带 wet 段，
+            // 因此不能靠系数自然为零。rolling 与 decorrelator 继续推进历史，
+            // 这里只把禁用路从可观察的对象输出中硬性移除。
+            if !dimensions.decorr_enabled[decorrelator] {
+                continue;
             }
-            for decorrelator in 0..dimensions.num_decorr {
-                // P2 6.3.6.2.1：dense 语法即使在该路禁用时仍携带 wet 段，
-                // 因此不能靠系数自然为零。上面的候选 DSP 继续推进跨帧历史，
-                // 这里只把禁用路从可观察的对象输出中硬性移除。
-                if !dimensions.decorr_enabled[decorrelator] {
-                    continue;
-                }
-                // 只有 pre target 对 wet 取绝对值；最终输出必须保留原始 wet 符号。
-                let coefficient = wet[wet_rolling_index(object, decorrelator, subband)].current();
-                re += f64::from(coefficient) * f64::from(y[decorrelator].re[subband]);
-                im += f64::from(coefficient) * f64::from(y[decorrelator].im[subband]);
+            let coefficient_index = decorrelator * NUM_QMF_SUBBANDS + subband;
+            // 只有 pre target 对 wet 取绝对值；最终输出必须保留原始 wet 符号。
+            let input_re = f64::from(y[decorrelator].re[subband]);
+            let input_im = f64::from(y[decorrelator].im[subband]);
+            accumulator.accumulate(coefficient_pair.wet[coefficient_index], input_re, input_im);
+        }
+
+        let [first_re, second_re] = accumulator.re;
+        let [first_im, second_im] = accumulator.im;
+        let first_out_re = first_re as f32;
+        let first_out_im = first_im as f32;
+        let second_out_re = second_re as f32;
+        let second_out_im = second_im as f32;
+        first_output.re[subband] = first_out_re;
+        first_output.im[subband] = first_out_im;
+        second_output.re[subband] = second_out_re;
+        second_output.im[subband] = second_out_im;
+        if first_non_finite.is_none()
+            && (!first_re.is_finite()
+                || !first_im.is_finite()
+                || !first_out_re.is_finite()
+                || !first_out_im.is_finite())
+        {
+            first_non_finite = Some(subband);
+        }
+        if second_non_finite.is_none()
+            && (!second_re.is_finite()
+                || !second_im.is_finite()
+                || !second_out_re.is_finite()
+                || !second_out_im.is_finite())
+        {
+            second_non_finite = Some(subband);
+        }
+    }
+
+    // 原标量遍历按 object 再按 subband 报错；即使第二 lane 更早溢出，第一
+    // lane 的任意错误仍须优先，不能让并排执行改变错误上下文。
+    if let Some(subband) = first_non_finite {
+        return Err(ReconstructionError::NonFiniteOutput {
+            object: first_object,
+            timeslot,
+            subband,
+        });
+    }
+    if let Some(subband) = second_non_finite {
+        return Err(ReconstructionError::NonFiniteOutput {
+            object: first_object + 1,
+            timeslot,
+            subband,
+        });
+    }
+    Ok(())
+}
+
+/// 奇数对象尾部与测试参考共用的原始标量加法树。
+#[inline(always)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "标量尾部显式接收一个对象的 fixed-stride 行和共享输入"
+)]
+fn reconstruct_single_output(
+    object: usize,
+    timeslot: usize,
+    dimensions: FrameDimensions,
+    dry: &[RollingCoefficient],
+    wet: &[RollingCoefficient],
+    input: &[QmfChannelFrame],
+    y: &[QmfSlot; MAX_DECORRELATORS],
+    output: &mut QmfSlot,
+) -> Result<(), ReconstructionError> {
+    for subband in 0..NUM_QMF_SUBBANDS {
+        let mut re = 0.0f64;
+        let mut im = 0.0f64;
+        for channel in 0..dimensions.num_dmx {
+            let coefficient = dry[channel * NUM_QMF_SUBBANDS + subband].current();
+            re += f64::from(coefficient) * f64::from(input[channel][timeslot].re[subband]);
+            im += f64::from(coefficient) * f64::from(input[channel][timeslot].im[subband]);
+        }
+        for decorrelator in 0..dimensions.num_decorr {
+            if !dimensions.decorr_enabled[decorrelator] {
+                continue;
             }
-            output[object][timeslot].re[subband] = re as f32;
-            output[object][timeslot].im[subband] = im as f32;
-            if !re.is_finite()
-                || !im.is_finite()
-                || !output[object][timeslot].re[subband].is_finite()
-                || !output[object][timeslot].im[subband].is_finite()
-            {
-                return Err(ReconstructionError::NonFiniteOutput {
-                    object,
-                    timeslot,
-                    subband,
-                });
-            }
+            let coefficient = wet[decorrelator * NUM_QMF_SUBBANDS + subband].current();
+            re += f64::from(coefficient) * f64::from(y[decorrelator].re[subband]);
+            im += f64::from(coefficient) * f64::from(y[decorrelator].im[subband]);
+        }
+        output.re[subband] = re as f32;
+        output.im[subband] = im as f32;
+        if !re.is_finite()
+            || !im.is_finite()
+            || !output.re[subband].is_finite()
+            || !output.im[subband].is_finite()
+        {
+            return Err(ReconstructionError::NonFiniteOutput {
+                object,
+                timeslot,
+                subband,
+            });
         }
     }
     Ok(())
 }
 
+#[cfg(test)]
 const fn dry_rolling_index(object: usize, channel: usize, subband: usize) -> usize {
     (object * MAX_AJOC_DMX_SIGNALS + channel) * NUM_QMF_SUBBANDS + subband
 }
 
+#[cfg(test)]
 const fn wet_rolling_index(object: usize, decorrelator: usize, subband: usize) -> usize {
     (object * MAX_DECORRELATORS + decorrelator) * NUM_QMF_SUBBANDS + subband
 }
@@ -1338,6 +1584,166 @@ mod tests {
             assert_eq!(state.dry[unused_dry_object], sentinel);
             assert_eq!(state.wet[0], sentinel);
             assert_eq!(state.pre[0], sentinel);
+        });
+    }
+
+    #[test]
+    fn paired_output_is_bit_exact_to_scalar_for_even_and_odd_object_counts() {
+        on_large_stack(|| {
+            let num_dmx = 3usize;
+            let num_decorr = 3usize;
+            let mut decorr_enabled = [false; MAX_DECORRELATORS];
+            decorr_enabled[0] = true;
+            decorr_enabled[2] = true;
+
+            let mut input = zero_inputs(num_dmx);
+            for (channel, frame) in input.iter_mut().enumerate() {
+                for subband in 0..NUM_QMF_SUBBANDS {
+                    frame[0].re[subband] = (channel * 17 + subband % 13) as f32 / 16.0 - 1.5;
+                    frame[0].im[subband] = (channel * 11 + subband % 7) as f32 / 8.0 - 2.0;
+                }
+            }
+            let mut y = [QmfSlot::zero(); MAX_DECORRELATORS];
+            for (decorrelator, slot) in y.iter_mut().enumerate().take(num_decorr) {
+                for subband in 0..NUM_QMF_SUBBANDS {
+                    slot.re[subband] = (decorrelator * 7 + subband % 5) as f32 / 32.0 - 0.5;
+                    slot.im[subband] = (decorrelator * 5 + subband % 11) as f32 / 64.0 - 0.75;
+                }
+            }
+
+            let mut dry = vec![RollingCoefficient::ZERO; DRY_ROLLING_LEN];
+            let mut wet = vec![RollingCoefficient::ZERO; WET_ROLLING_LEN];
+            for object in 0..3 {
+                for channel in 0..num_dmx {
+                    for subband in 0..NUM_QMF_SUBBANDS {
+                        let value =
+                            (object * 19 + channel * 7 + subband % 17) as f32 / 128.0 - 0.625;
+                        dry[dry_rolling_index(object, channel, subband)] =
+                            RollingCoefficient::new(value);
+                    }
+                }
+                for decorrelator in 0..num_decorr {
+                    for subband in 0..NUM_QMF_SUBBANDS {
+                        let value =
+                            (object * 13 + decorrelator * 3 + subband % 19) as f32 / 256.0 - 0.25;
+                        wet[wet_rolling_index(object, decorrelator, subband)] =
+                            RollingCoefficient::new(value);
+                    }
+                }
+            }
+
+            for objects in [2usize, 3] {
+                let dimensions = FrameDimensions {
+                    objects,
+                    num_dpoints: 0,
+                    num_dmx,
+                    num_decorr,
+                    decorr_enabled,
+                    timeslots: 1,
+                    shape: ReconstructionShape {
+                        objects: u8::try_from(objects).expect("测试对象数在 u8 内"),
+                        num_dmx: u8::try_from(num_dmx).expect("测试输入数在 u8 内"),
+                        num_decorr: u8::try_from(num_decorr).expect("测试去相关器数在 u8 内"),
+                    },
+                };
+                let sentinel = sentinel_frame(91.0);
+                let mut paired = vec![empty_channel_frame(); objects];
+                paired.push(sentinel);
+                let mut scalar = paired.clone();
+                let mut coefficient_pair = OutputPairWorkspace::new();
+
+                reconstruct_output(
+                    0,
+                    dimensions,
+                    &dry,
+                    &wet,
+                    &input,
+                    &y,
+                    &mut coefficient_pair,
+                    &mut paired,
+                )
+                .expect("双对象输出");
+                for object in 0..objects {
+                    let dry_start = object * DRY_OBJECT_STRIDE;
+                    let wet_start = object * WET_OBJECT_STRIDE;
+                    reconstruct_single_output(
+                        object,
+                        0,
+                        dimensions,
+                        &dry[dry_start..dry_start + DRY_OBJECT_STRIDE],
+                        &wet[wet_start..wet_start + WET_OBJECT_STRIDE],
+                        &input,
+                        &y,
+                        &mut scalar[object][0],
+                    )
+                    .expect("标量参考输出");
+                }
+
+                for object in 0..objects {
+                    for subband in 0..NUM_QMF_SUBBANDS {
+                        assert_eq!(
+                            paired[object][0].re[subband].to_bits(),
+                            scalar[object][0].re[subband].to_bits(),
+                            "objects={objects}, object={object}, re[{subband}]"
+                        );
+                        assert_eq!(
+                            paired[object][0].im[subband].to_bits(),
+                            scalar[object][0].im[subband].to_bits(),
+                            "objects={objects}, object={object}, im[{subband}]"
+                        );
+                    }
+                }
+                assert_eq!(paired[objects], sentinel, "形状外对象不得被改写");
+            }
+        });
+    }
+
+    #[test]
+    fn paired_output_preserves_object_major_non_finite_error_order() {
+        on_large_stack(|| {
+            let dimensions = FrameDimensions {
+                objects: 2,
+                num_dpoints: 0,
+                num_dmx: 1,
+                num_decorr: 0,
+                decorr_enabled: [false; MAX_DECORRELATORS],
+                timeslots: 1,
+                shape: ReconstructionShape {
+                    objects: 2,
+                    num_dmx: 1,
+                    num_decorr: 0,
+                },
+            };
+            let mut dry = vec![RollingCoefficient::ZERO; DRY_ROLLING_LEN];
+            let wet = vec![RollingCoefficient::ZERO; WET_ROLLING_LEN];
+            // 第二对象先在 sb=0 溢出；第一对象随后在 sb=1 溢出。原 object-major
+            // 标量顺序必须仍报告第一对象，而不能报告更早算到的第二 lane。
+            dry[dry_rolling_index(1, 0, 0)] = RollingCoefficient::new(f32::MAX);
+            dry[dry_rolling_index(0, 0, 1)] = RollingCoefficient::new(f32::MAX);
+            let mut input = zero_inputs(1);
+            input[0][0].re[0] = f32::MAX;
+            input[0][0].re[1] = f32::MAX;
+            let y = [QmfSlot::zero(); MAX_DECORRELATORS];
+            let mut output = vec![empty_channel_frame(); 2];
+            let mut coefficient_pair = OutputPairWorkspace::new();
+
+            assert_eq!(
+                reconstruct_output(
+                    0,
+                    dimensions,
+                    &dry,
+                    &wet,
+                    &input,
+                    &y,
+                    &mut coefficient_pair,
+                    &mut output,
+                ),
+                Err(ReconstructionError::NonFiniteOutput {
+                    object: 0,
+                    timeslot: 0,
+                    subband: 1,
+                })
+            );
         });
     }
 

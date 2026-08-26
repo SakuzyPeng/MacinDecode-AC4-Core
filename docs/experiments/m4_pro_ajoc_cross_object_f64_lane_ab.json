@@ -1,0 +1,368 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-26T08:06:53Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "f84cb635c799d536943870b61d62885d03772131",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 12,
+    "modes": [
+      "full"
+    ],
+    "rounds_per_binary": 7,
+    "order": [
+      "before/after",
+      "after/before",
+      "before/after",
+      "after/before",
+      "before/after",
+      "after/before",
+      "before/after"
+    ],
+    "cold_runs": 1,
+    "warmup_passes": 1,
+    "min_passes": 3,
+    "min_time_ns": 1000000,
+    "max_passes": 3,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit",
+    "comparison_unit": "steady.total_decode_ns / steady.passes",
+    "aggregation": "per-case seven-round median, then sum"
+  },
+  "binaries": {
+    "before_commit": "f84cb635c799d536943870b61d62885d03772131",
+    "before_sha256": "d3c0fae2a458c016711591ab9952bc72fffb23cd682b240b8d1f6e2743b9fb4c",
+    "after_sha256": "dd0cd8b24bdd99613572dfeaa88e70fe78970ccd5cb0fbc33d3aa2548e47390c"
+  },
+  "candidate": {
+    "status": "retained",
+    "change": "stage pairs of object-major rolling rows as local f32 AoSoA, then accumulate independent object outputs as two f64 lanes",
+    "object_lanes": 2,
+    "local_aosoa_layout": "coefficient-major [coefficient][object_lane]",
+    "local_workspace_bytes": 8704,
+    "persistent_rolling_layout_unchanged": true,
+    "coefficient_bits_preserved_during_staging": true,
+    "accumulation_order_per_lane": "all dry channels in original order, then enabled wet decorrelators in original order",
+    "odd_object_tail": "original scalar f64 addition tree",
+    "object_major_error_order_preserved": true,
+    "frame_transactional": true,
+    "no_std": true,
+    "rayon": false,
+    "platform_intrinsics": false,
+    "unsafe_code": false,
+    "fma": false,
+    "fast_math": false
+  },
+  "corpus_results": {
+    "all_total_improved": 12,
+    "all_p95_improved": 12,
+    "all_p99_improved": 11,
+    "aggregate_before_median_pass_ns": 4697810234,
+    "aggregate_after_median_pass_ns": 4541395987,
+    "aggregate_improvement_percent": 3.329513948178776,
+    "total_improvement_range_percent": [
+      3.0145876603449007,
+      4.3137721806965565
+    ],
+    "p95_improvement_range_percent": [
+      2.3166756128484995,
+      4.762345986919637
+    ],
+    "p99_improvement_range_percent": [
+      -2.073938178808351,
+      5.2506097510460314
+    ],
+    "before_deadline_misses": 0,
+    "after_deadline_misses": 0
+  },
+  "cases": [
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "before_median_pass_ns": 675165500,
+      "after_median_pass_ns": 651042182,
+      "improvement_percent": 3.5729488547622767,
+      "before_median_p95_ns": 4900500,
+      "after_median_p95_ns": 4736792,
+      "p95_improvement_percent": 3.34063871033568,
+      "before_median_p99_ns": 4995209,
+      "after_median_p99_ns": 4803625,
+      "p99_improvement_percent": 3.8353550371966416
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "before_median_pass_ns": 593559626.3333334,
+      "after_median_pass_ns": 574566737.3333334,
+      "improvement_percent": 3.199828316714706,
+      "before_median_p95_ns": 4312167,
+      "after_median_p95_ns": 4166000,
+      "p95_improvement_percent": 3.3896414494151084,
+      "before_median_p99_ns": 4394750,
+      "after_median_p99_ns": 4239625,
+      "p99_improvement_percent": 3.52977985095853
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "before_median_pass_ns": 456792680.6666667,
+      "after_median_pass_ns": 442770903,
+      "improvement_percent": 3.0696152237383894,
+      "before_median_p95_ns": 3329167,
+      "after_median_p95_ns": 3252041,
+      "p95_improvement_percent": 2.3166756128484995,
+      "before_median_p99_ns": 3435917,
+      "after_median_p99_ns": 3297291,
+      "p99_improvement_percent": 4.034614340218346
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "before_median_pass_ns": 675439705,
+      "after_median_pass_ns": 655077983,
+      "improvement_percent": 3.0145876603449007,
+      "before_median_p95_ns": 4902500,
+      "after_median_p95_ns": 4755500,
+      "p95_improvement_percent": 2.998470168281489,
+      "before_median_p99_ns": 5000583,
+      "after_median_p99_ns": 5104292,
+      "p99_improvement_percent": -2.073938178808351
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "before_median_pass_ns": 595724693,
+      "after_median_pass_ns": 576828850.6666666,
+      "improvement_percent": 3.1719085267686515,
+      "before_median_p95_ns": 4314167,
+      "after_median_p95_ns": 4175416,
+      "p95_improvement_percent": 3.2161712794150064,
+      "before_median_p99_ns": 4426875,
+      "after_median_p99_ns": 4248333,
+      "p99_improvement_percent": 4.033138500635324
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "before_median_pass_ns": 158462486.66666666,
+      "after_median_pass_ns": 151626776,
+      "improvement_percent": 4.3137721806965565,
+      "before_median_p95_ns": 3378041,
+      "after_median_p95_ns": 3217167,
+      "p95_improvement_percent": 4.762345986919637,
+      "before_median_p99_ns": 3442084,
+      "after_median_p99_ns": 3279333,
+      "p99_improvement_percent": 4.728269269430961
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "before_median_pass_ns": 181859780.33333334,
+      "after_median_pass_ns": 175113220.66666666,
+      "improvement_percent": 3.709759054091467,
+      "before_median_p95_ns": 3872416,
+      "after_median_p95_ns": 3734292,
+      "p95_improvement_percent": 3.5668688488013682,
+      "before_median_p99_ns": 3928125,
+      "after_median_p99_ns": 3791000,
+      "p99_improvement_percent": 3.49085123309467
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "before_median_pass_ns": 595516814.3333334,
+      "after_median_pass_ns": 573783960,
+      "improvement_percent": 3.649410698447327,
+      "before_median_p95_ns": 4319750,
+      "after_median_p95_ns": 4162875,
+      "p95_improvement_percent": 3.631575901383182,
+      "before_median_p99_ns": 4466167,
+      "after_median_p99_ns": 4231666,
+      "p99_improvement_percent": 5.2506097510460314
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "before_median_pass_ns": 174638238.66666666,
+      "after_median_pass_ns": 168766419,
+      "improvement_percent": 3.3622760464701225,
+      "before_median_p95_ns": 4325375,
+      "after_median_p95_ns": 4177250,
+      "p95_improvement_percent": 3.4245585642863334,
+      "before_median_p99_ns": 4390834,
+      "after_median_p99_ns": 4224292,
+      "p99_improvement_percent": 3.792946852465841
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "before_median_pass_ns": 174452737,
+      "after_median_pass_ns": 169150872.66666666,
+      "improvement_percent": 3.0391408151614976,
+      "before_median_p95_ns": 4335167,
+      "after_median_p95_ns": 4159875,
+      "p95_improvement_percent": 4.04348898208535,
+      "before_median_p99_ns": 4372625,
+      "after_median_p99_ns": 4250083,
+      "p99_improvement_percent": 2.802481347016952
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "before_median_pass_ns": 207763069.66666666,
+      "after_median_pass_ns": 201095375.66666666,
+      "improvement_percent": 3.2092777656287006,
+      "before_median_p95_ns": 4324458,
+      "after_median_p95_ns": 4169417,
+      "p95_improvement_percent": 3.585212297124865,
+      "before_median_p99_ns": 4399958,
+      "after_median_p99_ns": 4235875,
+      "p99_improvement_percent": 3.729194687767474
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "before_median_pass_ns": 208434902.33333334,
+      "after_median_pass_ns": 201572707,
+      "improvement_percent": 3.2922486860473974,
+      "before_median_p95_ns": 4348708,
+      "after_median_p95_ns": 4189083,
+      "p95_improvement_percent": 3.67063044931966,
+      "before_median_p99_ns": 4449333,
+      "after_median_p99_ns": 4282791,
+      "p99_improvement_percent": 3.7430778950462913
+    }
+  ],
+  "standard_1500k": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "before_median_pass_ns": 675165500,
+    "after_median_pass_ns": 651042182,
+    "improvement_percent": 3.5729488547622767,
+    "before_median_p95_ns": 4900500,
+    "after_median_p95_ns": 4736792,
+    "before_median_p99_ns": 4995209,
+    "after_median_p99_ns": 4803625
+  },
+  "anomaly_audit": {
+    "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+    "observation": "five-round after p99 regressed while total duration and p95 improved; two alternating rounds were added without deleting any prior run",
+    "before_round_p99_ns": [
+      5134792,
+      5003208,
+      4961333,
+      5000583,
+      5029917,
+      4975791,
+      4962750
+    ],
+    "after_round_p99_ns": [
+      7241834,
+      5727375,
+      5104292,
+      4829500,
+      5896625,
+      4761459,
+      4780542
+    ],
+    "five_round_before_median_p99_ns": 5003208,
+    "five_round_after_median_p99_ns": 5727375,
+    "five_round_apparent_regression_percent": 14.474053447308208,
+    "seven_round_before_median_p99_ns": 5000583,
+    "seven_round_after_median_p99_ns": 5104292,
+    "seven_round_regression_percent": 2.073938178808351,
+    "total_improvement_percent": 3.0145876603449007,
+    "p95_improvement_percent": 2.998470168281489,
+    "deadline_misses": 0,
+    "resolution": "the residual 2.07% p99 regression remains disclosed; the candidate is retained because total duration and p95 improve in all cases and no deadline is missed"
+  },
+  "correctness": {
+    "paired_even_and_odd_output_test": "bit_exact_to_scalar",
+    "object_major_non_finite_error_test": "passed",
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact",
+    "workspace_tests_audio_decode": "passed",
+    "clippy_workspace_all_targets_audio_decode": "passed",
+    "clippy_split_profile_all_targets": "passed",
+    "msrv_1_85": "passed"
+  },
+  "steady_allocations": {
+    "combinations": 24,
+    "allocation_free": 24,
+    "heap_operation_free": 24,
+    "allocations": 0,
+    "reallocations": 0,
+    "deallocations": 0,
+    "bytes_allocated": 0,
+    "bytes_reallocated": 0,
+    "bytes_deallocated": 0
+  },
+  "assembly_audit": {
+    "binary_sha256": "dd0cd8b24bdd99613572dfeaa88e70fe78970ccd5cb0fbc33d3aa2548e47390c",
+    "architecture": "aarch64",
+    "hot_lane_instructions": [
+      "fcvtl",
+      "fmul.2d",
+      "fadd.2d"
+    ],
+    "hot_lane_fmla_2d": 0,
+    "hot_lane_panic_bounds_check_calls": 0,
+    "cold_invalid_dimension_bounds_failure_blocks_retained": true
+  },
+  "rejected_alternative": {
+    "change": "maintain a full persistent object-pair mirror from the rolling update loop",
+    "screening_rounds_per_binary": 1,
+    "aggregate_improvement_percent": -1.4222426601050204,
+    "improved_cases": 1,
+    "combinations": 12,
+    "result": "rejected and fully reverted because scattered mirror writes polluted the rolling hot loop"
+  },
+  "post_optimization_attribution": {
+    "performance_use": "stage ranking only; split-profile timing is not a production benchmark",
+    "baseline_split_binary_sha256": "dba683c45fe7db3dc403ca4ad4bac02c071a03be0e319382a1c257285db12aad",
+    "split_binary_sha256": "785c2fb3f97ee641d1226d03721e9afb4c4f4311c928a274b678a42c95aa4bb5",
+    "profile_duration_ns": 30185901250,
+    "profile_passes": 43,
+    "profile_access_unit_calls": 6149,
+    "profile_thread_samples": 16259,
+    "ajoc_reconstruction_samples": 3250,
+    "ajoc_reconstruction_share_of_profile_percent": 19.988929208438403,
+    "phases": {
+      "reconstruct_output": {
+        "inclusive_samples": 1139,
+        "share_of_reconstruction_percent": 35.04615384615385,
+        "share_of_profile_percent": 7.005350882588105
+      },
+      "rolling_advance_and_install": {
+        "inclusive_samples": 1314,
+        "share_of_reconstruction_percent": 40.43076923076923,
+        "share_of_profile_percent": 8.081677839965558
+      },
+      "decorrelator": 370,
+      "decorrelator_input": 157,
+      "prepare_targets": 110,
+      "prepare_candidate": 46,
+      "validate_input": 31,
+      "commit_candidate": 32,
+      "diff_decode": 41,
+      "unclassified_process_overhead": 10
+    },
+    "phase_sample_sum": 3250,
+    "normalized_against_baseline": {
+      "baseline_profile_access_unit_calls": 6006,
+      "baseline_ajoc_reconstruction_samples": 3775,
+      "baseline_reconstruct_output_samples": 1750,
+      "baseline_rolling_samples": 1282,
+      "ajoc_reconstruction_samples_per_au_before": 0.6285381285381285,
+      "ajoc_reconstruction_samples_per_au_after": 0.5285412262156448,
+      "ajoc_reconstruction_reduction_percent": 15.909440936393038,
+      "reconstruct_output_samples_per_au_before": 0.2913752913752914,
+      "reconstruct_output_samples_per_au_after": 0.1852333712798829,
+      "reconstruct_output_reduction_percent": 36.42790697674419,
+      "rolling_samples_per_au_before": 0.21345321345321344,
+      "rolling_samples_per_au_after": 0.21369328346072533,
+      "rolling_change_percent": 0.11246961506368212
+    },
+    "next_ajoc_candidate": "rolling advance/install is again the largest reconstruction phase; any further layout change must avoid scattered mirror writes"
+  }
+}

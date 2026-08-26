@@ -18,6 +18,7 @@
 - [A-JOC 重建分段采样 JSON](experiments/m4_pro_ajoc_reconstruction_split_full.json)
 - [A-JOC rolling 校验融合 A/B JSON](experiments/m4_pro_ajoc_rolling_validation_fusion_ab.json)
 - [A-JOC rolling 拓扑可达遍历 A/B JSON](experiments/m4_pro_ajoc_topology_reachable_rolling_ab.json)
+- [A-JOC 跨对象 f64 lane A/B JSON](experiments/m4_pro_ajoc_cross_object_f64_lane_ab.json)
 
 ## 结论
 
@@ -425,6 +426,53 @@ safe Rust、默认 `no_std`，没有 Rayon、平台 intrinsic、FMA 或 fast-mat
 按当前 `10.72%` 的全程阶段占比，下一候选的理论全程上限约 `10.7%`；考虑只能共享加载/循环
 控制而不能合并对象内加法树，现实目标先定为 Full `4%`–`7%`。采样只用于阶段排序，正式收益
 仍须由普通 portable release 的逐位门禁与交替 A/B 决定。
+
+## A-JOC 最终对象跨对象 f64 lane（已验证）
+
+候选继续保留 rolling 的 object-major fixed-stride 持久布局；每个时隙只把一对对象的活动 dry/wet
+系数装入 8,704-byte、`[coefficient][object lane]` 的局部 `f32` AoSoA 工作区。系数暂存不改变
+`f32` 位模式，热核再把两个系数精确提升为两个独立 `f64` lane。每个 lane 内仍按原顺序先累加
+全部 dry channel，再累加启用的 wet decorrelator；对象间没有归约，也没有 FMA、fast-math 或
+对象内加法树重排。奇数对象尾部继续走原标量路径，并单独测试了并排计算仍按 object-major、
+subband-major 顺序报告首个非有限输出。
+
+A/B 的 before 是提交 `f84cb63`，after 只含本候选。两个普通 portable release 冻结二进制的
+SHA-256 分别为 `d3c0fae2a458c016711591ab9952bc72fffb23cd682b240b8d1f6e2743b9fb4c` 与
+`dd0cd8b24bdd99613572dfeaa88e70fe78970ccd5cb0fbc33d3aa2548e47390c`。12 个 Full 案例各固定
+3 个完整 pass；先跑五轮交替 A/B，随后为审计尾延迟异常原样追加两轮，最终顺序为
+before/after、after/before、before/after、after/before、before/after、after/before、
+before/after。每项先取自身七轮单 pass 和百分位中位数，再汇总：
+
+| 判据 | before | after | 变化 |
+| --- | ---: | ---: | ---: |
+| 12 项单 pass 中位数汇总 | 4.698 s | 4.541 s | 提升 3.33% |
+| 单项总时长提升范围 | — | — | 3.01%–4.31% |
+| 单项 p95 提升范围 | — | — | 2.32%–4.76% |
+| 单项 p99 变化范围 | — | — | 回退 2.07%–提升 5.25% |
+| Full 标准 1500K 单 pass | 675.166 ms | 651.042 ms | 提升 3.57% |
+| deadline miss（七轮合计） | 0 | 0 | 不变 |
+
+12/12 项总时长和 12/12 项 p95 改善，11/12 项 p99 改善。DME L4 1500K 的 after p99 在五轮
+中位数上一度回退 14.47%；保留全部旧轮并追加两轮后，回退收敛到 2.07%，同一项总时长与 p95
+仍分别改善 3.01% 和 3.00%，七轮都没有 deadline miss。该残余尾延迟代价没有从报告中删除。
+Core、A-SPX、A-JOC 对象三层真实 PCM 基线全部逐位一致；偶数/奇数对象标量对照、错误顺序、
+全 workspace、全目标 Clippy、split-profile Clippy 和 Rust 1.85 MSRV 检查通过。allocation 构建
+复测 24/24 项，allocation/reallocation/deallocation 和字节计数继续全部为零。
+
+普通 ARM64 release 的对象热循环出现 `fcvtl`、`fmul.2d` 与 `fadd.2d`，没有 `fmla.2d`；热 lane
+内没有 `panic_bounds_check` 调用，非法维度的冷失败块仍保留。实现继续是 safe Rust 和默认
+`no_std`，没有 Rayon 或平台 intrinsic。
+
+优化后 split-profile 的主线程为 16,259 个样本，A-JOC 重建为 3,250 个（19.99%）。考虑两次
+profile 的 AU 调用数不同，按调用归一后，最终对象矩阵从 `1750/6006` 降到 `1139/6149`
+样本/AU，减少 36.43%；整个 A-JOC 重建从 `3775/6006` 降到 `3250/6149`，减少 15.91%。
+rolling 从 `1282/6006` 到 `1314/6149`，只变化 +0.11%，可视为保持不变。候选后最终对象矩阵
+占全程 7.01%，rolling 推进/安装占 8.08%，后者重新成为重建内最大阶段。
+
+另测过在 rolling 推进时维护完整持久对象对镜像：单轮筛选汇总回退 1.42%，仅 1/12 项改善，
+原因是散布镜像写污染了 rolling 热循环，已完整撤销。因此下一轮若继续动 rolling 布局，应直接
+设计顺序可遍历的主存储，而不是附加同步镜像。完整逐项数字、异常轮序列、汇编和采样摘要见对应
+A/B JSON；原始 timing 与 `sample` 文件仍只保留在 `target/perf/`。
 
 ## QMF 合成尾段实验（未保留）
 
