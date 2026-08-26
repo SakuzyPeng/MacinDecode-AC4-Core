@@ -1232,6 +1232,7 @@ fn empty_frame_storage(
         presentation: ScenePresentation {
             index: input.presentation.index,
             id: input.presentation.id,
+            identity_occurrences: input.presentation.identity_occurrences,
             version: 0,
             md_compat: None,
             group_indices: Vec::new(),
@@ -1290,6 +1291,7 @@ fn update_frame_header(
     );
     frame.presentation.index = input.presentation.index;
     frame.presentation.id = input.presentation.id;
+    frame.presentation.identity_occurrences = input.presentation.identity_occurrences;
     frame.presentation.version = presentation.presentation_version;
     frame.presentation.md_compat = presentation.md_compat;
     frame.presentation.group_indices.clear();

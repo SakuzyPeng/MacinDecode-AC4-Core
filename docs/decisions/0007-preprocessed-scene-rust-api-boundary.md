@@ -48,10 +48,20 @@ M4.5 可以解析、验证并保留这些处理所需的 metadata；M6.5 若实�
 沿用到新配置。首版不同时解码全部 presentation；需要并行输出时由调用方建立独立 Session，
 直到另一个 ADR 定义共享 DSP 与状态所有权。
 
+系统层已经解析的选择 metadata 不进入 `Ac4DecoderConfig`。调用方可用泛型
+`PresentationSelectionMetadata<T>` 保持原始只读视图，再由已选 `ScenePresentation` 按
+effective presentation ID 关联：双方该 ID 都必须唯一；无 ID 时双方都只能有一个无 ID 项。
+来源数组下标不参与身份判断，重复 ID 与多路无 ID 不作猜测性绑定；opaque body 的未知身份
+也不得冒充明确无 ID 参与回退。
+
 ### 3. Scene 不拥有容器语义
 
 `decode_access_unit` 只接收调用方已经定界并剥离 sync wrapper 的 `raw_ac4_frame`。
 raw sync 拆包、MP4 sample table、edit list 与文件 I/O 分别属于同步、MP4 和应用适配层。
+
+Scene 不解析 `dac4`，也不拥有 DSI 字节。泛型 presentation metadata 只提供身份 envelope 与
+调用方值的只读关联，因此 MP4 适配层可以把已经定界的 DSI presentation（包括未知版本的
+原始 body）直接作为 `T`，而不增加 Scene 到 MP4 的依赖或让 DSI 取代 TOC 配置。
 
 `AccessUnitContext` 中的 AU index、discontinuity、random-access hint、
 `source_sample_start`、`presentation_sample_start` 与 `priming_samples` 都是调用方提供的通用

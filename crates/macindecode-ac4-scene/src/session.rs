@@ -755,6 +755,7 @@ impl PresentationCandidate {
 pub(crate) struct ResolvedPresentation {
     pub(crate) index: u32,
     pub(crate) id: Option<u32>,
+    pub(crate) identity_occurrences: u32,
     pub(crate) group_mask: u8,
     pub(crate) substream_index: u32,
     pub(crate) ajoc_info: SubstreamInfoAjoc,
@@ -867,7 +868,14 @@ pub(crate) fn resolve_presentation(
         ));
     }
 
-    match resolve_ajoc_source(topology, selected, presentation, decode_mode) {
+    let identity_occurrences = presentation_identity_occurrences(available, selected.id);
+    match resolve_ajoc_source(
+        topology,
+        selected,
+        identity_occurrences,
+        presentation,
+        decode_mode,
+    ) {
         Ok(resolved) => Ok(resolved),
         Err(AjocSourceFailure::Unsupported(failure)) => {
             let mut context = DecodeErrorContext::for_access_unit(access_unit_index)
@@ -909,6 +917,19 @@ pub(crate) fn resolve_presentation(
 
 fn presentation_is_eligible(presentation: &Ac4PresentationV1Info) -> bool {
     presentation.presentation_config != Some(6) && !presentation.group_indices().is_empty()
+}
+
+fn presentation_identity_occurrences(
+    candidates: &[PresentationCandidate],
+    presentation_id: Option<u32>,
+) -> u32 {
+    u32::try_from(
+        candidates
+            .iter()
+            .filter(|candidate| candidate.id == presentation_id)
+            .count(),
+    )
+    .unwrap_or(u32::MAX)
 }
 
 fn select_candidate(
@@ -979,6 +1000,7 @@ fn select_candidate(
 fn resolve_ajoc_source(
     topology: &Ac4Topology,
     selected: PresentationCandidate,
+    identity_occurrences: u32,
     presentation: &Ac4PresentationV1Info,
     decode_mode: DecodeMode,
 ) -> Result<ResolvedPresentation, AjocSourceFailure> {
@@ -1081,6 +1103,7 @@ fn resolve_ajoc_source(
     Ok(ResolvedPresentation {
         index: selected.index,
         id: selected.id,
+        identity_occurrences,
         group_mask,
         substream_index,
         ajoc_info,
@@ -1276,6 +1299,8 @@ mod tests {
             select_candidate(&[candidate(0, Some(4), true)], PresentationSelection::Id(4)),
             Ok(candidate(0, Some(4), true))
         );
+        assert_eq!(presentation_identity_occurrences(&candidates, Some(9)), 2);
+        assert_eq!(presentation_identity_occurrences(&candidates, None), 1);
     }
 
     #[test]
@@ -1670,6 +1695,7 @@ mod tests {
             assert_eq!(frame.timeline().source_sample_start(), Some(9_600));
             assert_eq!(frame.timeline().presentation_sample_start(), Some(0));
             assert_eq!(frame.timeline().control_source_access_unit_index(), None);
+            assert_eq!(frame.presentation().identity_occurrences(), 1);
             assert!(frame.diagnostics().warmup());
             assert!(!frame.diagnostics().state_complete());
             assert!(frame.metadata_updates().is_empty());
@@ -3141,6 +3167,7 @@ mod tests {
         )
         .expect("唯一 A-JOC presentation 应可解析");
         assert_eq!(resolved.index, 0);
+        assert_eq!(resolved.identity_occurrences, 1);
         assert_eq!(resolved.group_mask, 1);
         assert_eq!(resolved.substream_index, 1);
         let expected_info = first_ajoc_info(&topology);

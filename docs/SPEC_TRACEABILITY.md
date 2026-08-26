@@ -1629,6 +1629,14 @@ DSI/首帧 TOC 的全部 presentation 闭合，再让 Bento4
 codec string 的 presentation version 与 `mdcompat` 对照本实现的 DSI 解析值。这里仍只做
 容器 inspection，不以 DSI 配置解码器，也不把 selection 信令解释成 renderer 或设备策略。
 
+Scene 公共 API 另以泛型 `PresentationSelectionMetadata<T>` 接受调用方已经解析的系统层
+只读值，并由所选 `ScenePresentation` 按 effective presentation ID 关联。TOC 与 metadata
+两侧该身份都必须唯一；双方各自唯一的无 ID 项才允许回退。SceneFrame 同时报告当前 TOC 中
+相同身份的出现次数，所以显式按 index 选中重复 ID 时也不会误绑。来源数组下标、DSI 字段或
+不透明 body 均不参与解码器配置；未知 presentation 版本可继续借用 MP4 parser 已按
+`pres_bytes` 定界的原始 envelope，无需复制或猜读；其身份状态标为 unavailable，不能把
+未解析 ID 当作明确无 ID。
+
 ## 6. 未决规范问题
 
 在实现前需要形成明确结论：

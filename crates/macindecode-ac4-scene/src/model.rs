@@ -39,6 +39,148 @@ pub enum PresentationSelection {
     Id(u32),
 }
 
+/// 调用方 metadata 中 presentation 身份的可用状态。
+///
+/// 未知版本的 opaque body 不能把“尚未解析 ID”伪装成“明确没有 ID”；适配层应使用
+/// [`PresentationSelectionMetadataIdentity::Unavailable`] 保持两者区别。
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationSelectionMetadataIdentity {
+    /// 已经应用扩展覆盖规则的 effective presentation ID。
+    EffectiveId(u32),
+    /// 已知语法明确没有 presentation ID。
+    WithoutId,
+    /// opaque 或未解释的语法无法确定是否存在 presentation ID。
+    Unavailable,
+}
+
+/// 调用方提供的一项 presentation 选择 metadata。
+///
+/// Scene 只使用 effective presentation ID 把本项与已经由 TOC 选中的
+/// [`ScenePresentation`] 关联，绝不使用 `source_index` 配置解码器或按数组顺序猜测
+/// 身份。`T` 由适配层决定，可以直接保存 MP4 DSI 的只读借用视图；未知 presentation
+/// 版本因此仍能保留已经按声明长度定界的原始 body，而不要求 Scene 理解其语法。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationSelectionMetadata<T> {
+    source_index: u32,
+    identity: PresentationSelectionMetadataIdentity,
+    version: u32,
+    declared_bytes: u32,
+    value: T,
+}
+
+impl<T> PresentationSelectionMetadata<T> {
+    /// 创建一项调用方拥有的 presentation metadata。
+    ///
+    /// `identity` 中的 ID 应已经应用系统层定义的扩展覆盖规则；未知版本不得用
+    /// `WithoutId` 代替 `Unavailable`。`declared_bytes` 是外层 envelope 验证后的 body
+    /// 长度。Scene 不重新解释这些值。
+    #[must_use]
+    pub const fn new(
+        source_index: u32,
+        identity: PresentationSelectionMetadataIdentity,
+        version: u32,
+        declared_bytes: u32,
+        value: T,
+    ) -> Self {
+        Self {
+            source_index,
+            identity,
+            version,
+            declared_bytes,
+            value,
+        }
+    }
+
+    /// metadata 来源数组中的下标，仅供检视，不参与身份关联。
+    #[must_use]
+    pub const fn source_index(&self) -> u32 {
+        self.source_index
+    }
+
+    /// metadata 身份是否已知，以及已知时的 effective ID。
+    #[must_use]
+    pub const fn identity(&self) -> PresentationSelectionMetadataIdentity {
+        self.identity
+    }
+
+    /// 已应用扩展覆盖规则的 presentation ID；明确无 ID 或身份不可用时为 `None`。
+    ///
+    /// 需要区分后两种状态时使用 [`PresentationSelectionMetadata::identity`]。
+    #[must_use]
+    pub const fn effective_presentation_id(&self) -> Option<u32> {
+        match self.identity {
+            PresentationSelectionMetadataIdentity::EffectiveId(value) => Some(value),
+            PresentationSelectionMetadataIdentity::WithoutId
+            | PresentationSelectionMetadataIdentity::Unavailable => None,
+        }
+    }
+
+    /// presentation metadata envelope 的语法版本。
+    #[must_use]
+    pub const fn version(&self) -> u32 {
+        self.version
+    }
+
+    /// envelope 声明并已由适配层验证的 body 字节数。
+    #[must_use]
+    pub const fn declared_bytes(&self) -> u32 {
+        self.declared_bytes
+    }
+
+    /// 调用方定义的只读 metadata 值。
+    #[must_use]
+    pub const fn value(&self) -> &T {
+        &self.value
+    }
+
+    /// 取回调用方定义的 metadata 值。
+    #[must_use]
+    pub fn into_value(self) -> T {
+        self.value
+    }
+}
+
+/// Scene presentation 与调用方 metadata 的稳定关联依据。
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationSelectionMetadataMatchBasis {
+    /// 双方各自唯一的 effective presentation ID。
+    EffectivePresentationId,
+    /// 双方各自恰有一个无 ID presentation 时的唯一回退。
+    SingleWithoutId,
+}
+
+/// 已选择 Scene presentation 与调用方 metadata 的只读关联结果。
+///
+/// `Missing` 与 `Ambiguous` 都不会改变 Session 的 presentation 选择或解码状态；调用方
+/// 可以把它们用于 UI 能力检视、日志或容器一致性门禁。
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationSelectionMetadataMatch<'a, T> {
+    /// 已按稳定身份找到唯一 metadata。
+    Matched {
+        /// 调用方原始 entry 的只读视图。
+        metadata: &'a PresentationSelectionMetadata<T>,
+        /// 本次关联采用的身份依据。
+        basis: PresentationSelectionMetadataMatchBasis,
+    },
+    /// metadata 集合中没有相同 effective ID 的候选。
+    Missing {
+        /// 当前 Scene presentation 的 effective ID。
+        effective_presentation_id: Option<u32>,
+    },
+    /// TOC 或 metadata 一侧的相同身份不唯一，不能安全关联。
+    Ambiguous {
+        /// 发生歧义的 effective ID；`None` 表示多路无 ID。
+        effective_presentation_id: Option<u32>,
+        /// 当前 TOC 中具有相同身份的 presentation 数量。
+        scene_candidates: u32,
+        /// 调用方 metadata 中具有相同身份的 entry 数量。
+        metadata_candidates: usize,
+    },
+}
+
 /// 解码会话配置。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ac4DecoderConfig {
@@ -371,6 +513,7 @@ impl SceneTimeline {
 pub struct ScenePresentation {
     pub(crate) index: u32,
     pub(crate) id: Option<u32>,
+    pub(crate) identity_occurrences: u32,
     pub(crate) version: u32,
     pub(crate) md_compat: Option<u8>,
     pub(crate) group_indices: Vec<u32>,
@@ -388,6 +531,15 @@ impl ScenePresentation {
     #[must_use]
     pub const fn id(&self) -> Option<u32> {
         self.id
+    }
+
+    /// 当前 TOC 中具有相同 effective presentation ID 的 presentation 数量。
+    ///
+    /// 无 ID presentation 以 `None` 作为同一类计数。值大于一时，即使 Session 是按
+    /// 显式下标选择，也不能把外部 metadata 猜测性绑定到其中一路。
+    #[must_use]
+    pub const fn identity_occurrences(&self) -> u32 {
+        self.identity_occurrences
     }
 
     #[must_use]
@@ -418,6 +570,51 @@ impl ScenePresentation {
     #[must_use]
     pub const fn mode(&self) -> DecodeMode {
         self.mode
+    }
+
+    /// 将已经选中的 TOC presentation 与调用方 metadata 严格关联。
+    ///
+    /// 有 ID 时要求双方该 ID 都唯一；无 ID 时要求双方各自恰有一个无 ID 项。来源数组
+    /// 下标不参与关联，重复 ID 或多路无 ID 返回
+    /// [`PresentationSelectionMetadataMatch::Ambiguous`]。
+    #[must_use]
+    pub fn match_selection_metadata<'a, T>(
+        &self,
+        metadata: &'a [PresentationSelectionMetadata<T>],
+    ) -> PresentationSelectionMetadataMatch<'a, T> {
+        let expected_identity = match self.id {
+            Some(value) => PresentationSelectionMetadataIdentity::EffectiveId(value),
+            None => PresentationSelectionMetadataIdentity::WithoutId,
+        };
+        let mut matched = None;
+        let mut metadata_candidates = 0usize;
+        for entry in metadata {
+            if entry.identity() == expected_identity {
+                metadata_candidates = metadata_candidates.saturating_add(1);
+                if matched.is_none() {
+                    matched = Some(entry);
+                }
+            }
+        }
+
+        if self.identity_occurrences != 1 || metadata_candidates > 1 {
+            return PresentationSelectionMetadataMatch::Ambiguous {
+                effective_presentation_id: self.id,
+                scene_candidates: self.identity_occurrences,
+                metadata_candidates,
+            };
+        }
+        let Some(metadata) = matched else {
+            return PresentationSelectionMetadataMatch::Missing {
+                effective_presentation_id: self.id,
+            };
+        };
+        let basis = if self.id.is_some() {
+            PresentationSelectionMetadataMatchBasis::EffectivePresentationId
+        } else {
+            PresentationSelectionMetadataMatchBasis::SingleWithoutId
+        };
+        PresentationSelectionMetadataMatch::Matched { metadata, basis }
     }
 }
 
@@ -1573,6 +1770,22 @@ impl FusedIterator for SceneFrameIter<'_> {}
 mod tests {
     use super::*;
 
+    use PresentationSelectionMetadataIdentity as MetadataIdentity;
+
+    fn scene_presentation(id: Option<u32>, identity_occurrences: u32) -> ScenePresentation {
+        ScenePresentation {
+            index: 3,
+            id,
+            identity_occurrences,
+            version: 1,
+            md_compat: Some(4),
+            group_indices: alloc::vec![0],
+            substream_indices: alloc::vec![1],
+            path: ScenePath::Ajoc,
+            mode: DecodeMode::Full,
+        }
+    }
+
     #[test]
     fn decoder_config_defaults_to_full_without_diagnostics_and_can_opt_in() {
         let default = Ac4DecoderConfig::default();
@@ -1586,6 +1799,155 @@ mod tests {
         assert_eq!(core.presentation(), PresentationSelection::Index(2));
         assert_eq!(core.decode_mode(), DecodeMode::Core);
         assert!(core.core_band_diagnostics());
+    }
+
+    #[test]
+    fn presentation_metadata_matches_unique_effective_id_without_using_array_order() {
+        let first_body = [0x20, 0x21];
+        let selected_body = [0x40, 0x41, 0x42];
+        let metadata = [
+            PresentationSelectionMetadata::new(
+                9,
+                MetadataIdentity::EffectiveId(8),
+                1,
+                2,
+                first_body.as_slice(),
+            ),
+            PresentationSelectionMetadata::new(
+                2,
+                MetadataIdentity::EffectiveId(4),
+                2,
+                3,
+                selected_body.as_slice(),
+            ),
+        ];
+
+        let matched = scene_presentation(Some(4), 1).match_selection_metadata(&metadata);
+
+        let PresentationSelectionMetadataMatch::Matched { metadata, basis } = matched else {
+            panic!("effective ID 应唯一关联 metadata");
+        };
+        assert_eq!(
+            basis,
+            PresentationSelectionMetadataMatchBasis::EffectivePresentationId
+        );
+        assert_eq!(metadata.source_index(), 2);
+        assert_eq!(metadata.version(), 2);
+        assert_eq!(metadata.declared_bytes(), 3);
+        assert_eq!(*metadata.value(), selected_body.as_slice());
+    }
+
+    #[test]
+    fn presentation_metadata_uses_only_a_unique_without_id_fallback() {
+        let identified = [0x01];
+        let anonymous = [0x02];
+        let metadata = [
+            PresentationSelectionMetadata::new(
+                0,
+                MetadataIdentity::EffectiveId(5),
+                1,
+                1,
+                identified.as_slice(),
+            ),
+            PresentationSelectionMetadata::new(
+                1,
+                MetadataIdentity::WithoutId,
+                7,
+                1,
+                anonymous.as_slice(),
+            ),
+        ];
+
+        let matched = scene_presentation(None, 1).match_selection_metadata(&metadata);
+
+        let PresentationSelectionMetadataMatch::Matched { metadata, basis } = matched else {
+            panic!("双方唯一无 ID presentation 应允许回退");
+        };
+        assert_eq!(
+            basis,
+            PresentationSelectionMetadataMatchBasis::SingleWithoutId
+        );
+        assert_eq!(metadata.source_index(), 1);
+        assert_eq!(metadata.effective_presentation_id(), None);
+        assert_eq!(metadata.into_value(), anonymous.as_slice());
+    }
+
+    #[test]
+    fn presentation_metadata_refuses_duplicate_ids_on_either_side() {
+        let metadata = [
+            PresentationSelectionMetadata::new(0, MetadataIdentity::EffectiveId(4), 1, 0, ()),
+            PresentationSelectionMetadata::new(1, MetadataIdentity::EffectiveId(4), 1, 0, ()),
+        ];
+
+        assert_eq!(
+            scene_presentation(Some(4), 1).match_selection_metadata(&metadata),
+            PresentationSelectionMetadataMatch::Ambiguous {
+                effective_presentation_id: Some(4),
+                scene_candidates: 1,
+                metadata_candidates: 2,
+            }
+        );
+        assert_eq!(
+            scene_presentation(Some(4), 2).match_selection_metadata(&metadata[..1]),
+            PresentationSelectionMetadataMatch::Ambiguous {
+                effective_presentation_id: Some(4),
+                scene_candidates: 2,
+                metadata_candidates: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn presentation_metadata_refuses_multiple_without_id_and_reports_missing() {
+        let anonymous = [
+            PresentationSelectionMetadata::new(0, MetadataIdentity::WithoutId, 1, 0, ()),
+            PresentationSelectionMetadata::new(1, MetadataIdentity::WithoutId, 1, 0, ()),
+        ];
+        assert_eq!(
+            scene_presentation(None, 2).match_selection_metadata(&anonymous),
+            PresentationSelectionMetadataMatch::Ambiguous {
+                effective_presentation_id: None,
+                scene_candidates: 2,
+                metadata_candidates: 2,
+            }
+        );
+
+        let other = [PresentationSelectionMetadata::new(
+            0,
+            MetadataIdentity::EffectiveId(9),
+            1,
+            0,
+            (),
+        )];
+        assert_eq!(
+            scene_presentation(Some(4), 1).match_selection_metadata(&other),
+            PresentationSelectionMetadataMatch::Missing {
+                effective_presentation_id: Some(4),
+            }
+        );
+    }
+
+    #[test]
+    fn opaque_presentation_identity_does_not_masquerade_as_without_id() {
+        let opaque_body = [0x80, 0x00];
+        let metadata = [PresentationSelectionMetadata::new(
+            0,
+            MetadataIdentity::Unavailable,
+            2,
+            2,
+            opaque_body.as_slice(),
+        )];
+
+        assert_eq!(
+            scene_presentation(None, 1).match_selection_metadata(&metadata),
+            PresentationSelectionMetadataMatch::Missing {
+                effective_presentation_id: None,
+            }
+        );
+        assert_eq!(metadata[0].identity(), MetadataIdentity::Unavailable);
+        assert_eq!(metadata[0].effective_presentation_id(), None);
+        assert_eq!(metadata[0].declared_bytes(), 2);
+        assert_eq!(*metadata[0].value(), opaque_body.as_slice());
     }
 
     #[test]

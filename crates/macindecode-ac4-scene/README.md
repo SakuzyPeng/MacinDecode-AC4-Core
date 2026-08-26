@@ -4,6 +4,15 @@
 `Ac4SceneFrame` 数据契约、presentation 选择、整数采样时间线、结构化错误和
 `Ac4DecoderSession`，并以借用视图发布对象/LFE PCM 与 OAMD 状态。
 
+容器或系统层已经解析的 presentation metadata 可由调用方放入泛型
+`PresentationSelectionMetadata<T>`；已选择的
+`ScenePresentation::match_selection_metadata` 只按双方唯一的 effective presentation ID
+关联，并返回原 entry 的只读视图。没有 ID 时只允许双方各自唯一的无 ID 项回退，重复 ID 或
+多路无 ID 保持歧义。metadata 不参与 TOC 驱动的解码配置，因此 `T` 可以直接是
+`macindecode-ac4-mp4` 的借用 DSI envelope，未知版本仍保留其原始定界 body，而本 crate
+不需要依赖 MP4。opaque body 的身份必须标为 `Unavailable`，不能把尚未解析 ID 猜成明确
+无 ID 后走唯一回退。
+
 ```toml
 [dependencies]
 macindecode-ac4-scene = "0.1.0"
