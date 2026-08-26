@@ -484,6 +484,11 @@ impl<'a> Ac4DsiV1<'a> {
 pub enum DsiError {
     /// 数据不足以读出固定头部。
     Truncated(ReadError),
+    /// DSI 版本晚于当前实现；其余 box 内容不得继续解释。
+    UnsupportedDsiVersion {
+        /// 读到的 3 比特版本号。
+        dsi_version: u8,
+    },
     /// `fs_index` 之外的保留取值，或该采样率下未定义的组合。
     UnsupportedSamplingFrequency {
         /// 读到的原始索引。
@@ -509,6 +514,10 @@ impl fmt::Display for DsiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             DsiError::Truncated(error) => write!(f, "Truncated dac4 data: {error}"),
+            DsiError::UnsupportedDsiVersion { dsi_version } => write!(
+                f,
+                "dac4 DSI version {dsi_version} is newer than supported version 1"
+            ),
             DsiError::UnsupportedSamplingFrequency { fs_index } => {
                 write!(f, "fs_index {fs_index} is undefined")
             }
@@ -559,11 +568,16 @@ impl<'a> Ac4Dsi<'a> {
     ///
     /// # Errors
     ///
-    /// 数据不足返回 [`DsiError::Truncated`]；`fs_index` 无法映射到已定义的
-    /// 采样频率返回 [`DsiError::UnsupportedSamplingFrequency`]。
+    /// 数据不足返回 [`DsiError::Truncated`]；版本大于 1 返回
+    /// [`DsiError::UnsupportedDsiVersion`]，且不解释其余内容；`fs_index`
+    /// 无法映射到已定义的采样频率返回
+    /// [`DsiError::UnsupportedSamplingFrequency`]。
     pub fn parse(payload: &'a [u8]) -> Result<Self, DsiError> {
         let mut reader = BitReader::new(payload);
         let dsi_version = reader.read_bits(3).map_err(DsiError::Truncated)? as u8;
+        if dsi_version > 1 {
+            return Err(DsiError::UnsupportedDsiVersion { dsi_version });
+        }
         let bitstream_version = reader.read_bits(7).map_err(DsiError::Truncated)? as u8;
         let fs_index = reader.read_bits(1).map_err(DsiError::Truncated)? as u8;
         let frame_rate_index = reader.read_bits(4).map_err(DsiError::Truncated)? as u8;
@@ -605,9 +619,9 @@ impl<'a> Ac4Dsi<'a> {
 
     /// 取得 Part 2 定义的 v1 DSI。
     ///
-    /// 版本 0 或大于 1 时返回 `Ok(None)`；规范要求遇到大于 1 的版本停止解析
-    /// box 剩余内容。`Ac4Dsi::parse` 已验证过 v1，本方法仍返回 `Result`，避免
-    /// 将该不变量转化为潜在 panic。
+    /// 非版本 1 时返回 `Ok(None)`。[`Ac4Dsi::parse`] 会在读出大于 1 的版本后
+    /// 立即返回 [`DsiError::UnsupportedDsiVersion`]；它也已验证过 v1。本方法
+    /// 仍返回 `Result`，避免将该不变量转化为潜在 panic。
     pub fn v1(&self) -> Result<Option<Ac4DsiV1<'a>>, DsiError> {
         if self.dsi_version != 1 {
             return Ok(None);
@@ -663,7 +677,7 @@ mod tests {
         }
 
         fn byte_align(&mut self) {
-            while !self.bits.is_multiple_of(8) {
+            while self.bits % 8 != 0 {
                 self.push_bits(0, 1);
             }
         }
@@ -897,13 +911,11 @@ mod tests {
 
     #[test]
     fn newer_dsi_version_stops_before_unknown_body() {
-        let mut payload = BitBuf::new();
-        push_header(&mut payload, 2, 1);
-        payload.push_bytes(&[0xff]);
-
-        let dsi = Ac4Dsi::parse(payload.as_slice()).unwrap();
-        assert_eq!(dsi.dsi_version, 2);
-        assert_eq!(dsi.presentation_bytes, &[0xff]);
-        assert!(dsi.v1().unwrap().is_none());
+        // 只有前三位仍属于已知语法；余下五位必须被当作不透明内容跳过。
+        // 若解析器继续读取旧版固定头，此输入会错误地报告截断。
+        assert_eq!(
+            Ac4Dsi::parse(&[0b010_11111]).unwrap_err(),
+            DsiError::UnsupportedDsiVersion { dsi_version: 2 }
+        );
     }
 }
