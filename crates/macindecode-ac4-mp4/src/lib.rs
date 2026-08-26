@@ -13,7 +13,10 @@ pub mod samples;
 pub mod timeline;
 
 pub use boxes::{BoxError, BoxIter, Mp4Box, find_box, find_path};
-pub use dsi::{Ac4Dsi, BaseSamplingFrequency, DsiError, FrameRate, MediaTimeline, SampleDelta};
+pub use dsi::{
+    Ac4BitrateDsi, Ac4BitrateMode, Ac4Dsi, Ac4DsiPresentation, Ac4DsiPresentationIter, Ac4DsiV1,
+    Ac4ProgramId, BaseSamplingFrequency, DsiError, FrameRate, MediaTimeline, SampleDelta,
+};
 pub use samples::{SampleInfo, SampleIter, SampleTable, SampleTableError};
 pub use timeline::{
     EditListEntry, HeaderTiming, PresentationTiming, TimelineError, media_time_to_presentation,
