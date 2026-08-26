@@ -364,7 +364,8 @@ pub(crate) fn describe_topology(topology: &Ac4Topology) -> String {
         out.push_str(&format!(
             concat!(
                 "{{\"index\": {}, \"single_group\": {}, \"config\": {}, ",
-                "\"version\": {}, \"md_compat\": {}, \"frame_rate_factor\": {}, ",
+                "\"version\": {}, \"md_compat\": {}, \"presentation_id\": {}, ",
+                "\"frame_rate_factor\": {}, ",
                 "\"frame_rate_fraction\": {}, \"group_indices\": [{}], ",
                 "\"presentation_substream\": {}}}"
             ),
@@ -375,14 +376,17 @@ pub(crate) fn describe_topology(topology: &Ac4Topology) -> String {
             presentation
                 .md_compat
                 .map_or_else(|| "null".to_owned(), |value| value.to_string()),
+            presentation
+                .presentation_id
+                .map_or_else(|| "null".to_owned(), |value| value.to_string()),
             presentation.frame_rate_factor,
             presentation.frame_rate_fraction,
             groups,
             presentation.substream.map_or_else(
                 || "null".to_owned(),
                 |substream| format!(
-                    "{{\"index\": {}, \"ndot\": {}}}",
-                    substream.substream_index, substream.ndot
+                    "{{\"index\": {}, \"alternative\": {}, \"ndot\": {}}}",
+                    substream.substream_index, substream.alternative, substream.ndot
                 )
             ),
         ));

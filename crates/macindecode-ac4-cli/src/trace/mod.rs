@@ -15,6 +15,7 @@ pub(crate) mod testutil;
 
 mod ajoc;
 mod audio_substream;
+mod dac4;
 mod invariants;
 mod oamd;
 mod report;

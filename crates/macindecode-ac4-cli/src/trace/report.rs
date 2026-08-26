@@ -1,9 +1,9 @@
 //! MP4 与 Annex G trace 报告渲染。
 
 use super::{
-    AUDIO_SAMPLE_ENTRY_LEN, Ac4Dsi, Ac4Toc, BoxIter, EditListEntry, SampleDelta, SampleTable,
-    SequenceTransition, SyncFrameIter, TopologyTrace, find_ac4_track, find_box, find_path,
-    media_time_to_presentation, parse_edit_list, parse_header_timing, parse_stsz,
+    AUDIO_SAMPLE_ENTRY_LEN, Ac4Dsi, Ac4Toc, Ac4Topology, BoxIter, EditListEntry, SampleDelta,
+    SampleTable, SequenceTransition, SyncFrameIter, TopologyTrace, dac4, find_ac4_track, find_box,
+    find_path, media_time_to_presentation, parse_edit_list, parse_header_timing, parse_stsz,
     presentation_timing,
 };
 
@@ -42,6 +42,8 @@ struct FrameTrace {
     last_sequence: Option<u16>,
     sequence_gaps: u32,
     first_frames: String,
+    first_topology: Option<Ac4Topology>,
+    first_topology_error: Option<String>,
     topology: TopologyTrace,
 }
 
@@ -69,6 +71,8 @@ fn trace_frames(
         last_sequence: None,
         sequence_gaps: 0,
         first_frames: String::from("["),
+        first_topology: None,
+        first_topology_error: None,
         topology: trace_topology(),
     };
     let mut previous_sequence: Option<u16> = None;
@@ -105,11 +109,20 @@ fn trace_frames(
         let end = start.saturating_add(usize::try_from(info.size).unwrap_or(0));
         let Some(frame) = data.get(start..end) else {
             trace.parse_failures = trace.parse_failures.saturating_add(1);
+            if info.index == 0 {
+                trace.first_topology_error = Some("Sample range exceeds the file size".to_owned());
+            }
             trace
                 .topology
                 .record_parse_failure(info.index, "Sample range exceeds the file size");
             continue;
         };
+        if info.index == 0 {
+            match Ac4Topology::parse(frame) {
+                Ok(topology) => trace.first_topology = Some(topology),
+                Err(error) => trace.first_topology_error = Some(error.to_string()),
+            }
+        }
         trace
             .topology
             .observe(frame, info.index, Some(info.is_sync));
@@ -358,6 +371,12 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
         edits,
         presentation.presented_duration,
     )?;
+    let dac4_json = dac4::describe(
+        &dsi,
+        specific.payload.len(),
+        trace.first_topology.as_ref(),
+        trace.first_topology_error.as_deref(),
+    )?;
 
     let (sample_count, sample_bytes) = find_box(stbl.payload, b"stsz")
         .and_then(|stsz| parse_stsz(stsz.payload))
@@ -448,16 +467,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
             "    \"first\": {}\n",
             "  }},\n",
             "  \"topology\": {},\n",
-            "  \"dac4\": {{\n",
-            "    \"payload_bytes\": {},\n",
-            "    \"ac4_dsi_version\": {},\n",
-            "    \"bitstream_version\": {},\n",
-            "    \"fs_index\": {},\n",
-            "    \"base_sampling_frequency\": {},\n",
-            "    \"frame_rate_index\": {},\n",
-            "    \"n_presentations\": {},\n",
-            "    \"presentation_bytes\": {}\n",
-            "  }},\n",
+            "  \"dac4\": {},\n",
             "  \"derived\": {{\n",
             "    \"frame_rate\": {},\n",
             "    \"media_timeline\": {}\n",
@@ -492,14 +502,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
         trace.sequence_gaps,
         trace.first_frames,
         trace.topology.to_json(),
-        specific.payload.len(),
-        dsi.dsi_version,
-        dsi.bitstream_version,
-        dsi.fs_index,
-        dsi.base_sampling_frequency.hz(),
-        dsi.frame_rate_index,
-        dsi.n_presentations,
-        dsi.presentation_bytes.len(),
+        dac4_json,
         frame_rate_json,
         timeline_json,
     ))

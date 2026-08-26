@@ -1608,6 +1608,22 @@ IMS channel-based）均能完整落到各自 `pres_bytes` 边界；direct-object
 构造码流分支覆盖，不能据此声称存在真实正向样本。本层不执行 renderer、设备适配、DRC、
 dialogue enhancement 或任何额外音频处理。
 
+CLI trace 在 `result.source.dac4.presentations` 展开上述只读选择信令，并以
+`first_toc_comparison` 将它同首个 MP4 sample 的完整 TOC 拓扑交叉核对。presentation 数组的
+顺序不是身份：优先使用尾部扩展覆盖后的 effective presentation ID；只有双方各自恰有一个
+无 ID presentation 时才做唯一回退，多个无 ID 或重复 ID 均保持未匹配，绝不按数组下标
+配对。已匹配项精确比较 presentation version、`md_compat`、alternative 标志、逐 group 的
+channel/A-JOC/direct-object 路径，以及 A-JOC 静态下混和 full/core 对象数。构造测试交换两边
+presentation 顺序仍能正确关联，并分别覆盖对象数失配与多路无 ID 拒绝按序对齐。
+
+12 份 A-JOC MP4 的 DSI/首帧 TOC 均为 1/1 ID 匹配、0 字段失配。两份 IMS
+Channel-based MP4 的 DSI 同时携带尚不解释的 presentation v2 envelope 与 v1 兼容描述；
+其中一份 TOC 只传 v2，不能在不猜测 v2 body 的前提下完整按 ID 关联。因此
+`scripts/cross_check.sh` 只记录这两份的比较结果，不把它升级为门禁；这正是 Channel-based
+延后的边界。其余已覆盖路径要求 DSI/首帧 TOC 的全部 presentation 闭合，再让 Bento4
+codec string 的 presentation version 与 `mdcompat` 对照本实现的 DSI 解析值。这里仍只做
+容器 inspection，不以 DSI 配置解码器，也不把 selection 信令解释成 renderer 或设备策略。
+
 ## 6. 未决规范问题
 
 在实现前需要形成明确结论：

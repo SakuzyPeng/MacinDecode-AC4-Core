@@ -115,6 +115,12 @@ au["max_metadata_bytes"] = validation["audio_substream"]["configuration"]["metad
 first = t.get("first_frame") or {}
 presentations = first.get("presentations") or [{}]
 pres0 = presentations[0]
+dsi_comparison = s.get("first_toc_comparison") or {}
+dsi_matches = dsi_comparison.get("presentations") or []
+dsi_for_toc0 = next(
+    (item.get("dsi") or {} for item in dsi_matches if item.get("toc_index") == 0),
+    {},
+)
 delta = derived.get("media_timeline", {}).get("sample_delta", {})
 if "constant" in delta:
     max_delta = delta["constant"]
@@ -146,6 +152,11 @@ print(
     au["max_tools_metadata_bits"], au["dialnorm_frames"],
     au["substream_loudness_frames"],
     pres0.get("version", ""), pres0.get("md_compat", ""),
+    int(dsi_comparison.get("consistent") is True),
+    dsi_comparison.get("field_mismatches", ""),
+    len(dsi_comparison.get("unmatched_dsi") or []),
+    len(dsi_comparison.get("unmatched_toc") or []),
+    dsi_for_toc0.get("version", ""), dsi_for_toc0.get("md_compat", ""),
 )
 ')"; then
     echo "无法解析本项目 JSON trace" >&2
@@ -169,7 +180,10 @@ read -r OURS_SAMPLES OURS_MEDIA OURS_PRESENTED OURS_TS OURS_BSV OURS_FRI \
     OURS_AUD_MIN_SIZE OURS_AUD_MAX_SIZE \
     OURS_AUD_MIN_MD OURS_AUD_MAX_MD \
     OURS_AUD_TOOLS OURS_AUD_DIALNORM OURS_AUD_LOUDNESS \
-    OURS_PRES_VER OURS_MD_COMPAT <<<"${ours_fields}"
+    OURS_PRES_VER OURS_MD_COMPAT \
+    OURS_DSI_COMPARISON OURS_DSI_FIELD_MISMATCHES \
+    OURS_DSI_UNMATCHED OURS_TOC_UNMATCHED \
+    OURS_DSI_PRES_VER OURS_DSI_MD_COMPAT <<<"${ours_fields}"
 
 mismatch=0
 check() {
@@ -222,6 +236,19 @@ row "同步样本" "${OURS_SYNC}"
 check "frame/sample 数" "${OURS_SAMPLES}" "${OURS_FRAMES}"
 check "TOC 解析失败" "0" "${OURS_TOC_FAILURES}"
 check "dac4/TOC 不一致" "0" "${OURS_DAC4_MISMATCHES}"
+if [[ "${OURS_SCENE_PATH}" == "channel_based" ]]; then
+    row "dac4 presentation/首帧 TOC" "${OURS_DSI_COMPARISON}" "Channel-based 延后，仅记录"
+    row "dac4 presentation 字段失配" "${OURS_DSI_FIELD_MISMATCHES}" "Channel-based 延后，仅记录"
+    row "dac4 未匹配 presentation" "${OURS_DSI_UNMATCHED}" "Channel-based 延后，仅记录"
+    row "TOC 未匹配 presentation" "${OURS_TOC_UNMATCHED}" "Channel-based 延后，仅记录"
+else
+    check "dac4 presentation/首帧 TOC" "1" "${OURS_DSI_COMPARISON}"
+    check "dac4 presentation 字段失配" "0" "${OURS_DSI_FIELD_MISMATCHES}"
+    check "dac4 未匹配 presentation" "0" "${OURS_DSI_UNMATCHED}"
+    check "TOC 未匹配 presentation" "0" "${OURS_TOC_UNMATCHED}"
+    check "presentation_version" "${OURS_PRES_VER}" "${OURS_DSI_PRES_VER}"
+    check "md_compat" "${OURS_MD_COMPAT}" "${OURS_DSI_MD_COMPAT}"
+fi
 check "stss/I-frame 不一致" "0" "${OURS_STSS_MISMATCHES}"
 check "sequence 来源变化" "0" "${OURS_SEQUENCE_CHANGES}"
 echo
@@ -324,10 +351,17 @@ if info="$("${MP4INFO_BIN}" "${INPUT}" 2>/dev/null)"; then
     # RFC 6381 形如 ac-4.<bitstream_version>.<presentation_version>.<mdcompat>
     check "codec string 中的 bsv" "${OURS_BSV}" \
         "$(printf '%s' "${codec}" | awk -F. 'NF > 1 {printf "%d", $2}')"
-    # 后两段来自 dac4，与本项目逐位解析的 TOC presentation 相互独立
-    check "codec string 中的 pres_ver" "${OURS_PRES_VER}" \
+    # Channel-based 的 DSI presentation v2 当前保持不透明，继续以 TOC 值
+    # 核对 Bento4；已覆盖路径则先核对本项目的 DSI，再由首帧比较闭合 TOC。
+    codec_pres_ver="${OURS_DSI_PRES_VER}"
+    codec_md_compat="${OURS_DSI_MD_COMPAT}"
+    if [[ "${OURS_SCENE_PATH}" == "channel_based" ]]; then
+        codec_pres_ver="${OURS_PRES_VER}"
+        codec_md_compat="${OURS_MD_COMPAT}"
+    fi
+    check "codec string 中的 pres_ver" "${codec_pres_ver}" \
         "$(printf '%s' "${codec}" | awk -F. 'NF > 2 {printf "%d", $3}')"
-    check "codec string 中的 mdcompat" "${OURS_MD_COMPAT}" \
+    check "codec string 中的 mdcompat" "${codec_md_compat}" \
         "$(printf '%s' "${codec}" | awk -F. 'NF > 3 {printf "%d", $4}')"
 else
     tool_failed "Bento4 mp4info"

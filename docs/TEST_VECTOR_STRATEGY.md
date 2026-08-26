@@ -395,7 +395,7 @@ core 与 full 两侧的 `bed_dyn_obj_assignment()` 均为 `b_dyn_objects_only = 
 
 判定不依赖任何外部工具，但有两项独立佐证：
 
-- Bento4 从 `dac4` 读出的 codec string `ac-4.02.01.04`，其 `presentation_version = 1` 与 `mdcompat = 4` 同本实现逐位解析 TOC 得到的值一致。二者的输入字节与解析路径完全不同。
+- Bento4 从 `dac4` 读出的 codec string `ac-4.02.01.04`，其 `presentation_version = 1` 与 `mdcompat = 4` 同本实现解析的 DSI 一致；本实现再按 effective presentation ID 将 DSI 与逐位解析的首帧 TOC 闭合。DSI/TOC 顺序互换的构造测试确保该比较不依赖数组下标。12 份 A-JOC MP4 均为 1/1 匹配且零字段失配；两份 IMS Channel-based 的 DSI 还含保持不透明的 v2 envelope，暂只记录而不作闭合门禁。
 - 每帧的 `payload_base` 与 `substream_index_table()` 必须与帧长自洽。两个案例的 substream 引用恰好覆盖 `{0, 1, 2}`（presentation → 0、OAMD → 1、A-JOC → 2），与索引表声明的三条尺寸一一对应。任何一位偏移都会破坏该排列。
 
 上述检查已固化进 `scripts/cross_check.sh` 的拓扑门禁。

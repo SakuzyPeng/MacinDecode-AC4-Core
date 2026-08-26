@@ -183,6 +183,7 @@ QMF 合成的 portable 标量路径另按 [ADR-0008](decisions/0008-paired-qmf-s
 - frame index、byte/bit offset 和 frame size。
 - bitstream version、frame rate、sample count。
 - presentation/group/substream 拓扑。
+- `dac4` presentation 选择信令及其与首帧 TOC 的 ID 级交叉核对。
 - direct-object 或 A-JOC 路径选择。
 - 对象或空间对象组数量。
 - OAMD 更新的采样位置与字段变化。

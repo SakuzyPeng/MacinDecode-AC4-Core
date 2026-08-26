@@ -56,7 +56,7 @@ CLI 遍历全部 `trak` 并以 `stsd` 中的 `ac-4` sample entry 选择轨道；
 拓扑没有等价的外部工具可比，因此校验用两类独立证据：
 
 - **码流自洽**：`payload_base` 与 `substream_index_table()` 必须与帧长相容；presentation、EMDF、OAMD、音频与 HSF 引用经范围校验后，必须恰好覆盖索引表的下标集合。逐位解析错一位即破坏该排列。
-- **容器交叉**：Bento4 从 `dac4` 读出的 codec string 后两段（`presentation_version`、`mdcompat`）与本实现从 TOC 逐位解析的结果一致；二者输入字节与解析路径完全不同。
+- **容器交叉**：Bento4 从 `dac4` 读出的 codec string 后两段（`presentation_version`、`mdcompat`）与本实现的 DSI 解析一致；本实现再按 effective presentation ID 将 DSI 与首帧 TOC 的 version、`md_compat`、group 路径及 A-JOC 对象数闭合，不依赖 presentation 数组顺序。该门禁先覆盖 A-JOC/direct-object；含不透明 v2 DSI 的 Channel-based 按已约定边界只记录。
 
 真实码流原本只覆盖 A-JOC 一条路径；**channel-based 现已有真实样本**（见上文与 9.2j），direct-object 仍只有构造码流的单元测试覆盖，那是分支覆盖的下限，不能替代真实样本。默认 profile 内部的实验结论仍然成立：低至 256 kbps、以及纯 bed 零对象的输入，均未触发另两条路径（见测试向量策略 9.2e）——换 profile 才会。
 
