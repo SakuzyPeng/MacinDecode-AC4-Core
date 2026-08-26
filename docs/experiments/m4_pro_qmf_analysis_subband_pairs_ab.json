@@ -1,0 +1,152 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-26T01:39:11Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "acb6db3a48f8fde0034c6392b1d2794caa405c07",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 24,
+    "modes": [
+      "core",
+      "full"
+    ],
+    "rounds_per_binary": 3,
+    "order": [
+      "before/after",
+      "after/before",
+      "before/after"
+    ],
+    "cold_runs": 20,
+    "warmup_passes": 1,
+    "min_passes": 5,
+    "min_time_ns": 2000000000,
+    "max_passes": 30,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit",
+    "comparison_unit": "steady.total_decode_ns / steady.passes",
+    "aggregation": "per-case three-round median, then sum"
+  },
+  "binaries": {
+    "before_commit": "acb6db3a48f8fde0034c6392b1d2794caa405c07",
+    "before_sha256": "92e6d65549f8d4261de3fe1c19c62a10e6a657b5aa98a0803f78298e7d7a913a",
+    "after_sha256": "8c611d59fe36da7f4d256c31c28a46c2bcb25ee0f430e7c487ac7e315112e87e"
+  },
+  "candidate": {
+    "status": "retained",
+    "subband_pair": "[sb, 63-sb]",
+    "phase_relation_even_n": "(-sin, -cos)",
+    "phase_relation_odd_n": "(sin, cos)",
+    "channel_lanes": 2,
+    "accumulator": "f64",
+    "accumulation_order": "n=0..127 unchanged per output",
+    "no_std": true,
+    "rayon": false,
+    "platform_intrinsics": false,
+    "unsafe_code": false,
+    "fma": false,
+    "fast_math": false,
+    "isolated_scalar_ms_per_frame": 0.779,
+    "isolated_channel_pair_ms_per_frame": 0.738,
+    "isolated_channel_pair_speedup": 1.056
+  },
+  "codegen": {
+    "architecture": "aarch64",
+    "symbol": "analyse_ac4_pcm_pair",
+    "vector_width_bits": 128,
+    "observed_instructions": [
+      "fmul.2d",
+      "fadd.2d"
+    ],
+    "observed_fma": false,
+    "observed_bounds_check_panic_calls": false
+  },
+  "standard_1500k": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "core": {
+      "before_median_pass_ns": 394250431.3333333,
+      "after_median_pass_ns": 314480814.85714287,
+      "improvement_percent": 20.23323505478839,
+      "before_median_p99_ns": 2897125,
+      "after_median_p99_ns": 2352458,
+      "p99_improvement_percent": 18.800258877335285,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0
+    },
+    "full": {
+      "before_median_pass_ns": 839442990,
+      "after_median_pass_ns": 753471519.4,
+      "improvement_percent": 10.241490086182036,
+      "before_median_p99_ns": 6138708,
+      "after_median_p99_ns": 5523500,
+      "p99_improvement_percent": 10.021781458773412,
+      "before_deadline_misses": 0,
+      "after_deadline_misses": 0
+    }
+  },
+  "corpus_results": {
+    "all_total_improved": 24,
+    "all_p99_improved": 24,
+    "core": {
+      "aggregate_before_median_pass_ns": 2635187010.202829,
+      "aggregate_after_median_pass_ns": 2082077715.2099328,
+      "aggregate_improvement_percent": 20.989375435268386,
+      "total_improvement_range_percent": [
+        20.23323505478839,
+        21.521711690844036
+      ],
+      "p99_improvement_range_percent": [
+        18.800258877335285,
+        21.45398592903781
+      ]
+    },
+    "full": {
+      "aggregate_before_median_pass_ns": 5961182937.369444,
+      "aggregate_after_median_pass_ns": 5375667111.784849,
+      "aggregate_improvement_percent": 9.822141540299246,
+      "total_improvement_range_percent": [
+        8.493987777420841,
+        10.531879037523339
+      ],
+      "p99_improvement_range_percent": [
+        8.145038667909411,
+        25.82805074155402
+      ]
+    },
+    "before_deadline_misses": 0,
+    "after_deadline_misses": 0
+  },
+  "steady_allocations": {
+    "combinations": 24,
+    "allocation_free": 24,
+    "heap_operation_free": 24,
+    "allocations": 0,
+    "reallocations": 0,
+    "deallocations": 0,
+    "bytes_allocated": 0,
+    "bytes_reallocated": 0,
+    "bytes_deallocated": 0
+  },
+  "correctness": {
+    "phase_pairs_bit_exact": 4096,
+    "deterministic_folded_slots": 19,
+    "finite_edge_folded_slots": 10,
+    "full_analysis_timeslots": 19,
+    "split_calls": 2,
+    "analysis_state": "bit_exact",
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact"
+  }
+}

@@ -4,10 +4,11 @@
 //! 原型窗 `QWIN`。窗取自规范随附 C 表，不经人工转写；构建期另核对两条与摘要
 //! 无关的结构判据，见 `build.rs` 的 `emit_qmf_window`。
 //!
-//! 分析调制仍按定义式直算。合成调制按 ADR-0008 利用输出 `n` 与 `127-n` 的精确
-//! 负共轭关系成对累加，共享一半乘法与相位加载；每个输出内部仍按原有子带顺序累加，
-//! 因此保持逐位 PCM。128 点 FFT 加前/后旋转虽更快，但会改变加法结合顺序，已因
-//! 无法通过逐位门禁而否决。三角值同样查构建期生成的表，运行期不做求值。
+//! 分析调制按 ADR-0009 利用子带 `sb` 与 `63-sb` 的精确换位相位成对累加，
+//! 合成调制按 ADR-0008 利用输出 `n` 与 `127-n` 的精确负共轭关系成对累加；
+//! 两者都共享一半乘法与相位加载，同时保持每个输出内部原有的累加顺序，因此逐位 PCM 不变。
+//! 128 点 FFT 加前/后旋转虽更快，但会改变加法结合顺序，已因无法通过逐位门禁而
+//! 否决。三角值同样查构建期生成的表，运行期不做求值。
 //!
 //! 滤波器状态与工作区都由调用方提供，不分配；生存期与 `Ac4DecoderSession` 的
 //! 边界一起定，此处只固定「不分配」这一条。
@@ -211,19 +212,48 @@ pub fn analyse(
             *cell = sum;
         }
 
-        // 调制：Q[sb] = Σ_n u[n] · exp(j·(π/128)·(sb+0.5)·(2n−1))。
-        for sb in 0..SUBBANDS {
-            let (mut re, mut im) = (0.0f64, 0.0f64);
-            for (n, &value) in folded.iter().enumerate() {
-                let (cos, sin) = analysis_phase(sb, n);
-                re += value * cos;
-                im += value * sin;
-            }
-            slot.re[sb] = re as f32;
-            slot.im[sb] = im as f32;
-        }
+        modulate_analysis_slot(&folded, slot);
     }
     Ok(())
+}
+
+/// 把一个折叠时隙调制成 64 个分析子带。
+///
+/// 令 `q = 2sb+1`、`m = 2n-1`。镜像子带 `63-sb` 的奇数频率为 `128-q`，故
+/// 其相位是 `exp(j·mπ/2) · conj(exp(j·q·m·2π/512))`。`n` 为偶数时
+/// 实虚贡献都是原相位贡献换位后取负，`n` 为奇数时只换位。两个子带因而共享
+/// `value·cos` 与 `value·sin`；四个累加器仍各自严格按 `n=0..127` 前进。
+#[inline(always)]
+fn modulate_analysis_slot(folded: &[f64; FOLDED], slot: &mut QmfSlot) {
+    for sb in 0..SUBBANDS / 2 {
+        let mirrored_sb = SUBBANDS - 1 - sb;
+        let (mut re, mut im) = (0.0f64, 0.0f64);
+        let (mut mirrored_re, mut mirrored_im) = (0.0f64, 0.0f64);
+
+        for n in (0..FOLDED).step_by(2) {
+            let (cos, sin) = analysis_phase(sb, n);
+            let real = folded[n] * cos;
+            let imaginary = folded[n] * sin;
+            re += real;
+            im += imaginary;
+            mirrored_re += -imaginary;
+            mirrored_im += -real;
+
+            let next = n + 1;
+            let (cos, sin) = analysis_phase(sb, next);
+            let real = folded[next] * cos;
+            let imaginary = folded[next] * sin;
+            re += real;
+            im += imaginary;
+            mirrored_re += imaginary;
+            mirrored_im += real;
+        }
+
+        slot.re[sb] = re as f32;
+        slot.im[sb] = im as f32;
+        slot.re[mirrored_sb] = mirrored_re as f32;
+        slot.im[mirrored_sb] = mirrored_im as f32;
+    }
 }
 
 /// ARM64 NEON 与 portable x86-64 SSE2 的两路 `f64` 分析 lane。
@@ -243,6 +273,68 @@ impl AnalysisChannelPair {
         Self {
             folded: [[0.0; ANALYSIS_CHANNEL_LANES]; FOLDED],
         }
+    }
+}
+
+/// 两路声道并排执行镜像子带分析调制。
+///
+/// 声道 lane 之间没有归约，子带镜像也只共享乘法结果；八个输出累加器都保持
+/// `n=0..127` 的定义顺序。固定两 lane 让 LLVM 在 safe Rust 下继续生成 2×f64
+/// SIMD，而偶数/奇数 `n` 的显式相邻处理消除了镜像符号的热循环分支。
+#[inline(always)]
+fn modulate_analysis_slot_pair(
+    pair: &AnalysisChannelPair,
+    left_slot: &mut QmfSlot,
+    right_slot: &mut QmfSlot,
+) {
+    for sb in 0..SUBBANDS / 2 {
+        let mirrored_sb = SUBBANDS - 1 - sb;
+        let (mut left_re, mut left_im) = (0.0f64, 0.0f64);
+        let (mut left_mirrored_re, mut left_mirrored_im) = (0.0f64, 0.0f64);
+        let (mut right_re, mut right_im) = (0.0f64, 0.0f64);
+        let (mut right_mirrored_re, mut right_mirrored_im) = (0.0f64, 0.0f64);
+
+        for n in (0..FOLDED).step_by(2) {
+            let (cos, sin) = analysis_phase(sb, n);
+            let [left, right] = pair.folded[n];
+            let left_real = left * cos;
+            let left_imaginary = left * sin;
+            let right_real = right * cos;
+            let right_imaginary = right * sin;
+            left_re += left_real;
+            left_im += left_imaginary;
+            left_mirrored_re += -left_imaginary;
+            left_mirrored_im += -left_real;
+            right_re += right_real;
+            right_im += right_imaginary;
+            right_mirrored_re += -right_imaginary;
+            right_mirrored_im += -right_real;
+
+            let next = n + 1;
+            let (cos, sin) = analysis_phase(sb, next);
+            let [left, right] = pair.folded[next];
+            let left_real = left * cos;
+            let left_imaginary = left * sin;
+            let right_real = right * cos;
+            let right_imaginary = right * sin;
+            left_re += left_real;
+            left_im += left_imaginary;
+            left_mirrored_re += left_imaginary;
+            left_mirrored_im += left_real;
+            right_re += right_real;
+            right_im += right_imaginary;
+            right_mirrored_re += right_imaginary;
+            right_mirrored_im += right_real;
+        }
+
+        left_slot.re[sb] = left_re as f32;
+        left_slot.im[sb] = left_im as f32;
+        left_slot.re[mirrored_sb] = left_mirrored_re as f32;
+        left_slot.im[mirrored_sb] = left_mirrored_im as f32;
+        right_slot.re[sb] = right_re as f32;
+        right_slot.im[sb] = right_im as f32;
+        right_slot.re[mirrored_sb] = right_mirrored_re as f32;
+        right_slot.im[mirrored_sb] = right_mirrored_im as f32;
     }
 }
 
@@ -320,22 +412,7 @@ pub(crate) fn analyse_ac4_pcm_pair(
             pair.folded[n] = [left_sum, right_sum];
         }
 
-        for sb in 0..SUBBANDS {
-            let (mut left_re, mut left_im) = (0.0f64, 0.0f64);
-            let (mut right_re, mut right_im) = (0.0f64, 0.0f64);
-            for n in 0..FOLDED {
-                let (cos, sin) = analysis_phase(sb, n);
-                let [left, right] = pair.folded[n];
-                left_re += left * cos;
-                left_im += left * sin;
-                right_re += right * cos;
-                right_im += right * sin;
-            }
-            left_slot.re[sb] = left_re as f32;
-            left_slot.im[sb] = left_im as f32;
-            right_slot.re[sb] = right_re as f32;
-            right_slot.im[sb] = right_im as f32;
-        }
+        modulate_analysis_slot_pair(&pair, left_slot, right_slot);
     }
 
     for (left, right) in left_slots.iter_mut().zip(right_slots.iter_mut()) {
@@ -782,6 +859,133 @@ mod tests {
                 ((state >> 40) as i32 - 8_388_608) as f32 / 8_388_608.0
             })
             .collect()
+    }
+
+    /// `Pseudocode 65` 分析调制的逐子带定义式，作为镜像成对实现的测试 oracle。
+    fn modulate_analysis_slot_direct(folded: &[f64; FOLDED], slot: &mut QmfSlot) {
+        for sb in 0..SUBBANDS {
+            let (mut re, mut im) = (0.0f64, 0.0f64);
+            for (n, &value) in folded.iter().enumerate() {
+                let (cos, sin) = analysis_phase(sb, n);
+                re += value * cos;
+                im += value * sin;
+            }
+            slot.re[sb] = re as f32;
+            slot.im[sb] = im as f32;
+        }
+    }
+
+    /// 拆分前 `Pseudocode 65` 的字面实现，只用于锁定完整分析状态与输出。
+    fn analyse_direct_reference(pcm: &[f32], state: &mut QmfAnalysisState, slots: &mut [QmfSlot]) {
+        assert_eq!(pcm.len(), slots.len() * SUBBANDS);
+        let mut folded = [0.0f64; FOLDED];
+        for (pcm, slot) in pcm.chunks_exact(SUBBANDS).zip(slots) {
+            state
+                .filt
+                .copy_within(0..NUM_QMF_WIN_COEF - SUBBANDS, SUBBANDS);
+            for sb in 0..SUBBANDS {
+                state.filt[SUBBANDS - 1 - sb] = pcm[sb];
+            }
+            for (n, cell) in folded.iter_mut().enumerate() {
+                let mut sum = 0.0f64;
+                for k in 0..5 {
+                    let index = n + k * FOLDED;
+                    sum += f64::from(state.filt[index]) * f64::from(QMF_WINDOW[index]);
+                }
+                *cell = sum;
+            }
+            modulate_analysis_slot_direct(&folded, slot);
+        }
+    }
+
+    fn deterministic_folded(count: usize) -> Vec<[f64; FOLDED]> {
+        let values = deterministic_signal(count * FOLDED);
+        values
+            .chunks_exact(FOLDED)
+            .map(|chunk| core::array::from_fn(|index| f64::from(chunk[index])))
+            .collect()
+    }
+
+    fn finite_edge_folded() -> Vec<[f64; FOLDED]> {
+        let values = [
+            0.0f32,
+            -0.0f32,
+            f32::from_bits(1),
+            -f32::from_bits(1),
+            f32::MIN_POSITIVE,
+            -f32::MIN_POSITIVE,
+            1.0,
+            -1.0,
+            f32::MAX,
+            -f32::MAX,
+        ];
+        (0..values.len())
+            .map(|offset| {
+                core::array::from_fn(|n| f64::from(values[(3 * n + offset) % values.len()]))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn analysis_phase_subbands_form_exact_swapped_pairs() {
+        for sb in 0..SUBBANDS / 2 {
+            let mirrored_sb = SUBBANDS - 1 - sb;
+            for n in 0..FOLDED {
+                let (cos, sin) = analysis_phase(sb, n);
+                let mirrored = analysis_phase(mirrored_sb, n);
+                let expected = if n % 2 == 0 { (-sin, -cos) } else { (sin, cos) };
+                assert_eq!(
+                    mirrored.0.to_bits(),
+                    expected.0.to_bits(),
+                    "子带 {sb}/{mirrored_sb}、折叠项 {n} 的实相位"
+                );
+                assert_eq!(
+                    mirrored.1.to_bits(),
+                    expected.1.to_bits(),
+                    "子带 {sb}/{mirrored_sb}、折叠项 {n} 的虚相位"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn paired_analysis_modulation_is_bit_exact_to_the_definition() {
+        let mut inputs = deterministic_folded(19);
+        inputs.extend(finite_edge_folded());
+        for (input_index, folded) in inputs.iter().enumerate() {
+            let mut direct = QmfSlot::zero();
+            let mut paired = QmfSlot::zero();
+            modulate_analysis_slot_direct(folded, &mut direct);
+            modulate_analysis_slot(folded, &mut paired);
+            assert_qmf_slots_bit_exact(
+                &[paired],
+                &[direct],
+                &format!("paired analysis input {input_index}"),
+            );
+        }
+    }
+
+    #[test]
+    fn paired_scalar_analysis_matches_the_definition_across_calls() {
+        const TIMESLOTS: usize = 19;
+        let signal = deterministic_signal(TIMESLOTS * SUBBANDS);
+        let mut paired_state = QmfAnalysisState::new();
+        let mut direct_state = QmfAnalysisState::new();
+
+        for (call, range) in [0..7, 7..TIMESLOTS].into_iter().enumerate() {
+            let sample_range = range.start * SUBBANDS..range.end * SUBBANDS;
+            let mut paired = vec![QmfSlot::zero(); range.len()];
+            let mut direct = vec![QmfSlot::zero(); range.len()];
+            analyse(
+                &signal[sample_range.clone()],
+                &mut paired_state,
+                &mut paired,
+            )
+            .expect("成对分析应成功");
+            analyse_direct_reference(&signal[sample_range], &mut direct_state, &mut direct);
+            assert_qmf_slots_bit_exact(&paired, &direct, &format!("调用 {call}"));
+            assert_analysis_state_bit_exact(&paired_state, &direct_state, &format!("调用 {call}"));
+        }
     }
 
     /// 拆分前 `Pseudocode 66` 的字面实现，仅用于锁定符号级归因改写的逐位等价性。

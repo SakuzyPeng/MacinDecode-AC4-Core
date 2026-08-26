@@ -1,7 +1,7 @@
 # AC-4 解码性能基线
 
 本报告首先记录 2026-08-25 在 Apple M4 Pro ARM64 上完成的 Core/Full 解码性能基线，并在后文
-追加同日完成的 QMF 优化实验。基线范围是
+追加随后完成的 QMF 优化实验。基线范围是
 `vectors/objects_baseline.json` 中 12 条真实 A-JOC 媒体及其 `presentation_overrides`，共 24 个
 “媒体 × 模式”组合。基线轮只建立测量工具和人工分析数据；后续优化不改变 PCM 位模式、公共 API，
 也没有引入 SIMD 和自动性能门禁。原始基线数字不按优化后结果重写。
@@ -14,6 +14,7 @@
 - [Full QMF 分段 JSON](experiments/m4_pro_qmf_split_full.json)
 - [QMF 成对调制 A/B JSON](experiments/m4_pro_qmf_paired_ab.json)
 - [QMF 跨声道垂直 SIMD A/B JSON](experiments/m4_pro_qmf_vertical_simd_ab.json)
+- [QMF 分析镜像子带成对 A/B JSON](experiments/m4_pro_qmf_analysis_subband_pairs_ab.json)
 
 ## 结论
 
@@ -36,6 +37,9 @@
 - 其上继续保留纯 `no_std` 的跨声道垂直 SIMD：相邻两路共享相位查表并用 2×f64 lane 独立
   累加，五轮 A/B 的 24/24 项总时长与 p99 全部改善；Core 汇总再提升 `5.17%`，Full 再提升
   `7.62%`，三层真实 PCM 基线仍逐位不变。
+- 分析调制继续利用 `sb` 与 `63−sb` 的精确换位关系，把每时隙的相位加载和乘法再减半；相对
+  已含上述两项优化的版本，三轮交替 A/B 的 Core 汇总再提升 `20.99%`、Full 再提升 `9.82%`，
+  24/24 项总时长与 p99 均改善，六次全套运行双方均无 deadline miss。
 
 ## 测量环境
 
@@ -252,6 +256,43 @@ portable release 二进制的 SHA-256 分别为
 
 这项优化只利用声道间独立性。若继续评估快速调制分解，仍须单独面对其改变单声道加法顺序、
 可能无法保持逐位 PCM 的问题，不能把两项收益或正确性结论合并。
+
+## QMF 分析镜像子带成对（已保留）
+
+`TS103190-1:v1.4.1:Pseudocode 65` 的分析调制存在另一条不改变加法树的精确关系。令
+`q=2sb+1`、`m=2n−1`，镜像子带 `63−sb` 的奇数频率为 `128−q`；其相位等于
+`exp(j·mπ/2)·conj(exp(j·q·m·2π/512))`。因此 `n` 为偶数时，镜像贡献是原贡献换位后取负；
+`n` 为奇数时只换位。实现把偶数/奇数 `n` 相邻展开，使两个子带共享 `value·cos` 与
+`value·sin`，但四个累加器都仍按 `n=0…127` 的原顺序前进。两声道入口同时沿用既有独立
+2×f64 lane。完整推导与数值约束见
+[ADR-0009](decisions/0009-paired-qmf-analysis-modulation.md)。
+
+全部 4,096 个镜像相位关系先做逐位核对；19 个确定性时隙、10 个有限边界时隙以及拆成两次
+调用的完整分析状态都逐位等于拆分前定义式。`decode_check.py` 的 Core、A-SPX 和 A-JOC 对象
+PCM 真实基线全部不变。实现只使用 safe Rust 固定数组，默认构建继续为 `no_std`，没有 Rayon、
+平台 intrinsic、`unsafe`、FMA 或 fast-math；allocation 构建的 24/24 项仍无任何堆操作。
+
+A/B 的 before 是已推送提交 `acb6db3`，after 只含本候选。两个普通 portable release 冻结
+二进制的 SHA-256 分别为
+`92e6d65549f8d4261de3fe1c19c62a10e6a657b5aa98a0803f78298e7d7a913a` 与
+`8c611d59fe36da7f4d256c31c28a46c2bcb25ee0f430e7c487ac7e315112e87e`。24 个“媒体 × 模式”
+组合跑三轮完整交替 A/B，顺序为 before/after、after/before、before/after；各项先在自身三轮
+中取单 pass 中位数，再做汇总：
+
+| 模式 | 汇总 before | 汇总 after | 汇总提升 | 单项总时长提升范围 | p99 提升范围 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Core | 2.635 s/pass | 2.082 s/pass | 20.99% | 20.23%–21.52% | 18.80%–21.45% |
+| Full | 5.961 s/pass | 5.376 s/pass | 9.82% | 8.49%–10.53% | 8.15%–25.83% |
+
+24/24 项总时长与 p99 全部改善，before/after 各三次全套运行都为 0 deadline miss。标准
+1500K 中，Core 单 pass 中位数为 `394.250 → 314.481 ms`（20.23%），Full 为
+`839.443 → 753.472 ms`（10.24%）。当前实现内两声道入口相对逐路标量的 release 微基准为
+`0.779 → 0.738 ms/frame`（`1.056×`）；该差距比上一轮缩小，是因为本候选同时加速了标量与
+两声道路径，不能误解为原跨声道优化失效。
+
+普通 ARM64 portable release 的精确 after 二进制中，两声道分析函数继续出现 `fmul.2d` 与
+`fadd.2d`，没有 FMA，也没有 `panic_bounds_check` 调用。完整逐项结果与复验参数见对应的 A/B
+JSON；原始逐轮 timing 文件只保留在 `target/perf/`。
 
 ## QMF 合成尾段实验（未保留）
 
