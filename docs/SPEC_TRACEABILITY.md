@@ -50,6 +50,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | sync frame 与帧长度 | Part 1 | `macindecode-ac4-bitstream` | 合法/截断/损坏帧语料 |
 | TOC 与序列配置 | Part 1/2 | `macindecode-ac4-bitstream` | trace 与独立 inspection 对比 |
 | presentation/group/substream | P2 `6.2.1.3`–`6.2.1.14`；P1 `4.2.3.3`–`4.2.3.5`、`4.2.3.7`、`4.2.3.11`、`4.2.14.15` | `macindecode-ac4-bitstream` | `dac4` 与 TOC 一致性；`payload_base`/尺寸自洽；引用精确覆盖索引表 |
+| alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
 | 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
@@ -1637,6 +1638,36 @@ Scene 公共 API 另以泛型 `PresentationSelectionMetadata<T>` 接受调用方
 `pres_bytes` 定界的原始 envelope，无需复制或猜读；其身份状态标为 unavailable，不能把
 未解析 ID 当作明确无 ID。只要 metadata 集合仍含身份 unavailable 的项，Scene 就不能证明
 其余已知候选唯一，关联结果保持 indeterminate。
+
+### 5.57 `ac4_presentation_substream()` 的 alternative selection 前缀
+
+P2 `6.2.2.3` 在 `b_alternative` 为真时先传 presentation name、target 列表和逐音频
+substream 的 activation/dataset map；字段语义由 `6.3.3.1.1`–`6.3.3.1.15` 定义。新增的
+`presentation_substream` 模块只解析这一前缀：名称以可能不在字节边界的 8 比特元素视图
+保留，并按末字节/倒数第二字节区分完整名称、中间分片和带总分片数的最后一块；它不在单帧内
+强行验证或拼接可能被分片切开的 UTF-8 code point。
+
+target 保留 3 比特 level、四个 device-category 位、4 比特 extension、6 比特 ducking depth
+和 5 比特 loudness-correction 原值。每个 target 再按 `n_substreams_in_presentation` 顺序暴露
+`b_active` 与完整变长 `alt_data_set_index`；active 且 index 为零与 inactive 是不同状态，不能
+合并。解析器不结合本机设备选择 target，也不选择或执行 alternative dataset。
+
+`n_substreams_in_presentation` 不是物理 index 去重计数。TOC helper 按 presentation 的
+`ac4_sgi_specifier()` 外层顺序和每个 group 的 `ac4_substream_group_info()` 内层顺序求和；
+config 1/4 中 dialogue-enhancement 的额外 SGI 即使不增加 `n_substream_groups` 仍进入该计数。
+构造反例固定覆盖该差异，否则 activation map 会从第一个 target 起永久错位。
+
+所有视图都借用 `substream_index_table()` 已定界的 payload，不分配名称、target 或 activation
+数组。target 上限为 32，当前 TOC 容量下每个 presentation 的音频 substream 顺序上限为
+`8 × 8 = 64`；超限、截断和 `variable_bits` 溢出均返回结构化错误。构造测试覆盖 0/32 字节
+名称、1/32 targets、非字节对齐名称、presence gate、截断与两个容量边界。
+
+普通 presentation 没有 selection 前缀，公共 metadata 从 bit 0 开始；alternative 前缀成功
+后 API 返回紧随其后的 `b_additional_data` 精确 bit offset。该 offset 之后的 additional data、
+dialnorm/further loudness、DRC、group/associated gain、custom downmix 与 loudness correction
+在本增量中仍未解析或验证，更不会执行。alternative presentation/dataset 与 direct-object
+均无真实编码样本，本节只记构造验证，不关闭外部向量待验证状态；Channel-based PCM、renderer、
+设备接入和额外音频处理不在本阶段范围。
 
 ## 6. 未决规范问题
 

@@ -1,8 +1,8 @@
 # macindecode-ac4-bitstream
 
 `#![no_std]` 的 Dolby AC-4 比特流解析与音频重建原语。它负责 raw sync frame、TOC、
-presentation/group/substream 拓扑、EMDF、OAMD，以及可选的 ASF、A-SPX 和 Full
-A-JOC 音频路径；容器解析由 `macindecode-ac4-mp4` 提供。
+presentation/group/substream 拓扑、alternative presentation 选择前缀、EMDF、OAMD，
+以及可选的 ASF、A-SPX 和 Full A-JOC 音频路径；容器解析由 `macindecode-ac4-mp4` 提供。
 
 本 crate 是独立开源实现，与 Dolby Laboratories 不存在隶属、赞助或认可关系；
 相关商标仅用于说明兼容性。

@@ -1,14 +1,16 @@
 # Presentation 与元数据闭环计划
 
-> **状态：规划；部分外部向量受限。** 本文只冻结实施边界、阶段顺序与验收门槛，不表示相关
-> 能力已经实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement 正向
-> 候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节暂缓。当前实际
-> 进度仍以[实施路线图](ROADMAP.md)为准。
+> **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
+> substream activation/dataset selection 前缀已完成构造验证；公共 metadata 后缀、音频
+> substream tools metadata、EMDF payload 与 alternative dataset 数据路径仍待实现。当前
+> 工具链可再生产普通 presentation payload 与 dialog enhancement 正向候选；非空 EMDF
+> payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
+> 以[实施路线图](ROADMAP.md)为准。
 
 ## 1. 目的
 
-在现有 M4 与 M5 之间增加 **M4.5：Presentation/Metadata 闭环**，并在 M6 之后增加
-**M6.5：Presentation 处理输出**。两阶段补齐以下三组能力：
+在现有 M4 与 M5 之间增加 **M4.5：Presentation/Metadata 解析闭环**，补齐以下三组
+只读解析能力：
 
 1. 完整解析 `ac4_presentation_substream()`，包括普通与 alternative presentation。
 2. 完整解析音频 substream metadata 中当前按长度跳过的标准元素，包括对话增强状态。
@@ -19,22 +21,24 @@
 
 ## 2. 不变边界
 
-- `Ac4SceneFrame` 仍表示**未执行 presentation 处理的渲染前场景**。
-- DRC、dialog enhancement、group/associated gain、custom downmix 与 loudness correction
-  不得静默改写 `Ac4SceneFrame` 的 PCM。
-- 处理后的 PCM 是调用方显式请求的独立派生输出，暂命名为
-  `ProcessedPresentationFrame`。
-- M4.5 只把 alternative 路径补到届时普通路径已经达到的解码层级；A-JOC full
-  reconstruction 仍属于 M6，不得借 M4.5 提前宣称完成。
+- `Ac4SceneFrame` 仍表示**未执行 presentation 处理的渲染前场景**，新增解析结果不得改写
+  其 PCM、对象 identity、更新顺序或时间线。
+- 本计划不实现 renderer，不接目标设备，也不执行 DRC、dialog enhancement、
+  group/associated gain、custom downmix、loudness correction 等额外音频处理；相关字段只按
+  码流原值解析、验证和保留。
+- Channel-based PCM 重建延后；为解析 presentation payload 所需的拓扑信令可以保留，但不得
+  借此宣称 Channel-based 可播放。
+- M4.5 只把 alternative 路径补到普通路径已经达到的**语法解析层级**；A-JOC full
+  reconstruction 的既有能力与本计划相互独立。
 - EMDF 首期不解释注册表或私有 datatype 的业务语义，只保证 envelope、时序、路由字段与
   payload bytes 无损保留。
-- 仅实现 AC-4 码流明确传输的规范处理。用户偏好、目标设备响度策略、扬声器映射和最终渲染
-  仍由外部系统负责。
+- target/device category 是只读选择信令，不由本项目结合本机设备自动选择。用户偏好、目标
+  设备策略、扬声器映射和最终渲染均不在本计划内。
 - 当前 CLI v1 契约与 JSON schema 在实现落地前不增加计划字段。
 
-[ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 已记录上述输出边界、
-M4.5/M6.5 拆分和 EMDF opaque policy；后续实现不得在没有新 ADR 的情况下改为默认处理或
-原地覆盖场景 PCM。
+[ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 已记录 Scene 输出边界和
+EMDF opaque policy；后续实现不得在没有新 ADR 与明确需求的情况下增加 presentation
+处理器、默认处理或原地覆盖场景 PCM。
 
 ## 3. M4.5：Presentation/Metadata 闭环
 
@@ -47,6 +51,11 @@ M4.5/M6.5 拆分和 EMDF opaque policy；后续实现不得在没有新 ADR 的�
 - dialnorm、further loudness info 与 presentation DRC；
 - substream-group gains 与 associated-audio scaling/pan；
 - custom downmix 参数与 loudness-correction 码值。
+
+当前首个增量已解析 `b_alternative` 控制的 selection 前缀：presentation name 分片、target
+level/device category/ducking/loudness correction 码值，以及逐音频 substream 的 active 与
+alternative dataset index。普通 presentation 没有该前缀；解析器只给出公共 metadata 后缀
+的精确 bit offset，尚不把后缀标为已解析。
 
 解析 API 必须显式接收 TOC/拓扑上下文以及前一有效 DRC 配置。所有长度 envelope 先验证边界，
 成功后才提交跨帧状态；dependent frame 缺少历史配置时失败关闭。
@@ -73,40 +82,14 @@ M4.5/M6.5 拆分和 EMDF opaque policy；后续实现不得在没有新 ADR 的�
 - 完成 alternative audio/OAMD dataset 的选择、状态归属与解析，移除该分支的笼统 unsupported；
 - 未注册或未知 EMDF ID 不报语义错误，只按其 discard/processing 标志交给上层路由。
 
-### 3.4 独立处理内核
+## 4. 明确延后或不在范围内
 
-实现可对调用方 PCM 缓冲区独立运行的标量基线：presentation DRC、dialog enhancement、
-substream-group/associated gain、custom downmix 和 loudness correction。内核必须：
-
-- 不依赖 `Ac4SceneFrame` 或容器层；
-- 显式携带声道/组件布局、采样数、状态和工作区；
-- 无信号或 metadata absent 时成为可验证的 identity；
-- 记录增益域、舍入、饱和、denormal、延迟和跨平台一致性策略；
-- 稳态路径不做逐帧堆分配。
-
-M4.5 只验证这些内核及 alternative 路径到当前可用 PCM 层级，不生成最终 presentation PCM。
-
-## 4. M6.5：Presentation 处理输出
-
-M6 完成 A-JOC full reconstruction 后，增加可选 `PresentationProcessor`：
-
-```text
-Ac4SceneFrame
-    + explicit presentation/target/output request
-    -> PresentationProcessor
-    -> ProcessedPresentationFrame
-```
-
-调用方必须显式提供 presentation 与目标选择；多目标或信息不足时不得猜测。派生输出至少记录：
-
-- 来源 access unit、配置代次与 presentation ID/index；
-- alternative target、device category、dataset 与实际激活的 group/substream；
-- 请求和实际输出布局；
-- 实际应用的 DRC、DE、gain、downmix 与 loudness-correction 操作；
-- 各阶段延迟、总有效采样范围、concealment 与状态完整性。
-
-处理器关闭时，不得改变原场景的 PCM 位模式、元数据、对象 identity、更新顺序或采样时间线。
-处理失败不得污染后续帧状态；恢复必须遵守完整随机访问点与外部 discontinuity 规则。
+- Channel-based 音频重建链延后；本计划只消费其与 presentation payload 解析共用的拓扑上下文。
+- renderer、扬声器/双耳布局、目标设备接入和本机能力探测不在范围内。
+- 不新增 `PresentationProcessor` 或 `ProcessedPresentationFrame`，不执行 DRC、DE、gain、
+  downmix、loudness correction，也不以解析结果修改任何 PCM。
+- 不自动选择 alternative target 或 dataset；解析层只保留全部候选与码流顺序，信息不足、重复
+  或上层未明确选择时不得猜测。
 
 ## 5. 验证与退出条件
 
@@ -172,8 +155,8 @@ Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待�
 - 非空 EMDF payload 与 alternative presentation/dataset 暂记为**外部向量待验证**，不阻塞
   解析代码合入、M4.5 的“实现完成（构造验证）”状态或 M5 开始；
 - 待验证分支不得标为“真实码流已验证”，不得据此宣称完整 conformance，也不得作为默认启用
-  presentation 处理的依据；
-- 获得授权码流或具备对应配置入口的编码器后，必须补做正向真实向量、独立参考输出和回归门禁，
+  自动 target/dataset 选择的依据；
+- 获得授权码流或具备对应配置入口的编码器后，必须补做正向真实向量、独立解析交叉检查和回归门禁，
   才能关闭各自的外部验证状态。
 
 真实媒体继续遵守仓库策略，不进入版本控制；`case.json`、工具版本、命令、hash 和可公开的派生统计
@@ -182,14 +165,15 @@ Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待�
 手工拼装的 AC-4 码流只计入构造测试，不能冒充独立工具链向量。直接修改真实 AC-4 payload
 也不能关闭外部验证状态。
 
-### 5.3 DSP 与端到端验证
+### 5.3 解析层与集成验证
 
-- 内核测试覆盖 absent/identity、已知常量增益、分段增益、跨帧配置复用、声道映射、溢出与
-  非有限值拒绝。
-- 对 downmix 使用能量、对称性、静音保持和单通道脉冲路由判据；不能只做自编码—自解析往返。
-- DRC/DE 必须验证配置变化、dependent frame、seek/reset 和显式延迟。
-- M6.5 至少使用一份独立参考输出核对 target 选择、增益、时延和下混结果。
-- 禁用处理器时，原始 `Ac4SceneFrame` 必须逐位或逐字段保持不变。
+- 解析测试必须覆盖 presence gate、最小/最大计数、截断、长度越界、变长字段溢出、I/P-frame
+  状态复用、reset 与事务回滚。
+- alternative target 与 dataset 只验证码流顺序、原始码值和拓扑关联，不用本机设备或自动
+  target 选择充当 oracle。
+- 构造码流只关闭分支覆盖，不关闭外部向量待验证状态；取得真实样本后再增加独立交叉检查。
+- 启用全部 metadata 解析后，原始 `Ac4SceneFrame` PCM、对象 identity、事件顺序与时间线必须
+  保持不变。
 
 ## 6. 文档落地顺序
 
@@ -197,9 +181,9 @@ Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待�
 
 1. **已完成：** [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 冻结输出与
    状态边界。
-2. 把 M4.5/M6.5、交付物和退出条件写入 `ROADMAP.md`。
-3. 在 `ARCHITECTURE.md` 增加 metadata 状态所有权与可选处理分支，在
-   `OUTPUT_CONTRACT.md` 增加 presentation metadata、opaque EMDF 与派生输出契约。
+2. 把 M4.5 的解析交付物和退出条件写入 `ROADMAP.md`。
+3. 在 `ARCHITECTURE.md` 增加 metadata 状态所有权，在 `OUTPUT_CONTRACT.md` 增加
+   presentation metadata 与 opaque EMDF 契约；不增加处理后 PCM 契约。
 4. 在 `SPEC_TRACEABILITY.md` 录入经锁定 PDF 核对的精确条款，在
-   `TEST_VECTOR_STRATEGY.md` 录入可获得的真实向量、外部向量待验证项和 DSP 门禁。
+   `TEST_VECTOR_STRATEGY.md` 录入可获得的真实向量、外部向量待验证项和解析门禁。
 5. 实现及机器接口真正落地后，再版本化更新 CLI 输出契约与 schema；不得提前发布空字段。

@@ -47,6 +47,7 @@ pub mod huffman;
 pub mod math;
 pub mod oamd;
 pub mod presentation;
+pub mod presentation_substream;
 pub mod reader;
 pub mod substream;
 #[cfg(feature = "audio-decode")]
@@ -67,6 +68,10 @@ pub use emdf::{EmdfInfo, EmdfPayloadsSubstream};
 #[cfg(feature = "audio-decode")]
 pub use huffman::{HuffmanError, HuffmanTable};
 pub use presentation::{Ac4PresentationV1Info, PresentationSubstreamInfo};
+pub use presentation_substream::{
+    Ac4PresentationSubstreamSelection, AlternativePresentationSelection,
+    PresentationSubstreamError, PresentationSubstreamSelectionContext,
+};
 pub use reader::{BitReader, ReadError};
 #[cfg(feature = "audio-decode")]
 pub use substream_audio::{

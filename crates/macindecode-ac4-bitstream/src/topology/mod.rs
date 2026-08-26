@@ -12,6 +12,7 @@
 
 use crate::oamd::OamdError;
 use crate::presentation::{Ac4PresentationV1Info, MAX_GROUPS_PER_PRESENTATION};
+use crate::presentation_substream::PresentationSubstreamSelectionContext;
 use crate::reader::{BitReader, ReadError};
 use crate::substream::{Ac4SubstreamGroupInfo, SubstreamInfo};
 use crate::toc::{Ac4Toc, SequenceTransition};
@@ -340,7 +341,7 @@ mod tests {
         reason = "位串打包的索引与移位受输入长度约束"
     )]
     fn parse_frame(parts: &[&str]) -> Ac4Topology {
-        let mut joined = [0u8; 16];
+        let mut joined = [0u8; 64];
         let mut bits = 0usize;
         for part in parts {
             for ch in part.chars() {
@@ -375,6 +376,11 @@ mod tests {
         assert_eq!(topology.presentations().len(), 1);
         assert_eq!(topology.groups().len(), 1);
         assert_eq!(topology.total_objects(), 2);
+        assert_eq!(
+            topology.presentation_substream_selection_context(0),
+            Some(PresentationSubstreamSelectionContext::new(false, 1))
+        );
+        assert_eq!(topology.presentation_substream_selection_context(1), None);
 
         let substream = topology
             .groups()
@@ -423,6 +429,47 @@ mod tests {
             topology.substream_payload(frame.get(..base.saturating_add(20)).unwrap(), 1),
             Err(TopologyError::SubstreamPayloadOutOfFrame { index: 1, .. })
         ));
+    }
+
+    /// config 1 的第二个 SGI 是 dialogue-enhancement group，但规范仍要求它进入
+    /// `n_substreams_in_presentation` 的 outer loop；不能因 `n_substream_groups == 1`
+    /// 而只数 main group。
+    #[test]
+    fn presentation_selection_context_counts_every_sgi_group() {
+        // config 1: main group 0 + DE group 1；alternative presentation substream 0。
+        let presentation = "0 001 0 000 0 00 000 0 00 00 0 0 000 001 0 0 1 0 00";
+        // group 0：一个 direct-object substream，物理 index 1。
+        let main_group = "1 0 1 0 0 0 010 1 0 0 0 0 01 0";
+        // group 1：两个 direct-object substream，物理 index 2、3。
+        let de_group = "1 0 0 00 0 0 \
+                        0 000 1 0 0 0 0 10 \
+                        0 000 1 0 0 0 0 11 \
+                        0";
+        // presentation 0 加三条 audio substream，共四个物理 payload。
+        let table = "00 00 0 \
+                     0 0000000001 0 0000000001 \
+                     0 0000000001 0 0000000001";
+        let topology = parse_frame(&[
+            TOC_PREFIX,
+            presentation,
+            main_group,
+            de_group,
+            table,
+            "00000000",
+        ]);
+
+        assert_eq!(
+            topology.presentations().first().unwrap().n_substream_groups,
+            1
+        );
+        assert_eq!(
+            topology.presentations().first().unwrap().group_indices(),
+            &[0, 1]
+        );
+        assert_eq!(
+            topology.presentation_substream_selection_context(0),
+            Some(PresentationSubstreamSelectionContext::new(true, 3))
+        );
     }
 
     /// b_lfe 参与对象计数，见表 60。

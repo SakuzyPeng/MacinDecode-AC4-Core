@@ -457,6 +457,26 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 `7.62%`，稳态分配仍为零。尚未设置自动性能门禁；x86-64 实测、公共 C ABI、fuzz 与长期稳定性
 仍待后续。
 
+## M4.5：Presentation/Metadata 解析闭环
+
+**首个 alternative presentation 增量已落地。** `presentation_substream` 现按 P2
+`6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
+device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
+active 与 alternative dataset index。名称即使不在字节边界也以无分配 8 比特元素视图保留；
+target 与 activation map 同样借用有界 payload 迭代，不复制或自动选择。普通 presentation
+没有该前缀；当前 API 只返回公共 metadata 后缀的精确 bit offset，尚未解析或验证该后缀。
+
+`n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
+去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
+构造门禁覆盖 0/32 字节名称、1/32 targets、非字节对齐分片、presence gate、截断、容量和
+`variable_bits` 溢出。alternative 与 direct-object 仍没有真实编码样本，因此本增量只关闭
+构造分支覆盖，外部向量状态保持待验证。
+
+M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
+dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
+后续依次补公共 presentation metadata 后缀、audio-substream tools metadata、EMDF envelope 与
+alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
+
 ## 音频重建与 core/full 场景输出支持矩阵
 
 "语法可解析"不等于"能够正确输出 PCM"。下表分别记录真实样本、数值重建状态和失败行为；

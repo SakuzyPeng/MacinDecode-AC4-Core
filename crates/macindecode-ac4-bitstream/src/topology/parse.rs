@@ -170,6 +170,39 @@ impl Ac4Topology {
         self.groups.get(..self.n_groups).unwrap_or(&[])
     }
 
+    /// 取得某个 presentation 的 alternative selection 前缀解析上下文。
+    ///
+    /// `n_substreams_in_presentation` 按 `TS103190-2:v1.3.1:6.3.3.1.13` 的
+    /// `ac4_sgi_specifier()` 外层顺序与 group 内层顺序计算，包含 dialogue-enhancement
+    /// substream，且不按物理 substream index 去重。因此 config 1/4 中额外引用的 DE
+    /// group 也会进入计数，不能只使用 `n_substream_groups`。
+    ///
+    /// presentation 下标越界、该 presentation 没有 presentation substream，或内部 group
+    /// 引用不存在时返回 `None`。从 [`Self::parse`] 返回的 topology 已通过 group 引用校验，
+    /// 最后一种情况只用于防守内部不变量。
+    #[must_use]
+    pub fn presentation_substream_selection_context(
+        &self,
+        presentation_index: usize,
+    ) -> Option<PresentationSubstreamSelectionContext> {
+        let presentation = self.presentations().get(presentation_index)?;
+        let substream = presentation.substream?;
+        if presentation.group_indices().is_empty() {
+            // config extension 的内部 SGI 尚未解析时，真实计数不可知；零不是可猜测的回退值。
+            return None;
+        }
+        let mut n_audio_substreams = 0u32;
+        for &group_index in presentation.group_indices() {
+            let group = self.groups().get(usize::try_from(group_index).ok()?)?;
+            n_audio_substreams =
+                n_audio_substreams.checked_add(u32::try_from(group.substreams().len()).ok()?)?;
+        }
+        Some(PresentationSubstreamSelectionContext::new(
+            substream.alternative,
+            n_audio_substreams,
+        ))
+    }
+
     /// 字节对齐后的 `ac4_toc` 长度，即 substream 载荷区的计算基准。
     ///
     /// `payload_base` 按 `TS103190-1:v1.4.1:4.3.3.2.11` 相对该位置计。
