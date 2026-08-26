@@ -1635,7 +1635,8 @@ Scene 公共 API 另以泛型 `PresentationSelectionMetadata<T>` 接受调用方
 相同身份的出现次数，所以显式按 index 选中重复 ID 时也不会误绑。来源数组下标、DSI 字段或
 不透明 body 均不参与解码器配置；未知 presentation 版本可继续借用 MP4 parser 已按
 `pres_bytes` 定界的原始 envelope，无需复制或猜读；其身份状态标为 unavailable，不能把
-未解析 ID 当作明确无 ID。
+未解析 ID 当作明确无 ID。只要 metadata 集合仍含身份 unavailable 的项，Scene 就不能证明
+其余已知候选唯一，关联结果保持 indeterminate。
 
 ## 6. 未决规范问题
 

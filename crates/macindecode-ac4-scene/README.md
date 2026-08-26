@@ -11,7 +11,8 @@
 多路无 ID 保持歧义。metadata 不参与 TOC 驱动的解码配置，因此 `T` 可以直接是
 `macindecode-ac4-mp4` 的借用 DSI envelope，未知版本仍保留其原始定界 body，而本 crate
 不需要依赖 MP4。opaque body 的身份必须标为 `Unavailable`，不能把尚未解析 ID 猜成明确
-无 ID 后走唯一回退。
+无 ID 后走唯一回退；只要集合仍含这类身份不可用项，关联结果就是 `Indeterminate`，不会
+把其余已知候选提前宣称为唯一。
 
 ```toml
 [dependencies]

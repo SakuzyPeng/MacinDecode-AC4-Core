@@ -153,8 +153,8 @@ pub enum PresentationSelectionMetadataMatchBasis {
 
 /// 已选择 Scene presentation 与调用方 metadata 的只读关联结果。
 ///
-/// `Missing` 与 `Ambiguous` 都不会改变 Session 的 presentation 选择或解码状态；调用方
-/// 可以把它们用于 UI 能力检视、日志或容器一致性门禁。
+/// `Missing`、`Ambiguous` 与 `Indeterminate` 都不会改变 Session 的 presentation 选择或
+/// 解码状态；调用方可以把它们用于 UI 能力检视、日志或容器一致性门禁。
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSelectionMetadataMatch<'a, T> {
@@ -178,6 +178,15 @@ pub enum PresentationSelectionMetadataMatch<'a, T> {
         scene_candidates: u32,
         /// 调用方 metadata 中具有相同身份的 entry 数量。
         metadata_candidates: usize,
+    },
+    /// metadata 集合含身份不可用项，无法证明已知候选唯一或确实缺失。
+    Indeterminate {
+        /// 当前 Scene presentation 的 effective ID。
+        effective_presentation_id: Option<u32>,
+        /// 调用方 metadata 中具有相同已知身份的 entry 数量。
+        known_metadata_candidates: usize,
+        /// 调用方 metadata 中身份不可用的 entry 数量。
+        unavailable_metadata: usize,
     },
 }
 
@@ -576,7 +585,8 @@ impl ScenePresentation {
     ///
     /// 有 ID 时要求双方该 ID 都唯一；无 ID 时要求双方各自恰有一个无 ID 项。来源数组
     /// 下标不参与关联，重复 ID 或多路无 ID 返回
-    /// [`PresentationSelectionMetadataMatch::Ambiguous`]。
+    /// [`PresentationSelectionMetadataMatch::Ambiguous`]；metadata 中仍有身份不可用项时，
+    /// 无法证明候选唯一，返回 [`PresentationSelectionMetadataMatch::Indeterminate`]。
     #[must_use]
     pub fn match_selection_metadata<'a, T>(
         &self,
@@ -588,12 +598,15 @@ impl ScenePresentation {
         };
         let mut matched = None;
         let mut metadata_candidates = 0usize;
+        let mut unavailable_metadata = 0usize;
         for entry in metadata {
             if entry.identity() == expected_identity {
                 metadata_candidates = metadata_candidates.saturating_add(1);
                 if matched.is_none() {
                     matched = Some(entry);
                 }
+            } else if entry.identity() == PresentationSelectionMetadataIdentity::Unavailable {
+                unavailable_metadata = unavailable_metadata.saturating_add(1);
             }
         }
 
@@ -602,6 +615,13 @@ impl ScenePresentation {
                 effective_presentation_id: self.id,
                 scene_candidates: self.identity_occurrences,
                 metadata_candidates,
+            };
+        }
+        if unavailable_metadata > 0 {
+            return PresentationSelectionMetadataMatch::Indeterminate {
+                effective_presentation_id: self.id,
+                known_metadata_candidates: metadata_candidates,
+                unavailable_metadata,
             };
         }
         let Some(metadata) = matched else {
@@ -1928,7 +1948,7 @@ mod tests {
     }
 
     #[test]
-    fn opaque_presentation_identity_does_not_masquerade_as_without_id() {
+    fn opaque_presentation_identity_makes_association_indeterminate() {
         let opaque_body = [0x80, 0x00];
         let metadata = [PresentationSelectionMetadata::new(
             0,
@@ -1940,14 +1960,46 @@ mod tests {
 
         assert_eq!(
             scene_presentation(None, 1).match_selection_metadata(&metadata),
-            PresentationSelectionMetadataMatch::Missing {
+            PresentationSelectionMetadataMatch::Indeterminate {
                 effective_presentation_id: None,
+                known_metadata_candidates: 0,
+                unavailable_metadata: 1,
             }
         );
         assert_eq!(metadata[0].identity(), MetadataIdentity::Unavailable);
         assert_eq!(metadata[0].effective_presentation_id(), None);
         assert_eq!(metadata[0].declared_bytes(), 2);
         assert_eq!(*metadata[0].value(), opaque_body.as_slice());
+    }
+
+    #[test]
+    fn opaque_presentation_identity_blocks_otherwise_unique_matches() {
+        let metadata = [
+            PresentationSelectionMetadata::new(0, MetadataIdentity::WithoutId, 1, 0, ()),
+            PresentationSelectionMetadata::new(1, MetadataIdentity::Unavailable, 2, 0, ()),
+        ];
+
+        assert_eq!(
+            scene_presentation(None, 1).match_selection_metadata(&metadata),
+            PresentationSelectionMetadataMatch::Indeterminate {
+                effective_presentation_id: None,
+                known_metadata_candidates: 1,
+                unavailable_metadata: 1,
+            }
+        );
+
+        let metadata = [
+            PresentationSelectionMetadata::new(0, MetadataIdentity::EffectiveId(4), 1, 0, ()),
+            PresentationSelectionMetadata::new(1, MetadataIdentity::Unavailable, 2, 0, ()),
+        ];
+        assert_eq!(
+            scene_presentation(Some(4), 1).match_selection_metadata(&metadata),
+            PresentationSelectionMetadataMatch::Indeterminate {
+                effective_presentation_id: Some(4),
+                known_metadata_candidates: 1,
+                unavailable_metadata: 1,
+            }
+        );
     }
 
     #[test]

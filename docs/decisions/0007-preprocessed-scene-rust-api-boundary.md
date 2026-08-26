@@ -52,7 +52,8 @@ M4.5 可以解析、验证并保留这些处理所需的 metadata；M6.5 若实�
 `PresentationSelectionMetadata<T>` 保持原始只读视图，再由已选 `ScenePresentation` 按
 effective presentation ID 关联：双方该 ID 都必须唯一；无 ID 时双方都只能有一个无 ID 项。
 来源数组下标不参与身份判断，重复 ID 与多路无 ID 不作猜测性绑定；opaque body 的未知身份
-也不得冒充明确无 ID 参与回退。
+也不得冒充明确无 ID 参与回退。集合中只要仍有身份不可用项，就不能证明其他候选唯一，关联
+保持 indeterminate。
 
 ### 3. Scene 不拥有容器语义
 
