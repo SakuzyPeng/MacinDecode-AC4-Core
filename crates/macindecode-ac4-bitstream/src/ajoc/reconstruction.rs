@@ -33,8 +33,8 @@ use super::decorrelator::{DecorrelatorError, DecorrelatorState, kind_for_ajoc_in
 use super::dequant::{DequantError, dequantise};
 use super::diff::{DiffError, DiffState, QuantizedObjectMatrix, decode};
 use super::interp::{
-    CoefficientGroup, InterpolationError, InterpolationSchedule, InterpolationState,
-    RollingCoefficient, RollingCoefficients,
+    CoefficientGroup, CoefficientLayout, InterpolationError, InterpolationSchedule,
+    InterpolationState, RollingCoefficient, RollingCoefficients, RollingLayout,
 };
 use super::syntax::{Ajoc, AjocObjectControl, AjocObjectMatrix};
 use super::{MAX_AJOC_BANDS, MAX_AJOC_DMX_SIGNALS, MAX_DATA_POINTS, MAX_DECORRELATORS, MatrixKind};
@@ -759,8 +759,13 @@ fn process_timeslots(
         ..
     } = &mut **candidate;
 
+    let mut rolling = RollingCoefficients::with_layout(
+        &mut *dry,
+        &mut *wet,
+        &mut *pre,
+        rolling_layout(dimensions),
+    );
     for timeslot in 0..dimensions.timeslots {
-        let mut rolling = RollingCoefficients::new(&mut *dry, &mut *wet, &mut *pre);
         let non_finite = interpolation.interpolate_timeslot_checked(
             u8::try_from(timeslot).unwrap_or(u8::MAX),
             schedule,
@@ -820,6 +825,26 @@ fn process_timeslots(
         )?;
     }
     Ok(())
+}
+
+fn rolling_layout(dimensions: FrameDimensions) -> RollingLayout {
+    RollingLayout {
+        dry: CoefficientLayout::strided(
+            dimensions.objects,
+            dimensions.num_dmx * NUM_QMF_SUBBANDS,
+            MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS,
+        ),
+        wet: CoefficientLayout::strided(
+            dimensions.objects,
+            dimensions.num_decorr * NUM_QMF_SUBBANDS,
+            MAX_DECORRELATORS * NUM_QMF_SUBBANDS,
+        ),
+        pre: CoefficientLayout::strided(
+            dimensions.num_decorr,
+            dimensions.num_dmx * NUM_QMF_SUBBANDS,
+            MAX_AJOC_DMX_SIGNALS * NUM_QMF_SUBBANDS,
+        ),
+    }
 }
 
 #[expect(
@@ -1272,6 +1297,47 @@ mod tests {
             assert_ne!(output[0][0].re[0].to_bits(), 0, "时隙 0 仍使用旧 target");
             assert_eq!(output[0][1].re[0].to_bits(), 0, "一步 ramp 后应归零");
             assert_eq!(state.diff[0], diff_before, "inactive 不得销毁最后传输历史");
+        });
+    }
+
+    #[test]
+    fn fixed_stride_view_leaves_unreachable_rows_and_columns_untouched() {
+        on_large_stack(|| {
+            let ajoc = Ajoc::for_test(0, 1, 1, 1);
+            let controls = [control(true, 1, 1, 0)];
+            let raw = [matrix(1, 1, 0, &[30], &[])];
+            let mut state = AjocReconstructionState::new();
+            state.shape = Some(ReconstructionShape {
+                objects: 1,
+                num_dmx: 1,
+                num_decorr: 0,
+            });
+            let sentinel = RollingCoefficient::new(7.0);
+            let unused_dry_channel = dry_rolling_index(0, 1, 0);
+            let unused_dry_object = dry_rolling_index(1, 0, 0);
+            state.dry[unused_dry_channel] = sentinel;
+            state.dry[unused_dry_object] = sentinel;
+            state.wet[0] = sentinel;
+            state.pre[0] = sentinel;
+
+            let mut workspace = AjocWorkspace::new();
+            let mut output = vec![empty_channel_frame()];
+            reconstruct_frame(
+                &ajoc,
+                &controls,
+                &raw,
+                TIMESLOTS,
+                &zero_inputs(1),
+                &mut state,
+                &mut workspace,
+                &mut output,
+            )
+            .expect("活动拓扑不应读取 fixed-stride 尾部");
+
+            assert_eq!(state.dry[unused_dry_channel], sentinel);
+            assert_eq!(state.dry[unused_dry_object], sentinel);
+            assert_eq!(state.wet[0], sentinel);
+            assert_eq!(state.pre[0], sentinel);
         });
     }
 

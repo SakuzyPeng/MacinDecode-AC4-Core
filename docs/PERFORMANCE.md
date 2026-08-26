@@ -17,6 +17,7 @@
 - [QMF 分析镜像子带成对 A/B JSON](experiments/m4_pro_qmf_analysis_subband_pairs_ab.json)
 - [A-JOC 重建分段采样 JSON](experiments/m4_pro_ajoc_reconstruction_split_full.json)
 - [A-JOC rolling 校验融合 A/B JSON](experiments/m4_pro_ajoc_rolling_validation_fusion_ab.json)
+- [A-JOC rolling 拓扑可达遍历 A/B JSON](experiments/m4_pro_ajoc_topology_reachable_rolling_ab.json)
 
 ## 结论
 
@@ -47,6 +48,11 @@
   `38.69%`、`31.28%` 和 `16.62%`。现在有限性判断已融合到 rolling 更新循环，仍保留组/索引
   错误上下文和帧级事务；三轮交替 A/B 的 12/12 个 Full 案例总时长与 p99 全部改善，汇总提升
   `5.71%`，标准 1500K 提升 `5.53%`，三层真实 PCM 继续逐位一致。
+- 在此基础上，rolling 继续只遍历锁定拓扑可达的 fixed-stride 行前缀；对象行仍包含本帧 absent
+  对象，只有永远不可达的对象尾行、DMX 尾列和 decorrelator 尾列被跳过。五轮交替 A/B 的
+  12/12 个 Full 案例总时长、p95 和 p99 全部改善，汇总再提升 `7.12%`，标准 1500K 提升
+  `4.85%`；固定物理索引、逐位 PCM、稳态零分配和 `no_std` 均不变。优化后最终对象矩阵已占
+  A-JOC 重建 `46.36%`，是下一目标。
 
 ## 测量环境
 
@@ -372,6 +378,53 @@ allocation/reallocation/deallocation 和字节计数继续全部为零。实现�
 遍历拓扑可达系数，或把独立输出对象排成 f64 lane；前者必须保持固定 stride 的跨帧系数身份，
 后者必须保持每个对象内部 channel 后 decorrelator 的累加顺序。完整逐项数字与采样摘要见对应
 A/B JSON，原始 timing 与 `sample` 文件仍只保留在 `target/perf/`。
+
+## A-JOC rolling 拓扑可达遍历（已验证）
+
+上一轮仍会在每个 QMF 时隙推进 dry、wet、pre 三组固定容量数组。本候选保留这些数组和全部物理
+索引不变，只为 rolling 更新建立一次 fixed-stride 活动视图：dry 遍历 `objects × num_dmx`，wet
+遍历 `objects × num_decorr`，pre 遍历 `num_decorr × num_dmx`，每项仍含 64 个 QMF 子带。
+`objects` 是锁定形状中的全部对象数，不按逐帧 `present` 收缩，因此 absent 对象仍会把旧 target
+ramp 到零；跳过的只有形状外对象行、DMX 尾列和 decorrelator 尾列。
+
+该裁剪依赖重建状态已有的形状不变量：第一次成功帧锁定 `objects/num_dmx/num_decorr`，形状变化
+必须先 `reset`，而 `new/reset` 会清空 rolling、diff 和 decorrelator 状态。因此被跳过的尾部在
+当前状态生命周期中不可能重新变成可达项。错误仍报告 fixed-stride 物理索引；公共
+`RollingCoefficients::new` 仍保持连续全 slice 行为，帧级失败事务和最终矩阵的索引公式也未改变。
+
+A/B 的 before 是已提交的 rolling 校验融合版本 `98a8c42`，after 只含本候选。两个普通 portable
+release 冻结二进制的 SHA-256 分别为
+`95f6ec14e3c7b3f2e1d708eac0fbd7988a680729b697044c357a301354028526` 与
+`d3c0fae2a458c016711591ab9952bc72fffb23cd682b240b8d1f6e2743b9fb4c`。12 个 Full 案例各固定
+3 个完整 pass，跑五轮交替 A/B，顺序为 before/after、after/before、before/after、after/before、
+before/after；每项先取自身五轮单 pass 和百分位中位数，再汇总：
+
+| 判据 | before | after | 变化 |
+| --- | ---: | ---: | ---: |
+| 12 项单 pass 中位数汇总 | 5.070 s | 4.709 s | 提升 7.12% |
+| 单项总时长提升范围 | — | — | 4.85%–12.27% |
+| 单项 p95 提升范围 | — | — | 4.84%–12.01% |
+| 单项 p99 提升范围 | — | — | 0.44%–11.85% |
+| Full 标准 1500K 单 pass | 711.390 ms | 676.911 ms | 提升 4.85% |
+| deadline miss（五轮合计） | 0 | 0 | 不变 |
+
+前三轮结束时，axes 768K 的 after p99 有两次孤立调度尖峰，三轮中位数一度表现为回退
+`24.36%`；该项总时长和 p95 同期仍改善，也没有 deadline miss。为审计异常，按原交替顺序再加
+两轮；五轮 after p99 序列为 `5.837/6.504/4.365/4.292/4.664 ms`，最终中位数相对 before 的
+`4.685 ms` 改善 `0.44%`。记录没有删掉异常轮，也没有用 split-profile 构建代替正式计时。
+
+12/12 项总时长、12/12 项 p95 和 12/12 项 p99 最终都改善。Core、A-SPX、A-JOC 对象三层真实
+PCM 基线全部逐位一致；workspace 测试、全目标 Clippy 与 Rust 1.85 MSRV 检查通过。allocation
+构建复测 24/24 项，allocation/reallocation/deallocation 和字节计数继续全部为零。实现仍是
+safe Rust、默认 `no_std`，没有 Rayon、平台 intrinsic、FMA 或 fast-math。
+
+候选后重新采集 split-profile：主线程 16,321 个样本中，A-JOC 重建为 3,775 个（23.13%）。
+最终对象 dry/wet 矩阵为 1,750 个（重建内 46.36%、全程 10.72%），rolling 推进/安装降到
+1,282 个（重建内 33.96%、全程 7.85%），其余阶段排序没有反转。下一步应拆最终对象矩阵的
+跨对象 f64 lane，同时严格保持每个对象内部先 channel、后 decorrelator 的 f64 累加顺序。
+按当前 `10.72%` 的全程阶段占比，下一候选的理论全程上限约 `10.7%`；考虑只能共享加载/循环
+控制而不能合并对象内加法树，现实目标先定为 Full `4%`–`7%`。采样只用于阶段排序，正式收益
+仍须由普通 portable release 的逐位门禁与交替 A/B 决定。
 
 ## QMF 合成尾段实验（未保留）
 

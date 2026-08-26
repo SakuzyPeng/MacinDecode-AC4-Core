@@ -37,6 +37,56 @@ pub(super) struct NonFiniteCoefficient {
     pub index: usize,
 }
 
+/// 一组 fixed-stride rolling 存储中需要推进的行与列。
+///
+/// `active_row_len` 只裁掉拓扑永远不可达的行尾；对象行本身不能按逐帧 present
+/// 标志裁掉，因为 absent 对象仍须把旧 target ramp 到零。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct CoefficientLayout {
+    rows: usize,
+    active_row_len: usize,
+    storage_row_len: usize,
+}
+
+impl CoefficientLayout {
+    #[must_use]
+    pub(super) const fn strided(
+        rows: usize,
+        active_row_len: usize,
+        storage_row_len: usize,
+    ) -> Self {
+        Self {
+            rows,
+            active_row_len,
+            storage_row_len,
+        }
+    }
+
+    const fn contiguous(len: usize) -> Self {
+        if len == 0 {
+            return Self::strided(0, 0, 1);
+        }
+        Self::strided(1, len, len)
+    }
+
+    fn fits(self, len: usize) -> bool {
+        self.storage_row_len != 0
+            && self.active_row_len <= self.storage_row_len
+            && self
+                .rows
+                .checked_mul(self.storage_row_len)
+                .is_some_and(|required| required <= len)
+    }
+}
+
+/// dry/wet/pre 三组在当前已锁定拓扑下的活动视图。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct RollingLayout {
+    pub dry: CoefficientLayout,
+    pub wet: CoefficientLayout,
+    pub pre: CoefficientLayout,
+}
+
 /// 一个数据点的插值控制。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RampPoint {
@@ -283,6 +333,7 @@ pub struct RollingCoefficients<'a> {
     dry: &'a mut [RollingCoefficient],
     wet: &'a mut [RollingCoefficient],
     pre: &'a mut [RollingCoefficient],
+    layout: RollingLayout,
 }
 
 impl<'a> RollingCoefficients<'a> {
@@ -293,7 +344,40 @@ impl<'a> RollingCoefficients<'a> {
         wet: &'a mut [RollingCoefficient],
         pre: &'a mut [RollingCoefficient],
     ) -> Self {
-        Self { dry, wet, pre }
+        let layout = RollingLayout {
+            dry: CoefficientLayout::contiguous(dry.len()),
+            wet: CoefficientLayout::contiguous(wet.len()),
+            pre: CoefficientLayout::contiguous(pre.len()),
+        };
+        Self {
+            dry,
+            wet,
+            pre,
+            layout,
+        }
+    }
+
+    /// 以 fixed-stride 活动视图借用三组完整状态存储。
+    ///
+    /// 该入口只供持有固定容量 A-JOC 状态的帧级重建使用；布局由已经校验并锁定的
+    /// shape 推导。完整 slice 仍由访问器暴露给矩阵乘法，以保持物理索引身份。
+    #[must_use]
+    pub(super) fn with_layout(
+        dry: &'a mut [RollingCoefficient],
+        wet: &'a mut [RollingCoefficient],
+        pre: &'a mut [RollingCoefficient],
+        layout: RollingLayout,
+    ) -> Self {
+        assert!(
+            layout.dry.fits(dry.len()) && layout.wet.fits(wet.len()) && layout.pre.fits(pre.len()),
+            "A-JOC rolling layout must fit fixed-capacity state"
+        );
+        Self {
+            dry,
+            wet,
+            pre,
+            layout,
+        }
     }
 
     /// dry rolling 状态。
@@ -328,18 +412,21 @@ impl<'a> RollingCoefficients<'a> {
     ) {
         advance_group::<CHECK_FINITE>(
             self.dry,
+            self.layout.dry,
             CoefficientGroup::Dry,
             final_increment,
             first_non_finite,
         );
         advance_group::<CHECK_FINITE>(
             self.wet,
+            self.layout.wet,
             CoefficientGroup::Wet,
             final_increment,
             first_non_finite,
         );
         advance_group::<CHECK_FINITE>(
             self.pre,
+            self.layout.pre,
             CoefficientGroup::Pre,
             final_increment,
             first_non_finite,
@@ -357,6 +444,7 @@ impl<'a> RollingCoefficients<'a> {
     {
         install_group::<F, CHECK_FINITE>(
             self.dry,
+            self.layout.dry,
             CoefficientGroup::Dry,
             data_point,
             ramp_len,
@@ -365,6 +453,7 @@ impl<'a> RollingCoefficients<'a> {
         );
         install_group::<F, CHECK_FINITE>(
             self.wet,
+            self.layout.wet,
             CoefficientGroup::Wet,
             data_point,
             ramp_len,
@@ -373,6 +462,7 @@ impl<'a> RollingCoefficients<'a> {
         );
         install_group::<F, CHECK_FINITE>(
             self.pre,
+            self.layout.pre,
             CoefficientGroup::Pre,
             data_point,
             ramp_len,
@@ -384,21 +474,37 @@ impl<'a> RollingCoefficients<'a> {
 
 fn advance_group<const CHECK_FINITE: bool>(
     coefficients: &mut [RollingCoefficient],
+    layout: CoefficientLayout,
     group: CoefficientGroup,
     final_increment: bool,
     first_non_finite: &mut Option<NonFiniteCoefficient>,
 ) {
-    for (index, coefficient) in coefficients.iter_mut().enumerate() {
-        coefficient.advance(final_increment);
-        // target/delta 在安装时已经验证，推进只会改变 current。
-        if CHECK_FINITE && first_non_finite.is_none() && !coefficient.current().is_finite() {
-            *first_non_finite = Some(NonFiniteCoefficient { group, index });
+    for (row, storage_row) in coefficients
+        .chunks_exact_mut(layout.storage_row_len)
+        .take(layout.rows)
+        .enumerate()
+    {
+        let row_start = row.saturating_mul(layout.storage_row_len);
+        for (column, coefficient) in storage_row
+            .iter_mut()
+            .take(layout.active_row_len)
+            .enumerate()
+        {
+            coefficient.advance(final_increment);
+            // target/delta 在安装时已经验证，推进只会改变 current。
+            if CHECK_FINITE && first_non_finite.is_none() && !coefficient.current().is_finite() {
+                *first_non_finite = Some(NonFiniteCoefficient {
+                    group,
+                    index: row_start.saturating_add(column),
+                });
+            }
         }
     }
 }
 
 fn install_group<F, const CHECK_FINITE: bool>(
     coefficients: &mut [RollingCoefficient],
+    layout: CoefficientLayout,
     group: CoefficientGroup,
     data_point: usize,
     ramp_len: u8,
@@ -407,10 +513,22 @@ fn install_group<F, const CHECK_FINITE: bool>(
 ) where
     F: Fn(CoefficientGroup, usize, usize) -> f32,
 {
-    for (index, coefficient) in coefficients.iter_mut().enumerate() {
-        coefficient.install(target_for(group, data_point, index), ramp_len);
-        if CHECK_FINITE && first_non_finite.is_none() && !coefficient.is_finite() {
-            *first_non_finite = Some(NonFiniteCoefficient { group, index });
+    for (row, storage_row) in coefficients
+        .chunks_exact_mut(layout.storage_row_len)
+        .take(layout.rows)
+        .enumerate()
+    {
+        let row_start = row.saturating_mul(layout.storage_row_len);
+        for (column, coefficient) in storage_row
+            .iter_mut()
+            .take(layout.active_row_len)
+            .enumerate()
+        {
+            let index = row_start.saturating_add(column);
+            coefficient.install(target_for(group, data_point, index), ramp_len);
+            if CHECK_FINITE && first_non_finite.is_none() && !coefficient.is_finite() {
+                *first_non_finite = Some(NonFiniteCoefficient { group, index });
+            }
         }
     }
 }
@@ -987,6 +1105,54 @@ mod tests {
                 index: 0,
             })
         );
+    }
+
+    #[test]
+    fn strided_layout_updates_only_active_columns_and_keeps_physical_index() {
+        let schedule =
+            InterpolationSchedule::new(&[RampPoint::new(0, 1, 32).expect("合法 ramp")], 32)
+                .expect("合法日程");
+        let mut state = InterpolationState::new();
+        let mut dry = [RollingCoefficient::ZERO; 12];
+        let mut wet = [];
+        let mut pre = [];
+        let layout = RollingLayout {
+            dry: CoefficientLayout::strided(2, 2, 4),
+            wet: CoefficientLayout::strided(0, 0, 1),
+            pre: CoefficientLayout::strided(0, 0, 1),
+        };
+        let mut coefficients =
+            RollingCoefficients::with_layout(&mut dry, &mut wet, &mut pre, layout);
+
+        let non_finite = state
+            .interpolate_timeslot_checked(0, &schedule, &mut coefficients, |_, _, index| {
+                if index == 5 {
+                    f32::INFINITY
+                } else {
+                    10.0 + index as f32
+                }
+            })
+            .expect("合法时隙");
+
+        assert_eq!(
+            non_finite,
+            Some(NonFiniteCoefficient {
+                group: CoefficientGroup::Dry,
+                index: 5,
+            }),
+            "错误索引必须保持 fixed-stride 物理身份"
+        );
+        assert_eq!(coefficients.dry()[0].target(), 10.0);
+        assert_eq!(coefficients.dry()[1].target(), 11.0);
+        assert_eq!(coefficients.dry()[4].target(), 14.0);
+        assert!(coefficients.dry()[5].target().is_infinite());
+        for &index in &[2usize, 3, 6, 7, 8, 9, 10, 11] {
+            assert_eq!(
+                coefficients.dry()[index],
+                RollingCoefficient::ZERO,
+                "非活动位置 {index} 不得被安装 target"
+            );
+        }
     }
 
     #[test]

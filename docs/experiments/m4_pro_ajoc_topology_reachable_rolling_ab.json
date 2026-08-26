@@ -1,0 +1,331 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "optimization_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-26T04:13:36Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "98a8c422fee4b11a9474730d6868d7e51a3f9814",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "manifest": "objects_baseline.json",
+    "combinations": 12,
+    "modes": [
+      "full"
+    ],
+    "rounds_per_binary": 5,
+    "order": [
+      "before/after",
+      "after/before",
+      "before/after",
+      "after/before",
+      "before/after"
+    ],
+    "cold_runs": 1,
+    "warmup_passes": 1,
+    "min_passes": 3,
+    "min_time_ns": 1000000,
+    "max_passes": 3,
+    "timed_boundary": "Ac4DecoderSession::decode_access_unit",
+    "comparison_unit": "steady.total_decode_ns / steady.passes",
+    "aggregation": "per-case five-round median, then sum"
+  },
+  "binaries": {
+    "before_commit": "98a8c422fee4b11a9474730d6868d7e51a3f9814",
+    "before_sha256": "95f6ec14e3c7b3f2e1d708eac0fbd7988a680729b697044c357a301354028526",
+    "after_sha256": "d3c0fae2a458c016711591ab9952bc72fffb23cd682b240b8d1f6e2743b9fb4c"
+  },
+  "candidate": {
+    "status": "retained",
+    "change": "advance and install rolling coefficients through topology-reachable fixed-stride row prefixes",
+    "dry_layout": "objects rows, num_dmx * 64 active columns, MAX_AJOC_DMX_SIGNALS * 64 storage stride",
+    "wet_layout": "objects rows, num_decorr * 64 active columns, MAX_DECORRELATORS * 64 storage stride",
+    "pre_layout": "num_decorr rows, num_dmx * 64 active columns, MAX_AJOC_DMX_SIGNALS * 64 storage stride",
+    "absent_object_rows_retained": true,
+    "fixed_storage_identity_unchanged": true,
+    "first_error_physical_index_unchanged": true,
+    "state_invariant": "shape is locked after the first successful frame; shape changes require reset, which clears all rolling/diff/decorrelator state",
+    "public_contiguous_constructor_unchanged": true,
+    "frame_transactional": true,
+    "no_std": true,
+    "rayon": false,
+    "platform_intrinsics": false,
+    "unsafe_code": false,
+    "fma": false,
+    "fast_math": false
+  },
+  "corpus_results": {
+    "all_total_improved": 12,
+    "all_p95_improved": 12,
+    "all_p99_improved": 12,
+    "aggregate_before_median_pass_ns": 5069766271.333334,
+    "aggregate_after_median_pass_ns": 4708722167,
+    "aggregate_improvement_percent": 7.121513793936307,
+    "total_improvement_range_percent": [
+      4.846684838136861,
+      12.27476602537456
+    ],
+    "p95_improvement_range_percent": [
+      4.83747027131971,
+      12.00861242543616
+    ],
+    "p99_improvement_range_percent": [
+      0.4437938342732761,
+      11.852846672142547
+    ],
+    "before_deadline_misses": 0,
+    "after_deadline_misses": 0
+  },
+  "cases": [
+    {
+      "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+      "before_median_pass_ns": 711389513,
+      "after_median_pass_ns": 676910705.3333334,
+      "improvement_percent": 4.846684838136861,
+      "before_median_p95_ns": 5150750,
+      "after_median_p95_ns": 4901584,
+      "p95_improvement_percent": 4.83747027131971,
+      "before_median_p99_ns": 5223000,
+      "after_median_p99_ns": 4948917,
+      "p99_improvement_percent": 5.247616312464098
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_768K.m4a",
+      "before_median_pass_ns": 636778359.3333334,
+      "after_median_pass_ns": 597616608.3333334,
+      "improvement_percent": 6.149981453672493,
+      "before_median_p95_ns": 4624458,
+      "after_median_p95_ns": 4314959,
+      "p95_improvement_percent": 6.692654577033674,
+      "before_median_p99_ns": 4684833,
+      "after_median_p99_ns": 4664042,
+      "p99_improvement_percent": 0.4437938342732761
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+      "before_median_pass_ns": 521172576.3333333,
+      "after_median_pass_ns": 457199862,
+      "improvement_percent": 12.27476602537456,
+      "before_median_p95_ns": 3761542,
+      "after_median_p95_ns": 3309833,
+      "p95_improvement_percent": 12.00861242543616,
+      "before_median_p99_ns": 3813084,
+      "after_median_p99_ns": 3361125,
+      "p99_improvement_percent": 11.852846672142547
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+      "before_median_pass_ns": 713192356,
+      "after_median_pass_ns": 676406885,
+      "improvement_percent": 5.1578610862172525,
+      "before_median_p95_ns": 5183750,
+      "after_median_p95_ns": 4901833,
+      "p95_improvement_percent": 5.438476006751869,
+      "before_median_p99_ns": 5516666,
+      "after_median_p99_ns": 5037041,
+      "p99_improvement_percent": 8.694109811977013
+    },
+    {
+      "input": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+      "before_median_pass_ns": 642671721.3333334,
+      "after_median_pass_ns": 596091677.6666666,
+      "improvement_percent": 7.247875100218881,
+      "before_median_p95_ns": 4643875,
+      "after_median_p95_ns": 4329917,
+      "p95_improvement_percent": 6.760690156388794,
+      "before_median_p99_ns": 4703708,
+      "after_median_p99_ns": 4387666,
+      "p99_improvement_percent": 6.718997012569661
+    },
+    {
+      "input": "probe_bed_only/master_ac4_256K.m4a",
+      "before_median_pass_ns": 179638140.66666666,
+      "after_median_pass_ns": 159029583,
+      "improvement_percent": 11.472261731381161,
+      "before_median_p95_ns": 3797250,
+      "after_median_p95_ns": 3356916,
+      "p95_improvement_percent": 11.5961287774047,
+      "before_median_p99_ns": 3840041,
+      "after_median_p99_ns": 3404625,
+      "p99_improvement_percent": 11.338837267622925
+    },
+    {
+      "input": "probe_bed_only/master_ac4_448K.m4a",
+      "before_median_pass_ns": 199351929.66666666,
+      "after_median_pass_ns": 182666528,
+      "improvement_percent": 8.369822000000738,
+      "before_median_p95_ns": 4230458,
+      "after_median_p95_ns": 3870958,
+      "p95_improvement_percent": 8.497897863541015,
+      "before_median_p99_ns": 4312167,
+      "after_median_p99_ns": 3916583,
+      "p99_improvement_percent": 9.173670685759616
+    },
+    {
+      "input": "probe_delayed_onset/master_ac4_768K.m4a",
+      "before_median_pass_ns": 641136126.3333334,
+      "after_median_pass_ns": 596163830.6666666,
+      "improvement_percent": 7.014469130582912,
+      "before_median_p95_ns": 4620125,
+      "after_median_p95_ns": 4317875,
+      "p95_improvement_percent": 6.542030789210251,
+      "before_median_p99_ns": 4701250,
+      "after_median_p99_ns": 4410541,
+      "p99_improvement_percent": 6.18365328370114
+    },
+    {
+      "input": "probe_ramp_control/master_ac4_768K.m4a",
+      "before_median_pass_ns": 188718818.33333334,
+      "after_median_pass_ns": 174727946.66666666,
+      "improvement_percent": 7.413607074390782,
+      "before_median_p95_ns": 4630459,
+      "after_median_p95_ns": 4306791,
+      "p95_improvement_percent": 6.9899765876341835,
+      "before_median_p99_ns": 4682834,
+      "after_median_p99_ns": 4423250,
+      "p99_improvement_percent": 5.5433098845699025
+    },
+    {
+      "input": "probe_ramp_lengths/master_ac4_768K.m4a",
+      "before_median_pass_ns": 187783747.66666666,
+      "after_median_pass_ns": 175256027.33333334,
+      "improvement_percent": 6.6713549436510196,
+      "before_median_p95_ns": 4640709,
+      "after_median_p95_ns": 4316542,
+      "p95_improvement_percent": 6.985290394204846,
+      "before_median_p99_ns": 4688375,
+      "after_median_p99_ns": 4360917,
+      "p99_improvement_percent": 6.984466899512087
+    },
+    {
+      "input": "probe_subframe_control/master_ac4_768K.m4a",
+      "before_median_pass_ns": 223549970,
+      "after_median_pass_ns": 208307708.33333334,
+      "improvement_percent": 6.818279450749499,
+      "before_median_p95_ns": 4640625,
+      "after_median_p95_ns": 4299708,
+      "p95_improvement_percent": 7.346359595959595,
+      "before_median_p99_ns": 4713666,
+      "after_median_p99_ns": 4372666,
+      "p99_improvement_percent": 7.234284312889372
+    },
+    {
+      "input": "probe_subframe_updates/master_ac4_768K.m4a",
+      "before_median_pass_ns": 224383012.66666666,
+      "after_median_pass_ns": 208344804.66666666,
+      "improvement_percent": 7.147692603550892,
+      "before_median_p95_ns": 4656000,
+      "after_median_p95_ns": 4312500,
+      "p95_improvement_percent": 7.377577319587624,
+      "before_median_p99_ns": 4739625,
+      "after_median_p99_ns": 4373833,
+      "p99_improvement_percent": 7.717741382493337
+    }
+  ],
+  "standard_1500k": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "before_median_pass_ns": 711389513,
+    "after_median_pass_ns": 676910705.3333334,
+    "improvement_percent": 4.846684838136861,
+    "before_median_p95_ns": 5150750,
+    "after_median_p95_ns": 4901584,
+    "before_median_p99_ns": 5223000,
+    "after_median_p99_ns": 4948917
+  },
+  "anomaly_audit": {
+    "input": "probe_axes_single_object/master_ac4_768K.m4a",
+    "observation": "the first two after rounds contained isolated p99 scheduling spikes while total duration and p95 still improved",
+    "before_round_p99_ns": [
+      4684833,
+      4693458,
+      4704458,
+      4623291,
+      4673625
+    ],
+    "after_round_p99_ns": [
+      5836834,
+      6504417,
+      4364750,
+      4292459,
+      4664042
+    ],
+    "three_round_before_median_p99_ns": 4693458,
+    "three_round_after_median_p99_ns": 5836834,
+    "three_round_apparent_regression_percent": 24.361057454865897,
+    "five_round_before_median_p99_ns": 4684833,
+    "five_round_after_median_p99_ns": 4664042,
+    "five_round_improvement_percent": 0.4437938342732761,
+    "deadline_misses": 0,
+    "resolution": "two additional alternating rounds were retained in the record; the five-round median resolves the isolated spikes without deleting any round"
+  },
+  "correctness": {
+    "strided_active_prefix_test": "passed",
+    "physical_error_index_test": "passed",
+    "unreachable_tail_sentinel_test": "passed",
+    "absent_object_ramp_test": "passed",
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact",
+    "workspace_tests_audio_decode": "passed",
+    "clippy_workspace_all_targets_audio_decode": "passed",
+    "clippy_split_profile_all_targets": "passed",
+    "msrv_1_85": "passed"
+  },
+  "steady_allocations": {
+    "combinations": 24,
+    "allocation_free": 24,
+    "heap_operation_free": 24,
+    "allocations": 0,
+    "reallocations": 0,
+    "deallocations": 0,
+    "bytes_allocated": 0,
+    "bytes_reallocated": 0,
+    "bytes_deallocated": 0
+  },
+  "post_optimization_attribution": {
+    "performance_use": "stage ranking only; split-profile timing is not a production benchmark",
+    "split_binary_sha256": "dba683c45fe7db3dc403ca4ad4bac02c071a03be0e319382a1c257285db12aad",
+    "profile_duration_ns": 30437902375,
+    "profile_passes": 42,
+    "profile_access_unit_calls": 6006,
+    "profile_thread_samples": 16321,
+    "ajoc_reconstruction_samples": 3775,
+    "ajoc_reconstruction_share_of_profile_percent": 23.129710189326634,
+    "phases": {
+      "reconstruct_output": {
+        "inclusive_samples": 1750,
+        "share_of_reconstruction_percent": 46.35761589403973,
+        "share_of_profile_percent": 10.722382206972611
+      },
+      "rolling_advance_and_install": {
+        "inclusive_samples": 1282,
+        "share_of_reconstruction_percent": 33.96026490066225,
+        "share_of_profile_percent": 7.854910851050794
+      },
+      "decorrelator": 324,
+      "decorrelator_input": 167,
+      "prepare_targets": 106,
+      "prepare_candidate": 53,
+      "validate_input": 33,
+      "commit_candidate": 29,
+      "diff_decode": 25,
+      "unclassified_process_overhead": 6
+    },
+    "phase_sample_sum": 3775,
+    "next_candidate": "pair independent output objects as f64 lanes while preserving channel-then-decorrelator accumulation order within each object",
+    "next_candidate_theoretical_whole_profile_upper_bound_percent": 10.722382206972611,
+    "next_candidate_realistic_full_improvement_target_percent": [
+      4,
+      7
+    ]
+  }
+}
