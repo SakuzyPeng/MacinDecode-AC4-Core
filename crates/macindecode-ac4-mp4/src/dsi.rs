@@ -1,12 +1,23 @@
 //! `AC4SpecificBox`（`dac4`）中的解码器专属信息。
 //!
-//! 对应 `TS103190-1:v1.4.1:E.4` 与 `TS103190-2:v1.3.1:E.5`–`E.7`。
+//! 对应 `TS103190-1:v1.4.1:E.4` 与 `TS103190-2:v1.3.1:E.5`–`E.12`。
 //!
 //! 规范明确指出 `ac4_dsi` 不得用于配置解码器：解码器只能从每个 sample 内
 //! 的 `ac4_toc` 取得配置。此处解析它仅用于容器层的检视与交叉核对。
 
 use core::fmt;
 use macindecode_ac4_bitstream::{BitReader, ReadError};
+
+mod presentation_v1;
+
+pub use presentation_v1::{
+    Ac4DsiAjocInfo, Ac4DsiAlternativeInfo, Ac4DsiAlternativeTarget, Ac4DsiAlternativeTargetIter,
+    Ac4DsiByteIter, Ac4DsiBytes, Ac4DsiChannelGroups, Ac4DsiChannelSubstream, Ac4DsiContentType,
+    Ac4DsiEmdfInfo, Ac4DsiEmdfIter, Ac4DsiObjectKinds, Ac4DsiObjectSubstream,
+    Ac4DsiPresentationChannelLayout, Ac4DsiPresentationCoreLayout, Ac4DsiPresentationFilter,
+    Ac4DsiPresentationIndicators, Ac4DsiPresentationV1, Ac4DsiSubstream, Ac4DsiSubstreamGroup,
+    Ac4DsiSubstreamGroupIter, Ac4DsiSubstreamIter,
+};
 
 /// 基础采样频率，对应 `4.3.3.2.5` 表 82。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -279,8 +290,8 @@ pub struct Ac4ProgramId {
 
 /// 一个由 `presentation_version` 与 `pres_bytes` 定界的 DSI presentation。
 ///
-/// 当前提交只负责可靠定界。`payload` 是恰好 `declared_bytes` 字节的内部 DSI，
-/// 后续提交在此边界内解析 presentation v1 的语义字段。
+/// `payload` 是恰好 `declared_bytes` 字节的内部 DSI；版本 1 可通过
+/// [`Ac4DsiPresentation::v1`] 取得语义视图，未知版本保持不透明。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ac4DsiPresentation<'a> {
     /// 在 `ac4_dsi_v1()` 数组中的零基下标。
@@ -450,7 +461,8 @@ impl<'a> Ac4DsiV1<'a> {
         };
         let mut presentations = parsed.presentations();
         for item in presentations.by_ref() {
-            item?;
+            let presentation = item?;
+            let _ = presentation.v1()?;
         }
         if presentations.trailing_bytes() != 0 {
             return Err(DsiError::TrailingBytes {
@@ -508,6 +520,24 @@ pub enum DsiError {
         /// 未归属字节数。
         remaining: usize,
     },
+    /// 规范标记为 `reserved_zero` 的字段出现非零值。
+    ReservedValueNonZero {
+        /// 字段名称。
+        field: &'static str,
+        /// 字段起始位置，相对当前 presentation body。
+        bit_position: u64,
+        /// 读到的非零值。
+        value: u64,
+    },
+    /// 字段码值落入规范未定义或保留的范围。
+    InvalidFieldValue {
+        /// 字段名称。
+        field: &'static str,
+        /// 字段起始位置，相对当前 presentation body。
+        bit_position: u64,
+        /// 读到的值。
+        value: u64,
+    },
 }
 
 impl fmt::Display for DsiError {
@@ -535,6 +565,22 @@ impl fmt::Display for DsiError {
                     "{remaining} trailing bytes remain after dac4 presentations"
                 )
             }
+            DsiError::ReservedValueNonZero {
+                field,
+                bit_position,
+                value,
+            } => write!(
+                f,
+                "dac4 field {field} at bit {bit_position} shall be zero, but is {value}"
+            ),
+            DsiError::InvalidFieldValue {
+                field,
+                bit_position,
+                value,
+            } => write!(
+                f,
+                "dac4 field {field} at bit {bit_position} has invalid value {value}"
+            ),
         }
     }
 }
@@ -821,8 +867,12 @@ mod tests {
         payload.push_bytes(&[0xa5; 16]);
         push_bitrate(&mut payload, 2, 768_000, 1_000);
         payload.push_bits(1, 8); // presentation_version
-        payload.push_bits(3, 8); // pres_bytes
-        payload.push_bytes(&[0xaa, 0xbb, 0xcc]);
+        payload.push_bits(2, 8); // pres_bytes
+        payload.push_bits(6, 5); // 仅附加 EMDF/其他数据的 presentation
+        payload.push_bits(0, 7); // n_add_emdf_substreams
+        payload.push_bits(0, 1); // b_presentation_bitrate_info
+        payload.push_bits(0, 1); // b_alternative
+        payload.byte_align();
 
         let dsi = Ac4Dsi::parse(payload.as_slice()).unwrap();
         let v1 = dsi.v1().unwrap().unwrap();
@@ -846,8 +896,11 @@ mod tests {
         assert_eq!(presentations.len(), 1);
         assert_eq!(presentations[0].index, 0);
         assert_eq!(presentations[0].version, 1);
-        assert_eq!(presentations[0].declared_bytes, 3);
-        assert_eq!(presentations[0].payload, &[0xaa, 0xbb, 0xcc]);
+        assert_eq!(presentations[0].declared_bytes, 2);
+        assert_eq!(presentations[0].payload, &[0x30, 0x00]);
+        let presentation = presentations[0].v1().unwrap().unwrap();
+        assert_eq!(presentation.presentation_config, 6);
+        assert_eq!(presentation.n_additional_emdf_substreams, 0);
     }
 
     #[test]

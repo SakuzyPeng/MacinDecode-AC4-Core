@@ -14,8 +14,14 @@ pub mod timeline;
 
 pub use boxes::{BoxError, BoxIter, Mp4Box, find_box, find_path};
 pub use dsi::{
-    Ac4BitrateDsi, Ac4BitrateMode, Ac4Dsi, Ac4DsiPresentation, Ac4DsiPresentationIter, Ac4DsiV1,
-    Ac4ProgramId, BaseSamplingFrequency, DsiError, FrameRate, MediaTimeline, SampleDelta,
+    Ac4BitrateDsi, Ac4BitrateMode, Ac4Dsi, Ac4DsiAjocInfo, Ac4DsiAlternativeInfo,
+    Ac4DsiAlternativeTarget, Ac4DsiAlternativeTargetIter, Ac4DsiByteIter, Ac4DsiBytes,
+    Ac4DsiChannelGroups, Ac4DsiChannelSubstream, Ac4DsiContentType, Ac4DsiEmdfInfo, Ac4DsiEmdfIter,
+    Ac4DsiObjectKinds, Ac4DsiObjectSubstream, Ac4DsiPresentation, Ac4DsiPresentationChannelLayout,
+    Ac4DsiPresentationCoreLayout, Ac4DsiPresentationFilter, Ac4DsiPresentationIndicators,
+    Ac4DsiPresentationIter, Ac4DsiPresentationV1, Ac4DsiSubstream, Ac4DsiSubstreamGroup,
+    Ac4DsiSubstreamGroupIter, Ac4DsiSubstreamIter, Ac4DsiV1, Ac4ProgramId, BaseSamplingFrequency,
+    DsiError, FrameRate, MediaTimeline, SampleDelta,
 };
 pub use samples::{SampleInfo, SampleIter, SampleTable, SampleTableError};
 pub use timeline::{

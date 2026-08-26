@@ -81,7 +81,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | OAMD → ADM BWF 试听探针 | P2 `6.3.9` 语义；ITU-R BS.2076-2、BS.2088-2；EBU Tech 3285 Supplement 6；Dolby Atmos Master ADM Profile v1.0 | `macindecode-ac4-cli::{trace,adm}` | 标准配置强制 `BW64`，Logic 配置强制 `RF64`、五位时钟及逐段校验 `dbmd`；两者首块均为 `ds64`；`chna`/`axml` 图一致性；48 kHz/24-bit PCM；MP4/raw 时间线与无半成品；EBU EAR 解析和 0+5+0 渲染接受 |
 | full/core decode | Part 2 | `macindecode-ac4-scene` | 同一码流的模式差异 |
 | 渲染前输出边界 | Part 2/附录，待核对 | `macindecode-ac4-scene` | `Ac4SceneFrame` 契约测试 |
-| MP4 `dac4` | ETSI/ISO 封装规范，待锁定 | `macindecode-ac4-mp4` | Bento4/MediaInfo 差分 |
+| MP4 `dac4` | P1 `E.4`（DSI v0）；P2 `E.5`–`E.12`（DSI/presentation v1） | `macindecode-ac4-mp4` | `pres_bytes`/skip area 定界；object/A-JOC/direct-object/alternative 构造分支；真实 MP4 与 TOC/Bento4 交叉 |
 
 ## 4. 实现要求
 
@@ -1586,6 +1586,28 @@ integer。本机 ADM normalizer 接受 home package；DME 随附 `atmos_info --v
 `mapping.unsupported`；未支持编码路径、内部 PCM/拓扑破坏和语法失败分别保持
 `unsupported.coding_path`、`internal.invariant_failed`、`parse.failed`。
 
+### 5.56 `dac4` DSI v1 与 presentation 选择信令
+
+P2 `E.5` 明确要求 `AC4SpecificBox` 承载 `ac4_dsi_v1()`，`E.6` 又要求
+`ac4_dsi_version = 1`；P1 `E.4` 的版本 0 是旧 bitstream/DSI 分支，不再与这里混读。
+解析器在版本大于 1 时只读三位版本便停止并返回结构化错误；版本 1 依次验证 program
+ID/UUID、stream bitrate、每个 `presentation_version/pres_bytes/add_pres_bytes` envelope，
+并只对已知的 presentation version 1 解释 `E.10`–`E.12`。未知 presentation version
+仍按 `pres_bytes` 整段跳过，不能拿旧语法试读。
+
+presentation v1 的公共选择信息、filter、EMDF、presentation bitrate、尾部 DE/immersive/
+extended ID、substream group、A-JOC 对象数、direct-object 分类及 alternative 名称/目标均有
+无分配只读视图。`filter_data`、扩展配置和语言标签可能不在字节边界，使用有界 8 比特元素
+视图而非伪造 `&[u8]`；`pres_bytes` 大于当前已知语法时，剩余完整字节按 `E.6` 的
+`skip_area` 保留。`reserved_zero`、保留的采样率乘数、保留的 substream bitrate indicator、
+截断长度与越过 envelope 均 fail-closed。
+
+Channel-based 在本阶段仅为继续解析 presentation 而保存 channel mode 与 18 位 group 掩码，
+不把该信令解释成可播放扬声器布局，也不接通 PCM。14 份本地真实 MP4（12 份 A-JOC、2 份
+IMS channel-based）均能完整落到各自 `pres_bytes` 边界；direct-object 与 alternative 仍只有
+构造码流分支覆盖，不能据此声称存在真实正向样本。本层不执行 renderer、设备适配、DRC、
+dialogue enhancement 或任何额外音频处理。
+
 ## 6. 未决规范问题
 
 在实现前需要形成明确结论：
@@ -1601,7 +1623,7 @@ integer。本机 ADM normalizer 接受 home package；DME 随附 `atmos_info --v
 
 差异只在内容层面可见：绑反后 `b_ext_prec_pos` 不再被读取，扩展精度修正整个丢失，ADM 导出的对象 Z 坐标从 `−0.013333` 变成 `0`。本实现按定义的形参名绑定（对象活跃且为动态对象时才读），依据是函数体自身的逻辑自洽，以及该修正在实测流中确实存在且取值合理——**不是比特级证据**。记录在此以备向 ETSI 确认。
 - **规范内部不一致（P2 `6.2.1.11` 与表 60）**：`ac4_substream_info_obj()` 的语法表把对象数写作 `[0, 1, 2, 3, 5, 7][n_objects_code]` 且不加 `b_lfe`，而表 60 给出 `[0, 1, 2, 3, 5][code] + b_lfe` 且 `code ≥ 5` 为保留。两者在 `n_objects_code = 4` 且 `b_lfe = 1` 时给出不同结果。差异不影响比特消耗，当前按表 60 实现；需在取得 direct-object 样本后核实，或向 ETSI 确认。
-- `ac4_dsi_version = 1` 的处理。表 E.5 要求该字段为 `0b000`，但 `E.4a` 的 `ac4_presentation_v0_dsi` 又带 `if (ac4_dsi_version == 0) … else …` 分支。当前两个探针样本实测均为版本 1；固定头已解析，presentation DSI 仍保留原始字节，该分支语义待核对。
+- ~~`ac4_dsi_version = 1` 的处理。~~ **已关闭（5.56）**：P1 `E.4` 定义旧 DSI v0；P2 `E.5`–`E.6` 明确要求 `AC4SpecificBox` 承载 DSI v1，并在表 E.6 规定 `ac4_dsi_version = 1`。当前按版本分别处理，presentation v1 解析到有界 skip area，未知更高 DSI 版本立即停止。
 - **`ramp_duration` 的范围表述（P2 `6.3.9.3.8` 与表 95）**：条款声明 `ramp_duration` 的范围是 `[0, 2 047]`，而表 95 的 `ramp_duration_table` 末项为 2 048。本实现理解为该范围只约束 11 比特直接编码的元素，不约束查表值，两者不矛盾。差异不影响比特消耗，因此不会被任何比特级门禁发现，记录在此以备核对。
 - **`bed_dyn_obj_assignment()` 不写出 DYN 条目（P2 `6.2.1.10`）**：该语法只向 `obj_type[]` 追加 BED 与 ISF，并对每个条目置 `b_lfe = 0`、`b_ajoc_coded = 1`；DYN 对象由剩余信号数隐含，其 `b_ajoc_coded` 由调用方决定。A-JOC 路径下全部为真，直接编码路径下为假。当前无 direct-object 样本，该推导只有构造码流的分支覆盖。
 - **短帧下 `5.7.1` 的全局 6 时隙与表 192 的 `ts_offset_hfgen` 未能调和（P1）**：`5.7.1` 说「6 QMF time slots of history are kept in between blocks. This means that the QMF synthesis works on QMF data that is delayed by 6 QMF time slots, or 6 × num_qmf_subbands time domain samples」，即 384 个样本，且不随帧长变化；表 192 的 `ts_offset_hfgen` 在 `frame_len_base` 取 2 048/1 920/1 536 时恰为 6 个时隙、384 个样本，取 1 024 及以下时只有 3 个时隙、192 个样本。长帧上两者数值重合，短帧上差 3 个时隙，而规范没有说终端 QMF 调度是另加固定 6 个时隙、吸收已有的 A-SPX 延迟，还是只补齐两者的差值。**这已不再决定 LFE 的相对对齐量**：`Q_out,ASPX` 中的直达输入分量相对 `Q_in,ASPX` 明确带 `δ_ASPX`，任何施加给全部输出的公共延迟都不会消掉 LFE 旁路少掉的这段延迟。未决的是短帧的**绝对输出时间轴**及其落点。当前编码链 `frame_rate_index = 13` 恒给出 `frame_len_base = 2 048`，无法观察短帧分歧；`export-aspx-pcm` 只放行两个延迟数值重合的长帧 A-SPX 通路，对 SIMPLE 和 1 024 及以下短帧 fail-closed，没有把该缺口暗自裁决掉。
