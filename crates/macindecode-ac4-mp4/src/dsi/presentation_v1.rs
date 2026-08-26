@@ -198,16 +198,22 @@ impl ExactSizeIterator for Ac4DsiEmdfIter<'_> {}
 /// Annex A.27 的 18 个 audio channel group 位。
 ///
 /// 位 `0…17` 与规范数组下标相同；首个传输位对应下标 17。
+/// 下标 8 已弃用：presentation v1 要求该位为零，substream mask 中出现时则按
+/// Annex A.27 NOTE 3 保留原值，由消费方将其解释为下标 7。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Ac4DsiChannelGroups(u32);
 
 impl Ac4DsiChannelGroups {
-    fn parse(reader: &mut BitReader<'_>, field: &'static str) -> Result<Self, DsiError> {
+    fn parse(reader: &mut BitReader<'_>) -> Result<Self, DsiError> {
+        Ok(Self(read_u32(reader, 18)?))
+    }
+
+    fn parse_presentation(reader: &mut BitReader<'_>) -> Result<Self, DsiError> {
         let bit_position = reader.bit_position();
-        let parsed = Self(read_u32(reader, 18)?);
+        let parsed = Self::parse(reader)?;
         if parsed.contains(8) {
             return Err(DsiError::ReservedValueNonZero {
-                field,
+                field: "presentation_v1_channel_groups[8]",
                 // 数组按 17…0 传输，下标 8 是第十个比特。
                 bit_position: bit_position.saturating_add(9),
                 value: 1,
@@ -712,10 +718,7 @@ impl<'a> Ac4DsiPresentationV1<'a> {
                     channel_mode,
                     four_back_channels_present,
                     top_channel_pairs,
-                    channel_groups: Ac4DsiChannelGroups::parse(
-                        &mut reader,
-                        "presentation_v1_channel_groups[8]",
-                    )?,
+                    channel_groups: Ac4DsiChannelGroups::parse_presentation(&mut reader)?,
                 });
             }
 
@@ -931,7 +934,7 @@ fn parse_substream(
         return Ok(Ac4DsiSubstream::Channel(Ac4DsiChannelSubstream {
             sampling_frequency_multiplier,
             bitrate_indicator,
-            channel_groups: Ac4DsiChannelGroups::parse(reader, "dsi_substream_channel_groups[8]")?,
+            channel_groups: Ac4DsiChannelGroups::parse(reader)?,
         }));
     }
 
@@ -1535,7 +1538,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_reserved_channel_group_bit() {
+    fn rejects_reserved_presentation_channel_group_bit() {
         let mut body = BitBuf::new();
         push_common(&mut body, 31, 0, None);
         body.push_bits(1, 1); // presentation channel coded
@@ -1551,6 +1554,38 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn preserves_deprecated_substream_channel_group_eight() {
+        let mut body = BitBuf::new();
+        push_common(&mut body, 31, 0, None);
+        body.push_bits(0, 1); // presentation channel coded
+        body.push_bits(0, 1); // core differs
+        body.push_bits(0, 1); // filter
+        body.push_bits(1, 1); // substreams present
+        body.push_bits(0, 1); // hsf
+        body.push_bits(1, 1); // channel coded
+        body.push_bits(1, 8); // n_substreams
+        body.push_bits(0, 2); // sf multiplier
+        body.push_bits(0, 1); // bitrate absent
+        body.push_bits(0, 6); // reserved_zero
+        body.push_bits(1 << 8, 18); // deprecated group 8 is preserved
+        body.push_bits(0, 1); // content type
+        body.push_bits(0, 1); // pre-virtualized
+        body.push_bits(0, 1); // additional EMDF
+        body.push_bits(0, 1); // bitrate
+        body.push_bits(0, 1); // alternative
+        body.byte_align();
+
+        let parsed = body.presentation().v1().unwrap().unwrap();
+        let group = parsed.substream_groups().next().unwrap().unwrap();
+        let Ac4DsiSubstream::Channel(channel) = group.substreams().next().unwrap().unwrap() else {
+            panic!("expected channel-coded substream");
+        };
+        assert!(channel.channel_groups.contains(8));
+        assert!(!channel.channel_groups.contains(7));
+        assert_eq!(channel.channel_groups.raw(), 1 << 8);
     }
 
     #[test]
