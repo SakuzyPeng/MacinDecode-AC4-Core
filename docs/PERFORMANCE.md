@@ -15,6 +15,7 @@
 - [QMF 成对调制 A/B JSON](experiments/m4_pro_qmf_paired_ab.json)
 - [QMF 跨声道垂直 SIMD A/B JSON](experiments/m4_pro_qmf_vertical_simd_ab.json)
 - [QMF 分析镜像子带成对 A/B JSON](experiments/m4_pro_qmf_analysis_subband_pairs_ab.json)
+- [A-JOC 重建分段采样 JSON](experiments/m4_pro_ajoc_reconstruction_split_full.json)
 
 ## 结论
 
@@ -40,6 +41,9 @@
 - 分析调制继续利用 `sb` 与 `63−sb` 的精确换位关系，把每时隙的相位加载和乘法再减半；相对
   已含上述两项优化的版本，三轮交替 A/B 的 Core 汇总再提升 `20.99%`、Full 再提升 `9.82%`，
   24/24 项总时长与 p99 均改善，六次全套运行双方均无 deadline miss。
+- 当前版本的 Full 采样中，全部 QMF 合成仍是第一阶段，A-JOC 重建已是最大的非 QMF 阶段。
+  对重建再做 profile-only 分段后，rolling 有限性全量扫描、最终对象矩阵和插值推进分别占重建
+  `38.69%`、`31.28%` 和 `16.62%`；下一项实验应先消除独立全量扫描，但不能删除非有限错误门禁。
 
 ## 测量环境
 
@@ -294,6 +298,44 @@ A/B 的 before 是已推送提交 `acb6db3`，after 只含本候选。两个普�
 `fadd.2d`，没有 FMA，也没有 `panic_bounds_check` 调用。完整逐项结果与复验参数见对应的 A/B
 JSON；原始逐轮 timing 文件只保留在 `target/perf/`。
 
+## A-JOC 重建分段归因
+
+提交 `718116a` 的普通 Full 标准 1500K 采样中，A-JOC 重建 inclusive 占全程约 `30.55%`，已经
+是最大的非 QMF 阶段。为避免 `reconstruct_frame` 内联后全部落在同一符号，内部 feature
+`ajoc-reconstruction-split-profile` 只在采样构建中为帧准备/提交、输入校验、目标准备、时隙处理、
+插值、rolling 校验、decorrelator 输入和最终对象矩阵保留 `inline(never)` 边界。普通构建不生成
+这些 helper 符号；`reconstruct_frame` 的 8,200-byte ARM64 指令序列与优化前冻结二进制一致，
+仅链接地址随性能报告字段变化。
+
+同一个冻结 split-profile 二进制独立采样两次，每次 profile 30 秒、`sample` 20 秒、1 ms 间隔。
+其 SHA-256 为 `39717125d00c66130bed98e2a1915395d44d641b93a9926053b73b405051cbfb`。
+两轮主线程合计 31,290 个样本，其中 A-JOC 重建 9,168 个；以下按 inclusive 符号合并：
+
+| 阶段 | 合计样本 | 重建内占比 | profile 占比 |
+| --- | ---: | ---: | ---: |
+| rolling 全量有限性校验 | 3,547 | 38.69% | 11.34% |
+| 最终对象 dry/wet 矩阵 | 2,868 | 31.28% | 9.17% |
+| rolling 插值推进/target 安装 | 1,524 | 16.62% | 4.87% |
+| decorrelator 本体 | 513 | 5.60% | 1.64% |
+| decorrelator 输入 pre 矩阵 | 264 | 2.88% | 0.84% |
+| 目标反量化与 pre target 构造 | 201 | 2.19% | 0.64% |
+| 候选准备/输出清零 | 73 | 0.80% | 0.23% |
+| 输入有限性校验 | 67 | 0.73% | 0.21% |
+| 状态提交 | 46 | 0.50% | 0.15% |
+| 差分解码 | 53 | 0.58% | 0.17% |
+| 未归类调用开销 | 12 | 0.13% | 0.04% |
+
+两轮前三项在重建内分别为 `39.66% / 29.42% / 17.30%` 与
+`37.65% / 33.27% / 15.90%`，排序和规模稳定。profile-only 的 no-inline 边界会扰动绝对时长，
+因此这些样本只用于阶段排序；正式收益仍须回到无分段 feature 的冻结二进制做 A/B。
+
+第一目标是 `validate_rolling`：当前每个 QMF 时隙扫描固定容量的 20,480 dry、8,960 wet 和
+7,168 pre 系数，并分别检查 current/target/delta；正常有限输入会执行 109,824 次有限性判断。
+后续候选应把检查融合进系数推进/target 安装，或只遍历拓扑可达项，同时保留错误上下文和帧级
+事务性。单纯删除检查不成立。第二目标才是最终对象矩阵的跨对象独立 lane；它可以复用此前
+QMF 跨声道垂直 SIMD 的 safe Rust 方法，但必须保持每个对象内部 channel 后 decorrelator 的
+既有 f64 累加顺序。
+
 ## QMF 合成尾段实验（未保留）
 
 首个候选删除 `synthesise` 中 640 项 `f64` 临时窗，把加窗乘法与最终 64 相位求和融合；每个
@@ -363,6 +405,19 @@ target/release/macinac4-perf qmf-sample-summary \
   --sample target/perf/qmf-split-full.sample.txt \
   --profile target/perf/qmf-split-full-profile.json \
   --output target/perf/qmf-split-full-summary.json
+```
+
+A-JOC 重建分段使用独立 feature；同样不能拿该构建运行 timing/allocation：
+
+```bash
+cargo build -p macindecode-ac4-perf --release \
+  --features audio-decode,ajoc-reconstruction-split-profile
+
+target/release/macinac4-perf profile --mode full --duration-seconds 30 \
+  --output target/perf/ajoc-reconstruction-split-full-profile.json
+
+sample <pid> 20 1 \
+  -file target/perf/ajoc-reconstruction-split-full.sample.txt
 ```
 
 不要把 `target/perf/*.sample.txt` 加入版本控制；其中包含本机 profiler 元数据。正式 JSON 只记录

@@ -759,6 +759,7 @@ pub struct ProfileReportSettings {
     pub startup_delay_ns: u64,
     pub requested_duration_ns: u64,
     pub qmf_split_symbols: bool,
+    pub ajoc_reconstruction_split_symbols: bool,
     pub loop_boundary: &'static str,
 }
 
@@ -1470,6 +1471,7 @@ Total number in stack (recursive counted multiple, when >=5):
                 startup_delay_ns: 3_000_000_000,
                 requested_duration_ns: 30_000_000_000,
                 qmf_split_symbols: false,
+                ajoc_reconstruction_split_symbols: false,
                 loop_boundary: "PreparedCase::decode_pass",
             },
             input: "case/input.m4a".to_owned(),

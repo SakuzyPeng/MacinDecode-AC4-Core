@@ -24,6 +24,10 @@ qmf-split-profile = [
     "audio-decode",
     "macindecode-ac4-bitstream/qmf-split-profile",
 ]
+ajoc-reconstruction-split-profile = [
+    "audio-decode",
+    "macindecode-ac4-bitstream/ajoc-reconstruction-split-profile",
+]
 
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }

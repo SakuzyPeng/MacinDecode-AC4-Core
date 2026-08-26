@@ -191,9 +191,12 @@ fn run_timing(args: TimingArgs) -> PerfResult<()> {
                 .to_owned(),
         );
     }
-    if cfg!(feature = "qmf-split-profile") {
+    if cfg!(any(
+        feature = "qmf-split-profile",
+        feature = "ajoc-reconstruction-split-profile"
+    )) {
         return Err(
-            "timing must be built without qmf-split-profile so no-inline markers cannot skew latency"
+            "timing must be built without split-profile features so no-inline markers cannot skew latency"
                 .to_owned(),
         );
     }
@@ -244,9 +247,12 @@ fn run_timing(args: TimingArgs) -> PerfResult<()> {
 }
 
 fn run_allocations(args: AllocationArgs) -> PerfResult<()> {
-    if cfg!(feature = "qmf-split-profile") {
+    if cfg!(any(
+        feature = "qmf-split-profile",
+        feature = "ajoc-reconstruction-split-profile"
+    )) {
         return Err(
-            "allocations must be built without qmf-split-profile so profiling markers stay isolated"
+            "allocations must be built without split-profile features so profiling markers stay isolated"
                 .to_owned(),
         );
     }
@@ -394,6 +400,7 @@ fn run_profile(args: ProfileArgs) -> PerfResult<()> {
             startup_delay_ns: duration_ns(startup_delay)?,
             requested_duration_ns: duration_ns(duration)?,
             qmf_split_symbols: cfg!(feature = "qmf-split-profile"),
+            ajoc_reconstruction_split_symbols: cfg!(feature = "ajoc-reconstruction-split-profile"),
             loop_boundary: "PreparedCase::decode_pass",
         },
         input: prepared.key().to_owned(),

@@ -393,6 +393,7 @@ impl InterpolationState {
     ///
     /// `timeslot` 不在日程绑定的当前帧实际 QMF 时隙内时返回
     /// [`InterpolationError`]；返回前不会推进游标或系数。
+    #[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
     pub fn interpolate_timeslot<F>(
         &mut self,
         timeslot: u8,

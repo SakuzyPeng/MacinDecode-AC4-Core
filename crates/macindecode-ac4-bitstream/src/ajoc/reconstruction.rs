@@ -189,6 +189,7 @@ impl AjocWorkspace {
         }
     }
 
+    #[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
     fn prepare_frame(&mut self) {
         self.dry_targets.fill(0.0);
         self.wet_targets.fill(0.0);
@@ -441,11 +442,16 @@ pub fn reconstruct_frame(
         output,
     )?;
 
-    workspace.prepare_frame();
-    for frame in output.iter_mut() {
-        *frame = empty_channel_frame();
+    #[cfg(feature = "ajoc-reconstruction-split-profile")]
+    prepare_reconstruction_candidate(state, workspace, output);
+    #[cfg(not(feature = "ajoc-reconstruction-split-profile"))]
+    {
+        workspace.prepare_frame();
+        for frame in output.iter_mut() {
+            *frame = empty_channel_frame();
+        }
+        workspace.candidate.as_mut().clone_from(state);
     }
-    workspace.candidate.as_mut().clone_from(state);
 
     decode(
         ajoc,
@@ -460,9 +466,39 @@ pub fn reconstruct_frame(
         controls, dimensions, &schedule, &maps, input, workspace, output,
     )?;
 
+    #[cfg(feature = "ajoc-reconstruction-split-profile")]
+    commit_reconstruction_candidate(dimensions, state, workspace);
+    #[cfg(not(feature = "ajoc-reconstruction-split-profile"))]
+    {
+        workspace.candidate.shape = Some(dimensions.shape);
+        state.clone_from(&workspace.candidate);
+    }
+    Ok(())
+}
+
+#[cfg(feature = "ajoc-reconstruction-split-profile")]
+#[inline(never)]
+fn prepare_reconstruction_candidate(
+    state: &AjocReconstructionState,
+    workspace: &mut AjocWorkspace,
+    output: &mut [QmfChannelFrame],
+) {
+    workspace.prepare_frame();
+    for frame in output {
+        *frame = empty_channel_frame();
+    }
+    workspace.candidate.as_mut().clone_from(state);
+}
+
+#[cfg(feature = "ajoc-reconstruction-split-profile")]
+#[inline(never)]
+fn commit_reconstruction_candidate(
+    dimensions: FrameDimensions,
+    state: &mut AjocReconstructionState,
+    workspace: &mut AjocWorkspace,
+) {
     workspace.candidate.shape = Some(dimensions.shape);
     state.clone_from(&workspace.candidate);
-    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -476,6 +512,7 @@ struct FrameDimensions {
     shape: ReconstructionShape,
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn validate_frame(
     ajoc: &Ajoc,
     controls: &[AjocObjectControl],
@@ -550,6 +587,7 @@ fn validate_frame(
     })
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn validate_input(
     input: &[QmfChannelFrame],
     num_dmx: usize,
@@ -573,6 +611,7 @@ fn validate_input(
     Ok(())
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn prepare_targets(
     controls: &[AjocObjectControl],
     dimensions: FrameDimensions,
@@ -647,6 +686,7 @@ fn prepare_targets(
     Ok(maps)
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn calculate_pre_targets(
     controls: &[AjocObjectControl],
     dimensions: FrameDimensions,
@@ -691,6 +731,7 @@ fn calculate_pre_targets(
     Ok(())
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn process_timeslots(
     controls: &[AjocObjectControl],
     dimensions: FrameDimensions,
@@ -839,6 +880,7 @@ fn target_for(
     }
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn validate_rolling(rolling: &RollingCoefficients<'_>) -> Result<(), ReconstructionError> {
     for (group, coefficients) in [
         (CoefficientGroup::Dry, rolling.dry()),
@@ -857,6 +899,7 @@ fn validate_rolling(rolling: &RollingCoefficients<'_>) -> Result<(), Reconstruct
     Ok(())
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn decorrelator_input(
     decorrelator: usize,
     timeslot: usize,
@@ -890,6 +933,7 @@ fn decorrelator_input(
     Ok(out)
 }
 
+#[cfg_attr(feature = "ajoc-reconstruction-split-profile", inline(never))]
 fn reconstruct_output(
     timeslot: usize,
     dimensions: FrameDimensions,

@@ -1,0 +1,167 @@
+{
+  "schema": "macindecode-ac4.performance",
+  "schema_version": 1,
+  "kind": "stage_attribution_experiment",
+  "environment": {
+    "generated_at_utc": "2026-08-26T03:31:21Z",
+    "architecture": "aarch64",
+    "operating_system": "macOS 27.0",
+    "cpu": "Apple M4 Pro",
+    "memory_bytes": 51539607552,
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "git_commit": "718116a11c90bd6fb5a2c3cf58554cdf43c500e0",
+    "git_dirty": true,
+    "build_profile": "release",
+    "target_cpu": "portable-default",
+    "instrumented_allocator": false
+  },
+  "settings": {
+    "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+    "mode": "full",
+    "required_feature": "ajoc-reconstruction-split-profile",
+    "profile_runs": 2,
+    "warmup_passes": 1,
+    "startup_delay_ns": 3000000000,
+    "requested_duration_ns": 30000000000,
+    "sample_duration_seconds": 20,
+    "sample_interval_us": 1000,
+    "attribution": "macOS sample Call graph inclusive symbols",
+    "performance_use": "stage ranking only; split-profile timing is not a production benchmark"
+  },
+  "binary": {
+    "sha256": "39717125d00c66130bed98e2a1915395d44d641b93a9926053b73b405051cbfb"
+  },
+  "runs": [
+    {
+      "profile_duration_ns": 30095528583,
+      "passes": 38,
+      "access_unit_calls": 5434,
+      "profile_thread_samples": 16327,
+      "ajoc_reconstruction_samples": 4735,
+      "phases": {
+        "validate_rolling": 1878,
+        "reconstruct_output": 1393,
+        "interpolation": 819,
+        "decorrelator": 266,
+        "decorrelator_input": 130,
+        "prepare_targets": 106,
+        "prepare_candidate": 30,
+        "validate_input": 44,
+        "commit_candidate": 27,
+        "diff_decode": 33,
+        "unclassified": 9
+      }
+    },
+    {
+      "profile_duration_ns": 30079058291,
+      "passes": 38,
+      "access_unit_calls": 5434,
+      "profile_thread_samples": 14963,
+      "ajoc_reconstruction_samples": 4433,
+      "phases": {
+        "validate_rolling": 1669,
+        "reconstruct_output": 1475,
+        "interpolation": 705,
+        "decorrelator": 247,
+        "decorrelator_input": 134,
+        "prepare_targets": 95,
+        "prepare_candidate": 43,
+        "validate_input": 23,
+        "commit_candidate": 19,
+        "diff_decode": 20,
+        "unclassified": 3
+      }
+    }
+  ],
+  "combined": {
+    "profile_thread_samples": 31290,
+    "ajoc_reconstruction_samples": 9168,
+    "ajoc_reconstruction_share_of_profile_percent": 29.300095877277,
+    "phases": {
+      "validate_rolling": {
+        "inclusive_samples": 3547,
+        "share_of_reconstruction_percent": 38.688917975567,
+        "share_of_profile_percent": 11.335890060722
+      },
+      "reconstruct_output": {
+        "inclusive_samples": 2868,
+        "share_of_reconstruction_percent": 31.282722513089,
+        "share_of_profile_percent": 9.165867689358
+      },
+      "interpolation": {
+        "inclusive_samples": 1524,
+        "share_of_reconstruction_percent": 16.623036649215,
+        "share_of_profile_percent": 4.870565675935
+      },
+      "decorrelator": {
+        "inclusive_samples": 513,
+        "share_of_reconstruction_percent": 5.59554973822,
+        "share_of_profile_percent": 1.639501438159
+      },
+      "decorrelator_input": {
+        "inclusive_samples": 264,
+        "share_of_reconstruction_percent": 2.879581151832,
+        "share_of_profile_percent": 0.843720038351
+      },
+      "prepare_targets": {
+        "inclusive_samples": 201,
+        "share_of_reconstruction_percent": 2.192408376963,
+        "share_of_profile_percent": 0.642377756472
+      },
+      "prepare_candidate": {
+        "inclusive_samples": 73,
+        "share_of_reconstruction_percent": 0.796247818499,
+        "share_of_profile_percent": 0.233301374241
+      },
+      "validate_input": {
+        "inclusive_samples": 67,
+        "share_of_reconstruction_percent": 0.730802792321,
+        "share_of_profile_percent": 0.214125918824
+      },
+      "commit_candidate": {
+        "inclusive_samples": 46,
+        "share_of_reconstruction_percent": 0.501745200698,
+        "share_of_profile_percent": 0.147011824864
+      },
+      "diff_decode": {
+        "inclusive_samples": 53,
+        "share_of_reconstruction_percent": 0.578097731239,
+        "share_of_profile_percent": 0.169383189517
+      },
+      "unclassified": {
+        "inclusive_samples": 12,
+        "share_of_reconstruction_percent": 0.130890052356,
+        "share_of_profile_percent": 0.038350910834
+      }
+    }
+  },
+  "rolling_capacity": {
+    "dry_coefficients": 20480,
+    "wet_coefficients": 8960,
+    "pre_coefficients": 7168,
+    "total_coefficients_per_timeslot": 36608,
+    "finite_fields_per_coefficient": 3,
+    "finite_checks_per_timeslot": 109824
+  },
+  "production_guard": {
+    "split_helper_symbols_in_default_release": 0,
+    "reconstruct_frame_arm64_bytes": 8200,
+    "reconstruct_frame_instruction_sequence_matches_frozen_production_binary": true,
+    "default_no_std": true,
+    "unsafe_code": false,
+    "rayon": false,
+    "core_pcm_baseline": "bit_exact",
+    "aspx_pcm_baseline": "bit_exact",
+    "ajoc_object_pcm_baseline": "bit_exact"
+  },
+  "next_candidate": {
+    "first": "fuse finite validation with rolling advance/target installation or restrict it to topology-reachable coefficients",
+    "required_guards": [
+      "preserve non-finite error context",
+      "preserve frame-level transactional state",
+      "benchmark without split-profile features"
+    ],
+    "second": "pair independent output objects as f64 SIMD lanes without changing per-object accumulation order"
+  }
+}

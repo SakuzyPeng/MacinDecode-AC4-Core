@@ -28,6 +28,9 @@ audio-decode = ["spec-tables"]
 # 仅供内部 macOS `sample` 归因：阻止 QMF 合成三个阶段互相内联，以保留独立符号。
 # 不应与正式 timing/allocation 数据混用。
 qmf-split-profile = ["audio-decode"]
+# 仅供内部 macOS `sample` 归因：阻止 A-JOC 重建阶段互相内联，以保留独立符号。
+# 不应与正式 timing/allocation 数据混用。
+ajoc-reconstruction-split-profile = ["audio-decode"]
 
 [build-dependencies]
 libm = { version = "=0.2.16", default-features = false }
