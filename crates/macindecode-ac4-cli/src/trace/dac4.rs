@@ -13,6 +13,12 @@ use macindecode_ac4_mp4::{
 };
 use serde_json::{Value, json};
 
+/// 不透明 DSI 字节在 trace 中最多保留的十六进制前缀长度。
+///
+/// `pres_bytes` 最多可接近 64 KiB，且一个 DSI 可声明 511 个 presentation；
+/// 把每个字节展开成独立 JSON number 会让合法输入产生数量级更大的 Value 树。
+const BYTE_PREVIEW_LIMIT: usize = 64;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SubstreamSignature {
     Channel,
@@ -218,9 +224,24 @@ fn emdf_json(info: Ac4DsiEmdfInfo) -> Value {
 }
 
 fn bytes_json(bytes: Ac4DsiBytes<'_>) -> Value {
+    byte_sequence_json(bytes.len(), bytes.iter())
+}
+
+fn byte_slice_json(bytes: &[u8]) -> Value {
+    byte_sequence_json(bytes.len(), bytes.iter().copied())
+}
+
+fn byte_sequence_json(length: usize, bytes: impl Iterator<Item = u8>) -> Value {
+    let preview_length = length.min(BYTE_PREVIEW_LIMIT);
+    let mut hex_prefix = String::with_capacity(preview_length.saturating_mul(2));
+    for byte in bytes.take(preview_length) {
+        hex_prefix.push(char::from_digit(u32::from(byte >> 4), 16).unwrap_or('0'));
+        hex_prefix.push(char::from_digit(u32::from(byte & 0x0f), 16).unwrap_or('0'));
+    }
     json!({
-        "length": bytes.len(),
-        "values": bytes.iter().collect::<Vec<_>>(),
+        "length": length,
+        "hex_prefix": hex_prefix,
+        "truncated": length > preview_length,
     })
 }
 
@@ -289,7 +310,7 @@ fn presentation_json(
         json!({
             "presentation_name": {
                 "utf8": info.presentation_name_utf8().ok(),
-                "bytes": info.presentation_name(),
+                "bytes": byte_slice_json(info.presentation_name()),
             },
             "targets": info.targets().map(|target| json!({
                 "md_compat": target.md_compat,
@@ -831,6 +852,29 @@ mod tests {
             downmix_objects: 5,
             upmix_objects,
         }
+    }
+
+    #[test]
+    fn byte_sequences_are_compact_and_bounded() {
+        let bytes = (0u8..=u8::MAX).cycle().take(1_024);
+        let value = byte_sequence_json(1_024, bytes);
+
+        assert_eq!(value["length"], 1_024);
+        assert_eq!(value["truncated"], true);
+        assert_eq!(
+            value["hex_prefix"].as_str().map(str::len),
+            Some(BYTE_PREVIEW_LIMIT * 2)
+        );
+        assert_eq!(
+            value["hex_prefix"]
+                .as_str()
+                .and_then(|value| value.get(..8)),
+            Some("00010203")
+        );
+
+        let short = byte_sequence_json(2, [0xab, 0xcd].into_iter());
+        assert_eq!(short["hex_prefix"], "abcd");
+        assert_eq!(short["truncated"], false);
     }
 
     #[test]

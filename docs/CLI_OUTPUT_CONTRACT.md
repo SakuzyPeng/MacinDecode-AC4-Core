@@ -92,6 +92,8 @@ observations
 MP4 的 `source.dac4.presentations` 保存 DSI v1 的只读选择信令；
 `source.dac4.first_toc_comparison` 按 effective presentation ID 把它与首帧 TOC 关联，并
 报告未匹配 presentation 与逐字段失配。它不按两边数组下标配对，且不参与解码器配置。
+DSI 中的 filter、扩展配置、语言标签、名称原始字节和 `skip_area` 统一输出完整 `length`、
+最多 64 字节的 `hex_prefix` 及 `truncated`，不把大块不透明数据展开成 JSON number 数组。
 
 不适用的分类是空对象。`observations` 收纳不构成通过/失败判据的细节与首帧样本。
 原有成对 min/max 字段统一为 `{ "min": ..., "max": ... }`。任何非有限浮点值写为

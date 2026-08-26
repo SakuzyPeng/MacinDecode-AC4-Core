@@ -1602,6 +1602,10 @@ extended ID、substream group、A-JOC 对象数、direct-object 分类及 altern
 `skip_area` 保留。`reserved_zero`、保留的采样率乘数、保留的 substream bitrate indicator、
 截断长度与越过 envelope 均 fail-closed。
 
+CLI 展开这些不透明字节时保留完整长度，但只输出最多 64 字节的十六进制前缀及截断标志。
+这是输出资源上界，不改变 MP4 crate 中完整、有界的只读视图；否则 511 个接近 64 KiB 的合法
+presentation 会被放大成数千万个 `serde_json::Value` number 节点。
+
 Channel-based 在本阶段仅为继续解析 presentation 而保存 channel mode 与 18 位 group 掩码，
 不把该信令解释成可播放扬声器布局，也不接通 PCM。14 份本地真实 MP4（12 份 A-JOC、2 份
 IMS channel-based）均能完整落到各自 `pres_bytes` 边界；direct-object 与 alternative 仍只有
@@ -1619,8 +1623,9 @@ presentation 顺序仍能正确关联，并分别覆盖对象数失配与多路�
 12 份 A-JOC MP4 的 DSI/首帧 TOC 均为 1/1 ID 匹配、0 字段失配。两份 IMS
 Channel-based MP4 的 DSI 同时携带尚不解释的 presentation v2 envelope 与 v1 兼容描述；
 其中一份 TOC 只传 v2，不能在不猜测 v2 body 的前提下完整按 ID 关联。因此
-`scripts/cross_check.sh` 只记录这两份的比较结果，不把它升级为门禁；这正是 Channel-based
-延后的边界。其余已覆盖路径要求 DSI/首帧 TOC 的全部 presentation 闭合，再让 Bento4
+`scripts/cross_check.sh` 按 DSI 中是否存在 `details = null` 的不透明 envelope 决定只记录；
+当前恰好只有这两份 Channel-based 文件触发该边界，而不是按编码路径笼统豁免。其余输入要求
+DSI/首帧 TOC 的全部 presentation 闭合，再让 Bento4
 codec string 的 presentation version 与 `mdcompat` 对照本实现的 DSI 解析值。这里仍只做
 容器 inspection，不以 DSI 配置解码器，也不把 selection 信令解释成 renderer 或设备策略。
 
