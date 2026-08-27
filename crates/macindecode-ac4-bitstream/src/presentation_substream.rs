@@ -153,12 +153,20 @@ pub enum PresentationNameChunkKind {
 ///
 /// 名称可能跨 codec frame 分片，单个分片也可能切开 UTF-8 code point，因此本层不做
 /// 有损 UTF-8 替换或跨帧拼接。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct PresentationNameBytes<'a> {
     source: &'a [u8],
     bit_offset: u64,
     len: u8,
 }
+
+impl<'a, 'b> PartialEq<PresentationNameBytes<'b>> for PresentationNameBytes<'a> {
+    fn eq(&self, other: &PresentationNameBytes<'b>) -> bool {
+        self.len == other.len && (*self).iter().eq((*other).iter())
+    }
+}
+
+impl Eq for PresentationNameBytes<'_> {}
 
 impl<'a> PresentationNameBytes<'a> {
     fn read(
@@ -330,7 +338,7 @@ pub struct AlternativeSubstreamActivation {
 }
 
 /// alternative presentation 的一个播放 target。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct AlternativePresentationTarget<'a> {
     /// 3 比特 decoder compatibility target level。
     pub target_level: u8,
@@ -346,6 +354,21 @@ pub struct AlternativePresentationTarget<'a> {
     activations_bit_offset: u64,
     n_audio_substreams: u32,
 }
+
+impl<'a, 'b> PartialEq<AlternativePresentationTarget<'b>> for AlternativePresentationTarget<'a> {
+    fn eq(&self, other: &AlternativePresentationTarget<'b>) -> bool {
+        self.target_level == other.target_level
+            && self.device_categories == other.device_categories
+            && self.device_category_extension == other.device_category_extension
+            && self.max_ducking_depth == other.max_ducking_depth
+            && self.loudness_correction_target == other.loudness_correction_target
+            && (*self)
+                .substream_activations()
+                .eq((*other).substream_activations())
+    }
+}
+
+impl Eq for AlternativePresentationTarget<'_> {}
 
 impl<'a> AlternativePresentationTarget<'a> {
     /// 按规范的 presentation substream 顺序遍历 activation/dataset map。
@@ -412,7 +435,7 @@ impl Iterator for AlternativeSubstreamActivationIter<'_> {
 impl ExactSizeIterator for AlternativeSubstreamActivationIter<'_> {}
 
 /// `b_alternative` 为真时携带的名称与 target 列表。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct AlternativePresentationSelection<'a> {
     /// 可选 presentation name 分片。
     pub name: Option<PresentationNameBytes<'a>>,
@@ -423,6 +446,37 @@ pub struct AlternativePresentationSelection<'a> {
     source: &'a [u8],
     targets_bit_offset: u64,
 }
+
+impl<'a, 'b> PartialEq<AlternativePresentationSelection<'b>>
+    for AlternativePresentationSelection<'a>
+{
+    fn eq(&self, other: &AlternativePresentationSelection<'b>) -> bool {
+        let names_equal = match (self.name, other.name) {
+            (None, None) => true,
+            (Some(left), Some(right)) => left == right,
+            _ => false,
+        };
+        if !names_equal
+            || self.n_targets != other.n_targets
+            || self.n_audio_substreams != other.n_audio_substreams
+        {
+            return false;
+        }
+
+        let mut left = (*self).targets();
+        let mut right = (*other).targets();
+        loop {
+            match (left.next(), right.next()) {
+                (None, None) => return true,
+                (Some(Ok(left)), Some(Ok(right))) if left == right => {}
+                (Some(Err(left)), Some(Err(right))) if left == right => {}
+                _ => return false,
+            }
+        }
+    }
+}
+
+impl Eq for AlternativePresentationSelection<'_> {}
 
 impl<'a> AlternativePresentationSelection<'a> {
     /// 按码流顺序遍历播放 target。
@@ -495,13 +549,30 @@ impl ExactSizeIterator for AlternativePresentationTargetIter<'_> {}
 /// 普通 presentation 没有该前缀，`alternative` 为 `None` 且公共 metadata 从 bit 0
 /// 开始。alternative presentation 完整验证名称、target 与 activation/dataset map 后，
 /// `common_metadata_bit_offset` 指向紧随其后的 `b_additional_data`。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstreamSelection<'a> {
     /// alternative presentation 的选择信令；普通 presentation 为 `None`。
     pub alternative: Option<AlternativePresentationSelection<'a>>,
     /// 公共 presentation metadata 后缀在该 substream payload 内的比特偏移。
     pub common_metadata_bit_offset: u64,
 }
+
+impl<'a, 'b> PartialEq<Ac4PresentationSubstreamSelection<'b>>
+    for Ac4PresentationSubstreamSelection<'a>
+{
+    fn eq(&self, other: &Ac4PresentationSubstreamSelection<'b>) -> bool {
+        if self.common_metadata_bit_offset != other.common_metadata_bit_offset {
+            return false;
+        }
+        match (self.alternative, other.alternative) {
+            (None, None) => true,
+            (Some(left), Some(right)) => left == right,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Ac4PresentationSubstreamSelection<'_> {}
 
 impl<'a> Ac4PresentationSubstreamSelection<'a> {
     /// 解析 `b_alternative` 控制的 selection 前缀。
@@ -661,7 +732,7 @@ mod tests {
 
     use super::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     struct TestBits {
         bytes: [u8; 256],
         len: usize,
@@ -721,6 +792,40 @@ mod tests {
 
         assert_eq!(parsed.alternative, None);
         assert_eq!(parsed.common_metadata_bit_offset, 0);
+    }
+
+    #[test]
+    fn equality_ignores_unparsed_common_metadata_suffix() {
+        let mut prefix = TestBits::new();
+        prefix.push(1, 1); // name present
+        prefix.push(1, 1); // explicit length
+        prefix.push(1, 5);
+        prefix.push_byte(b'A');
+        prefix.push(0, 2); // one target
+        push_minimal_target(&mut prefix, 1);
+        let expected_offset = prefix.len as u64;
+
+        let mut left_bits = prefix.clone();
+        left_bits.push(0, 4);
+        let mut right_bits = prefix;
+        right_bits.push(0b1111, 4);
+
+        let context = PresentationSubstreamSelectionContext::new(true, 1);
+        let left = Ac4PresentationSubstreamSelection::parse(left_bits.as_bytes(), context).unwrap();
+        let right =
+            Ac4PresentationSubstreamSelection::parse(right_bits.as_bytes(), context).unwrap();
+        assert_eq!(left.common_metadata_bit_offset, expected_offset);
+        assert_eq!(right.common_metadata_bit_offset, expected_offset);
+
+        let left_alternative = left.alternative.unwrap();
+        let right_alternative = right.alternative.unwrap();
+        assert_eq!(left_alternative.name, right_alternative.name);
+        assert_eq!(left_alternative, right_alternative);
+        assert_eq!(
+            left_alternative.targets().next().unwrap().unwrap(),
+            right_alternative.targets().next().unwrap().unwrap()
+        );
+        assert_eq!(left, right);
     }
 
     #[test]

@@ -472,6 +472,37 @@ mod tests {
         );
     }
 
+    /// 扩展 presentation config 按当前规范不携带 SGI，但普通 presentation 没有
+    /// alternative selection 前缀，零音频 substream 上下文仍足以精确解析该前缀。
+    #[test]
+    fn ordinary_extended_config_keeps_selection_context() {
+        // config 7 + zero-length presentation_config_ext_info；普通 presentation substream 0。
+        let presentation = "0 111 00 0 0 000 0 00 000 0 00 00 0 0 00000 0 0 0 0 0 00";
+        let topology = parse_frame(&[TOC_PREFIX, presentation, "01 0"]);
+
+        assert_eq!(
+            topology
+                .presentations()
+                .first()
+                .unwrap()
+                .presentation_config,
+            Some(7)
+        );
+        assert!(
+            topology
+                .presentations()
+                .first()
+                .unwrap()
+                .group_indices()
+                .is_empty()
+        );
+        assert!(topology.groups().is_empty());
+        assert_eq!(
+            topology.presentation_substream_selection_context(0),
+            Some(PresentationSubstreamSelectionContext::new(false, 0))
+        );
+    }
+
     /// b_lfe 参与对象计数，见表 60。
     #[test]
     fn direct_object_counts_lfe() {

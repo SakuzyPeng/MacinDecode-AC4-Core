@@ -187,10 +187,6 @@ impl Ac4Topology {
     ) -> Option<PresentationSubstreamSelectionContext> {
         let presentation = self.presentations().get(presentation_index)?;
         let substream = presentation.substream?;
-        if presentation.group_indices().is_empty() {
-            // config extension 的内部 SGI 尚未解析时，真实计数不可知；零不是可猜测的回退值。
-            return None;
-        }
         let mut n_audio_substreams = 0u32;
         for &group_index in presentation.group_indices() {
             let group = self.groups().get(usize::try_from(group_index).ok()?)?;
