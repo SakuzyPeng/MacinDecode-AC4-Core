@@ -71,9 +71,9 @@ pub use presentation::{Ac4PresentationV1Info, PresentationSubstreamInfo};
 pub use presentation_substream::{
     Ac4PresentationSubstream, Ac4PresentationSubstreamSelection, AdvancedDeConfig, AdvancedDeData,
     AlternativePresentationSelection, PresentationAddDataBits, PresentationAdditionalData,
-    PresentationDrcFrameBits, PresentationSubstreamContext, PresentationSubstreamError,
-    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainUpdate,
-    PresentationSubstreamSelectionContext,
+    PresentationAssociatedAudio, PresentationDrcFrameBits, PresentationSubstreamContext,
+    PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
+    PresentationSubstreamGroupGainUpdate, PresentationSubstreamSelectionContext,
 };
 pub use reader::{BitReader, ReadError};
 #[cfg(feature = "audio-decode")]

@@ -1,17 +1,19 @@
-//! `ac4_presentation_substream()` 的选择、additional-data、响度、DRC 与 group gain。
+//! `ac4_presentation_substream()` 的选择、additional-data、响度、DRC、group gain 与关联音频。
 //!
 //! 对应 `TS103190-2:v1.3.1:6.2.2.3`、`6.2.2.5`；选择字段语义见
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
 //! `6.3.3.1.16` 至 `6.3.3.1.18`；响度语法见 `6.2.7.3`，共享字段语义见
 //! `TS103190-1:v1.4.1:4.3.12.3`；DRC envelope 见 `6.3.3.1.19` 至
-//! `6.3.3.1.21`，substream-group gain 见 `6.3.3.1.22` 至 `6.3.3.1.24`。
+//! `6.3.3.1.21`，substream-group gain 见 `6.3.3.1.22` 至 `6.3.3.1.24`，
+//! associated-audio 字段见 `6.3.3.1.25` 至 `6.3.3.1.26`，其码值语义见
+//! `TS103190-1:v1.4.1:4.3.12.4.3` 至 `4.3.12.4.9`。
 //!
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
 //! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
-//! `drc_frame()` 原始比特及逐帧 substream-group gain 更新。DRC 内部语法、group gain
-//! 跨帧生效状态、associated audio、custom downmix 与 loudness correction 仍不解释；本模块也
-//! 不执行任何处理。
+//! `drc_frame()` 原始比特、逐帧 substream-group gain 更新及 associated-audio scale/pan 码值。
+//! DRC 内部语法、group gain 跨帧生效状态、custom downmix 与 loudness correction 仍不解释；
+//! 本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -81,6 +83,13 @@ pub enum PresentationSubstreamError {
         /// `drc_metadata_size_value` 的比特偏移。
         bit_position: u64,
     },
+    /// `pan_associated` 使用了规范禁止的 `0xf0..=0xff` 码值。
+    ReservedAssociatedPan {
+        /// 8 比特 `pan_associated` 原值。
+        pan_associated: u8,
+        /// `pan_associated` 在 payload 内的比特偏移。
+        bit_position: u64,
+    },
     /// 结构规模超出固定容量。
     CapacityExceeded {
         /// 超限的结构种类。
@@ -119,6 +128,13 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation DRC metadata size is {declared} bits at offset {bit_position}; at least {minimum} bit is required"
+            ),
+            PresentationSubstreamError::ReservedAssociatedPan {
+                pan_associated,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation associated-audio pan code {pan_associated:#04x} is reserved at bit offset {bit_position}"
             ),
             PresentationSubstreamError::CapacityExceeded {
                 what,
@@ -406,6 +422,25 @@ pub enum PresentationSubstreamGroupGainUpdate {
     KeepPrevious,
     /// `b_keep` 为假，本帧按 group 顺序传输一组新码值。
     NewValues(PresentationSubstreamGroupGainCodes),
+}
+
+/// 当前 presentation 的 associated-audio scaling 与 mono pan 原始码值。
+///
+/// 三个 scale 的 presence 独立；`0x00..=0xfe` 及静音码 `0xff` 均原样保留，不做 dB
+/// 换算或应用。`pan_associated` 仅在 [`associate_is_mono`](Self::associate_is_mono) 为真时
+/// 存在，并已拒绝规范禁止的 `0xf0..=0xff`，但不换算为角度或执行声像处理。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationAssociatedAudio {
+    /// `b_scale_main` 控制的 8 比特 `scale_main`。
+    pub scale_main: Option<u8>,
+    /// `b_scale_main_centre` 控制的 8 比特 `scale_main_centre`。
+    pub scale_main_centre: Option<u8>,
+    /// `b_scale_main_front` 控制的 8 比特 `scale_main_front`。
+    pub scale_main_front: Option<u8>,
+    /// `b_associate_is_mono`。
+    pub associate_is_mono: bool,
+    /// mono associated audio 的 8 比特 `pan_associated`。
+    pub pan_associated: Option<u8>,
 }
 
 impl<'a> IntoIterator for PresentationAddDataBits<'a> {
@@ -974,11 +1009,13 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
     }
 }
 
-/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度、DRC 与 group gain。
+/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度、DRC、group gain
+/// 与 associated audio。
 ///
 /// [`drc_metadata_size_value_offset`](Self::drc_metadata_size_value_offset) 指向响度字段之后的
 /// `drc_metadata_size_value`；[`b_associated_offset`](Self::b_associated_offset) 指向 group gain
-/// 之后的 associated-audio metadata。DRC 内部语法、group gain 跨帧有效状态和后续字段尚未解析。
+/// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
+/// 随后的 `custom_dmx_data()`。DRC 内部语法、group gain 跨帧有效状态和后续字段尚未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1001,6 +1038,10 @@ pub struct Ac4PresentationSubstream<'a> {
     pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,
     /// `b_associated` 在 payload 内的精确比特偏移。
     pub b_associated_offset: u64,
+    /// `b_associated` 控制的 associated-audio scale/pan 原始码值。
+    pub associated_audio: Option<PresentationAssociatedAudio>,
+    /// `custom_dmx_data()` 在 payload 内的精确比特偏移。
+    pub custom_downmix_offset: u64,
 }
 
 impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
@@ -1015,24 +1056,29 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.drc_frame == other.drc_frame
             && self.substream_group_gain_update == other.substream_group_gain_update
             && self.b_associated_offset == other.b_associated_offset
+            && self.associated_audio == other.associated_audio
+            && self.custom_downmix_offset == other.custom_downmix_offset
     }
 }
 
 impl Eq for Ac4PresentationSubstream<'_> {}
 
 impl<'a> Ac4PresentationSubstream<'a> {
-    /// 解析 selection、common additional-data、presentation 响度、DRC envelope 与 group gain。
+    /// 解析 selection、common additional-data、presentation 响度、DRC envelope、group gain 与
+    /// associated audio。
     ///
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
     /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC；group gain
-    /// 只保留逐帧传输形态，不解析跨帧有效值或应用增益。
+    /// 只保留逐帧传输形态，不解析跨帧有效值或应用增益；associated-audio scale/pan 同样只
+    /// 保留原值，不执行 gain、pan 或 renderer 处理。
     ///
     /// # Errors
     ///
-    /// selection 字段、additional-data/DRC/group gain 或其已知字段截断，变长字段溢出，或计数
-    /// 超过固定容量时返回错误。零长度 DRC envelope 不能容纳必需的 presence bit，同样返回错误。
+    /// selection 字段、additional-data/DRC/group gain/associated audio 或其已知字段截断，
+    /// 变长字段溢出，或计数超过固定容量时返回错误。零长度 DRC envelope 不能容纳必需的
+    /// presence bit，以及 `pan_associated` 使用保留码值时，同样返回错误。
     pub fn parse(
         payload: &'a [u8],
         context: PresentationSubstreamContext,
@@ -1066,6 +1112,8 @@ impl<'a> Ac4PresentationSubstream<'a> {
         let substream_group_gain_update =
             parse_substream_group_gain_update(&mut reader, n_substream_groups)?;
         let b_associated_offset = reader.bit_position();
+        let associated_audio = parse_associated_audio(&mut reader)?;
+        let custom_downmix_offset = reader.bit_position();
         Ok(Self {
             selection,
             additional_data,
@@ -1077,6 +1125,8 @@ impl<'a> Ac4PresentationSubstream<'a> {
             drc_frame,
             substream_group_gain_update,
             b_associated_offset,
+            associated_audio,
+            custom_downmix_offset,
         })
     }
 }
@@ -1122,6 +1172,52 @@ fn parse_substream_group_gain_update(
             len: n_substream_groups,
         },
     ))
+}
+
+fn parse_associated_audio(
+    reader: &mut BitReader<'_>,
+) -> Result<Option<PresentationAssociatedAudio>, PresentationSubstreamError> {
+    if !reader.read_flag()? {
+        return Ok(None);
+    }
+
+    let scale_main = if reader.read_flag()? {
+        Some(u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX))
+    } else {
+        None
+    };
+    let scale_main_centre = if reader.read_flag()? {
+        Some(u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX))
+    } else {
+        None
+    };
+    let scale_main_front = if reader.read_flag()? {
+        Some(u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX))
+    } else {
+        None
+    };
+    let associate_is_mono = reader.read_flag()?;
+    let pan_associated = if associate_is_mono {
+        let bit_position = reader.bit_position();
+        let pan_associated = u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX);
+        if pan_associated >= 0xf0 {
+            return Err(PresentationSubstreamError::ReservedAssociatedPan {
+                pan_associated,
+                bit_position,
+            });
+        }
+        Some(pan_associated)
+    } else {
+        None
+    };
+
+    Ok(Some(PresentationAssociatedAudio {
+        scale_main,
+        scale_main_centre,
+        scale_main_front,
+        associate_is_mono,
+        pan_associated,
+    }))
 }
 
 fn parse_drc_frame_envelope<'a>(
@@ -1439,6 +1535,11 @@ mod tests {
         push_minimal_drc_frame(bits);
     }
 
+    fn push_minimal_complete_common_metadata(bits: &mut TestBits, dialnorm_bits: u8) {
+        push_minimal_common_metadata_prefix(bits, dialnorm_bits);
+        bits.push(0, 1); // no associated audio
+    }
+
     #[test]
     fn ordinary_presentation_has_no_selection_prefix() {
         let parsed = Ac4PresentationSubstreamSelection::parse(
@@ -1455,7 +1556,7 @@ mod tests {
     fn ordinary_full_parse_reads_dialnorm_without_additional_data() {
         let mut bits = TestBits::new();
         bits.push(0, 1); // b_additional_data
-        push_minimal_common_metadata_prefix(&mut bits, 0b101_0101);
+        push_minimal_complete_common_metadata(&mut bits, 0b101_0101);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1480,6 +1581,8 @@ mod tests {
             PresentationSubstreamGroupGainUpdate::NotSignaled
         );
         assert_eq!(parsed.b_associated_offset, 16);
+        assert_eq!(parsed.associated_audio, None);
+        assert_eq!(parsed.custom_downmix_offset, 17);
     }
 
     #[test]
@@ -1518,7 +1621,7 @@ mod tests {
         bits.push(1, 1); // b_oamd_common_timing
         bits.push(0, 1); // no advanced DE
         bits.push(0, 5); // reserved add_data
-        push_minimal_common_metadata_prefix(&mut bits, 0);
+        push_minimal_complete_common_metadata(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1530,7 +1633,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_object_additional_data_and_ignores_post_group_gain_suffix_in_equality() {
+    fn parses_object_additional_data_and_ignores_custom_downmix_suffix_in_equality() {
         let mut envelope = TestBits::new();
         envelope.push(1, 1); // b_additional_data
         envelope.push(0, 4); // one additional-data byte
@@ -1542,10 +1645,10 @@ mod tests {
         let expected_dialnorm_offset = envelope.len as u64;
 
         let mut left_bits = envelope.clone();
-        push_minimal_common_metadata_prefix(&mut left_bits, 0b101_0101);
-        left_bits.push(0, 4); // unparsed metadata after drc_frame
+        push_minimal_complete_common_metadata(&mut left_bits, 0b101_0101);
+        left_bits.push(0, 4); // unparsed custom_dmx_data()
         let mut right_bits = envelope;
-        push_minimal_common_metadata_prefix(&mut right_bits, 0b101_0101);
+        push_minimal_complete_common_metadata(&mut right_bits, 0b101_0101);
         right_bits.push(0b1111, 4);
         let context = PresentationSubstreamContext::new(false, 1, 1, true);
         let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
@@ -1573,7 +1676,9 @@ mod tests {
             PresentationSubstreamGroupGainUpdate::NotSignaled
         );
         assert_eq!(left.b_associated_offset, 31);
-        assert_eq!(left, right, "group gain 之后的字段尚未进入已解析视图");
+        assert_eq!(left.associated_audio, None);
+        assert_eq!(left.custom_downmix_offset, 32);
+        assert_eq!(left, right, "custom downmix 尚未进入已解析视图");
     }
 
     #[test]
@@ -1585,7 +1690,7 @@ mod tests {
         bits.push(0, 1); // immersive_audio_indicator
         bits.push(0, 1); // no advanced DE; no OAMD timing bit on this path
         bits.push(0b11_1000, 6); // reserved add_data
-        push_minimal_common_metadata_prefix(&mut bits, 0);
+        push_minimal_complete_common_metadata(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1619,7 +1724,7 @@ mod tests {
         bits.push(31, 5);
         bits.push(1, 1); // one reserved add_data bit
         let expected_dialnorm_offset = bits.len as u64;
-        push_minimal_common_metadata_prefix(&mut bits, 0);
+        push_minimal_complete_common_metadata(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1656,7 +1761,7 @@ mod tests {
         bits.push(31, 6); // positive threshold endpoint
         bits.push(0, 5); // gain endpoint
         bits.push(0, 1); // one reserved add_data bit
-        push_minimal_common_metadata_prefix(&mut bits, 0);
+        push_minimal_complete_common_metadata(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1716,7 +1821,7 @@ mod tests {
         for _ in 0..141 {
             bits.push(0, 1);
         }
-        push_minimal_common_metadata_prefix(&mut bits, 0);
+        push_minimal_complete_common_metadata(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1773,6 +1878,7 @@ mod tests {
         bits.push(0b10110, 5); // opaque extensions_bits
         let expected_drc_offset = bits.len as u64;
         push_minimal_drc_frame(&mut bits);
+        bits.push(0, 1); // no associated audio
 
         let payload = bits.as_bytes();
         let parsed = Ac4PresentationSubstream::parse(
@@ -1843,7 +1949,9 @@ mod tests {
             bits.push(0, 1);
         }
         let expected_frame_end = bits.len as u64;
-        bits.push(0b10101, 5); // metadata after drc_frame must remain untouched
+        bits.push(0, 1); // no associated audio
+        let expected_custom_downmix_offset = bits.len as u64;
+        bits.push(0b10101, 5); // custom_dmx_data() must remain untouched
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1865,6 +1973,8 @@ mod tests {
             PresentationSubstreamGroupGainUpdate::NotSignaled
         );
         assert_eq!(parsed.b_associated_offset, expected_frame_end);
+        assert_eq!(parsed.associated_audio, None);
+        assert_eq!(parsed.custom_downmix_offset, expected_custom_downmix_offset);
     }
 
     #[test]
@@ -1875,7 +1985,8 @@ mod tests {
 
         let mut absent = prefix.clone();
         absent.push(0, 1); // b_substream_group_gains_present
-        absent.push(0b111_1111, 7); // associated metadata must remain untouched
+        absent.push(0, 1); // no associated audio
+        absent.push(0b11_1111, 6); // custom_dmx_data() must remain untouched
         let absent = Ac4PresentationSubstream::parse(
             absent.as_bytes(),
             PresentationSubstreamContext::new(false, 2, 2, false),
@@ -1886,11 +1997,14 @@ mod tests {
             PresentationSubstreamGroupGainUpdate::NotPresent
         );
         assert_eq!(absent.b_associated_offset, 17);
+        assert_eq!(absent.associated_audio, None);
+        assert_eq!(absent.custom_downmix_offset, 18);
 
         let mut kept = prefix;
         kept.push(1, 1); // b_substream_group_gains_present
         kept.push(1, 1); // b_keep
-        kept.push(0b11_1111, 6); // associated metadata must remain untouched
+        kept.push(0, 1); // no associated audio
+        kept.push(0b1_1111, 5); // custom_dmx_data() must remain untouched
         let kept = Ac4PresentationSubstream::parse(
             kept.as_bytes(),
             PresentationSubstreamContext::new(false, 2, 2, false),
@@ -1901,6 +2015,8 @@ mod tests {
             PresentationSubstreamGroupGainUpdate::KeepPrevious
         );
         assert_eq!(kept.b_associated_offset, 18);
+        assert_eq!(kept.associated_audio, None);
+        assert_eq!(kept.custom_downmix_offset, 19);
     }
 
     #[test]
@@ -1914,7 +2030,9 @@ mod tests {
             bits.push(code, 6);
         }
         let expected_associated_offset = bits.len as u64;
-        bits.push(0b101, 3); // associated metadata must remain untouched
+        bits.push(0, 1); // no associated audio
+        let expected_custom_downmix_offset = bits.len as u64;
+        bits.push(0b10, 2); // custom_dmx_data() must remain untouched
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1933,6 +2051,171 @@ mod tests {
         assert_eq!(codes.get(7), Some(63));
         assert_eq!(codes.get(8), None);
         assert_eq!(parsed.b_associated_offset, expected_associated_offset);
+        assert_eq!(parsed.associated_audio, None);
+        assert_eq!(parsed.custom_downmix_offset, expected_custom_downmix_offset);
+    }
+
+    #[test]
+    fn parses_independent_associated_scale_presence_and_omits_non_mono_pan() {
+        let scale_codes = [0x00u8, 0x7f, 0xff];
+        for presence_mask in 0u8..8 {
+            let mut bits = TestBits::new();
+            bits.push(0, 1); // no additional data
+            push_minimal_common_metadata_prefix(&mut bits, 0);
+            let expected_associated_offset = bits.len as u64;
+            bits.push(1, 1); // b_associated
+            for (presence_bit, scale_code) in [1u8, 2, 4].into_iter().zip(scale_codes) {
+                let present = presence_mask & presence_bit != 0;
+                bits.push(if present { 1 } else { 0 }, 1);
+                if present {
+                    bits.push(u64::from(scale_code), 8);
+                }
+            }
+            bits.push(0, 1); // associated audio is not mono
+            let expected_custom_downmix_offset = bits.len as u64;
+            bits.push_byte(0xff); // custom_dmx_data(), not pan_associated
+
+            let parsed = Ac4PresentationSubstream::parse(
+                bits.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, 1, false),
+            )
+            .unwrap();
+
+            assert_eq!(parsed.b_associated_offset, expected_associated_offset);
+            assert_eq!(
+                parsed.associated_audio,
+                Some(PresentationAssociatedAudio {
+                    scale_main: (presence_mask & 1 != 0).then_some(0x00),
+                    scale_main_centre: (presence_mask & 2 != 0).then_some(0x7f),
+                    scale_main_front: (presence_mask & 4 != 0).then_some(0xff),
+                    associate_is_mono: false,
+                    pan_associated: None,
+                })
+            );
+            assert_eq!(parsed.custom_downmix_offset, expected_custom_downmix_offset);
+        }
+    }
+
+    #[test]
+    fn parses_associated_mono_pan_endpoints() {
+        for pan_associated in [0x00u8, 0xef] {
+            let mut bits = TestBits::new();
+            bits.push(0, 1); // no additional data
+            push_minimal_common_metadata_prefix(&mut bits, 0);
+            bits.push(1, 1); // b_associated
+            bits.push(0, 1); // no scale_main
+            bits.push(0, 1); // no scale_main_centre
+            bits.push(0, 1); // no scale_main_front
+            bits.push(1, 1); // associated audio is mono
+            bits.push(u64::from(pan_associated), 8);
+            let expected_custom_downmix_offset = bits.len as u64;
+            bits.push(0b101, 3); // custom_dmx_data() must remain untouched
+
+            let parsed = Ac4PresentationSubstream::parse(
+                bits.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, 1, false),
+            )
+            .unwrap();
+
+            assert_eq!(
+                parsed.associated_audio,
+                Some(PresentationAssociatedAudio {
+                    scale_main: None,
+                    scale_main_centre: None,
+                    scale_main_front: None,
+                    associate_is_mono: true,
+                    pan_associated: Some(pan_associated),
+                })
+            );
+            assert_eq!(parsed.custom_downmix_offset, expected_custom_downmix_offset);
+        }
+    }
+
+    #[test]
+    fn rejects_all_reserved_associated_pan_codes() {
+        for pan_associated in 0xf0u8..=0xff {
+            let mut bits = TestBits::new();
+            bits.push(0, 1); // no additional data
+            push_minimal_common_metadata_prefix(&mut bits, 0);
+            bits.push(1, 1); // b_associated
+            bits.push(0, 1); // no scale_main
+            bits.push(0, 1); // no scale_main_centre
+            bits.push(0, 1); // no scale_main_front
+            bits.push(1, 1); // associated audio is mono
+            let expected_pan_offset = bits.len as u64;
+            bits.push(u64::from(pan_associated), 8);
+
+            assert_eq!(
+                Ac4PresentationSubstream::parse(
+                    bits.as_bytes(),
+                    PresentationSubstreamContext::new(false, 1, 1, false),
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::ReservedAssociatedPan {
+                    pan_associated,
+                    bit_position: expected_pan_offset,
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_missing_and_truncated_associated_audio_fields() {
+        let mut missing_presence = TestBits::new();
+        missing_presence.push(0, 1); // no additional data
+        push_minimal_common_metadata_prefix(&mut missing_presence, 0);
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                missing_presence.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, 1, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 1,
+                bit_position: 16,
+                remaining_bits: 0,
+            })
+        );
+
+        for (truncated_field, bit_position, remaining_bits) in
+            [(0, 18, 6), (1, 19, 5), (2, 20, 4), (3, 21, 3)]
+        {
+            let mut bits = TestBits::new();
+            bits.push(0, 1); // no additional data
+            push_minimal_common_metadata_prefix(&mut bits, 0);
+            bits.push(1, 1); // b_associated
+            match truncated_field {
+                0 => bits.push(1, 1), // scale_main is truncated
+                1 => {
+                    bits.push(0, 1);
+                    bits.push(1, 1); // scale_main_centre is truncated
+                }
+                2 => {
+                    bits.push(0, 1);
+                    bits.push(0, 1);
+                    bits.push(1, 1); // scale_main_front is truncated
+                }
+                _ => {
+                    bits.push(0, 1);
+                    bits.push(0, 1);
+                    bits.push(0, 1);
+                    bits.push(1, 1); // pan_associated is truncated
+                }
+            }
+
+            assert_eq!(
+                Ac4PresentationSubstream::parse(
+                    bits.as_bytes(),
+                    PresentationSubstreamContext::new(false, 1, 1, false),
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                    requested_bits: 8,
+                    bit_position,
+                    remaining_bits,
+                })
+            );
+        }
     }
 
     #[test]

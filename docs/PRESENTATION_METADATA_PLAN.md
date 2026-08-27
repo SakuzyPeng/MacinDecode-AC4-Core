@@ -2,10 +2,11 @@
 
 > **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
 > substream activation/dataset selection 前缀、公共 additional-data envelope，以及
-> dialnorm/further-loudness 前缀、DRC 长度 envelope 和 substream-group gain 原始更新已完成
-> 构造验证；DRC 内部、group gain 有效状态及后续 presentation metadata、音频 substream
-> tools metadata、EMDF payload 与 alternative dataset 数据路径仍待实现。当前工具链可再生产
-> 普通 presentation payload 与 dialog enhancement 正向候选；非空 EMDF
+> dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新及
+> associated-audio scaling/pan 已完成构造验证；DRC 内部、group gain 有效状态及后续
+> presentation metadata、音频 substream tools metadata、EMDF payload 与 alternative dataset
+> 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
+> 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
 > 以[实施路线图](ROADMAP.md)为准。
 
@@ -69,8 +70,11 @@ indicator、`pres_ch_mode == -1` 路径的 OAMD common timing 和 12/28 比特 a
 未定义 extension 以无分配 bit view 回取。DRC 内部语法仍不标为已解析；完整 DRC 解析仍须显式接收
 `b_pres_ndot` 与前一有效配置。DRC envelope 后按规范 `n_substream_groups` 判定 group-gain
 presence：单 group 不消费该字段，多 group 则区分未携带、`b_keep` 沿用和逐 group 新传六比特
-`sg_gain` 码值。当前只保留逐帧原始更新，尚不把 `b_keep` 解析为跨帧有效增益；下一字段
-`b_associated` 的精确 offset 已暴露。
+`sg_gain` 码值。当前只保留逐帧原始更新，尚不把 `b_keep` 解析为跨帧有效增益。其后的
+`b_associated` 与三个独立 scale presence、可选 8 比特 scale 原值、mono gate 和
+`pan_associated` 已解析；scale 的 `0x00..=0xfe` 与静音码 `0xff` 均保留，pan 的合法
+`0x00..=0xef` 原样保留，规范禁止的 `0xf0..=0xff` 失败关闭。解析止于
+`custom_dmx_data()` 的精确 offset，不执行 gain、角度换算或 pan。
 
 解析 API 必须显式接收 TOC/拓扑上下文、前一有效 DRC 配置和 group gain 状态。所有长度 envelope
 先验证边界，成功后才提交跨帧状态；dependent frame 缺少历史配置时失败关闭。

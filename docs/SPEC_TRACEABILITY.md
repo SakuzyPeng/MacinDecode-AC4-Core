@@ -52,7 +52,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation/group/substream | P2 `6.2.1.3`–`6.2.1.14`；P1 `4.2.3.3`–`4.2.3.5`、`4.2.3.7`、`4.2.3.11`、`4.2.14.15` | `macindecode-ac4-bitstream` | `dac4` 与 TOC 一致性；`payload_base`/尺寸自洽；引用精确覆盖索引表 |
 | alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；`pres_ch_mode` 见 `6.3.3.1.27` Pseudocode 25 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
-| presentation 响度、DRC envelope 与 group gain | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.24`；P1 `4.3.12.3` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95 比特 DRC envelope、单/multi-group gate、absent/keep/new gain、八 group 上限、截断/容量/变长溢出构造测试；DRC 内部与有效 gain 状态待后续 |
+| presentation 响度、DRC envelope、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.3.12.3`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95 比特 DRC envelope、单/multi-group gain gate、associated scale 全组合、mono pan 合法/保留区间、截断/容量/变长溢出构造测试；DRC 内部与有效 gain 状态待后续 |
 | 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
@@ -1641,7 +1641,7 @@ Scene 公共 API 另以泛型 `PresentationSelectionMetadata<T>` 接受调用方
 未解析 ID 当作明确无 ID。只要 metadata 集合仍含身份 unavailable 的项，Scene 就不能证明
 其余已知候选唯一，关联结果保持 indeterminate。
 
-### 5.57 `ac4_presentation_substream()` 的 selection、additional data、响度、DRC 与 group gain
+### 5.57 `ac4_presentation_substream()` 的 selection、additional data、响度、DRC、group gain 与 associated audio
 
 P2 `6.2.2.3` 在 `b_alternative` 为真时先传 presentation name、target 列表和逐音频
 substream 的 activation/dataset map；字段语义由 `6.3.3.1.1`–`6.3.3.1.15` 定义。新增的
@@ -1688,8 +1688,15 @@ payload 或扩展溢出均拒绝，不能借用后续 metadata 补足。DRC 内�
 group 不消费 presence，多 group 区分未携带、`b_keep` 和逐 group 新传的六比特码值。这里的
 `n_substream_groups` 不是 SGI specifier 数，config 1/4 的额外 dialogue-enhancement SGI 不增加
 gain 数组长度。当前 API 只保留逐帧更新形态与码值，并返回随后 `b_associated` 的精确 offset，不把
-`b_keep` 解析成跨帧有效增益。associated gain、custom downmix 与 loudness correction 仍未解析
-或验证，更不会执行。alternative presentation/dataset 与 direct-object 均无真实编码样本；
+`b_keep` 解析成跨帧有效增益。
+
+`6.3.3.1.25`–`6.3.3.1.26` 再解析 `b_associated`，三个 scale presence 彼此独立；存在时保留
+8 比特 `scale_main`、`scale_main_centre` 与 `scale_main_front`。按 P1
+`4.3.12.4.3`–`4.3.12.4.9`，`0x00..=0xfe` scale 与 `0xff` 静音码均合法，mono gate 为真时才读取
+`pan_associated`；pan 的 `0x00..=0xef` 原样保留，规范写明不得使用的 `0xf0..=0xff` 返回结构化
+错误。API 随后暴露 `custom_dmx_data()` 的精确 offset，不做 dB/角度换算，也不执行 gain 或 pan。
+custom downmix 与 loudness correction 仍未解析或验证，更不会执行。alternative
+presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
