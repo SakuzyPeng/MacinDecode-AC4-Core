@@ -77,12 +77,13 @@ pub use presentation_substream::{
     PresentationDrcCompressionCurve, PresentationDrcConfiguration, PresentationDrcCurveData,
     PresentationDrcCurveSection, PresentationDrcData, PresentationDrcDecoderMode,
     PresentationDrcFrameBits, PresentationDrcGainSet, PresentationDrcOutputLevelRange,
-    PresentationDrcProfile, PresentationDrcTimeConstants, PresentationLoudnessCorrectionCode,
-    PresentationLoudnessCorrectionData, PresentationScreenDownmix,
-    PresentationStereoDownmixCoefficients, PresentationStereoDownmixKind,
-    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
-    PresentationSubstreamGroupGainUpdate, PresentationSubstreamSelectionContext,
-    PresentationTopDownmix, PresentationTopPairDestination, PresentationTopPairDownmix,
+    PresentationDrcProfile, PresentationDrcState, PresentationDrcTimeConstants,
+    PresentationLoudnessCorrectionCode, PresentationLoudnessCorrectionData,
+    PresentationScreenDownmix, PresentationStereoDownmixCoefficients,
+    PresentationStereoDownmixKind, PresentationSubstreamContext, PresentationSubstreamError,
+    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainUpdate,
+    PresentationSubstreamSelectionContext, PresentationTopDownmix, PresentationTopPairDestination,
+    PresentationTopPairDownmix,
 };
 #[cfg(feature = "audio-decode")]
 pub use presentation_substream::{

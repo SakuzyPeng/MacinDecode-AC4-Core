@@ -4,8 +4,8 @@
 > substream activation/dataset selection 前缀、公共 additional-data envelope，以及
 > dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新及
 > associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC
-> I-frame 配置与逐帧 data envelope 也已解析，`audio-decode` 下可显式解码 Huffman gains；跨帧
-> 配置与 group gain 有效状态、音频 substream tools
+> I-frame 配置与逐帧 data envelope 也已解析，跨帧状态可用前一有效配置解析 dependent data，
+> `audio-decode` 下可显式解码 Huffman gains；group gain 有效状态、音频 substream tools
 > metadata、EMDF payload 与 alternative dataset
 > 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
 > 正向候选；非空 EMDF
@@ -77,8 +77,9 @@ profile、E-AC-3 profile 及完整 compression-curve 原始参数，dependent fr
 I-frame `drc_data()` 进一步解析 repeat profile 的有效 gain/curve 形态、gainset 长度/版本和
 curve reset/reserved；未知版本及 gainset body 始终以有界 bit view 保留。`audio-decode` 下的
 独立 API 可按调用方显式提供的 channel-group/subframe 形状解码 version 0/1 的 `DRC_HCB`，还原
-最多 128 个整数 dB₂ gain 与 version 1 扩展边界，但不应用 gain。dependent-frame data 解析仍须
-前一有效配置和跨帧状态。
+最多 128 个整数 dB₂ gain 与 version 1 扩展边界，但不应用 gain。`PresentationDrcState` 按
+presentation 隔离前一有效配置，stateful parse 会据此解析 dependent-frame data；成功 I-frame
+替换配置，DRC 缺席的 I-frame 清空配置，缺少历史或 data 不匹配时失败且不提交状态。
 DRC envelope 后按规范 `n_substream_groups` 判定 group-gain
 presence：单 group 不消费该字段，多 group 则区分未携带、`b_keep` 沿用和逐 group 新传六比特
 `sg_gain` 码值。当前只保留逐帧原始更新，尚不把 `b_keep` 解析为跨帧有效增益。其后的
@@ -94,10 +95,10 @@ correction 原值；core LoRo/LtRt 共用 presence，object correction 分支包
 0 dB 的码值 `31` 仍合法保留。末尾 `byte_align` 的填充值不解释，但对齐后必须恰好耗尽有界
 payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角度换算、pan 或 downmix。
 
-当前无状态 API 已显式接收 TOC/拓扑上下文，并解析 I-frame 配置及其 data envelope；feature-gated
-gain API 另行接收表 168/169 与 P2 表 69 派生的形状。后续 dependent-frame API 必须再显式接收
-前一有效 DRC 配置和 group gain 状态。所有长度 envelope 先验证边界，成功后才提交跨帧状态；
-dependent frame 缺少历史配置时失败关闭。
+当前无状态 API 已显式接收 TOC/拓扑上下文并解析 I-frame 配置及其 data envelope；stateful API
+另行显式接收按 presentation 隔离的 DRC 状态，feature-gated gain API 再接收表 168/169 与 P2
+表 69 派生的形状。后续 group gain 状态同样必须由调用方按 presentation 隔离。所有长度 envelope
+先验证边界，成功后才提交跨帧状态；seek、换源、拓扑变化或不连续由调用方显式 reset。
 
 ### 3.2 Audio-substream metadata
 

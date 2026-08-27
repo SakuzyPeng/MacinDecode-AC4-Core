@@ -459,7 +459,7 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 
 ## M4.5：Presentation/Metadata 解析闭环
 
-**前十一个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
+**前十二个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
 `6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
 device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
 active 与 alternative dataset index。名称即使不在字节边界也以无分配 8 比特元素视图保留；
@@ -491,8 +491,10 @@ mode 共用的 reset/reserved；未知版本与 gain-set body 始终以有界 bi
 显式提供 `nr_drc_channels`/`nr_drc_subframes`，解析器按 channel→band→subframe 顺序还原整数 dB₂
 码值及 reference reset，并精确定出 version 1 的 `drc2_bits`；version 2/3 body 直接作为扩展
 保留。该 API 无状态且不应用 gain。缺失/循环 repeat、过短/截断/溢出 gainset、DRC absent 或
-完整 I-frame data 后的尾随比特均失败关闭，且不能借用随后 metadata。dependent-frame 前一有效
-配置状态仍未解析。
+完整 I-frame data 后的尾随比特均失败关闭，且不能借用随后 metadata。`PresentationDrcState`
+现按 presentation 隔离最近一次成功 I-frame 的配置；stateful parse 用它解析 dependent-frame
+data，缺少历史或 data 与配置不匹配时失败且不提交状态。成功 I-frame 替换配置，DRC 缺席的
+I-frame 清空配置；seek、换源、拓扑变化与不连续由调用方显式 reset。这里仍不维护或应用 gain。
 其后按规范 `n_substream_groups` 解析
 group-gain presence 与 `b_keep`，并以固定容量数组保留逐 group 六比特 `sg_gain` 原值；单
 group 不错误消费 presence bit，八 group 上限、截断和非法上下文均有构造门禁。当前只区分
@@ -520,7 +522,8 @@ gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关�
 presence gate、完整原值组合和 extension 边界；DRC 另覆盖 1 比特最小 frame、95/165 比特扩展
 frame、四类 profile、完整 curve 可选分支、I/dependent gate、repeat 前向/链式/缺失/循环引用、
 9/70 比特 gainset、八 gainset 上限、未知 version、curve reset/reserved、envelope 内截断/尾随、
-零长度与两层变长长度溢出；feature-gated gains 再覆盖固定 wideband、2×2×2 reference reset、
+零长度与两层变长长度溢出；跨帧状态覆盖 I→dependent 延续、缺失历史、失败事务性、I-frame
+DRC absent 清空与显式 reset；feature-gated gains 再覆盖固定 wideband、3×2×2 reference reset、
 4×8×4 的 128 gain 上限、version 1 扩展边界、未知版本透传、缺失上下文、截断码字与 version 0
 尾随拒绝；group gain 覆盖单/multi-group gate、absent、keep、
 六比特码值端点、八 group 上限、截断与上下文容量；associated audio 覆盖 absent、三个 scale
@@ -533,8 +536,8 @@ direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续依次补 presentation DRC 跨帧状态、audio-substream tools metadata、EMDF envelope 与
-alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
+后续依次补 presentation group gain 有效状态、audio-substream tools metadata、EMDF envelope
+与 alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵
 

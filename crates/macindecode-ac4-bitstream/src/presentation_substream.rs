@@ -22,9 +22,9 @@
 //! compression curve 原始参数，`drc_data()` 再解析 repeat profile、gain-set 长度/版本和
 //! curve reset/reserved，并保留 gain-set body。模块还解析逐帧 substream-group gain 更新、
 //! associated-audio scale/pan 码值、custom downmix 的配置、路由与 gain 码值，以及 loudness
-//! correction 的 presence 与 5 比特原始码值。启用 `audio-decode` 时还可解码 DRC Huffman
-//! gains 并还原整数码值；dependent-frame 配置状态与 group gain 生效状态仍不解释，本模块也
-//! 不执行任何处理。
+//! correction 的 presence 与 5 比特原始码值。`PresentationDrcState` 可按 presentation 隔离
+//! 前一有效配置并解析 dependent-frame data；启用 `audio-decode` 时还可解码 DRC Huffman gains
+//! 并还原整数码值。group gain 生效状态仍不解释，本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -141,6 +141,11 @@ pub enum PresentationSubstreamError {
         /// `drc_gainset_size_value` 的比特偏移。
         bit_position: u64,
     },
+    /// dependent frame 携带 DRC data，但当前 presentation 没有前一有效配置。
+    MissingDrcConfiguration {
+        /// `drc_data()` 在 presentation payload 内的起始比特偏移。
+        bit_position: u64,
+    },
     /// repeat profile 引用了配置中不存在的 decoder mode ID。
     MissingDrcRepeatProfile {
         /// 携带 repeat profile 的 decoder mode ID。
@@ -242,6 +247,10 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation fixed DRC gain-set size is {declared} bits at offset {bit_position}; exactly {expected} bits are required"
+            ),
+            PresentationSubstreamError::MissingDrcConfiguration { bit_position } => write!(
+                formatter,
+                "Presentation DRC data at bit offset {bit_position} requires a previous independent-frame configuration"
             ),
             PresentationSubstreamError::MissingDrcRepeatProfile { mode_id, repeat_id } => write!(
                 formatter,
@@ -733,6 +742,68 @@ impl PresentationDrcConfiguration {
     pub fn decoder_modes(&self) -> &[PresentationDrcDecoderMode] {
         let len = usize::from(self.decoder_mode_count_minus_one).saturating_add(1);
         self.decoder_modes.get(..len).unwrap_or(&[])
+    }
+}
+
+/// 一个 presentation 的前一有效 `drc_config()`。
+///
+/// 状态必须按 presentation 隔离；seek、换源、拓扑变化或调用方检测到不连续时应调用
+/// [`reset`](Self::reset)。[`Ac4PresentationSubstream::parse_with_drc_state`] 在完整 I-frame
+/// 成功后替换配置，在 DRC 缺席的 I-frame 成功后清空配置，并用已有配置解析 dependent frame
+/// 的 `drc_data()`。所有更新均在完整 presentation payload 验证成功后事务性提交。
+///
+/// 本类型只维护解析语法所需的配置，不维护 DRC gain、平滑器或任何 PCM 处理状态。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PresentationDrcState {
+    configuration: Option<PresentationDrcConfiguration>,
+}
+
+impl PresentationDrcState {
+    /// 创建不含历史配置的状态。
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            configuration: None,
+        }
+    }
+
+    /// 当前 presentation 最近一次成功提交的有效 DRC 配置。
+    #[must_use]
+    pub const fn configuration(self) -> Option<PresentationDrcConfiguration> {
+        self.configuration
+    }
+
+    /// 在 seek、换源、拓扑变化或不连续处清除历史配置。
+    pub fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    fn resolve<'a>(
+        &mut self,
+        frame: &mut Ac4PresentationSubstream<'a>,
+        independent: bool,
+    ) -> Result<(), PresentationSubstreamError> {
+        let mut next = *self;
+        if independent {
+            next.configuration = None;
+        }
+
+        if frame.drc_present {
+            if let Some(configuration) = frame.drc_configuration {
+                next.configuration = Some(configuration);
+            } else {
+                let configuration = next.configuration.ok_or(
+                    PresentationSubstreamError::MissingDrcConfiguration {
+                        bit_position: frame.drc_data.bit_offset,
+                    },
+                )?;
+                frame.drc_data_elements =
+                    Some(parse_drc_data_view(frame.drc_data, &configuration)?);
+            }
+        }
+
+        *self = next;
+        Ok(())
     }
 }
 
@@ -1733,8 +1804,9 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 /// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
 /// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
 /// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC I-frame
-/// 配置与 I-frame `drc_data()` 包络已解析；`audio-decode` 下可另行解码 Huffman gains，
-/// dependent-frame 配置状态与 group gain 跨帧有效状态仍未解析。
+/// 配置与 I-frame `drc_data()` 包络已解析；使用 `parse_with_drc_state()` 时 dependent frame
+/// 也会按前一有效配置解析，`audio-decode` 下可再另行解码 Huffman gains。group gain
+/// 跨帧有效状态仍未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1760,10 +1832,11 @@ pub struct Ac4PresentationSubstream<'a> {
     /// dependent frame 从 `b_drc_present` 后立即开始；DRC absent 时保留 envelope 中任何剩余比特，
     /// 但这些比特不属于规范 `drc_data()`，留待完整 frame 校验拒绝。
     pub drc_data: PresentationDrcFrameBits<'a>,
-    /// I-frame 中按当前配置解析的 `drc_data()` gain-set/reset 包络。
+    /// 按当前有效配置解析的 `drc_data()` gain-set/reset 包络。
     ///
-    /// dependent frame 在引入跨帧配置状态前为 `None`；gain-set 内的 Huffman gains 仅在调用
-    /// `audio-decode` 提供的显式解码 API 时解析。
+    /// 无状态 [`parse`](Self::parse) 只解析 I-frame；[`parse_with_drc_state`](Self::parse_with_drc_state)
+    /// 也解析 dependent frame。gain-set 内的 Huffman gains 仅在调用 `audio-decode` 提供的显式
+    /// 解码 API 时解析。
     pub drc_data_elements: Option<PresentationDrcData<'a>>,
     /// 当前帧传输的 substream-group gain 原始更新。
     pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,
@@ -1901,6 +1974,27 @@ impl<'a> Ac4PresentationSubstream<'a> {
             byte_alignment_offset,
             alignment_bits,
         })
+    }
+
+    /// 解析完整 presentation payload，并事务性延续该 presentation 的 DRC 配置。
+    ///
+    /// 与 [`parse`](Self::parse) 相同，但 dependent frame 中存在 DRC data 时会使用 `state`
+    /// 保存的前一有效 I-frame 配置填充 [`drc_data_elements`](Self::drc_data_elements)。成功的
+    /// I-frame 会替换配置；DRC 缺席的 I-frame 会清空配置。调用方必须为每个 presentation
+    /// 分别维护状态，并在 seek、换源、拓扑变化或不连续处调用 [`PresentationDrcState::reset`]。
+    ///
+    /// # Errors
+    ///
+    /// 除 [`parse`](Self::parse) 的错误外，dependent frame 携带 DRC data 却没有前一有效配置，
+    /// 或其 data 与保存的配置不一致时也返回错误。任何失败都不会修改 `state`。
+    pub fn parse_with_drc_state(
+        payload: &'a [u8],
+        context: PresentationSubstreamContext,
+        state: &mut PresentationDrcState,
+    ) -> Result<Self, PresentationSubstreamError> {
+        let mut parsed = Self::parse(payload, context)?;
+        state.resolve(&mut parsed, context.presentation_is_independent())?;
+        Ok(parsed)
     }
 }
 
@@ -2665,6 +2759,14 @@ fn parse_drc_data<'a>(
     })
 }
 
+fn parse_drc_data_view<'a>(
+    data: PresentationDrcFrameBits<'a>,
+    configuration: &PresentationDrcConfiguration,
+) -> Result<PresentationDrcData<'a>, PresentationSubstreamError> {
+    let mut reader = BitReader::new_bounded(data.source, data.bit_offset, data.bit_len)?;
+    parse_drc_data(&mut reader, data.source, configuration)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ParsedPresentationDrcFrame<'a> {
     present: bool,
@@ -3040,6 +3142,53 @@ mod tests {
     fn push_minimal_complete_common_metadata(bits: &mut TestBits, dialnorm_bits: u8) {
         push_minimal_common_metadata_prefix(bits, dialnorm_bits);
         bits.push(0, 1); // no associated audio
+    }
+
+    fn drc_state_context(independent: bool) -> PresentationSubstreamContext {
+        PresentationSubstreamContext::new(
+            false,
+            independent,
+            1,
+            1,
+            PresentationChannelContext::new(Some(0), None, false, 0, false),
+        )
+    }
+
+    fn push_fixed_gain_presentation(
+        bits: &mut TestBits,
+        include_configuration: bool,
+        gainset_size: u8,
+    ) -> u64 {
+        bits.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(bits, 0);
+        let frame_size = if include_configuration {
+            22u8.saturating_add(gainset_size)
+        } else {
+            8u8.saturating_add(gainset_size)
+        };
+        bits.push(u64::from(frame_size), 5);
+        bits.push(0, 1); // no drc_metadata_size extension
+        bits.push(1, 1); // b_drc_present
+        if include_configuration {
+            bits.push(0, 3); // one decoder mode
+            bits.push(0, 3); // Home Theatre mode ID
+            bits.push(0, 1); // no repeat
+            bits.push(0, 1); // no default profile
+            bits.push(0, 1); // transmit gains rather than a curve
+            bits.push(0, 2); // single wideband gain
+            bits.push(0, 3); // E-AC-3 profile None
+        }
+        let data_offset = bits.len as u64;
+        bits.push(u64::from(gainset_size), 6);
+        bits.push(0, 1); // no gainset-size extension
+        bits.push(0, 2); // drc_version 0
+        bits.push(64, 7); // 0 dB₂ wideband gain
+        for _ in MIN_KNOWN_DRC_GAIN_SET_BITS..u32::from(gainset_size) {
+            bits.push(1, 1); // forbidden version-0 tail for negative tests
+        }
+        bits.push(0, 1); // no associated audio
+        bits.byte_align();
+        data_offset
     }
 
     fn push_loudness_correction_code(bits: &mut TestBits, value: Option<u8>) {
@@ -4084,6 +4233,153 @@ mod tests {
             parsed.drc_data.iter().collect::<std::vec::Vec<_>>(),
             [true, false, true, false]
         );
+    }
+
+    #[test]
+    fn drc_state_parses_dependent_data_with_the_previous_configuration() {
+        let mut state = PresentationDrcState::new();
+        let mut independent = TestBits::new();
+        push_fixed_gain_presentation(
+            &mut independent,
+            true,
+            u8::try_from(MIN_KNOWN_DRC_GAIN_SET_BITS).unwrap_or(u8::MAX),
+        );
+        let independent = Ac4PresentationSubstream::parse_with_drc_state(
+            independent.as_bytes(),
+            drc_state_context(true),
+            &mut state,
+        )
+        .unwrap();
+        assert_eq!(state.configuration(), independent.drc_configuration);
+        assert_eq!(independent.drc_data_elements.unwrap().gain_sets().len(), 1);
+
+        let mut dependent = TestBits::new();
+        push_fixed_gain_presentation(
+            &mut dependent,
+            false,
+            u8::try_from(MIN_KNOWN_DRC_GAIN_SET_BITS).unwrap_or(u8::MAX),
+        );
+        let dependent = Ac4PresentationSubstream::parse_with_drc_state(
+            dependent.as_bytes(),
+            drc_state_context(false),
+            &mut state,
+        )
+        .unwrap();
+
+        assert_eq!(dependent.drc_configuration, None);
+        let data = dependent.drc_data_elements.unwrap();
+        assert_eq!(data.gain_sets().len(), 1);
+        let gain_set = data.gain_sets().first().copied().unwrap();
+        assert_eq!(gain_set.decoder_mode_id, 0);
+        assert_eq!(gain_set.gains_configuration, 0);
+        assert_eq!(gain_set.version, 0);
+        assert_eq!(gain_set.body().len_bits(), 7);
+        let configuration = state.configuration();
+        assert!(configuration.is_some());
+
+        let mut absent = TestBits::new();
+        absent.push(0, 1); // no additional data
+        push_minimal_complete_common_metadata(&mut absent, 0);
+        absent.byte_align();
+        let absent = Ac4PresentationSubstream::parse_with_drc_state(
+            absent.as_bytes(),
+            drc_state_context(false),
+            &mut state,
+        )
+        .unwrap();
+        assert!(!absent.drc_present);
+        assert_eq!(state.configuration(), configuration);
+    }
+
+    #[test]
+    fn drc_state_rejects_missing_history_and_keeps_history_on_failure() {
+        let mut dependent = TestBits::new();
+        let data_offset = push_fixed_gain_presentation(
+            &mut dependent,
+            false,
+            u8::try_from(MIN_KNOWN_DRC_GAIN_SET_BITS).unwrap_or(u8::MAX),
+        );
+        let mut empty = PresentationDrcState::new();
+        assert_eq!(
+            Ac4PresentationSubstream::parse_with_drc_state(
+                dependent.as_bytes(),
+                drc_state_context(false),
+                &mut empty,
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::MissingDrcConfiguration {
+                bit_position: data_offset,
+            }
+        );
+        assert_eq!(empty.configuration(), None);
+
+        let mut independent = TestBits::new();
+        push_fixed_gain_presentation(
+            &mut independent,
+            true,
+            u8::try_from(MIN_KNOWN_DRC_GAIN_SET_BITS).unwrap_or(u8::MAX),
+        );
+        Ac4PresentationSubstream::parse_with_drc_state(
+            independent.as_bytes(),
+            drc_state_context(true),
+            &mut empty,
+        )
+        .unwrap();
+        let previous = empty.configuration();
+
+        let mut malformed = TestBits::new();
+        let size_value_offset = push_fixed_gain_presentation(
+            &mut malformed,
+            false,
+            u8::try_from(MIN_KNOWN_DRC_GAIN_SET_BITS.saturating_add(1)).unwrap_or(u8::MAX),
+        );
+        assert_eq!(
+            Ac4PresentationSubstream::parse_with_drc_state(
+                malformed.as_bytes(),
+                drc_state_context(false),
+                &mut empty,
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::InvalidFixedDrcGainSetSize {
+                declared: MIN_KNOWN_DRC_GAIN_SET_BITS.saturating_add(1),
+                expected: MIN_KNOWN_DRC_GAIN_SET_BITS,
+                bit_position: size_value_offset,
+            }
+        );
+        assert_eq!(empty.configuration(), previous);
+    }
+
+    #[test]
+    fn independent_frame_without_drc_clears_the_drc_state() {
+        let mut state = PresentationDrcState::new();
+        let mut configured = TestBits::new();
+        push_fixed_gain_presentation(
+            &mut configured,
+            true,
+            u8::try_from(MIN_KNOWN_DRC_GAIN_SET_BITS).unwrap_or(u8::MAX),
+        );
+        Ac4PresentationSubstream::parse_with_drc_state(
+            configured.as_bytes(),
+            drc_state_context(true),
+            &mut state,
+        )
+        .unwrap();
+        assert!(state.configuration().is_some());
+
+        let mut absent = TestBits::new();
+        absent.push(0, 1); // no additional data
+        push_minimal_complete_common_metadata(&mut absent, 0);
+        absent.byte_align();
+        Ac4PresentationSubstream::parse_with_drc_state(
+            absent.as_bytes(),
+            drc_state_context(true),
+            &mut state,
+        )
+        .unwrap();
+        assert_eq!(state.configuration(), None);
+
+        state.reset();
+        assert_eq!(state, PresentationDrcState::new());
     }
 
     #[test]
