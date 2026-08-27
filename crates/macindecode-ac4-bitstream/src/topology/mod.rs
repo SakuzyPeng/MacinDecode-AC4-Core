@@ -386,6 +386,7 @@ mod tests {
             topology.presentation_substream_context(0),
             Some(PresentationSubstreamContext::new(
                 false,
+                false,
                 1,
                 1,
                 PresentationChannelContext::UNDEFINED,
@@ -486,6 +487,7 @@ mod tests {
             topology.presentation_substream_context(0),
             Some(PresentationSubstreamContext::new(
                 true,
+                false,
                 3,
                 1,
                 PresentationChannelContext::UNDEFINED,
@@ -525,6 +527,7 @@ mod tests {
         assert_eq!(
             topology.presentation_substream_context(0),
             Some(PresentationSubstreamContext::new(
+                false,
                 false,
                 0,
                 0,
@@ -590,6 +593,7 @@ mod tests {
         assert_eq!(
             topology.presentation_substream_context(0),
             Some(PresentationSubstreamContext::new(
+                false,
                 false,
                 1,
                 1,
@@ -681,6 +685,7 @@ mod tests {
             topology.presentation_substream_context(0),
             Some(PresentationSubstreamContext::new(
                 false,
+                false,
                 1,
                 1,
                 PresentationChannelContext::new(Some(4), None, false, 0, true),
@@ -753,6 +758,13 @@ mod tests {
         let table = "01 0";
         let topology = parse_frame(&[TOC_PREFIX, PRESENTATION_NDOT, group_all_ndot, table]);
         assert_eq!(topology.random_access(), RandomAccess::Full);
+        assert!(
+            topology
+                .presentation_substream_context(0)
+                .unwrap()
+                .presentation_is_independent(),
+            "b_pres_ndot must reach the bounded presentation DRC parser"
+        );
 
         // 同样的 group，但 b_oamd_ndot=0
         let group_oamd_dependent = "1 0 1 0 1 0 01 1 1 0 1000 1 0 0011 1 0 0 1 10 0";
@@ -771,6 +783,12 @@ mod tests {
         // presentation substream 的 b_pres_ndot=0
         let topology = parse_frame(&[TOC_PREFIX, PRESENTATION_SINGLE_GROUP, group_all_ndot, table]);
         assert_eq!(topology.random_access(), RandomAccess::AudioOnly);
+        assert!(
+            !topology
+                .presentation_substream_context(0)
+                .unwrap()
+                .presentation_is_independent()
+        );
     }
 
     /// b_iframe_global 为假时一律不可作为起解点。

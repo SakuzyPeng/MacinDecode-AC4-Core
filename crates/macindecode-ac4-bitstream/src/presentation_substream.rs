@@ -5,7 +5,9 @@
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
 //! `6.3.3.1.16` 至 `6.3.3.1.18`；响度语法见 `6.2.7.3`，共享字段语义见
 //! `TS103190-1:v1.4.1:4.3.12.3`；DRC envelope 见 `6.3.3.1.19` 至
-//! `6.3.3.1.21`，substream-group gain 见 `6.3.3.1.22` 至 `6.3.3.1.24`，
+//! `6.3.3.1.21`，其 I-frame 配置见 `TS103190-1:v1.4.1:4.2.14.5` 至
+//! `4.2.14.8`、`4.3.13.1` 至 `4.3.13.4`；substream-group gain 见
+//! `6.3.3.1.22` 至 `6.3.3.1.24`，
 //! associated-audio 字段见 `6.3.3.1.25` 至 `6.3.3.1.26`，其码值语义见
 //! `TS103190-1:v1.4.1:4.3.12.4.3` 至 `4.3.12.4.9`；custom downmix 语法与语义见
 //! `TS103190-2:v1.3.1:6.2.9.2` 至 `6.2.9.10`、`6.3.10.2` 至 `6.3.10.3`，共享的
@@ -15,9 +17,11 @@
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
 //! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
-//! `drc_frame()` 原始比特、逐帧 substream-group gain 更新、associated-audio scale/pan 码值、
-//! custom downmix 的配置、路由与 gain 码值，以及 loudness correction 的 presence 与 5 比特
-//! 原始码值。DRC 内部语法与 group gain 跨帧生效状态仍不解释；本模块也不执行任何处理。
+//! `drc_frame()` 原始比特；I-frame 的 `drc_config()` 会解析 decoder modes、profile 与
+//! compression curve 原始参数，后续 `drc_data()` 仍作为有界视图保留。模块还解析逐帧
+//! substream-group gain 更新、associated-audio scale/pan 码值、custom downmix 的配置、路由与
+//! gain 码值，以及 loudness correction 的 presence 与 5 比特原始码值。DRC data、跨帧配置/
+//! group gain 生效状态仍不解释；本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -44,6 +48,11 @@ pub const MAX_AUDIO_SUBSTREAMS_PER_PRESENTATION: usize =
 /// `n_cdmx_configs_minus1` 为 2 比特，因此规范范围固定为 `1..=4`。
 pub const MAX_CUSTOM_DOWNMIX_CONFIGURATIONS: usize = 4;
 
+/// 一个 `drc_config()` 可声明的 decoder mode 数上限。
+///
+/// `drc_decoder_nr_modes` 为 3 比特且语义为 count minus one，因此固定为 `1..=8`。
+pub const MAX_PRESENTATION_DRC_DECODER_MODES: usize = 8;
+
 /// presentation substream 前缀中超出固定容量的结构。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSubstreamCapacity {
@@ -53,6 +62,8 @@ pub enum PresentationSubstreamCapacity {
     AudioSubstreams,
     /// 一个 presentation 声明的 substream group 数。
     SubstreamGroups,
+    /// presentation `drc_config()` 声明的 decoder mode 数。
+    DrcDecoderModes,
 }
 
 impl fmt::Display for PresentationSubstreamCapacity {
@@ -61,6 +72,7 @@ impl fmt::Display for PresentationSubstreamCapacity {
             PresentationSubstreamCapacity::Targets => "alternative presentation targets",
             PresentationSubstreamCapacity::AudioSubstreams => "audio substreams in a presentation",
             PresentationSubstreamCapacity::SubstreamGroups => "substream groups in a presentation",
+            PresentationSubstreamCapacity::DrcDecoderModes => "presentation DRC decoder modes",
         })
     }
 }
@@ -320,18 +332,22 @@ impl PresentationChannelContext {
 /// [`PresentationSubstreamSelectionContext::n_audio_substreams`] 的音频 substream 数以及 SGI
 /// specifier 数都不是同一概念。
 ///
+/// `presentation_is_independent` 必须取自同一 presentation substream info 的 `b_pres_ndot`，
+/// 用于判定当前 `drc_frame()` 是否携带配置。
+///
 /// [`PresentationChannelContext::presentation_channel_mode`] 为 `None` 时，
 /// additional-data envelope 内会多传一个 `b_oamd_common_timing`。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PresentationSubstreamContext {
     selection: PresentationSubstreamSelectionContext,
+    presentation_is_independent: bool,
     n_substream_groups: u32,
     channel: PresentationChannelContext,
 }
 
 impl Default for PresentationSubstreamContext {
     fn default() -> Self {
-        Self::new(false, 0, 0, PresentationChannelContext::UNDEFINED)
+        Self::new(false, false, 0, 0, PresentationChannelContext::UNDEFINED)
     }
 }
 
@@ -340,12 +356,14 @@ impl PresentationSubstreamContext {
     #[must_use]
     pub const fn new(
         alternative: bool,
+        presentation_is_independent: bool,
         n_audio_substreams: u32,
         n_substream_groups: u32,
         channel: PresentationChannelContext,
     ) -> Self {
         Self {
             selection: PresentationSubstreamSelectionContext::new(alternative, n_audio_substreams),
+            presentation_is_independent,
             n_substream_groups,
             channel,
         }
@@ -355,6 +373,12 @@ impl PresentationSubstreamContext {
     #[must_use]
     pub const fn selection_context(self) -> PresentationSubstreamSelectionContext {
         self.selection
+    }
+
+    /// presentation substream 的 `b_pres_ndot`，即 `drc_frame()` 的 `b_iframe` 参数。
+    #[must_use]
+    pub const fn presentation_is_independent(self) -> bool {
+        self.presentation_is_independent
     }
 
     /// presentation 的规范 `n_substream_groups`，用于判定并读取 group gain 数组。
@@ -499,8 +523,131 @@ impl<'a> PresentationAddDataBits<'a> {
 
 /// `drc_metadata_size` 严格定界的完整 `drc_frame()` 原始比特视图。
 ///
-/// 当前增量只读取首个 `b_drc_present` 并保留整个 frame，不解释或执行 DRC。
+/// 完整 frame 始终保留；I-frame 还会解析 `drc_config()`，后续 `drc_data()` 继续以同型 bit view
+/// 保留。本模块不换算或应用 DRC。
 pub type PresentationDrcFrameBits<'a> = PresentationAddDataBits<'a>;
+
+/// 自定义 DRC decoder mode 的参考输出电平范围原始码值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcOutputLevelRange {
+    /// 5 比特 `drc_output_level_from`。
+    pub level_from: u8,
+    /// 5 比特 `drc_output_level_to`。
+    pub level_to: u8,
+}
+
+/// compression curve 中可选的额外 control point 原始码值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcCurveSection {
+    /// `drc_gain_section_boost`（4 比特）或 `drc_gain_section_cut`（5 比特）。
+    pub gain: u8,
+    /// 5 比特 `drc_lev_section_boost` 或 `drc_lev_section_cut`。
+    pub level: u8,
+}
+
+/// 非默认 DRC time constants 与可选 adaptive thresholds 的原始码值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcTimeConstants {
+    /// 8 比特 `drc_tc_attack`。
+    pub attack: u8,
+    /// 8 比特 `drc_tc_release`。
+    pub release: u8,
+    /// 8 比特 `drc_tc_attack_fast`。
+    pub attack_fast: u8,
+    /// 8 比特 `drc_tc_release_fast`。
+    pub release_fast: u8,
+    /// adaptive smoothing 为真时的 `(drc_attack_threshold, drc_release_threshold)`。
+    pub adaptive_thresholds: Option<(u8, u8)>,
+}
+
+/// `drc_compression_curve()` 的全部原始参数。
+///
+/// `level_max_*` 的 `None` 表示对应 `gain_max_*` 为零而未传输该分支；`*_section` 的
+/// `None` 在该分支适用时表示 section presence bit 为零。`time_constants == None` 表示
+/// `drc_tc_default_flag == 1`。本类型不把码值换算为 dB 或时间。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcCompressionCurve {
+    /// 4 比特 `drc_lev_nullband_low`。
+    pub nullband_low: u8,
+    /// 4 比特 `drc_lev_nullband_high`。
+    pub nullband_high: u8,
+    /// 4 比特 `drc_gain_max_boost`。
+    pub gain_max_boost: u8,
+    /// `drc_gain_max_boost > 0` 时的 5 比特 `drc_lev_max_boost`。
+    pub level_max_boost: Option<u8>,
+    /// boost section presence 控制的额外 control point。
+    pub boost_section: Option<PresentationDrcCurveSection>,
+    /// 5 比特 `drc_gain_max_cut`。
+    pub gain_max_cut: u8,
+    /// `drc_gain_max_cut > 0` 时的 6 比特 `drc_lev_max_cut`。
+    pub level_max_cut: Option<u8>,
+    /// cut section presence 控制的额外 control point。
+    pub cut_section: Option<PresentationDrcCurveSection>,
+    /// 非默认 time constants；`None` 表示使用规范默认值。
+    pub time_constants: Option<PresentationDrcTimeConstants>,
+}
+
+/// 一个 DRC decoder mode 的 profile 传输形态。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationDrcProfile {
+    /// `drc_repeat_profile_flag == 1`，复用指定 mode ID。
+    Repeat {
+        /// 3 比特 `drc_repeat_id`。
+        repeat_id: u8,
+    },
+    /// `drc_default_profile_flag == 1`，使用 `drc_eac3_profile` 指定的默认 profile。
+    DefaultEac3,
+    /// 显式传输 compression curve。
+    CompressionCurve(PresentationDrcCompressionCurve),
+    /// 按帧传输 DRC gains，并保留 2 比特 `drc_gains_config`。
+    Gains {
+        /// 2 比特 gains configuration 原值。
+        configuration: u8,
+    },
+}
+
+/// 一个 `drc_decoder_mode_config()` 的原始配置。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcDecoderMode {
+    /// 3 比特 `drc_decoder_mode_id`。
+    pub mode_id: u8,
+    /// `mode_id > 3` 时传输的自定义参考输出电平范围。
+    pub output_levels: Option<PresentationDrcOutputLevelRange>,
+    /// repeat/default/curve/gains 四种互斥 profile 形态。
+    pub profile: PresentationDrcProfile,
+}
+
+impl PresentationDrcDecoderMode {
+    const EMPTY: Self = Self {
+        mode_id: 0,
+        output_levels: None,
+        profile: PresentationDrcProfile::DefaultEac3,
+    };
+}
+
+/// I-frame 中 `drc_config()` 的 decoder modes 与 (E-)AC-3 profile 原始码值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcConfiguration {
+    decoder_mode_count_minus_one: u8,
+    decoder_modes: [PresentationDrcDecoderMode; MAX_PRESENTATION_DRC_DECODER_MODES],
+    /// 3 比特 `drc_eac3_profile` 原值；保留码 `6..=7` 也原样保留。
+    pub eac3_profile: u8,
+}
+
+impl PresentationDrcConfiguration {
+    /// 3 比特 `drc_decoder_nr_modes` 原值。
+    #[must_use]
+    pub const fn decoder_mode_count_minus_one(self) -> u8 {
+        self.decoder_mode_count_minus_one
+    }
+
+    /// 按码流顺序取得 `1..=8` 个 decoder mode 配置。
+    #[must_use]
+    pub fn decoder_modes(&self) -> &[PresentationDrcDecoderMode] {
+        let len = usize::from(self.decoder_mode_count_minus_one).saturating_add(1);
+        self.decoder_modes.get(..len).unwrap_or(&[])
+    }
+}
 
 /// 当前帧传输的逐 substream-group `sg_gain` 六比特码值。
 ///
@@ -1399,8 +1546,8 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 /// `drc_metadata_size_value`；[`b_associated_offset`](Self::b_associated_offset) 指向 group gain
 /// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
 /// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
-/// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC 内部语法与
-/// group gain 跨帧有效状态仍未解析。
+/// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC I-frame
+/// 配置已解析，`drc_data()` 与 group gain 跨帧有效状态仍未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1419,6 +1566,13 @@ pub struct Ac4PresentationSubstream<'a> {
     pub drc_present: bool,
     /// 由 `drc_metadata_size` 严格定界的完整 `drc_frame()` 原始比特。
     pub drc_frame: PresentationDrcFrameBits<'a>,
+    /// I-frame 且 DRC present 时传输的 `drc_config()`；dependent frame 或 DRC absent 时为 `None`。
+    pub drc_configuration: Option<PresentationDrcConfiguration>,
+    /// `drc_config()` 之后尚未解释的 `drc_data()` bit view。
+    ///
+    /// dependent frame 从 `b_drc_present` 后立即开始；DRC absent 时保留 envelope 中任何剩余比特，
+    /// 但这些比特不属于规范 `drc_data()`，留待完整 frame 校验拒绝。
+    pub drc_data: PresentationDrcFrameBits<'a>,
     /// 当前帧传输的 substream-group gain 原始更新。
     pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,
     /// `b_associated` 在 payload 内的精确比特偏移。
@@ -1449,6 +1603,8 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.drc_metadata_size_value_offset == other.drc_metadata_size_value_offset
             && self.drc_present == other.drc_present
             && self.drc_frame == other.drc_frame
+            && self.drc_configuration == other.drc_configuration
+            && self.drc_data == other.drc_data
             && self.substream_group_gain_update == other.substream_group_gain_update
             && self.b_associated_offset == other.b_associated_offset
             && self.associated_audio == other.associated_audio
@@ -1470,9 +1626,10 @@ impl<'a> Ac4PresentationSubstream<'a> {
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
-    /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC；group gain
-    /// 只保留逐帧传输形态，不解析跨帧有效值或应用增益；associated-audio scale/pan 同样只
-    /// 保留原值，不执行 gain、pan 或 renderer 处理；custom downmix 同样只保留配置、路由与
+    /// `drc_metadata_size` 严格定界完整 `drc_frame()`，I-frame 的 `drc_config()` 只解析原始配置，
+    /// 后续 `drc_data()` 仍不解释，且不执行 DRC；group gain 只保留逐帧传输形态，不解析跨帧
+    /// 有效值或应用增益；associated-audio scale/pan 同样只保留原值，不执行 gain、pan 或
+    /// renderer 处理；custom downmix 同样只保留配置、路由与
     /// gain 码值，不执行矩阵运算；loudness correction 也只保留原始码值，不做 dB 换算或应用。
     ///
     /// # Errors
@@ -1511,7 +1668,8 @@ impl<'a> Ac4PresentationSubstream<'a> {
             None
         };
         let drc_metadata_size_value_offset = reader.bit_position();
-        let (drc_present, drc_frame) = parse_drc_frame_envelope(&mut reader, payload)?;
+        let drc =
+            parse_drc_frame_envelope(&mut reader, payload, context.presentation_is_independent())?;
         let substream_group_gain_update =
             parse_substream_group_gain_update(&mut reader, n_substream_groups)?;
         let b_associated_offset = reader.bit_position();
@@ -1534,8 +1692,10 @@ impl<'a> Ac4PresentationSubstream<'a> {
             dialnorm_bits,
             further_loudness,
             drc_metadata_size_value_offset,
-            drc_present,
-            drc_frame,
+            drc_present: drc.present,
+            drc_frame: drc.frame,
+            drc_configuration: drc.configuration,
+            drc_data: drc.data,
             substream_group_gain_update,
             b_associated_offset,
             associated_audio,
@@ -2028,10 +2188,151 @@ fn parse_core_stereo_loudness_correction(
     })
 }
 
+fn parse_drc_configuration(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationDrcConfiguration, PresentationSubstreamError> {
+    let decoder_mode_count_minus_one = u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX);
+    let count = usize::from(decoder_mode_count_minus_one).saturating_add(1);
+    let mut decoder_modes = [PresentationDrcDecoderMode::EMPTY; MAX_PRESENTATION_DRC_DECODER_MODES];
+    for index in 0..count {
+        let mode = parse_drc_decoder_mode(reader)?;
+        let Some(slot) = decoder_modes.get_mut(index) else {
+            return Err(PresentationSubstreamError::CapacityExceeded {
+                what: PresentationSubstreamCapacity::DrcDecoderModes,
+                declared: u32::try_from(count).unwrap_or(u32::MAX),
+                limit: MAX_PRESENTATION_DRC_DECODER_MODES,
+            });
+        };
+        *slot = mode;
+    }
+    let eac3_profile = u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX);
+    Ok(PresentationDrcConfiguration {
+        decoder_mode_count_minus_one,
+        decoder_modes,
+        eac3_profile,
+    })
+}
+
+fn parse_drc_decoder_mode(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationDrcDecoderMode, PresentationSubstreamError> {
+    let mode_id = u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX);
+    let output_levels = if mode_id > 3 {
+        Some(PresentationDrcOutputLevelRange {
+            level_from: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+            level_to: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+        })
+    } else {
+        None
+    };
+
+    let profile = if reader.read_flag()? {
+        PresentationDrcProfile::Repeat {
+            repeat_id: u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX),
+        }
+    } else if reader.read_flag()? {
+        PresentationDrcProfile::DefaultEac3
+    } else if reader.read_flag()? {
+        PresentationDrcProfile::CompressionCurve(parse_drc_compression_curve(reader)?)
+    } else {
+        PresentationDrcProfile::Gains {
+            configuration: u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX),
+        }
+    };
+    Ok(PresentationDrcDecoderMode {
+        mode_id,
+        output_levels,
+        profile,
+    })
+}
+
+fn parse_drc_compression_curve(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationDrcCompressionCurve, PresentationSubstreamError> {
+    let nullband_low = u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX);
+    let nullband_high = u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX);
+    let gain_max_boost = u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX);
+    let (level_max_boost, boost_section) = if gain_max_boost > 0 {
+        let level = u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX);
+        let section = if reader.read_flag()? {
+            Some(PresentationDrcCurveSection {
+                gain: u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX),
+                level: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+            })
+        } else {
+            None
+        };
+        (Some(level), section)
+    } else {
+        (None, None)
+    };
+
+    let gain_max_cut = u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX);
+    let (level_max_cut, cut_section) = if gain_max_cut > 0 {
+        let level = u8::try_from(reader.read_bits(6)?).unwrap_or(u8::MAX);
+        let section = if reader.read_flag()? {
+            Some(PresentationDrcCurveSection {
+                gain: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+                level: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+            })
+        } else {
+            None
+        };
+        (Some(level), section)
+    } else {
+        (None, None)
+    };
+
+    let time_constants = if reader.read_flag()? {
+        None
+    } else {
+        let attack = u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX);
+        let release = u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX);
+        let attack_fast = u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX);
+        let release_fast = u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX);
+        let adaptive_thresholds = if reader.read_flag()? {
+            Some((
+                u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+                u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+            ))
+        } else {
+            None
+        };
+        Some(PresentationDrcTimeConstants {
+            attack,
+            release,
+            attack_fast,
+            release_fast,
+            adaptive_thresholds,
+        })
+    };
+
+    Ok(PresentationDrcCompressionCurve {
+        nullband_low,
+        nullband_high,
+        gain_max_boost,
+        level_max_boost,
+        boost_section,
+        gain_max_cut,
+        level_max_cut,
+        cut_section,
+        time_constants,
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ParsedPresentationDrcFrame<'a> {
+    present: bool,
+    frame: PresentationDrcFrameBits<'a>,
+    configuration: Option<PresentationDrcConfiguration>,
+    data: PresentationDrcFrameBits<'a>,
+}
+
 fn parse_drc_frame_envelope<'a>(
     reader: &mut BitReader<'a>,
     source: &'a [u8],
-) -> Result<(bool, PresentationDrcFrameBits<'a>), PresentationSubstreamError> {
+    independent: bool,
+) -> Result<ParsedPresentationDrcFrame<'a>, PresentationSubstreamError> {
     let size_value_offset = reader.bit_position();
     let mut size = u32::try_from(reader.read_bits(5)?).unwrap_or(u32::MAX);
     if reader.read_flag()? {
@@ -2046,16 +2347,30 @@ fn parse_drc_frame_envelope<'a>(
     }
 
     let bit_offset = reader.bit_position();
+    let mut frame_reader = BitReader::new_bounded(source, bit_offset, u64::from(size))?;
+    let present = frame_reader.read_flag()?;
+    let configuration = if present && independent {
+        Some(parse_drc_configuration(&mut frame_reader)?)
+    } else {
+        None
+    };
+    let data = PresentationDrcFrameBits {
+        source,
+        bit_offset: frame_reader.bit_position(),
+        bit_len: frame_reader.remaining_bits(),
+    };
     reader.skip_bits(u64::from(size))?;
-    let bits = PresentationDrcFrameBits {
+    let frame = PresentationDrcFrameBits {
         source,
         bit_offset,
         bit_len: u64::from(size),
     };
-    let mut frame_reader = BitReader::new(source);
-    frame_reader.skip_bits(bit_offset)?;
-    let present = frame_reader.read_flag()?;
-    Ok((present, bits))
+    Ok(ParsedPresentationDrcFrame {
+        present,
+        frame,
+        configuration,
+        data,
+    })
 }
 
 fn parse_additional_data<'a>(
@@ -2284,6 +2599,7 @@ mod tests {
         };
         PresentationSubstreamContext::new(
             alternative,
+            false,
             n_audio_substreams,
             n_substream_groups,
             channel,
@@ -2408,6 +2724,9 @@ mod tests {
         assert_eq!(parsed.drc_frame.len_bits(), 1);
         assert_eq!(parsed.drc_frame.get(0), Some(false));
         assert_eq!(parsed.drc_frame.end_bit_offset(), 16);
+        assert_eq!(parsed.drc_configuration, None);
+        assert!(parsed.drc_data.is_empty());
+        assert_eq!(parsed.drc_data.bit_offset(), 16);
         assert_eq!(
             parsed.substream_group_gain_update,
             PresentationSubstreamGroupGainUpdate::NotSignaled
@@ -2797,6 +3116,301 @@ mod tests {
     }
 
     #[test]
+    fn parses_complete_independent_drc_configuration_and_preserves_data() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(&mut bits, 0);
+        bits.push(21, 5); // 21 + (4 << 5) = 149-bit drc_frame
+        bits.push(1, 1); // b_more_bits
+        bits.push(4, 3); // variable_bits(3) = 4
+        bits.push(0, 1); // stop variable_bits
+        let frame_offset = bits.len as u64;
+        bits.push(1, 1); // b_drc_present
+        let configuration_offset = bits.len;
+        bits.push(3, 3); // four decoder modes
+
+        bits.push(2, 3); // mode 0: portable speakers
+        bits.push(0, 1); // no repeat
+        bits.push(1, 1); // default E-AC-3 profile
+
+        bits.push(5, 3); // mode 1: custom mode ID
+        bits.push(1, 5); // output level from
+        bits.push(31, 5); // output level to
+        bits.push(1, 1); // repeat profile
+        bits.push(2, 3); // repeat mode 0's ID
+
+        bits.push(3, 3); // mode 2: portable headphones
+        bits.push(0, 1); // no repeat
+        bits.push(0, 1); // no default profile
+        bits.push(0, 1); // transmit gains rather than a curve
+        bits.push(3, 2); // drc_gains_config
+
+        bits.push(7, 3); // mode 3: custom mode ID
+        bits.push(4, 5); // output level from
+        bits.push(27, 5); // output level to
+        bits.push(0, 1); // no repeat
+        bits.push(0, 1); // no default profile
+        bits.push(1, 1); // explicit compression curve
+        bits.push(1, 4); // drc_lev_nullband_low
+        bits.push(2, 4); // drc_lev_nullband_high
+        bits.push(3, 4); // drc_gain_max_boost
+        bits.push(4, 5); // drc_lev_max_boost
+        bits.push(1, 1); // one extra boost section
+        bits.push(5, 4); // drc_gain_section_boost
+        bits.push(6, 5); // drc_lev_section_boost
+        bits.push(7, 5); // drc_gain_max_cut
+        bits.push(8, 6); // drc_lev_max_cut
+        bits.push(1, 1); // one extra cut section
+        bits.push(9, 5); // drc_gain_section_cut
+        bits.push(10, 5); // drc_lev_section_cut
+        bits.push(0, 1); // custom time constants
+        bits.push(11, 8); // drc_tc_attack
+        bits.push(12, 8); // drc_tc_release
+        bits.push(13, 8); // drc_tc_attack_fast
+        bits.push(14, 8); // drc_tc_release_fast
+        bits.push(1, 1); // adaptive smoothing
+        bits.push(15, 5); // drc_attack_threshold
+        bits.push(16, 5); // drc_release_threshold
+        bits.push(5, 3); // speech E-AC-3 profile
+        assert_eq!(bits.len.saturating_sub(configuration_offset), 145);
+
+        let data_offset = bits.len as u64;
+        bits.push(0b101, 3); // opaque drc_data
+        assert_eq!((bits.len as u64).saturating_sub(frame_offset), 149);
+        let frame_end = bits.len as u64;
+        bits.push(0, 1); // no associated audio
+        bits.byte_align();
+
+        let context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            PresentationChannelContext::new(Some(0), None, false, 0, false),
+        );
+        let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
+
+        assert!(context.presentation_is_independent());
+        assert!(parsed.drc_present);
+        assert_eq!(parsed.drc_frame.bit_offset(), frame_offset);
+        assert_eq!(parsed.drc_frame.len_bits(), 149);
+        assert_eq!(parsed.drc_frame.end_bit_offset(), frame_end);
+        let configuration = parsed.drc_configuration.unwrap();
+        assert_eq!(configuration.decoder_mode_count_minus_one(), 3);
+        assert_eq!(configuration.eac3_profile, 5);
+        assert_eq!(
+            configuration.decoder_modes(),
+            &[
+                PresentationDrcDecoderMode {
+                    mode_id: 2,
+                    output_levels: None,
+                    profile: PresentationDrcProfile::DefaultEac3,
+                },
+                PresentationDrcDecoderMode {
+                    mode_id: 5,
+                    output_levels: Some(PresentationDrcOutputLevelRange {
+                        level_from: 1,
+                        level_to: 31,
+                    }),
+                    profile: PresentationDrcProfile::Repeat { repeat_id: 2 },
+                },
+                PresentationDrcDecoderMode {
+                    mode_id: 3,
+                    output_levels: None,
+                    profile: PresentationDrcProfile::Gains { configuration: 3 },
+                },
+                PresentationDrcDecoderMode {
+                    mode_id: 7,
+                    output_levels: Some(PresentationDrcOutputLevelRange {
+                        level_from: 4,
+                        level_to: 27,
+                    }),
+                    profile: PresentationDrcProfile::CompressionCurve(
+                        PresentationDrcCompressionCurve {
+                            nullband_low: 1,
+                            nullband_high: 2,
+                            gain_max_boost: 3,
+                            level_max_boost: Some(4),
+                            boost_section: Some(PresentationDrcCurveSection { gain: 5, level: 6 }),
+                            gain_max_cut: 7,
+                            level_max_cut: Some(8),
+                            cut_section: Some(PresentationDrcCurveSection { gain: 9, level: 10 }),
+                            time_constants: Some(PresentationDrcTimeConstants {
+                                attack: 11,
+                                release: 12,
+                                attack_fast: 13,
+                                release_fast: 14,
+                                adaptive_thresholds: Some((15, 16)),
+                            }),
+                        }
+                    ),
+                },
+            ]
+        );
+        assert_eq!(parsed.drc_data.bit_offset(), data_offset);
+        assert_eq!(parsed.drc_data.len_bits(), 3);
+        assert_eq!(
+            parsed.drc_data.iter().collect::<std::vec::Vec<_>>(),
+            [true, false, true]
+        );
+        assert_eq!(parsed.b_associated_offset, frame_end);
+    }
+
+    #[test]
+    fn parses_drc_decoder_mode_count_boundaries() {
+        for decoder_mode_count_minus_one in [0u8, 7] {
+            let mut bits = TestBits::new();
+            bits.push(u64::from(decoder_mode_count_minus_one), 3);
+            for mode_id in 0..=decoder_mode_count_minus_one {
+                bits.push(u64::from(mode_id), 3);
+                if mode_id > 3 {
+                    bits.push(u64::from(mode_id), 5); // output level from
+                    bits.push(u64::from(31u8.saturating_sub(mode_id)), 5); // output level to
+                }
+                bits.push(0, 1); // no repeat
+                bits.push(1, 1); // default E-AC-3 profile
+            }
+            bits.push(7, 3); // reserved E-AC-3 profile remains an original code
+
+            let mut reader = BitReader::new(bits.as_bytes());
+            let configuration = parse_drc_configuration(&mut reader).unwrap();
+
+            assert_eq!(reader.bit_position(), bits.len as u64);
+            assert_eq!(
+                configuration.decoder_mode_count_minus_one(),
+                decoder_mode_count_minus_one
+            );
+            assert_eq!(
+                configuration.decoder_modes().len(),
+                usize::from(decoder_mode_count_minus_one).saturating_add(1)
+            );
+            assert_eq!(configuration.eac3_profile, 7);
+        }
+    }
+
+    #[test]
+    fn parses_absent_drc_compression_curve_optional_branches() {
+        let mut default = TestBits::new();
+        default.push(1, 4); // drc_lev_nullband_low
+        default.push(2, 4); // drc_lev_nullband_high
+        default.push(0, 4); // no maximum boost branch
+        default.push(0, 5); // no maximum cut branch
+        default.push(1, 1); // default time constants
+        let mut reader = BitReader::new(default.as_bytes());
+        assert_eq!(
+            parse_drc_compression_curve(&mut reader).unwrap(),
+            PresentationDrcCompressionCurve {
+                nullband_low: 1,
+                nullband_high: 2,
+                gain_max_boost: 0,
+                level_max_boost: None,
+                boost_section: None,
+                gain_max_cut: 0,
+                level_max_cut: None,
+                cut_section: None,
+                time_constants: None,
+            }
+        );
+        assert_eq!(reader.bit_position(), default.len as u64);
+
+        let mut nonadaptive = TestBits::new();
+        nonadaptive.push(15, 4);
+        nonadaptive.push(14, 4);
+        nonadaptive.push(1, 4);
+        nonadaptive.push(31, 5);
+        nonadaptive.push(0, 1); // no extra boost section
+        nonadaptive.push(1, 5);
+        nonadaptive.push(63, 6);
+        nonadaptive.push(0, 1); // no extra cut section
+        nonadaptive.push(0, 1); // custom time constants
+        nonadaptive.push(0, 8);
+        nonadaptive.push(255, 8);
+        nonadaptive.push(1, 8);
+        nonadaptive.push(254, 8);
+        nonadaptive.push(0, 1); // no adaptive thresholds
+        let mut reader = BitReader::new(nonadaptive.as_bytes());
+        assert_eq!(
+            parse_drc_compression_curve(&mut reader).unwrap(),
+            PresentationDrcCompressionCurve {
+                nullband_low: 15,
+                nullband_high: 14,
+                gain_max_boost: 1,
+                level_max_boost: Some(31),
+                boost_section: None,
+                gain_max_cut: 1,
+                level_max_cut: Some(63),
+                cut_section: None,
+                time_constants: Some(PresentationDrcTimeConstants {
+                    attack: 0,
+                    release: 255,
+                    attack_fast: 1,
+                    release_fast: 254,
+                    adaptive_thresholds: None,
+                }),
+            }
+        );
+        assert_eq!(reader.bit_position(), nonadaptive.len as u64);
+    }
+
+    #[test]
+    fn dependent_drc_frame_preserves_all_data_without_parsing_configuration() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(&mut bits, 0);
+        bits.push(5, 5); // five-bit drc_frame
+        bits.push(0, 1); // no size extension
+        let frame_offset = bits.len as u64;
+        bits.push(1, 1); // b_drc_present
+        let data_offset = bits.len as u64;
+        bits.push(0b1010, 4); // dependent drc_data starts immediately
+        bits.push(0, 1); // no associated audio
+        bits.byte_align();
+
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
+                .unwrap();
+
+        assert!(parsed.drc_present);
+        assert_eq!(parsed.drc_frame.bit_offset(), frame_offset);
+        assert_eq!(parsed.drc_configuration, None);
+        assert_eq!(parsed.drc_data.bit_offset(), data_offset);
+        assert_eq!(parsed.drc_data.len_bits(), 4);
+        assert_eq!(
+            parsed.drc_data.iter().collect::<std::vec::Vec<_>>(),
+            [true, false, true, false]
+        );
+    }
+
+    #[test]
+    fn independent_drc_configuration_cannot_borrow_following_metadata() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(&mut bits, 0);
+        bits.push(4, 5); // only presence and decoder-mode count fit
+        bits.push(0, 1); // no size extension
+        bits.push(1, 1); // b_drc_present
+        bits.push(0, 3); // one decoder mode; its body is missing
+        let envelope_end = bits.len as u64;
+        bits.push_byte(0xff); // readable bytes after the declared envelope must not be borrowed
+
+        let context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            PresentationChannelContext::new(Some(0), None, false, 0, false),
+        );
+        assert_eq!(
+            Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 3,
+                bit_position: envelope_end,
+                remaining_bits: 0,
+            })
+        );
+    }
+
+    #[test]
     fn distinguishes_absent_and_kept_substream_group_gains() {
         let mut prefix = TestBits::new();
         prefix.push(0, 1); // no additional data
@@ -3153,6 +3767,7 @@ mod tests {
         right_bits.push(0b1_1111, 5); // different byte_align values
         let context = PresentationSubstreamContext::new(
             false,
+            false,
             1,
             1,
             PresentationChannelContext::new(Some(14), Some(6), true, 2, true),
@@ -3394,8 +4009,13 @@ mod tests {
         let expected_alignment_offset = bits.len as u64;
         bits.push(0b10_1011, 6); // nonzero byte_align bits are opaque
 
-        let context =
-            PresentationSubstreamContext::new(false, 1, 1, PresentationChannelContext::UNDEFINED);
+        let context = PresentationSubstreamContext::new(
+            false,
+            false,
+            1,
+            1,
+            PresentationChannelContext::UNDEFINED,
+        );
         let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
         assert_eq!(parsed.byte_alignment_offset, expected_alignment_offset);
         assert_eq!(parsed.alignment_bits, 6);
@@ -3464,7 +4084,13 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(true, 1, 1, PresentationChannelContext::UNDEFINED),
+            PresentationSubstreamContext::new(
+                true,
+                false,
+                1,
+                1,
+                PresentationChannelContext::UNDEFINED,
+            ),
         )
         .unwrap();
         assert!(parsed.selection.alternative.is_some());

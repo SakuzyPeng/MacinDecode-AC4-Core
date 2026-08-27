@@ -83,16 +83,43 @@ pub type Result<T> = core::result::Result<T, ReadError>;
 pub struct BitReader<'a> {
     data: &'a [u8],
     bit_position: u64,
+    bit_end: u64,
 }
 
 impl<'a> BitReader<'a> {
     /// 在给定切片上创建读取器，起始偏移为 0。
     #[must_use]
     pub const fn new(data: &'a [u8]) -> Self {
+        let bit_end = (data.len() as u64).saturating_mul(8);
         Self {
             data,
             bit_position: 0,
+            bit_end,
         }
+    }
+
+    /// 在同一输入上创建保留全局偏移的有界读取器。
+    ///
+    /// 该构造器用于解析长度 envelope 内部的非字节对齐语法。读取错误仍报告相对原始输入的
+    /// bit offset，但 [`remaining_bits`](Self::remaining_bits) 不会越过 `bit_len` 声明的边界。
+    pub(crate) fn new_bounded(data: &'a [u8], bit_position: u64, bit_len: u64) -> Result<Self> {
+        let total_bits = (data.len() as u64).saturating_mul(8);
+        let available = total_bits.saturating_sub(bit_position);
+        if bit_position > total_bits || bit_len > available {
+            return Err(ReadError::OutOfBounds {
+                requested_bits: u32::try_from(bit_len).unwrap_or(u32::MAX),
+                bit_position,
+                remaining_bits: available,
+            });
+        }
+        let bit_end = bit_position
+            .checked_add(bit_len)
+            .ok_or(ReadError::ValueOverflow { bit_position })?;
+        Ok(Self {
+            data,
+            bit_position,
+            bit_end,
+        })
     }
 
     /// 当前比特偏移。
@@ -112,7 +139,7 @@ impl<'a> BitReader<'a> {
     /// 当前位置之后剩余的比特数。
     #[must_use]
     pub const fn remaining_bits(&self) -> u64 {
-        self.total_bits().saturating_sub(self.bit_position)
+        self.bit_end.saturating_sub(self.bit_position)
     }
 
     /// 当前是否位于字节边界。
@@ -319,6 +346,45 @@ mod tests {
     fn reads_across_byte_boundary() {
         let mut reader = BitReader::new(&[0xAC, 0x40]);
         assert_eq!(reader.read_bits(16).unwrap(), 0xAC40);
+    }
+
+    #[test]
+    fn bounded_reader_keeps_global_offsets_and_cannot_borrow_following_bits() {
+        let source = [0b1011_1101, 0b0101_1010];
+        let mut reader = BitReader::new_bounded(&source, 3, 5).unwrap();
+
+        assert_eq!(reader.total_bits(), 16);
+        assert_eq!(reader.bit_position(), 3);
+        assert_eq!(reader.remaining_bits(), 5);
+        assert_eq!(reader.read_bits(5).unwrap(), 0b11101);
+        assert_eq!(
+            reader.read_flag().unwrap_err(),
+            ReadError::OutOfBounds {
+                requested_bits: 1,
+                bit_position: 8,
+                remaining_bits: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn bounded_reader_rejects_ranges_outside_the_source() {
+        assert_eq!(
+            BitReader::new_bounded(&[0; 1], 7, 2).unwrap_err(),
+            ReadError::OutOfBounds {
+                requested_bits: 2,
+                bit_position: 7,
+                remaining_bits: 1,
+            }
+        );
+        assert_eq!(
+            BitReader::new_bounded(&[0; 1], 9, 0).unwrap_err(),
+            ReadError::OutOfBounds {
+                requested_bits: 0,
+                bit_position: 9,
+                remaining_bits: 0,
+            }
+        );
     }
 
     #[test]

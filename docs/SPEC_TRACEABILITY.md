@@ -52,7 +52,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation/group/substream | P2 `6.2.1.3`–`6.2.1.14`；P1 `4.2.3.3`–`4.2.3.5`、`4.2.3.7`、`4.2.3.11`、`4.2.14.15` | `macindecode-ac4-bitstream` | `dac4` 与 TOC 一致性；`payload_base`/尺寸自洽；引用精确覆盖索引表 |
 | alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
-| presentation 响度、DRC envelope、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.3.12.3`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95 比特 DRC envelope、单/multi-group gain gate、associated scale 全组合、mono pan 合法/保留区间、截断/容量/变长溢出构造测试；DRC 内部与有效 gain 状态待后续 |
+| presentation 响度、DRC config、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.8`、`4.3.12.3`、`4.3.13.1`–`4.3.13.4`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/149 比特 DRC envelope、四类 decoder profile 与完整 curve 可选分支、I/dependent gate、有界截断、单/multi-group gain gate、associated scale 全组合及 mono pan 合法/保留区间构造测试；`drc_data()` 与跨帧有效状态待后续 |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
 | 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
@@ -1687,8 +1687,14 @@ dialnorm。构造反例特意在过短 envelope 后放置可读字节，解析�
 P2 `6.2.7.3` 解析保留 loudness version/extension、practice、dialgate/correction type、
 programme boundary、量化响度、RTLL 和未定义 extension bit view，不换算或应用任何增益。
 `6.3.3.1.19`–`6.3.3.1.21` 的 DRC 长度按 5 比特基础值和 `variable_bits(3) << 5` 扩展，
-完整 `drc_frame()` 在读取首个 `b_drc_present` 后作为有界 bit view 保留；长度为零、越过
-payload 或扩展溢出均拒绝，不能借用后续 metadata 补足。DRC 内部配置/逐帧数据仍未解析。
+完整 `drc_frame()` 作为有界 bit view 保留；长度为零、越过 payload 或扩展溢出均拒绝。
+TOC 的 `b_pres_ndot` 直接传给 P1 `4.2.14.5` 的 `drc_frame(b_iframe)`：DRC present 的
+independent frame 按 `4.2.14.6`–`4.2.14.8` 解析 `drc_config()`，固定容量保存 1–8 个
+decoder mode、内置/自定义输出电平、repeat/default/curve/gains 四类 profile、(E-)AC-3 profile
+及 compression curve 的 boost/cut control points、time constants 和 adaptive thresholds 原值。
+dependent frame 不猜测或重读配置；两种 frame 都把尚未解释的 `drc_data()` 保留为 envelope 内
+的 bit view。配置截断即使后面仍有可读 metadata，也必须在 DRC 边界失败，不能借用后续字段
+补足。`drc_data()`、Huffman gains、前一有效配置与 seek/reset/事务状态仍未解析或维护。
 `6.3.3.1.22`–`6.3.3.1.24` 再按 TOC 的规范 `n_substream_groups` 判定 group-gain gate：单
 group 不消费 presence，多 group 区分未携带、`b_keep` 和逐 group 新传的六比特码值。这里的
 `n_substream_groups` 不是 SGI specifier 数，config 1/4 的额外 dialogue-enhancement SGI 不增加

@@ -73,13 +73,15 @@ pub use presentation_substream::{
     AlternativePresentationSelection, PresentationAddDataBits, PresentationAdditionalData,
     PresentationAssociatedAudio, PresentationChannelContext,
     PresentationCoreStereoLoudnessCorrection, PresentationCustomDownmixConfiguration,
-    PresentationCustomDownmixData, PresentationCustomDownmixParameters, PresentationDrcFrameBits,
-    PresentationLoudnessCorrectionCode, PresentationLoudnessCorrectionData,
-    PresentationScreenDownmix, PresentationStereoDownmixCoefficients,
-    PresentationStereoDownmixKind, PresentationSubstreamContext, PresentationSubstreamError,
-    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainUpdate,
-    PresentationSubstreamSelectionContext, PresentationTopDownmix, PresentationTopPairDestination,
-    PresentationTopPairDownmix,
+    PresentationCustomDownmixData, PresentationCustomDownmixParameters,
+    PresentationDrcCompressionCurve, PresentationDrcConfiguration, PresentationDrcCurveSection,
+    PresentationDrcDecoderMode, PresentationDrcFrameBits, PresentationDrcOutputLevelRange,
+    PresentationDrcProfile, PresentationDrcTimeConstants, PresentationLoudnessCorrectionCode,
+    PresentationLoudnessCorrectionData, PresentationScreenDownmix,
+    PresentationStereoDownmixCoefficients, PresentationStereoDownmixKind,
+    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
+    PresentationSubstreamGroupGainUpdate, PresentationSubstreamSelectionContext,
+    PresentationTopDownmix, PresentationTopPairDestination, PresentationTopPairDownmix,
 };
 pub use reader::{BitReader, ReadError};
 #[cfg(feature = "audio-decode")]

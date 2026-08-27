@@ -331,6 +331,7 @@ impl Ac4Topology {
         }
         Some(PresentationSubstreamContext::new(
             substream.alternative,
+            substream.ndot,
             n_audio_substreams,
             presentation.n_substream_groups,
             channel.finish(),
