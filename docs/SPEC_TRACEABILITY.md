@@ -52,7 +52,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation/group/substream | P2 `6.2.1.3`–`6.2.1.14`；P1 `4.2.3.3`–`4.2.3.5`、`4.2.3.7`、`4.2.3.11`、`4.2.14.15` | `macindecode-ac4-bitstream` | `dac4` 与 TOC 一致性；`payload_base`/尺寸自洽；引用精确覆盖索引表 |
 | alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
-| presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；另覆盖 group/associated 全分支；group gain 有效状态待后续 |
+| presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
 | 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
@@ -1710,8 +1710,12 @@ gainset、截断 Huffman 码字及 version 0 尾随比特同样失败关闭。de
 `6.3.3.1.22`–`6.3.3.1.24` 再按 TOC 的规范 `n_substream_groups` 判定 group-gain gate：单
 group 不消费 presence，多 group 区分未携带、`b_keep` 和逐 group 新传的六比特码值。这里的
 `n_substream_groups` 不是 SGI specifier 数，config 1/4 的额外 dialogue-enhancement SGI 不增加
-gain 数组长度。当前 API 只保留逐帧更新形态与码值，并返回随后 `b_associated` 的精确 offset，不把
-`b_keep` 解析成跨帧有效增益。
+gain 数组长度。逐帧 API 保留原始更新形态与码值，并返回随后 `b_associated` 的精确 offset；
+`PresentationSubstreamGroupGainState` 另按 presentation 隔离有效数组。按 `6.3.3.1.23`，首次
+接收 `b_keep = 0` 前使用全零的 0 dB 码；之后 keep 沿用前值，新值替换整个数组。presence 缺席
+或单 group gate 不存在表示本帧无 group gain，状态归零；`b_pres_ndot` 独立帧先丢弃历史，保证
+无需前帧即可求得有效值。未 reset 的 dependent frame 若改变 group 数则结构化失败且旧状态
+不变；seek、换源、拓扑变化和不连续由调用方显式 reset。状态不做表 70 的 dB 换算或 gain 应用。
 
 `6.3.3.1.25`–`6.3.3.1.26` 再解析 `b_associated`，三个 scale presence 彼此独立；存在时保留
 8 比特 `scale_main`、`scale_main_centre` 与 `scale_main_front`。按 P1

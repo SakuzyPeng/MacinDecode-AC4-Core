@@ -459,7 +459,7 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 
 ## M4.5：Presentation/Metadata 解析闭环
 
-**前十二个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
+**前十三个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
 `6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
 device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
 active 与 alternative dataset index。名称即使不在字节边界也以无分配 8 比特元素视图保留；
@@ -497,9 +497,12 @@ data，缺少历史或 data 与配置不匹配时失败且不提交状态。成�
 I-frame 清空配置；seek、换源、拓扑变化与不连续由调用方显式 reset。这里仍不维护或应用 gain。
 其后按规范 `n_substream_groups` 解析
 group-gain presence 与 `b_keep`，并以固定容量数组保留逐 group 六比特 `sg_gain` 原值；单
-group 不错误消费 presence bit，八 group 上限、截断和非法上下文均有构造门禁。当前只区分
-未传输、未携带、沿用上一帧和
-新码值四种逐帧形态，尚不形成跨帧有效增益。随后按 `b_associated` 解析三个独立 presence 控制的
+group 不错误消费 presence bit，八 group 上限、截断和非法上下文均有构造门禁。原始更新区分
+未传输、未携带、沿用上一帧和新码值四种形态；`PresentationSubstreamGroupGainState` 再按
+presentation 延续有效六比特码值。首次收到 `b_keep = 0` 前使用全零默认值，新值替换整个数组，
+未携带或单 group gate 不存在时归零，独立帧从全零起算；未 reset 的 dependent frame 改变 group
+数会失败且保持旧状态。这里不换算表 70 的 dB 值，也不应用 gain。随后按 `b_associated` 解析三个
+独立 presence 控制的
 8 比特 scale 原值和 mono `pan_associated`；scale 静音码 `0xff` 合法保留，pan 的
 `0xf0..=0xff` 保留区间失败关闭，并暴露 `custom_dmx_data()` 的精确 offset。
 
@@ -526,8 +529,10 @@ frame、四类 profile、完整 curve 可选分支、I/dependent gate、repeat �
 DRC absent 清空与显式 reset；feature-gated gains 再覆盖固定 wideband、3×2×2 reference reset、
 4×8×4 的 128 gain 上限、version 1 扩展边界、未知版本透传、缺失上下文、截断码字与 version 0
 尾随拒绝；group gain 覆盖单/multi-group gate、absent、keep、
-六比特码值端点、八 group 上限、截断与上下文容量；associated audio 覆盖 absent、三个 scale
-presence 的全部组合、`0x00`/`0xff` scale 端点、mono gate、`0x00`/`0xef` pan 端点、全部保留
+六比特码值端点、八 group 上限、截断与上下文容量，并覆盖首次 keep 默认零、new→keep、absent
+清零、独立帧重置、dependent 拓扑变化失败、显式 reset 与失败事务性；associated audio 覆盖
+absent、三个 scale presence 的全部组合、`0x00`/`0xff` scale 端点、mono gate、`0x00`/`0xef`
+pan 端点、全部保留
 pan 码值与逐可选字段截断；custom downmix 覆盖六种输入配置派生、1/4 configuration、两种
 output 位宽、全部 tool 分支、stereo/LtRt/LFE gate、合法静音端点、unused/reserved 码值及
 逐可选字段截断；loudness correction 再覆盖 mode/core 阈值、完整 full/object 分支、9.X.4、
@@ -536,8 +541,8 @@ direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续依次补 presentation group gain 有效状态、audio-substream tools metadata、EMDF envelope
-与 alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
+后续依次补 audio-substream tools metadata、EMDF envelope 与 alternative dataset 数据路径；
+边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵
 

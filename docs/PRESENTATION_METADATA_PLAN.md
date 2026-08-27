@@ -2,11 +2,11 @@
 
 > **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
 > substream activation/dataset selection 前缀、公共 additional-data envelope，以及
-> dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新及
+> dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新与有效状态、
 > associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC
 > I-frame 配置与逐帧 data envelope 也已解析，跨帧状态可用前一有效配置解析 dependent data，
-> `audio-decode` 下可显式解码 Huffman gains；group gain 有效状态、音频 substream tools
-> metadata、EMDF payload 与 alternative dataset
+> `audio-decode` 下可显式解码 Huffman gains；音频 substream tools metadata、EMDF payload 与
+> alternative dataset
 > 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
 > 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
@@ -82,7 +82,11 @@ presentation 隔离前一有效配置，stateful parse 会据此解析 dependent
 替换配置，DRC 缺席的 I-frame 清空配置，缺少历史或 data 不匹配时失败且不提交状态。
 DRC envelope 后按规范 `n_substream_groups` 判定 group-gain
 presence：单 group 不消费该字段，多 group 则区分未携带、`b_keep` 沿用和逐 group 新传六比特
-`sg_gain` 码值。当前只保留逐帧原始更新，尚不把 `b_keep` 解析为跨帧有效增益。其后的
+`sg_gain` 码值。`PresentationSubstreamGroupGainState` 按 presentation 隔离有效码值：首次收到
+`b_keep = 0` 前按规范使用全零的 0 dB 码，`b_keep` 沿用前值，新值替换整个数组，未携带或单
+group gate 不存在时归零；`b_pres_ndot` 独立帧从全零起算。未 reset 的 dependent frame 若改变
+group 数则失败且不提交状态，避免把旧数组静默映射到新拓扑。状态只保留六比特码值，不换算或
+应用 gain。其后的
 `b_associated` 与三个独立 scale presence、可选 8 比特 scale 原值、mono gate 和
 `pan_associated` 已解析；scale 的 `0x00..=0xfe` 与静音码 `0xff` 均保留，pan 的合法
 `0x00..=0xef` 原样保留，规范禁止的 `0xf0..=0xff` 失败关闭。解析止于
@@ -96,9 +100,9 @@ correction 原值；core LoRo/LtRt 共用 presence，object correction 分支包
 payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角度换算、pan 或 downmix。
 
 当前无状态 API 已显式接收 TOC/拓扑上下文并解析 I-frame 配置及其 data envelope；stateful API
-另行显式接收按 presentation 隔离的 DRC 状态，feature-gated gain API 再接收表 168/169 与 P2
-表 69 派生的形状。后续 group gain 状态同样必须由调用方按 presentation 隔离。所有长度 envelope
-先验证边界，成功后才提交跨帧状态；seek、换源、拓扑变化或不连续由调用方显式 reset。
+另行显式接收按 presentation 隔离的 DRC 或 group gain 状态，feature-gated gain API 再接收表
+168/169 与 P2 表 69 派生的形状。所有长度 envelope 先验证边界，成功后才提交跨帧状态；seek、
+换源、拓扑变化或不连续由调用方显式 reset。
 
 ### 3.2 Audio-substream metadata
 

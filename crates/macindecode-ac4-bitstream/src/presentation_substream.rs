@@ -23,8 +23,9 @@
 //! curve reset/reserved，并保留 gain-set body。模块还解析逐帧 substream-group gain 更新、
 //! associated-audio scale/pan 码值、custom downmix 的配置、路由与 gain 码值，以及 loudness
 //! correction 的 presence 与 5 比特原始码值。`PresentationDrcState` 可按 presentation 隔离
-//! 前一有效配置并解析 dependent-frame data；启用 `audio-decode` 时还可解码 DRC Huffman gains
-//! 并还原整数码值。group gain 生效状态仍不解释，本模块也不执行任何处理。
+//! 前一有效配置并解析 dependent-frame data；`PresentationSubstreamGroupGainState` 以同样的
+//! presentation 作用域延续 group gain 六比特码值。启用 `audio-decode` 时还可解码 DRC Huffman
+//! gains 并还原整数码值。本模块不换算或应用任何 gain，也不执行其他处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -916,6 +917,13 @@ pub struct PresentationSubstreamGroupGainCodes {
 }
 
 impl PresentationSubstreamGroupGainCodes {
+    const fn zeros(len: usize) -> Self {
+        Self {
+            codes: [0; MAX_GROUPS_PER_PRESENTATION],
+            len,
+        }
+    }
+
     /// 按 presentation group 顺序取得全部六比特码值。
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
@@ -943,7 +951,8 @@ impl PresentationSubstreamGroupGainCodes {
 
 /// 当前帧的 substream-group gain 原始更新形态。
 ///
-/// 本枚举保留 `b_substream_group_gains_present`/`b_keep` 的码流语义，不解析上一帧的有效值。
+/// 本枚举保留 `b_substream_group_gains_present`/`b_keep` 的码流语义；可交给
+/// [`PresentationSubstreamGroupGainState::apply`] 取得当前帧的有效六比特码值。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSubstreamGroupGainUpdate {
     /// `n_substream_groups <= 1`，语法中不传输 group-gain presence bit。
@@ -954,6 +963,160 @@ pub enum PresentationSubstreamGroupGainUpdate {
     KeepPrevious,
     /// `b_keep` 为假，本帧按 group 顺序传输一组新码值。
     NewValues(PresentationSubstreamGroupGainCodes),
+}
+
+/// 延续 presentation substream-group gain 时的状态错误。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationSubstreamGroupGainStateError {
+    /// group 数超过固定容量。
+    CapacityExceeded {
+        /// 上下文声明的 group 数。
+        declared: u32,
+        /// 实现上限。
+        limit: usize,
+    },
+    /// 逐帧更新形态与 `n_substream_groups` 的语法 gate 不一致。
+    InconsistentUpdate {
+        /// 上下文声明的 group 数。
+        declared: u32,
+        /// 调用方提供的逐帧更新。
+        update: PresentationSubstreamGroupGainUpdate,
+    },
+    /// dependent frame 的 group 数与已有状态不同，无法无歧义映射旧码值。
+    SubstreamGroupCountChanged {
+        /// 状态中前一有效 group 数。
+        previous: usize,
+        /// 当前上下文声明的 group 数。
+        current: usize,
+    },
+}
+
+impl fmt::Display for PresentationSubstreamGroupGainStateError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::CapacityExceeded { declared, limit } => write!(
+                formatter,
+                "Substream-group gain count {declared} exceeds implementation limit {limit}"
+            ),
+            Self::InconsistentUpdate { declared, update } => write!(
+                formatter,
+                "Substream-group gain update {update:?} is inconsistent with declared group count {declared}"
+            ),
+            Self::SubstreamGroupCountChanged { previous, current } => write!(
+                formatter,
+                "Dependent presentation changed substream-group count from {previous} to {current}; reset the gain state at the topology boundary"
+            ),
+        }
+    }
+}
+
+impl core::error::Error for PresentationSubstreamGroupGainStateError {}
+
+/// 一个 presentation 的当前有效 substream-group gain 六比特码值。
+///
+/// 状态必须按 presentation 隔离。`b_keep` 在首次新值前使用表 70 的 0 dB 码值 `0`；
+/// [`PresentationSubstreamGroupGainUpdate::NewValues`] 替换全部值；未携带 group gain 或语法
+/// gate 不存在时，本帧有效值为 `0`。`b_pres_ndot` 为真的独立帧先丢弃历史，保证从随机访问点
+/// 仅凭当前 presentation substream 即可得到有效值。
+///
+/// seek、换源、拓扑变化或调用方检测到不连续时应调用 [`reset`](Self::reset)。dependent frame
+/// 在未 reset 的状态下改变 group 数会失败关闭，避免把旧数组静默映射到新拓扑。所有更新均为
+/// 事务性；本类型只保留六比特码值，不换算 dB，也不应用 gain。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PresentationSubstreamGroupGainState {
+    effective_codes: Option<PresentationSubstreamGroupGainCodes>,
+}
+
+impl PresentationSubstreamGroupGainState {
+    /// 创建尚未接收 presentation 上下文与 gain 更新的状态。
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            effective_codes: None,
+        }
+    }
+
+    /// 最近一次成功提交的有效六比特码值；应用首帧前为 `None`。
+    #[must_use]
+    pub const fn effective_codes(self) -> Option<PresentationSubstreamGroupGainCodes> {
+        self.effective_codes
+    }
+
+    /// 在 seek、换源、拓扑变化或不连续处清除 group 形状与有效码值。
+    pub fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    /// 按当前 presentation 上下文应用一帧原始 group-gain 更新。
+    ///
+    /// 返回当前帧生效的逐 group 六比特码值。`KeepPrevious` 在没有历史时返回全零；独立帧同样
+    /// 从全零状态处理当前更新。`NotPresent` 与 `NotSignaled` 都使当前有效数组归零。
+    ///
+    /// # Errors
+    ///
+    /// group 数超过固定容量、`update` 不是由相同 group 数的 parser 上下文产生，或未 reset 的
+    /// dependent frame 改变 group 数时返回错误。任何失败都不会修改状态。
+    pub fn apply(
+        &mut self,
+        update: PresentationSubstreamGroupGainUpdate,
+        context: PresentationSubstreamContext,
+    ) -> Result<PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainStateError> {
+        let declared = context.n_substream_groups();
+        let count = usize::try_from(declared).map_err(|_| {
+            PresentationSubstreamGroupGainStateError::CapacityExceeded {
+                declared,
+                limit: MAX_GROUPS_PER_PRESENTATION,
+            }
+        })?;
+        if count > MAX_GROUPS_PER_PRESENTATION {
+            return Err(PresentationSubstreamGroupGainStateError::CapacityExceeded {
+                declared,
+                limit: MAX_GROUPS_PER_PRESENTATION,
+            });
+        }
+
+        let update_matches_context = match update {
+            PresentationSubstreamGroupGainUpdate::NotSignaled => count <= 1,
+            PresentationSubstreamGroupGainUpdate::NotPresent
+            | PresentationSubstreamGroupGainUpdate::KeepPrevious => count > 1,
+            PresentationSubstreamGroupGainUpdate::NewValues(codes) => {
+                count > 1 && codes.len() == count
+            }
+        };
+        if !update_matches_context {
+            return Err(
+                PresentationSubstreamGroupGainStateError::InconsistentUpdate { declared, update },
+            );
+        }
+
+        let previous = if context.presentation_is_independent() {
+            None
+        } else {
+            self.effective_codes
+        };
+        if let Some(previous) = previous
+            && previous.len() != count
+        {
+            return Err(
+                PresentationSubstreamGroupGainStateError::SubstreamGroupCountChanged {
+                    previous: previous.len(),
+                    current: count,
+                },
+            );
+        }
+
+        let previous = previous.unwrap_or(PresentationSubstreamGroupGainCodes::zeros(count));
+        let effective = match update {
+            PresentationSubstreamGroupGainUpdate::NotSignaled
+            | PresentationSubstreamGroupGainUpdate::NotPresent => {
+                PresentationSubstreamGroupGainCodes::zeros(count)
+            }
+            PresentationSubstreamGroupGainUpdate::KeepPrevious => previous,
+            PresentationSubstreamGroupGainUpdate::NewValues(codes) => codes,
+        };
+        self.effective_codes = Some(effective);
+        Ok(effective)
+    }
 }
 
 /// 当前 presentation 的 associated-audio scaling 与 mono pan 原始码值。
@@ -1805,8 +1968,8 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 /// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
 /// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC I-frame
 /// 配置与 I-frame `drc_data()` 包络已解析；使用 `parse_with_drc_state()` 时 dependent frame
-/// 也会按前一有效配置解析，`audio-decode` 下可再另行解码 Huffman gains。group gain
-/// 跨帧有效状态仍未解析。
+/// 也会按前一有效配置解析，`audio-decode` 下可再另行解码 Huffman gains。逐帧 group gain
+/// 更新可另交 [`PresentationSubstreamGroupGainState`] 得到跨帧有效六比特码值。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1894,8 +2057,8 @@ impl<'a> Ac4PresentationSubstream<'a> {
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
     /// `drc_metadata_size` 严格定界完整 `drc_frame()`；I-frame 会解析 `drc_config()` 与
     /// `drc_data()` 的 gain-set/reset 包络，gain-set body 仍保持原始视图，且不执行 DRC；group
-    /// gain 只保留逐帧传输形态，不解析跨帧有效值或应用增益；associated-audio scale/pan 同样
-    /// 只保留原值，不执行 gain、pan 或
+    /// gain 只保留逐帧传输形态；跨帧有效码值由 [`PresentationSubstreamGroupGainState`] 另行
+    /// 延续，且不应用增益；associated-audio scale/pan 同样只保留原值，不执行 gain、pan 或
     /// renderer 处理；custom downmix 同样只保留配置、路由与
     /// gain 码值，不执行矩阵运算；loudness correction 也只保留原始码值，不做 dB 换算或应用。
     ///
@@ -3152,6 +3315,32 @@ mod tests {
             1,
             PresentationChannelContext::new(Some(0), None, false, 0, false),
         )
+    }
+
+    fn group_gain_context(
+        independent: bool,
+        n_substream_groups: u32,
+    ) -> PresentationSubstreamContext {
+        PresentationSubstreamContext::new(
+            false,
+            independent,
+            n_substream_groups,
+            n_substream_groups,
+            PresentationChannelContext::new(Some(0), None, false, 0, false),
+        )
+    }
+
+    fn group_gain_codes(values: &[u8]) -> PresentationSubstreamGroupGainCodes {
+        assert!(values.len() <= MAX_GROUPS_PER_PRESENTATION);
+        assert!(values.iter().all(|value| *value <= 63));
+        let mut codes = [0; MAX_GROUPS_PER_PRESENTATION];
+        for (slot, value) in codes.iter_mut().zip(values) {
+            *slot = *value;
+        }
+        PresentationSubstreamGroupGainCodes {
+            codes,
+            len: values.len(),
+        }
     }
 
     fn push_fixed_gain_presentation(
@@ -4481,6 +4670,173 @@ mod tests {
         assert_eq!(parsed.b_associated_offset, expected_associated_offset);
         assert_eq!(parsed.associated_audio, None);
         assert_eq!(parsed.custom_downmix_offset, expected_custom_downmix_offset);
+    }
+
+    #[test]
+    fn group_gain_state_defaults_to_zero_then_keeps_new_values() {
+        let context = group_gain_context(false, 2);
+        let mut state = PresentationSubstreamGroupGainState::new();
+        assert_eq!(state.effective_codes(), None);
+
+        let initial = state
+            .apply(PresentationSubstreamGroupGainUpdate::KeepPrevious, context)
+            .unwrap();
+        assert_eq!(initial.as_slice(), &[0, 0]);
+
+        let transmitted = group_gain_codes(&[1, 63]);
+        let updated = state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NewValues(transmitted),
+                context,
+            )
+            .unwrap();
+        assert_eq!(updated.as_slice(), &[1, 63]);
+
+        let kept = state
+            .apply(PresentationSubstreamGroupGainUpdate::KeepPrevious, context)
+            .unwrap();
+        assert_eq!(kept, transmitted);
+        assert_eq!(state.effective_codes(), Some(transmitted));
+    }
+
+    #[test]
+    fn group_gain_state_resets_absent_single_group_and_independent_frames_to_zero() {
+        let two_groups = group_gain_context(false, 2);
+        let mut state = PresentationSubstreamGroupGainState::new();
+        state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NewValues(group_gain_codes(&[5, 62])),
+                two_groups,
+            )
+            .unwrap();
+
+        let absent = state
+            .apply(PresentationSubstreamGroupGainUpdate::NotPresent, two_groups)
+            .unwrap();
+        assert_eq!(absent.as_slice(), &[0, 0]);
+        let kept_after_absent = state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::KeepPrevious,
+                two_groups,
+            )
+            .unwrap();
+        assert_eq!(kept_after_absent.as_slice(), &[0, 0]);
+
+        state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NewValues(group_gain_codes(&[5, 62])),
+                two_groups,
+            )
+            .unwrap();
+        let independent = state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::KeepPrevious,
+                group_gain_context(true, 2),
+            )
+            .unwrap();
+        assert_eq!(independent.as_slice(), &[0, 0]);
+
+        let mut single_group = PresentationSubstreamGroupGainState::new();
+        let not_signaled = single_group
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NotSignaled,
+                group_gain_context(false, 1),
+            )
+            .unwrap();
+        assert_eq!(not_signaled.as_slice(), &[0]);
+
+        single_group.reset();
+        assert_eq!(single_group.effective_codes(), None);
+    }
+
+    #[test]
+    fn group_gain_state_rejects_dependent_topology_changes_transactionally() {
+        let mut state = PresentationSubstreamGroupGainState::new();
+        let transmitted = group_gain_codes(&[1, 63]);
+        state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NewValues(transmitted),
+                group_gain_context(false, 2),
+            )
+            .unwrap();
+        let previous = state;
+
+        assert_eq!(
+            state
+                .apply(
+                    PresentationSubstreamGroupGainUpdate::NotSignaled,
+                    group_gain_context(false, 1),
+                )
+                .unwrap_err(),
+            PresentationSubstreamGroupGainStateError::SubstreamGroupCountChanged {
+                previous: 2,
+                current: 1,
+            }
+        );
+        assert_eq!(state, previous);
+
+        assert_eq!(
+            state
+                .apply(
+                    PresentationSubstreamGroupGainUpdate::NotSignaled,
+                    group_gain_context(false, 2),
+                )
+                .unwrap_err(),
+            PresentationSubstreamGroupGainStateError::InconsistentUpdate {
+                declared: 2,
+                update: PresentationSubstreamGroupGainUpdate::NotSignaled,
+            }
+        );
+        assert_eq!(state, previous);
+
+        assert_eq!(
+            state
+                .apply(
+                    PresentationSubstreamGroupGainUpdate::NewValues(transmitted),
+                    group_gain_context(false, 3),
+                )
+                .unwrap_err(),
+            PresentationSubstreamGroupGainStateError::InconsistentUpdate {
+                declared: 3,
+                update: PresentationSubstreamGroupGainUpdate::NewValues(transmitted),
+            }
+        );
+        assert_eq!(state, previous);
+
+        assert_eq!(
+            state
+                .apply(
+                    PresentationSubstreamGroupGainUpdate::KeepPrevious,
+                    group_gain_context(false, 9),
+                )
+                .unwrap_err(),
+            PresentationSubstreamGroupGainStateError::CapacityExceeded {
+                declared: 9,
+                limit: MAX_GROUPS_PER_PRESENTATION,
+            }
+        );
+        assert_eq!(state, previous);
+    }
+
+    #[test]
+    fn independent_group_gain_state_accepts_the_eight_group_boundary() {
+        let mut state = PresentationSubstreamGroupGainState::new();
+        state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NewValues(group_gain_codes(&[1, 63])),
+                group_gain_context(false, 2),
+            )
+            .unwrap();
+
+        let boundary = group_gain_codes(&[0, 1, 2, 3, 60, 61, 62, 63]);
+        let effective = state
+            .apply(
+                PresentationSubstreamGroupGainUpdate::NewValues(boundary),
+                group_gain_context(true, 8),
+            )
+            .unwrap();
+        assert_eq!(effective, boundary);
+        assert_eq!(state.effective_codes(), Some(boundary));
     }
 
     #[test]

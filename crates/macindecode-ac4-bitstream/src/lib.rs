@@ -81,7 +81,8 @@ pub use presentation_substream::{
     PresentationLoudnessCorrectionCode, PresentationLoudnessCorrectionData,
     PresentationScreenDownmix, PresentationStereoDownmixCoefficients,
     PresentationStereoDownmixKind, PresentationSubstreamContext, PresentationSubstreamError,
-    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainUpdate,
+    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainState,
+    PresentationSubstreamGroupGainStateError, PresentationSubstreamGroupGainUpdate,
     PresentationSubstreamSelectionContext, PresentationTopDownmix, PresentationTopPairDestination,
     PresentationTopPairDownmix,
 };
