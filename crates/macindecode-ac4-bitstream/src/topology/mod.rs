@@ -384,7 +384,7 @@ mod tests {
         );
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 1, true))
+            Some(PresentationSubstreamContext::new(false, 1, 1, true))
         );
         assert_eq!(topology.presentation_substream_selection_context(1), None);
         assert_eq!(topology.presentation_substream_context(1), None);
@@ -479,7 +479,7 @@ mod tests {
         );
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(true, 3, true))
+            Some(PresentationSubstreamContext::new(true, 3, 1, true))
         );
     }
 
@@ -514,7 +514,7 @@ mod tests {
         );
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 0, true))
+            Some(PresentationSubstreamContext::new(false, 0, 0, true))
         );
     }
 
@@ -574,7 +574,7 @@ mod tests {
         assert_eq!(topology.scene_path(), ScenePath::Ajoc);
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 1, true))
+            Some(PresentationSubstreamContext::new(false, 1, 1, true))
         );
         assert_eq!(
             topology.total_objects(),
@@ -639,7 +639,7 @@ mod tests {
         assert_eq!(topology.total_objects(), 0);
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 1, false))
+            Some(PresentationSubstreamContext::new(false, 1, 1, false))
         );
         let SubstreamInfo::Chan(chan) = topology
             .groups()

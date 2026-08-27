@@ -189,12 +189,13 @@ impl Ac4Topology {
             .map(PresentationSubstreamContext::selection_context)
     }
 
-    /// 取得 presentation selection 与 common additional-data 的完整解析上下文。
+    /// 取得 presentation selection、common metadata 与 group gain 的完整解析上下文。
     ///
     /// 除 `n_substreams_in_presentation` 外，本方法按 P2 `6.3.3.1.27` 的
     /// Pseudocode 25 判断 `pres_ch_mode == -1`：presentation 没有可形成声道模式的 group，
     /// 或任一 group 含对象/A-JOC substream 时，该条件成立，additional-data 中会传输
-    /// `b_oamd_common_timing`。
+    /// `b_oamd_common_timing`。同时直接保留 presentation 语法声明的 `n_substream_groups`，
+    /// 不能用可能包含额外 dialogue-enhancement SGI 的 `group_indices()` 长度替代。
     #[must_use]
     pub fn presentation_substream_context(
         &self,
@@ -215,6 +216,7 @@ impl Ac4Topology {
         Some(PresentationSubstreamContext::new(
             substream.alternative,
             n_audio_substreams,
+            presentation.n_substream_groups,
             has_object_coded || !has_channel_coded,
         ))
     }

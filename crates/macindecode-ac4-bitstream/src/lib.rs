@@ -72,6 +72,7 @@ pub use presentation_substream::{
     Ac4PresentationSubstream, Ac4PresentationSubstreamSelection, AdvancedDeConfig, AdvancedDeData,
     AlternativePresentationSelection, PresentationAddDataBits, PresentationAdditionalData,
     PresentationDrcFrameBits, PresentationSubstreamContext, PresentationSubstreamError,
+    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainUpdate,
     PresentationSubstreamSelectionContext,
 };
 pub use reader::{BitReader, ReadError};

@@ -1,16 +1,17 @@
-//! `ac4_presentation_substream()` 的选择、additional-data、响度与 DRC envelope。
+//! `ac4_presentation_substream()` 的选择、additional-data、响度、DRC 与 group gain。
 //!
 //! 对应 `TS103190-2:v1.3.1:6.2.2.3`、`6.2.2.5`；选择字段语义见
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
 //! `6.3.3.1.16` 至 `6.3.3.1.18`；响度语法见 `6.2.7.3`，共享字段语义见
 //! `TS103190-1:v1.4.1:4.3.12.3`；DRC envelope 见 `6.3.3.1.19` 至
-//! `6.3.3.1.21`。
+//! `6.3.3.1.21`，substream-group gain 见 `6.3.3.1.22` 至 `6.3.3.1.24`。
 //!
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
 //! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
-//! `drc_frame()` 原始比特。DRC 内部语法、group gain、associated audio、custom downmix 与
-//! loudness correction 仍不解释；本模块也不执行任何处理。
+//! `drc_frame()` 原始比特及逐帧 substream-group gain 更新。DRC 内部语法、group gain
+//! 跨帧生效状态、associated audio、custom downmix 与 loudness correction 仍不解释；本模块也
+//! 不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -39,6 +40,8 @@ pub enum PresentationSubstreamCapacity {
     Targets,
     /// 一个 presentation 中按语法顺序出现的音频 substream 数。
     AudioSubstreams,
+    /// 一个 presentation 声明的 substream group 数。
+    SubstreamGroups,
 }
 
 impl fmt::Display for PresentationSubstreamCapacity {
@@ -46,6 +49,7 @@ impl fmt::Display for PresentationSubstreamCapacity {
         formatter.write_str(match *self {
             PresentationSubstreamCapacity::Targets => "alternative presentation targets",
             PresentationSubstreamCapacity::AudioSubstreams => "audio substreams in a presentation",
+            PresentationSubstreamCapacity::SubstreamGroups => "substream groups in a presentation",
         })
     }
 }
@@ -173,18 +177,23 @@ impl PresentationSubstreamSelectionContext {
 
 /// 解析完整 presentation substream 前缀所需的 TOC/拓扑上下文。
 ///
+/// `n_substream_groups` 是 presentation 语法声明的角色 group 数，用于读取逐 group gain；它与
+/// [`PresentationSubstreamSelectionContext::n_audio_substreams`] 的音频 substream 数以及 SGI
+/// specifier 数都不是同一概念。
+///
 /// `pres_ch_mode_undefined` 精确对应规范中的 `pres_ch_mode == -1`：此时
 /// additional-data envelope 内会多传一个 `b_oamd_common_timing`。调用方应优先使用
 /// [`crate::topology::Ac4Topology::presentation_substream_context`]，避免自行推导该条件。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PresentationSubstreamContext {
     selection: PresentationSubstreamSelectionContext,
+    n_substream_groups: u32,
     pres_ch_mode_undefined: bool,
 }
 
 impl Default for PresentationSubstreamContext {
     fn default() -> Self {
-        Self::new(false, 0, true)
+        Self::new(false, 0, 0, true)
     }
 }
 
@@ -194,10 +203,12 @@ impl PresentationSubstreamContext {
     pub const fn new(
         alternative: bool,
         n_audio_substreams: u32,
+        n_substream_groups: u32,
         pres_ch_mode_undefined: bool,
     ) -> Self {
         Self {
             selection: PresentationSubstreamSelectionContext::new(alternative, n_audio_substreams),
+            n_substream_groups,
             pres_ch_mode_undefined,
         }
     }
@@ -206,6 +217,14 @@ impl PresentationSubstreamContext {
     #[must_use]
     pub const fn selection_context(self) -> PresentationSubstreamSelectionContext {
         self.selection
+    }
+
+    /// presentation 的规范 `n_substream_groups`，用于判定并读取 group gain 数组。
+    ///
+    /// 该值不一定等于 SGI specifier 数；config 1/4 的 dialogue-enhancement SGI 不增加此计数。
+    #[must_use]
+    pub const fn n_substream_groups(self) -> u32 {
+        self.n_substream_groups
     }
 
     /// presentation 的 `pres_ch_mode` 是否为规范中的未定义值 `-1`。
@@ -338,6 +357,56 @@ impl<'a> PresentationAddDataBits<'a> {
 ///
 /// 当前增量只读取首个 `b_drc_present` 并保留整个 frame，不解释或执行 DRC。
 pub type PresentationDrcFrameBits<'a> = PresentationAddDataBits<'a>;
+
+/// 当前帧传输的逐 substream-group `sg_gain` 六比特码值。
+///
+/// 最多保存 [`MAX_GROUPS_PER_PRESENTATION`] 个值，不做 dB 换算或增益应用。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationSubstreamGroupGainCodes {
+    codes: [u8; MAX_GROUPS_PER_PRESENTATION],
+    len: usize,
+}
+
+impl PresentationSubstreamGroupGainCodes {
+    /// 按 presentation group 顺序取得全部六比特码值。
+    #[must_use]
+    pub fn as_slice(&self) -> &[u8] {
+        self.codes.get(..self.len).unwrap_or(&[])
+    }
+
+    /// 码值数量。
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.len
+    }
+
+    /// 是否没有码值。
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// 取得一个 group 的六比特码值。
+    #[must_use]
+    pub fn get(&self, index: usize) -> Option<u8> {
+        self.as_slice().get(index).copied()
+    }
+}
+
+/// 当前帧的 substream-group gain 原始更新形态。
+///
+/// 本枚举保留 `b_substream_group_gains_present`/`b_keep` 的码流语义，不解析上一帧的有效值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationSubstreamGroupGainUpdate {
+    /// `n_substream_groups <= 1`，语法中不传输 group-gain presence bit。
+    NotSignaled,
+    /// presence bit 为零，本帧不携带 group-gain 更新。
+    NotPresent,
+    /// `b_keep` 为真，应沿用上一帧有效值；首次接收前的规范默认值为 0 dB。
+    KeepPrevious,
+    /// `b_keep` 为假，本帧按 group 顺序传输一组新码值。
+    NewValues(PresentationSubstreamGroupGainCodes),
+}
 
 impl<'a> IntoIterator for PresentationAddDataBits<'a> {
     type Item = bool;
@@ -905,11 +974,11 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
     }
 }
 
-/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度与 DRC envelope。
+/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度、DRC 与 group gain。
 ///
 /// [`drc_metadata_size_value_offset`](Self::drc_metadata_size_value_offset) 指向响度字段之后的
-/// `drc_metadata_size_value`；[`drc_frame`](Self::drc_frame) 的末尾则指向下一段 presentation
-/// metadata。DRC 内部语法及其后字段尚未解析。
+/// `drc_metadata_size_value`；[`b_associated_offset`](Self::b_associated_offset) 指向 group gain
+/// 之后的 associated-audio metadata。DRC 内部语法、group gain 跨帧有效状态和后续字段尚未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -928,6 +997,10 @@ pub struct Ac4PresentationSubstream<'a> {
     pub drc_present: bool,
     /// 由 `drc_metadata_size` 严格定界的完整 `drc_frame()` 原始比特。
     pub drc_frame: PresentationDrcFrameBits<'a>,
+    /// 当前帧传输的 substream-group gain 原始更新。
+    pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,
+    /// `b_associated` 在 payload 内的精确比特偏移。
+    pub b_associated_offset: u64,
 }
 
 impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
@@ -940,27 +1013,31 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.drc_metadata_size_value_offset == other.drc_metadata_size_value_offset
             && self.drc_present == other.drc_present
             && self.drc_frame == other.drc_frame
+            && self.substream_group_gain_update == other.substream_group_gain_update
+            && self.b_associated_offset == other.b_associated_offset
     }
 }
 
 impl Eq for Ac4PresentationSubstream<'_> {}
 
 impl<'a> Ac4PresentationSubstream<'a> {
-    /// 解析 selection、common additional-data、presentation 响度与 DRC envelope。
+    /// 解析 selection、common additional-data、presentation 响度、DRC envelope 与 group gain。
     ///
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
-    /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC。
+    /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC；group gain
+    /// 只保留逐帧传输形态，不解析跨帧有效值或应用增益。
     ///
     /// # Errors
     ///
-    /// selection 字段、additional-data/DRC 长度或其已知字段截断，变长字段溢出，或计数超过
-    /// 固定容量时返回错误。零长度 DRC envelope 不能容纳必需的 presence bit，同样返回错误。
+    /// selection 字段、additional-data/DRC/group gain 或其已知字段截断，变长字段溢出，或计数
+    /// 超过固定容量时返回错误。零长度 DRC envelope 不能容纳必需的 presence bit，同样返回错误。
     pub fn parse(
         payload: &'a [u8],
         context: PresentationSubstreamContext,
     ) -> Result<Self, PresentationSubstreamError> {
+        let n_substream_groups = checked_substream_group_count(context.n_substream_groups)?;
         let selection =
             Ac4PresentationSubstreamSelection::parse(payload, context.selection_context())?;
         let mut reader = BitReader::new(payload);
@@ -986,6 +1063,9 @@ impl<'a> Ac4PresentationSubstream<'a> {
         };
         let drc_metadata_size_value_offset = reader.bit_position();
         let (drc_present, drc_frame) = parse_drc_frame_envelope(&mut reader, payload)?;
+        let substream_group_gain_update =
+            parse_substream_group_gain_update(&mut reader, n_substream_groups)?;
+        let b_associated_offset = reader.bit_position();
         Ok(Self {
             selection,
             additional_data,
@@ -995,8 +1075,53 @@ impl<'a> Ac4PresentationSubstream<'a> {
             drc_metadata_size_value_offset,
             drc_present,
             drc_frame,
+            substream_group_gain_update,
+            b_associated_offset,
         })
     }
+}
+
+fn checked_substream_group_count(declared: u32) -> Result<usize, PresentationSubstreamError> {
+    let count =
+        usize::try_from(declared).map_err(|_| PresentationSubstreamError::CapacityExceeded {
+            what: PresentationSubstreamCapacity::SubstreamGroups,
+            declared,
+            limit: MAX_GROUPS_PER_PRESENTATION,
+        })?;
+    if count > MAX_GROUPS_PER_PRESENTATION {
+        return Err(PresentationSubstreamError::CapacityExceeded {
+            what: PresentationSubstreamCapacity::SubstreamGroups,
+            declared,
+            limit: MAX_GROUPS_PER_PRESENTATION,
+        });
+    }
+    Ok(count)
+}
+
+fn parse_substream_group_gain_update(
+    reader: &mut BitReader<'_>,
+    n_substream_groups: usize,
+) -> Result<PresentationSubstreamGroupGainUpdate, PresentationSubstreamError> {
+    if n_substream_groups <= 1 {
+        return Ok(PresentationSubstreamGroupGainUpdate::NotSignaled);
+    }
+    if !reader.read_flag()? {
+        return Ok(PresentationSubstreamGroupGainUpdate::NotPresent);
+    }
+    if reader.read_flag()? {
+        return Ok(PresentationSubstreamGroupGainUpdate::KeepPrevious);
+    }
+
+    let mut codes = [0u8; MAX_GROUPS_PER_PRESENTATION];
+    for code in codes.iter_mut().take(n_substream_groups) {
+        *code = u8::try_from(reader.read_bits(6)?).unwrap_or(u8::MAX);
+    }
+    Ok(PresentationSubstreamGroupGainUpdate::NewValues(
+        PresentationSubstreamGroupGainCodes {
+            codes,
+            len: n_substream_groups,
+        },
+    ))
 }
 
 fn parse_drc_frame_envelope<'a>(
@@ -1334,7 +1459,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, false),
+            PresentationSubstreamContext::new(false, 1, 1, false),
         )
         .unwrap();
 
@@ -1350,6 +1475,11 @@ mod tests {
         assert_eq!(parsed.drc_frame.len_bits(), 1);
         assert_eq!(parsed.drc_frame.get(0), Some(false));
         assert_eq!(parsed.drc_frame.end_bit_offset(), 16);
+        assert_eq!(
+            parsed.substream_group_gain_update,
+            PresentationSubstreamGroupGainUpdate::NotSignaled
+        );
+        assert_eq!(parsed.b_associated_offset, 16);
     }
 
     #[test]
@@ -1361,7 +1491,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 bits.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, false),
+                PresentationSubstreamContext::new(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -1375,7 +1505,10 @@ mod tests {
     #[test]
     fn default_context_keeps_zero_group_channel_mode_undefined() {
         let context = PresentationSubstreamContext::default();
-        assert_eq!(context, PresentationSubstreamContext::new(false, 0, true));
+        assert_eq!(
+            context,
+            PresentationSubstreamContext::new(false, 0, 0, true)
+        );
 
         let mut bits = TestBits::new();
         bits.push(1, 1); // b_additional_data
@@ -1397,7 +1530,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_object_additional_data_and_ignores_post_drc_suffix_in_equality() {
+    fn parses_object_additional_data_and_ignores_post_group_gain_suffix_in_equality() {
         let mut envelope = TestBits::new();
         envelope.push(1, 1); // b_additional_data
         envelope.push(0, 4); // one additional-data byte
@@ -1414,7 +1547,7 @@ mod tests {
         let mut right_bits = envelope;
         push_minimal_common_metadata_prefix(&mut right_bits, 0b101_0101);
         right_bits.push(0b1111, 4);
-        let context = PresentationSubstreamContext::new(false, 1, true);
+        let context = PresentationSubstreamContext::new(false, 1, 1, true);
         let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
         let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
 
@@ -1435,7 +1568,12 @@ mod tests {
         assert_eq!(left.drc_metadata_size_value_offset, 24);
         assert_eq!(left.drc_frame.bit_offset(), 30);
         assert_eq!(left.drc_frame.end_bit_offset(), 31);
-        assert_eq!(left, right, "DRC 之后的字段尚未进入已解析视图");
+        assert_eq!(
+            left.substream_group_gain_update,
+            PresentationSubstreamGroupGainUpdate::NotSignaled
+        );
+        assert_eq!(left.b_associated_offset, 31);
+        assert_eq!(left, right, "group gain 之后的字段尚未进入已解析视图");
     }
 
     #[test]
@@ -1451,7 +1589,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, false),
+            PresentationSubstreamContext::new(false, 1, 1, false),
         )
         .unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1485,7 +1623,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, true),
+            PresentationSubstreamContext::new(false, 1, 1, true),
         )
         .unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1522,7 +1660,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, true),
+            PresentationSubstreamContext::new(false, 1, 1, true),
         )
         .unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1554,7 +1692,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 bits.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, true),
+                PresentationSubstreamContext::new(false, 1, 1, true),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -1582,7 +1720,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, true),
+            PresentationSubstreamContext::new(false, 1, 1, true),
         )
         .unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1639,7 +1777,7 @@ mod tests {
         let payload = bits.as_bytes();
         let parsed = Ac4PresentationSubstream::parse(
             payload,
-            PresentationSubstreamContext::new(false, 1, false),
+            PresentationSubstreamContext::new(false, 1, 1, false),
         )
         .unwrap();
         let loudness = parsed.further_loudness.unwrap();
@@ -1709,7 +1847,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, false),
+            PresentationSubstreamContext::new(false, 1, 1, false),
         )
         .unwrap();
 
@@ -1722,6 +1860,114 @@ mod tests {
         assert_eq!(parsed.drc_frame.get(94), Some(false));
         assert_eq!(parsed.drc_frame.get(95), None);
         assert_eq!(parsed.drc_frame.as_aligned_slice(), None);
+        assert_eq!(
+            parsed.substream_group_gain_update,
+            PresentationSubstreamGroupGainUpdate::NotSignaled
+        );
+        assert_eq!(parsed.b_associated_offset, expected_frame_end);
+    }
+
+    #[test]
+    fn distinguishes_absent_and_kept_substream_group_gains() {
+        let mut prefix = TestBits::new();
+        prefix.push(0, 1); // no additional data
+        push_minimal_common_metadata_prefix(&mut prefix, 0);
+
+        let mut absent = prefix.clone();
+        absent.push(0, 1); // b_substream_group_gains_present
+        absent.push(0b111_1111, 7); // associated metadata must remain untouched
+        let absent = Ac4PresentationSubstream::parse(
+            absent.as_bytes(),
+            PresentationSubstreamContext::new(false, 2, 2, false),
+        )
+        .unwrap();
+        assert_eq!(
+            absent.substream_group_gain_update,
+            PresentationSubstreamGroupGainUpdate::NotPresent
+        );
+        assert_eq!(absent.b_associated_offset, 17);
+
+        let mut kept = prefix;
+        kept.push(1, 1); // b_substream_group_gains_present
+        kept.push(1, 1); // b_keep
+        kept.push(0b11_1111, 6); // associated metadata must remain untouched
+        let kept = Ac4PresentationSubstream::parse(
+            kept.as_bytes(),
+            PresentationSubstreamContext::new(false, 2, 2, false),
+        )
+        .unwrap();
+        assert_eq!(
+            kept.substream_group_gain_update,
+            PresentationSubstreamGroupGainUpdate::KeepPrevious
+        );
+        assert_eq!(kept.b_associated_offset, 18);
+    }
+
+    #[test]
+    fn parses_substream_group_gain_codes_at_capacity() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_common_metadata_prefix(&mut bits, 0);
+        bits.push(1, 1); // b_substream_group_gains_present
+        bits.push(0, 1); // new values, not b_keep
+        for code in [0, 1, 2, 3, 60, 61, 62, 63] {
+            bits.push(code, 6);
+        }
+        let expected_associated_offset = bits.len as u64;
+        bits.push(0b101, 3); // associated metadata must remain untouched
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 8, 8, false),
+        )
+        .unwrap();
+        let PresentationSubstreamGroupGainUpdate::NewValues(codes) =
+            parsed.substream_group_gain_update
+        else {
+            panic!("应保留本帧传输的 group-gain 码值");
+        };
+        assert_eq!(codes.as_slice(), &[0, 1, 2, 3, 60, 61, 62, 63]);
+        assert_eq!(codes.len(), 8);
+        assert!(!codes.is_empty());
+        assert_eq!(codes.get(0), Some(0));
+        assert_eq!(codes.get(7), Some(63));
+        assert_eq!(codes.get(8), None);
+        assert_eq!(parsed.b_associated_offset, expected_associated_offset);
+    }
+
+    #[test]
+    fn rejects_truncated_group_gain_codes_and_group_count_capacity() {
+        let mut truncated = TestBits::new();
+        truncated.push(0, 1); // no additional data
+        push_minimal_common_metadata_prefix(&mut truncated, 0);
+        truncated.push(1, 1); // b_substream_group_gains_present
+        truncated.push(0, 1); // new values, not b_keep
+        truncated.push(42, 6); // only the first of two group gains
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                truncated.as_bytes(),
+                PresentationSubstreamContext::new(false, 2, 2, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 6,
+                bit_position: 24,
+                remaining_bits: 0,
+            })
+        );
+
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                &[],
+                PresentationSubstreamContext::new(false, 0, 9, true),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::CapacityExceeded {
+                what: PresentationSubstreamCapacity::SubstreamGroups,
+                declared: 9,
+                limit: MAX_GROUPS_PER_PRESENTATION,
+            }
+        );
     }
 
     #[test]
@@ -1734,7 +1980,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 empty.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, false),
+                PresentationSubstreamContext::new(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::InvalidDrcMetadataSize {
@@ -1753,7 +1999,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 truncated.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, false),
+                PresentationSubstreamContext::new(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -1777,7 +2023,7 @@ mod tests {
         assert!(matches!(
             Ac4PresentationSubstream::parse(
                 overflowing.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, false),
+                PresentationSubstreamContext::new(false, 1, 1, false),
             ),
             Err(PresentationSubstreamError::Read(
                 ReadError::ValueOverflow { .. }
@@ -1795,7 +2041,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 truncated.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, false),
+                PresentationSubstreamContext::new(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -1815,7 +2061,7 @@ mod tests {
         assert!(matches!(
             Ac4PresentationSubstream::parse(
                 overflowing.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, false),
+                PresentationSubstreamContext::new(false, 1, 1, false),
             ),
             Err(PresentationSubstreamError::Read(
                 ReadError::ValueOverflow { .. }

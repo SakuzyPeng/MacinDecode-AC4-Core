@@ -459,7 +459,7 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 
 ## M4.5：Presentation/Metadata 解析闭环
 
-**前四个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
+**前五个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
 `6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
 device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
 active 与 alternative dataset index。名称即使不在字节边界也以无分配 8 比特元素视图保留；
@@ -477,8 +477,11 @@ envelope 之后固定的 7 比特 `dialnorm_bits` 与可选 `further_loudness_in
 全部量化响度码值、RTLL 与未定义 extension bit view。随后 5 比特
 `drc_metadata_size_value`、presence gate 与 `variable_bits(3)` 扩展已解析，完整
 `drc_frame()` 被严格定界并以无分配 bit view 保留；零长度、截断和长度溢出失败关闭。DRC
-内部配置/逐帧数据和其他 presentation 处理 metadata 尚未解析，也不执行响度归一化、DRC 或
-advanced DE。
+内部配置/逐帧数据仍未解析。其后按规范 `n_substream_groups` 解析 group-gain presence 与
+`b_keep`，并以固定容量数组保留逐 group 六比特 `sg_gain` 原值；单 group 不错误消费 presence
+bit，八 group 上限、截断和非法上下文均有构造门禁。当前只区分未传输、未携带、沿用上一帧和
+新码值四种逐帧形态，尚不形成跨帧有效增益；associated audio 及更后 metadata 仍未解析，也不
+执行响度归一化、DRC、group gain 或 advanced DE。
 
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
@@ -486,7 +489,8 @@ advanced DE。
 `variable_bits` 溢出，以及 additional-data 的 1 字节基础长度与 18 字节扩展长度、对象/声道
 条件位、A-DE 两种长度、保留位边界与禁止越界借用后续 dialnorm，以及 further loudness 的
 presence gate、完整原值组合和 extension 边界；DRC 另覆盖 1 比特最小 frame、95 比特扩展
-frame、零长度、截断与变长长度溢出。alternative 与
+frame、零长度、截断与变长长度溢出；group gain 覆盖单/multi-group gate、absent、keep、
+六比特码值端点、八 group 上限、截断与上下文容量。alternative 与
 direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造覆盖，外部向量状态保持待验证。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
