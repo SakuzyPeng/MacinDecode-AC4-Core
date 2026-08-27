@@ -6,14 +6,16 @@
 //! `TS103190-1:v1.4.1:4.3.12.3`；DRC envelope 见 `6.3.3.1.19` 至
 //! `6.3.3.1.21`，substream-group gain 见 `6.3.3.1.22` 至 `6.3.3.1.24`，
 //! associated-audio 字段见 `6.3.3.1.25` 至 `6.3.3.1.26`，其码值语义见
-//! `TS103190-1:v1.4.1:4.3.12.4.3` 至 `4.3.12.4.9`。
+//! `TS103190-1:v1.4.1:4.3.12.4.3` 至 `4.3.12.4.9`；custom downmix 语法与语义见
+//! `TS103190-2:v1.3.1:6.2.9.2` 至 `6.2.9.10`、`6.3.10.2` 至 `6.3.10.3`，共享的
+//! stereo downmix 码值见 `TS103190-1:v1.4.1:4.3.12.2.8` 至 `4.3.12.2.19`。
 //!
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
 //! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
-//! `drc_frame()` 原始比特、逐帧 substream-group gain 更新及 associated-audio scale/pan 码值。
-//! DRC 内部语法、group gain 跨帧生效状态、custom downmix 与 loudness correction 仍不解释；
-//! 本模块也不执行任何处理。
+//! `drc_frame()` 原始比特、逐帧 substream-group gain 更新、associated-audio scale/pan 码值及
+//! custom downmix 的配置、路由与 gain 码值。DRC 内部语法、group gain 跨帧生效状态与
+//! loudness correction 仍不解释；本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -34,6 +36,11 @@ pub const MAX_ALTERNATIVE_PRESENTATION_TARGETS: usize = 32;
 /// 它不是去重后的物理 substream 数。
 pub const MAX_AUDIO_SUBSTREAMS_PER_PRESENTATION: usize =
     MAX_GROUPS_PER_PRESENTATION * MAX_LF_SUBSTREAMS;
+
+/// 一个 `custom_dmx_data()` 可声明的 downmix configuration 数上限。
+///
+/// `n_cdmx_configs_minus1` 为 2 比特，因此规范范围固定为 `1..=4`。
+pub const MAX_CUSTOM_DOWNMIX_CONFIGURATIONS: usize = 4;
 
 /// presentation substream 前缀中超出固定容量的结构。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,6 +97,22 @@ pub enum PresentationSubstreamError {
         /// `pan_associated` 在 payload 内的比特偏移。
         bit_position: u64,
     },
+    /// `out_ch_config` 使用了表 127 标为 unused 的 `5..=7`。
+    UnusedCustomDownmixOutputChannelConfig {
+        /// 3 比特 `out_ch_config` 原值。
+        output_channel_config: u8,
+        /// `out_ch_config` 在 payload 内的比特偏移。
+        bit_position: u64,
+    },
+    /// LoRo/LtRt surround mix gain 使用了表 149a 的保留码 `0` 或 `1`。
+    ReservedStereoSurroundMixGain {
+        /// 出错的是 LoRo 还是 LtRt 系数。
+        kind: PresentationStereoDownmixKind,
+        /// 3 比特 surround mix gain 原值。
+        gain_code: u8,
+        /// surround mix gain 在 payload 内的比特偏移。
+        bit_position: u64,
+    },
     /// 结构规模超出固定容量。
     CapacityExceeded {
         /// 超限的结构种类。
@@ -135,6 +158,21 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation associated-audio pan code {pan_associated:#04x} is reserved at bit offset {bit_position}"
+            ),
+            PresentationSubstreamError::UnusedCustomDownmixOutputChannelConfig {
+                output_channel_config,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation custom-downmix output channel configuration {output_channel_config} is unused at bit offset {bit_position}"
+            ),
+            PresentationSubstreamError::ReservedStereoSurroundMixGain {
+                kind,
+                gain_code,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation {kind} surround mix-gain code {gain_code} is reserved at bit offset {bit_position}"
             ),
             PresentationSubstreamError::CapacityExceeded {
                 what,
@@ -520,6 +558,199 @@ pub struct PresentationAssociatedAudio {
     pub associate_is_mono: bool,
     /// mono associated audio 的 8 比特 `pan_associated`。
     pub pan_associated: Option<u8>,
+}
+
+/// stereo downmix 系数所属的矩阵类型。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationStereoDownmixKind {
+    /// 普通 Lo/Ro stereo downmix。
+    LoRo,
+    /// Dolby Pro Logic II compatible Lt/Rt stereo downmix。
+    LtRt,
+}
+
+impl fmt::Display for PresentationStereoDownmixKind {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match *self {
+            Self::LoRo => "LoRo",
+            Self::LtRt => "LtRt",
+        })
+    }
+}
+
+/// `tool_scr_to_c_l()` 的 screen-channel 路由与 3 比特 gain 原值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationScreenDownmix {
+    /// `b_put_screen_to_c = 1`，使用 `gain_f1_code` 混入 centre。
+    ToCentre {
+        /// 3 比特 `gain_f1_code` 原值；`7` 表示静音。
+        gain_f1_code: u8,
+    },
+    /// `b_put_screen_to_c = 0`，使用 `gain_f2_code` 混入 L/R。
+    ToFrontPair {
+        /// 3 比特 `gain_f2_code` 原值；`7` 表示静音。
+        gain_f2_code: u8,
+    },
+}
+
+/// top-channel pair 在 downmix 中的目标声道对。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationTopPairDestination {
+    /// 前方 L/R。
+    Front,
+    /// 侧方 Ls/Rs。
+    Side,
+    /// 后方 Lb/Rb。
+    Back,
+}
+
+/// 一对 top channels 的目标路由与随该分支传输的 3 比特 gain 原值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationTopPairDownmix {
+    /// 该 top pair 混入的目标声道对。
+    pub destination: PresentationTopPairDestination,
+    /// 分支选择的 `gain_t2*()` 三比特码值；`7` 表示静音。
+    pub gain_code: u8,
+}
+
+/// `cdmx_parameters()` 选择的 top-channel downmix tool 及其原始参数。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationTopDownmix {
+    /// `tool_t4_to_t2()`：四个 top channels 合并成两个 top channels。
+    FourToTwo {
+        /// 3 比特 `gain_t1_code` 原值；`7` 表示静音。
+        gain_t1_code: u8,
+    },
+    /// `tool_t4_to_f_s_b()`：top-front 与 top-back pair 可分别进入 front/side/back。
+    FourToFrontSideBack {
+        /// top-front pair 的路由与 gain。
+        front: PresentationTopPairDownmix,
+        /// top-back pair 的路由与 gain。
+        back: PresentationTopPairDownmix,
+    },
+    /// `tool_t4_to_f_s()`：top-front 与 top-back pair 可分别进入 front/side。
+    FourToFrontSide {
+        /// top-front pair 的路由与 gain。
+        front: PresentationTopPairDownmix,
+        /// top-back pair 的路由与 gain。
+        back: PresentationTopPairDownmix,
+    },
+    /// `tool_t2_to_f_s_b()`：一个 top-side pair 可进入 front/side/back。
+    TwoToFrontSideBack {
+        /// top-side pair 的路由与 gain。
+        pair: PresentationTopPairDownmix,
+    },
+    /// `tool_t2_to_f_s()`：一个 top-side pair 可进入 front/side。
+    TwoToFrontSide {
+        /// top-side pair 的路由与 gain。
+        pair: PresentationTopPairDownmix,
+    },
+}
+
+/// 单个 output channel configuration 的 custom downmix 原始参数。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationCustomDownmixParameters {
+    /// 仅 `bs_ch_config` 0/3 携带的 screen-channel 路由。
+    pub screen: Option<PresentationScreenDownmix>,
+    /// 由输入/输出配置决定是否携带的 top-channel tool。
+    pub top: Option<PresentationTopDownmix>,
+    /// `tool_b4_to_b2()` 的 3 比特 `gain_b_code` 原值。
+    pub back_four_to_two_gain_code: Option<u8>,
+}
+
+impl PresentationCustomDownmixParameters {
+    const EMPTY: Self = Self {
+        screen: None,
+        top: None,
+        back_four_to_two_gain_code: None,
+    };
+}
+
+/// `custom_dmx_data()` 中一个 output channel configuration 及其参数。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationCustomDownmixConfiguration {
+    /// 表 127 的 `out_ch_config` 原值，成功解析时为 `0..=4`。
+    pub output_channel_config: u8,
+    /// 由 `bs_ch_config`/`out_ch_config` 共同选择的原始参数。
+    pub parameters: PresentationCustomDownmixParameters,
+}
+
+impl PresentationCustomDownmixConfiguration {
+    const EMPTY: Self = Self {
+        output_channel_config: 0,
+        parameters: PresentationCustomDownmixParameters::EMPTY,
+    };
+}
+
+/// presentation stereo downmix 的 LoRo/LtRt/LFE 原始系数。
+///
+/// LoRo 总是存在；`ltrt_*` 由 `b_ltrt_mixinfo` 控制。`lfe_mixinfo_present` 的 `None`
+/// 表示 presentation 没有 LFE、因此连 presence bit 都未传输；`Some(false)` 表示传输了
+/// `b_lfe_mixinfo = 0`。所有字段都只保留码值，不换算或应用 gain。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationStereoDownmixCoefficients {
+    /// 3 比特 `loro_centre_mixgain`。
+    pub loro_centre_mixgain: u8,
+    /// 3 比特 `loro_surround_mixgain`；成功解析时为 `2..=7`。
+    pub loro_surround_mixgain: u8,
+    /// `b_ltrt_mixinfo` 为真时的 3 比特 `ltrt_centre_mixgain`。
+    pub ltrt_centre_mixgain: Option<u8>,
+    /// `b_ltrt_mixinfo` 为真时的 3 比特 `ltrt_surround_mixgain`，取值为 `2..=7`。
+    pub ltrt_surround_mixgain: Option<u8>,
+    /// `b_lfe_mixinfo` 是否传输及其值；`None` 表示该 gate 不适用。
+    pub lfe_mixinfo_present: Option<bool>,
+    /// `b_lfe_mixinfo = 1` 时的 5 比特 `lfe_mixgain` 原值。
+    pub lfe_mixgain: Option<u8>,
+    /// 2 比特 `preferred_dmx_method` 原值。
+    pub preferred_downmix_method: u8,
+}
+
+/// presentation 的完整 `custom_dmx_data()` 解析结果。
+///
+/// 两个 `Option<bool>` 分别保留「presence gate 不适用」「gate 存在但值为零」和「数据存在」
+/// 三种状态。配置使用固定容量数组保存，不分配内存，也不执行 downmix。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationCustomDownmixData {
+    bitstream_channel_config: Option<u8>,
+    custom_data_present: Option<bool>,
+    configurations: [PresentationCustomDownmixConfiguration; MAX_CUSTOM_DOWNMIX_CONFIGURATIONS],
+    configuration_count: usize,
+    stereo_coefficients_present: Option<bool>,
+    stereo_coefficients: Option<PresentationStereoDownmixCoefficients>,
+}
+
+impl PresentationCustomDownmixData {
+    /// 由 presentation channel context 派生的 `bs_ch_config`；`None` 对应规范的 `-1`。
+    #[must_use]
+    pub const fn bitstream_channel_config(self) -> Option<u8> {
+        self.bitstream_channel_config
+    }
+
+    /// `b_cdmx_data_present` 是否传输及其值；`None` 表示 `bs_ch_config == -1`。
+    #[must_use]
+    pub const fn custom_data_present(self) -> Option<bool> {
+        self.custom_data_present
+    }
+
+    /// 按码流顺序取得 `1..=4` 个 custom downmix configuration；无数据时为空。
+    #[must_use]
+    pub fn configurations(&self) -> &[PresentationCustomDownmixConfiguration] {
+        self.configurations
+            .get(..self.configuration_count)
+            .unwrap_or(&[])
+    }
+
+    /// `b_stereo_dmx_coeff` 是否传输及其值；`None` 表示 stereo gate 不适用。
+    #[must_use]
+    pub const fn stereo_coefficients_present(self) -> Option<bool> {
+        self.stereo_coefficients_present
+    }
+
+    /// `b_stereo_dmx_coeff = 1` 时传输的完整原始系数。
+    #[must_use]
+    pub const fn stereo_coefficients(self) -> Option<PresentationStereoDownmixCoefficients> {
+        self.stereo_coefficients
+    }
 }
 
 impl<'a> IntoIterator for PresentationAddDataBits<'a> {
@@ -1088,13 +1319,14 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
     }
 }
 
-/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度、DRC、group gain
-/// 与 associated audio。
+/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度、DRC、group gain、
+/// associated audio 与 custom downmix。
 ///
 /// [`drc_metadata_size_value_offset`](Self::drc_metadata_size_value_offset) 指向响度字段之后的
 /// `drc_metadata_size_value`；[`b_associated_offset`](Self::b_associated_offset) 指向 group gain
 /// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
-/// 随后的 `custom_dmx_data()`。DRC 内部语法、group gain 跨帧有效状态和后续字段尚未解析。
+/// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向随后的
+/// `loud_corr()`。DRC 内部语法、group gain 跨帧有效状态和 loudness correction 尚未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1121,6 +1353,10 @@ pub struct Ac4PresentationSubstream<'a> {
     pub associated_audio: Option<PresentationAssociatedAudio>,
     /// `custom_dmx_data()` 在 payload 内的精确比特偏移。
     pub custom_downmix_offset: u64,
+    /// 已解析的 custom downmix presence、configuration、路由与 gain 原始码值。
+    pub custom_downmix: PresentationCustomDownmixData,
+    /// `loud_corr()` 在 payload 内的精确比特偏移。
+    pub loudness_correction_offset: u64,
 }
 
 impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
@@ -1137,27 +1373,31 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.b_associated_offset == other.b_associated_offset
             && self.associated_audio == other.associated_audio
             && self.custom_downmix_offset == other.custom_downmix_offset
+            && self.custom_downmix == other.custom_downmix
+            && self.loudness_correction_offset == other.loudness_correction_offset
     }
 }
 
 impl Eq for Ac4PresentationSubstream<'_> {}
 
 impl<'a> Ac4PresentationSubstream<'a> {
-    /// 解析 selection、common additional-data、presentation 响度、DRC envelope、group gain 与
-    /// associated audio。
+    /// 解析 selection、common additional-data、presentation 响度、DRC envelope、group gain、
+    /// associated audio 与 custom downmix。
     ///
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
     /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC；group gain
     /// 只保留逐帧传输形态，不解析跨帧有效值或应用增益；associated-audio scale/pan 同样只
-    /// 保留原值，不执行 gain、pan 或 renderer 处理。
+    /// 保留原值，不执行 gain、pan 或 renderer 处理；custom downmix 同样只保留配置、路由与
+    /// gain 码值，不执行矩阵运算。
     ///
     /// # Errors
     ///
-    /// selection 字段、additional-data/DRC/group gain/associated audio 或其已知字段截断，
-    /// 变长字段溢出，或计数超过固定容量时返回错误。零长度 DRC envelope 不能容纳必需的
-    /// presence bit，以及 `pan_associated` 使用保留码值时，同样返回错误。
+    /// selection 字段、additional-data/DRC/group gain/associated audio/custom downmix 或其已知
+    /// 字段截断，变长字段溢出，或计数超过固定容量时返回错误。零长度 DRC envelope 不能容纳
+    /// 必需的 presence bit，以及 associated pan、custom output config 或 stereo surround gain
+    /// 使用禁止码值时，同样返回错误。
     pub fn parse(
         payload: &'a [u8],
         context: PresentationSubstreamContext,
@@ -1193,6 +1433,8 @@ impl<'a> Ac4PresentationSubstream<'a> {
         let b_associated_offset = reader.bit_position();
         let associated_audio = parse_associated_audio(&mut reader)?;
         let custom_downmix_offset = reader.bit_position();
+        let custom_downmix = parse_custom_downmix_data(&mut reader, context.channel_context())?;
+        let loudness_correction_offset = reader.bit_position();
         Ok(Self {
             selection,
             additional_data,
@@ -1206,6 +1448,8 @@ impl<'a> Ac4PresentationSubstream<'a> {
             b_associated_offset,
             associated_audio,
             custom_downmix_offset,
+            custom_downmix,
+            loudness_correction_offset,
         })
     }
 }
@@ -1297,6 +1541,312 @@ fn parse_associated_audio(
         associate_is_mono,
         pan_associated,
     }))
+}
+
+fn derive_bitstream_channel_config(context: PresentationChannelContext) -> Option<u8> {
+    let mode = context.presentation_channel_mode()?;
+    if !(11..=14).contains(&mode) {
+        return None;
+    }
+
+    match (
+        context.top_channel_pairs(),
+        mode,
+        context.four_back_channels_present(),
+    ) {
+        (2, 13..=14, true) => Some(0),
+        (2, 11..=12, true) => Some(1),
+        (2, 11..=12, false) => Some(2),
+        (1, 13..=14, true) => Some(3),
+        (1, 11..=12, true) => Some(4),
+        (1, 11..=12, false) => Some(5),
+        _ => None,
+    }
+}
+
+fn parse_custom_downmix_data(
+    reader: &mut BitReader<'_>,
+    context: PresentationChannelContext,
+) -> Result<PresentationCustomDownmixData, PresentationSubstreamError> {
+    let bitstream_channel_config = derive_bitstream_channel_config(context);
+    let mut configurations =
+        [PresentationCustomDownmixConfiguration::EMPTY; MAX_CUSTOM_DOWNMIX_CONFIGURATIONS];
+    let mut configuration_count = 0usize;
+    let custom_data_present = if let Some(bitstream_channel_config) = bitstream_channel_config {
+        let present = reader.read_flag()?;
+        if present {
+            configuration_count = usize::try_from(reader.read_bits(2)?)
+                .unwrap_or(0)
+                .saturating_add(1);
+            for configuration in configurations.iter_mut().take(configuration_count) {
+                *configuration =
+                    parse_custom_downmix_configuration(reader, bitstream_channel_config)?;
+            }
+        }
+        Some(present)
+    } else {
+        None
+    };
+
+    let stereo_gate = context
+        .presentation_channel_mode()
+        .is_some_and(|mode| mode >= 3)
+        || context.core_channel_mode().is_some_and(|mode| mode >= 3);
+    let (stereo_coefficients_present, stereo_coefficients) = if stereo_gate {
+        let present = reader.read_flag()?;
+        let coefficients = if present {
+            Some(parse_presentation_stereo_downmix_coefficients(
+                reader,
+                context.has_lfe(),
+            )?)
+        } else {
+            None
+        };
+        (Some(present), coefficients)
+    } else {
+        (None, None)
+    };
+
+    Ok(PresentationCustomDownmixData {
+        bitstream_channel_config,
+        custom_data_present,
+        configurations,
+        configuration_count,
+        stereo_coefficients_present,
+        stereo_coefficients,
+    })
+}
+
+fn parse_custom_downmix_configuration(
+    reader: &mut BitReader<'_>,
+    bitstream_channel_config: u8,
+) -> Result<PresentationCustomDownmixConfiguration, PresentationSubstreamError> {
+    let output_channel_config_offset = reader.bit_position();
+    let output_width = if matches!(bitstream_channel_config, 2 | 5) {
+        1
+    } else {
+        3
+    };
+    let output_channel_config = u8::try_from(reader.read_bits(output_width)?).unwrap_or(u8::MAX);
+    if output_channel_config >= 5 {
+        return Err(
+            PresentationSubstreamError::UnusedCustomDownmixOutputChannelConfig {
+                output_channel_config,
+                bit_position: output_channel_config_offset,
+            },
+        );
+    }
+    let parameters =
+        parse_custom_downmix_parameters(reader, bitstream_channel_config, output_channel_config)?;
+    Ok(PresentationCustomDownmixConfiguration {
+        output_channel_config,
+        parameters,
+    })
+}
+
+fn parse_custom_downmix_parameters(
+    reader: &mut BitReader<'_>,
+    bitstream_channel_config: u8,
+    output_channel_config: u8,
+) -> Result<PresentationCustomDownmixParameters, PresentationSubstreamError> {
+    let mut parameters = PresentationCustomDownmixParameters::EMPTY;
+    if matches!(bitstream_channel_config, 0 | 3) {
+        parameters.screen = Some(parse_screen_downmix(reader)?);
+    }
+
+    match bitstream_channel_config {
+        0 | 1 => match output_channel_config {
+            0 => {
+                parameters.top = Some(parse_top_four_to_front_side(reader)?);
+                parameters.back_four_to_two_gain_code = Some(read_custom_gain_code(reader)?);
+            }
+            1 => {
+                parameters.top = Some(PresentationTopDownmix::FourToTwo {
+                    gain_t1_code: read_custom_gain_code(reader)?,
+                });
+                parameters.back_four_to_two_gain_code = Some(read_custom_gain_code(reader)?);
+            }
+            2 => {
+                parameters.back_four_to_two_gain_code = Some(read_custom_gain_code(reader)?);
+            }
+            3 => {
+                parameters.top = Some(parse_top_four_to_front_side_back(reader)?);
+            }
+            4 => {
+                parameters.top = Some(PresentationTopDownmix::FourToTwo {
+                    gain_t1_code: read_custom_gain_code(reader)?,
+                });
+            }
+            _ => {}
+        },
+        2 => match output_channel_config {
+            0 => parameters.top = Some(parse_top_four_to_front_side(reader)?),
+            1 => {
+                parameters.top = Some(PresentationTopDownmix::FourToTwo {
+                    gain_t1_code: read_custom_gain_code(reader)?,
+                });
+            }
+            _ => {}
+        },
+        3 | 4 => match output_channel_config {
+            0 => {
+                parameters.top = Some(parse_top_two_to_front_side(reader)?);
+                parameters.back_four_to_two_gain_code = Some(read_custom_gain_code(reader)?);
+            }
+            1 | 2 => {
+                parameters.back_four_to_two_gain_code = Some(read_custom_gain_code(reader)?);
+            }
+            3 => parameters.top = Some(parse_top_two_to_front_side_back(reader)?),
+            _ => {}
+        },
+        5 if output_channel_config == 0 => {
+            parameters.top = Some(parse_top_two_to_front_side(reader)?);
+        }
+        5 => {}
+        _ => {}
+    }
+
+    Ok(parameters)
+}
+
+fn read_custom_gain_code(reader: &mut BitReader<'_>) -> Result<u8, PresentationSubstreamError> {
+    Ok(u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX))
+}
+
+fn parse_screen_downmix(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationScreenDownmix, PresentationSubstreamError> {
+    if reader.read_flag()? {
+        Ok(PresentationScreenDownmix::ToCentre {
+            gain_f1_code: read_custom_gain_code(reader)?,
+        })
+    } else {
+        Ok(PresentationScreenDownmix::ToFrontPair {
+            gain_f2_code: read_custom_gain_code(reader)?,
+        })
+    }
+}
+
+fn parse_top_pair_to_front_side(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationTopPairDownmix, PresentationSubstreamError> {
+    let destination = if reader.read_flag()? {
+        PresentationTopPairDestination::Front
+    } else {
+        PresentationTopPairDestination::Side
+    };
+    Ok(PresentationTopPairDownmix {
+        destination,
+        gain_code: read_custom_gain_code(reader)?,
+    })
+}
+
+fn parse_top_pair_to_front_side_back(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationTopPairDownmix, PresentationSubstreamError> {
+    let destination = if reader.read_flag()? {
+        PresentationTopPairDestination::Front
+    } else if reader.read_flag()? {
+        PresentationTopPairDestination::Side
+    } else {
+        PresentationTopPairDestination::Back
+    };
+    Ok(PresentationTopPairDownmix {
+        destination,
+        gain_code: read_custom_gain_code(reader)?,
+    })
+}
+
+fn parse_top_four_to_front_side(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationTopDownmix, PresentationSubstreamError> {
+    Ok(PresentationTopDownmix::FourToFrontSide {
+        front: parse_top_pair_to_front_side(reader)?,
+        back: parse_top_pair_to_front_side(reader)?,
+    })
+}
+
+fn parse_top_four_to_front_side_back(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationTopDownmix, PresentationSubstreamError> {
+    Ok(PresentationTopDownmix::FourToFrontSideBack {
+        front: parse_top_pair_to_front_side_back(reader)?,
+        back: parse_top_pair_to_front_side_back(reader)?,
+    })
+}
+
+fn parse_top_two_to_front_side(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationTopDownmix, PresentationSubstreamError> {
+    Ok(PresentationTopDownmix::TwoToFrontSide {
+        pair: parse_top_pair_to_front_side(reader)?,
+    })
+}
+
+fn parse_top_two_to_front_side_back(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationTopDownmix, PresentationSubstreamError> {
+    Ok(PresentationTopDownmix::TwoToFrontSideBack {
+        pair: parse_top_pair_to_front_side_back(reader)?,
+    })
+}
+
+fn parse_presentation_stereo_downmix_coefficients(
+    reader: &mut BitReader<'_>,
+    has_lfe: bool,
+) -> Result<PresentationStereoDownmixCoefficients, PresentationSubstreamError> {
+    let loro_centre_mixgain = read_custom_gain_code(reader)?;
+    let loro_surround_mixgain =
+        read_stereo_surround_mixgain(reader, PresentationStereoDownmixKind::LoRo)?;
+    let (ltrt_centre_mixgain, ltrt_surround_mixgain) = if reader.read_flag()? {
+        (
+            Some(read_custom_gain_code(reader)?),
+            Some(read_stereo_surround_mixgain(
+                reader,
+                PresentationStereoDownmixKind::LtRt,
+            )?),
+        )
+    } else {
+        (None, None)
+    };
+    let (lfe_mixinfo_present, lfe_mixgain) = if has_lfe {
+        let present = reader.read_flag()?;
+        let gain = if present {
+            Some(u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX))
+        } else {
+            None
+        };
+        (Some(present), gain)
+    } else {
+        (None, None)
+    };
+    let preferred_downmix_method = u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX);
+
+    Ok(PresentationStereoDownmixCoefficients {
+        loro_centre_mixgain,
+        loro_surround_mixgain,
+        ltrt_centre_mixgain,
+        ltrt_surround_mixgain,
+        lfe_mixinfo_present,
+        lfe_mixgain,
+        preferred_downmix_method,
+    })
+}
+
+fn read_stereo_surround_mixgain(
+    reader: &mut BitReader<'_>,
+    kind: PresentationStereoDownmixKind,
+) -> Result<u8, PresentationSubstreamError> {
+    let bit_position = reader.bit_position();
+    let gain_code = read_custom_gain_code(reader)?;
+    if gain_code < 2 {
+        return Err(PresentationSubstreamError::ReservedStereoSurroundMixGain {
+            kind,
+            gain_code,
+            bit_position,
+        });
+    }
+    Ok(gain_code)
 }
 
 fn parse_drc_frame_envelope<'a>(
@@ -1723,7 +2273,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_object_additional_data_and_ignores_custom_downmix_suffix_in_equality() {
+    fn parses_object_additional_data_and_ignores_loudness_correction_suffix_in_equality() {
         let mut envelope = TestBits::new();
         envelope.push(1, 1); // b_additional_data
         envelope.push(0, 4); // one additional-data byte
@@ -1736,7 +2286,7 @@ mod tests {
 
         let mut left_bits = envelope.clone();
         push_minimal_complete_common_metadata(&mut left_bits, 0b101_0101);
-        left_bits.push(0, 4); // unparsed custom_dmx_data()
+        left_bits.push(0, 4); // unparsed loud_corr()
         let mut right_bits = envelope;
         push_minimal_complete_common_metadata(&mut right_bits, 0b101_0101);
         right_bits.push(0b1111, 4);
@@ -1768,7 +2318,7 @@ mod tests {
         assert_eq!(left.b_associated_offset, 31);
         assert_eq!(left.associated_audio, None);
         assert_eq!(left.custom_downmix_offset, 32);
-        assert_eq!(left, right, "custom downmix 尚未进入已解析视图");
+        assert_eq!(left, right, "loudness correction 尚未进入已解析视图");
     }
 
     #[test]
@@ -2027,7 +2577,7 @@ mod tests {
         let expected_frame_end = bits.len as u64;
         bits.push(0, 1); // no associated audio
         let expected_custom_downmix_offset = bits.len as u64;
-        bits.push(0b10101, 5); // custom_dmx_data() must remain untouched
+        bits.push(0b10101, 5); // loud_corr() must remain untouched
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
@@ -2060,7 +2610,7 @@ mod tests {
         let mut absent = prefix.clone();
         absent.push(0, 1); // b_substream_group_gains_present
         absent.push(0, 1); // no associated audio
-        absent.push(0b11_1111, 6); // custom_dmx_data() must remain untouched
+        absent.push(0b11_1111, 6); // loud_corr() must remain untouched
         let absent =
             Ac4PresentationSubstream::parse(absent.as_bytes(), test_context(false, 2, 2, false))
                 .unwrap();
@@ -2076,7 +2626,7 @@ mod tests {
         kept.push(1, 1); // b_substream_group_gains_present
         kept.push(1, 1); // b_keep
         kept.push(0, 1); // no associated audio
-        kept.push(0b1_1111, 5); // custom_dmx_data() must remain untouched
+        kept.push(0b1_1111, 5); // loud_corr() must remain untouched
         let kept =
             Ac4PresentationSubstream::parse(kept.as_bytes(), test_context(false, 2, 2, false))
                 .unwrap();
@@ -2102,7 +2652,7 @@ mod tests {
         let expected_associated_offset = bits.len as u64;
         bits.push(0, 1); // no associated audio
         let expected_custom_downmix_offset = bits.len as u64;
-        bits.push(0b10, 2); // custom_dmx_data() must remain untouched
+        bits.push(0b10, 2); // loud_corr() must remain untouched
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 8, 8, false))
@@ -2141,7 +2691,7 @@ mod tests {
             }
             bits.push(0, 1); // associated audio is not mono
             let expected_custom_downmix_offset = bits.len as u64;
-            bits.push_byte(0xff); // custom_dmx_data(), not pan_associated
+            bits.push_byte(0xff); // loud_corr(), not pan_associated
 
             let parsed =
                 Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
@@ -2175,7 +2725,7 @@ mod tests {
             bits.push(1, 1); // associated audio is mono
             bits.push(u64::from(pan_associated), 8);
             let expected_custom_downmix_offset = bits.len as u64;
-            bits.push(0b101, 3); // custom_dmx_data() must remain untouched
+            bits.push(0b101, 3); // loud_corr() must remain untouched
 
             let parsed =
                 Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
@@ -2218,6 +2768,479 @@ mod tests {
                 }
             );
         }
+    }
+
+    #[test]
+    fn derives_all_custom_downmix_bitstream_channel_configurations() {
+        for (context, expected) in [
+            (
+                PresentationChannelContext::new(Some(13), None, true, 2, false),
+                Some(0),
+            ),
+            (
+                PresentationChannelContext::new(Some(12), None, true, 2, false),
+                Some(1),
+            ),
+            (
+                PresentationChannelContext::new(Some(11), None, false, 2, false),
+                Some(2),
+            ),
+            (
+                PresentationChannelContext::new(Some(14), None, true, 1, false),
+                Some(3),
+            ),
+            (
+                PresentationChannelContext::new(Some(12), None, true, 1, false),
+                Some(4),
+            ),
+            (
+                PresentationChannelContext::new(Some(11), None, false, 1, false),
+                Some(5),
+            ),
+        ] {
+            assert_eq!(derive_bitstream_channel_config(context), expected);
+        }
+
+        for context in [
+            PresentationChannelContext::UNDEFINED,
+            PresentationChannelContext::new(Some(10), None, true, 2, false),
+            PresentationChannelContext::new(Some(13), None, false, 2, false),
+            PresentationChannelContext::new(Some(14), None, true, 0, false),
+            PresentationChannelContext::new(Some(11), None, false, 0, false),
+            PresentationChannelContext::new(Some(11), None, false, 3, false),
+        ] {
+            assert_eq!(derive_bitstream_channel_config(context), None);
+        }
+    }
+
+    #[test]
+    fn custom_downmix_parameter_tools_consume_the_normative_branches() {
+        let cases = [
+            (0, 0, 15),
+            (0, 1, 10),
+            (0, 2, 7),
+            (0, 3, 14),
+            (0, 4, 7),
+            (1, 0, 11),
+            (1, 1, 6),
+            (1, 2, 3),
+            (1, 3, 10),
+            (1, 4, 3),
+            (2, 0, 8),
+            (2, 1, 3),
+            (3, 0, 11),
+            (3, 1, 7),
+            (3, 2, 7),
+            (3, 3, 9),
+            (3, 4, 4),
+            (4, 0, 7),
+            (4, 1, 3),
+            (4, 2, 3),
+            (4, 3, 5),
+            (4, 4, 0),
+            (5, 0, 4),
+            (5, 1, 0),
+        ];
+        let source = [0u8; 2];
+        for (bitstream_channel_config, output_channel_config, expected_bits) in cases {
+            let mut reader = BitReader::new(&source);
+            parse_custom_downmix_parameters(
+                &mut reader,
+                bitstream_channel_config,
+                output_channel_config,
+            )
+            .unwrap();
+            assert_eq!(
+                reader.bit_position(),
+                expected_bits,
+                "bs_ch_config={bitstream_channel_config}, out_ch_config={output_channel_config}"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_one_and_four_custom_downmix_configurations_with_exact_output_widths() {
+        let mut four = TestBits::new();
+        four.push(1, 1); // b_cdmx_data_present
+        four.push(3, 2); // four configurations
+        for output_channel_config in [0u8, 1, 0, 1] {
+            four.push(u64::from(output_channel_config), 1); // bs_ch_config 2 uses one bit
+            if output_channel_config == 0 {
+                four.push(1, 1); // top-front to front
+                four.push(0, 3);
+                four.push(0, 1); // top-back to side
+                four.push(7, 3);
+            } else {
+                four.push(7, 3); // gain_t1_code
+            }
+        }
+        four.push(0, 1); // no stereo coefficients
+        let mut reader = BitReader::new(four.as_bytes());
+        let parsed = parse_custom_downmix_data(
+            &mut reader,
+            PresentationChannelContext::new(Some(11), None, false, 2, false),
+        )
+        .unwrap();
+        assert_eq!(parsed.bitstream_channel_config(), Some(2));
+        assert_eq!(parsed.custom_data_present(), Some(true));
+        assert_eq!(parsed.configurations().len(), 4);
+        assert_eq!(
+            parsed
+                .configurations()
+                .iter()
+                .map(|configuration| configuration.output_channel_config)
+                .collect::<std::vec::Vec<_>>(),
+            [0, 1, 0, 1]
+        );
+        assert_eq!(parsed.stereo_coefficients_present(), Some(false));
+        assert_eq!(reader.bit_position(), 30);
+
+        let mut one = TestBits::new();
+        one.push(1, 1); // b_cdmx_data_present
+        one.push(0, 2); // one configuration
+        one.push(4, 3); // bs_ch_config 1 uses three bits
+        one.push(7, 3); // gain_t1_code
+        one.push(0, 1); // no stereo coefficients
+        let mut reader = BitReader::new(one.as_bytes());
+        let parsed = parse_custom_downmix_data(
+            &mut reader,
+            PresentationChannelContext::new(Some(12), None, true, 2, false),
+        )
+        .unwrap();
+        assert_eq!(parsed.bitstream_channel_config(), Some(1));
+        assert_eq!(parsed.configurations().len(), 1);
+        assert_eq!(
+            parsed
+                .configurations()
+                .first()
+                .map(|configuration| configuration.output_channel_config),
+            Some(4)
+        );
+        assert_eq!(reader.bit_position(), 10);
+    }
+
+    #[test]
+    fn parses_complete_nine_x_four_custom_downmix_and_stops_at_loud_corr() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_complete_common_metadata(&mut bits, 0);
+        let expected_custom_downmix_offset = bits.len as u64;
+        bits.push(1, 1); // b_cdmx_data_present
+        bits.push(0, 2); // one configuration
+        bits.push(0, 3); // out_ch_config = 5.X.0
+        bits.push(1, 1); // put screen channels into centre
+        bits.push(7, 3); // gain_f1_code; mute is legal
+        bits.push(1, 1); // top-front pair to front
+        bits.push(6, 3); // gain_t2a_code
+        bits.push(0, 1); // top-back pair to side
+        bits.push(5, 3); // gain_t2e_code
+        bits.push(4, 3); // gain_b_code
+        bits.push(1, 1); // b_stereo_dmx_coeff
+        bits.push(7, 3); // loro_centre_mixgain; mute is legal
+        bits.push(2, 3); // loro_surround_mixgain
+        bits.push(1, 1); // b_ltrt_mixinfo
+        bits.push(0, 3); // ltrt_centre_mixgain
+        bits.push(6, 3); // ltrt_surround_mixgain
+        bits.push(1, 1); // b_lfe_mixinfo
+        bits.push(31, 5); // lfe_mixgain
+        bits.push(3, 2); // preferred_dmx_method
+        let expected_loudness_correction_offset = bits.len as u64;
+
+        let mut right_bits = bits.clone();
+        bits.push(0, 4); // unparsed loud_corr() suffix
+        right_bits.push(0b1111, 4); // different unparsed loud_corr() suffix
+        let context = PresentationSubstreamContext::new(
+            false,
+            1,
+            1,
+            PresentationChannelContext::new(Some(14), Some(6), true, 2, true),
+        );
+        let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
+        let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
+
+        assert_eq!(parsed, right);
+        assert_eq!(parsed.custom_downmix_offset, expected_custom_downmix_offset);
+        assert_eq!(
+            parsed.loudness_correction_offset,
+            expected_loudness_correction_offset
+        );
+        let custom = parsed.custom_downmix;
+        assert_eq!(custom.bitstream_channel_config(), Some(0));
+        assert_eq!(custom.custom_data_present(), Some(true));
+        assert_eq!(custom.stereo_coefficients_present(), Some(true));
+        assert_eq!(
+            custom.configurations(),
+            &[PresentationCustomDownmixConfiguration {
+                output_channel_config: 0,
+                parameters: PresentationCustomDownmixParameters {
+                    screen: Some(PresentationScreenDownmix::ToCentre { gain_f1_code: 7 }),
+                    top: Some(PresentationTopDownmix::FourToFrontSide {
+                        front: PresentationTopPairDownmix {
+                            destination: PresentationTopPairDestination::Front,
+                            gain_code: 6,
+                        },
+                        back: PresentationTopPairDownmix {
+                            destination: PresentationTopPairDestination::Side,
+                            gain_code: 5,
+                        },
+                    }),
+                    back_four_to_two_gain_code: Some(4),
+                },
+            }]
+        );
+        assert_eq!(
+            custom.stereo_coefficients(),
+            Some(PresentationStereoDownmixCoefficients {
+                loro_centre_mixgain: 7,
+                loro_surround_mixgain: 2,
+                ltrt_centre_mixgain: Some(0),
+                ltrt_surround_mixgain: Some(6),
+                lfe_mixinfo_present: Some(true),
+                lfe_mixgain: Some(31),
+                preferred_downmix_method: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn custom_downmix_preserves_absent_and_not_signaled_gates() {
+        let mut absent = TestBits::new();
+        absent.push(0, 1); // no custom configurations
+        absent.push(0, 1); // no stereo coefficients
+        let mut reader = BitReader::new(absent.as_bytes());
+        let parsed = parse_custom_downmix_data(
+            &mut reader,
+            PresentationChannelContext::new(Some(14), Some(6), true, 2, true),
+        )
+        .unwrap();
+        assert_eq!(parsed.bitstream_channel_config(), Some(0));
+        assert_eq!(parsed.custom_data_present(), Some(false));
+        assert!(parsed.configurations().is_empty());
+        assert_eq!(parsed.stereo_coefficients_present(), Some(false));
+        assert_eq!(parsed.stereo_coefficients(), None);
+        assert_eq!(reader.bit_position(), 2);
+
+        for core_channel_mode in [3, 4] {
+            let mut static_ajoc = TestBits::new();
+            static_ajoc.push(0, 1); // core mode still carries the stereo gate
+            let mut reader = BitReader::new(static_ajoc.as_bytes());
+            let parsed = parse_custom_downmix_data(
+                &mut reader,
+                PresentationChannelContext::new(None, Some(core_channel_mode), false, 0, false),
+            )
+            .unwrap();
+            assert_eq!(parsed.bitstream_channel_config(), None);
+            assert_eq!(parsed.custom_data_present(), None);
+            assert_eq!(parsed.stereo_coefficients_present(), Some(false));
+            assert_eq!(reader.bit_position(), 1);
+        }
+
+        // direct-object 与 adaptive A-JOC 都令完整/core mode 未定义，不应消费 custom syntax。
+        let source = [0xff];
+        let mut reader = BitReader::new(&source);
+        let parsed =
+            parse_custom_downmix_data(&mut reader, PresentationChannelContext::UNDEFINED).unwrap();
+        assert_eq!(parsed.bitstream_channel_config(), None);
+        assert_eq!(parsed.custom_data_present(), None);
+        assert_eq!(parsed.stereo_coefficients_present(), None);
+        assert_eq!(reader.bit_position(), 0);
+    }
+
+    #[test]
+    fn alternative_object_context_reaches_loud_corr_without_custom_bits() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no alternative presentation name
+        bits.push(0, 2); // one target
+        push_minimal_target(&mut bits, 1);
+        bits.push(0, 1); // no additional data
+        push_minimal_complete_common_metadata(&mut bits, 0);
+        let expected_offset = bits.len as u64;
+        bits.push(1, 1); // unparsed loud_corr()
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(true, 1, 1, PresentationChannelContext::UNDEFINED),
+        )
+        .unwrap();
+        assert!(parsed.selection.alternative.is_some());
+        assert_eq!(parsed.custom_downmix_offset, expected_offset);
+        assert_eq!(parsed.loudness_correction_offset, expected_offset);
+        assert_eq!(parsed.custom_downmix.custom_data_present(), None);
+        assert_eq!(parsed.custom_downmix.stereo_coefficients_present(), None);
+    }
+
+    #[test]
+    fn stereo_custom_downmix_preserves_nested_presence_gates() {
+        let mut no_lfe = TestBits::new();
+        no_lfe.push(1, 1); // b_stereo_dmx_coeff
+        no_lfe.push(0, 3); // loro centre; every code is valid
+        no_lfe.push(2, 3); // loro surround
+        no_lfe.push(0, 1); // no LtRt mix info
+        no_lfe.push(3, 2); // preferred method
+        let mut reader = BitReader::new(no_lfe.as_bytes());
+        let parsed = parse_custom_downmix_data(
+            &mut reader,
+            PresentationChannelContext::new(Some(3), None, false, 0, false),
+        )
+        .unwrap();
+        assert_eq!(
+            parsed.stereo_coefficients(),
+            Some(PresentationStereoDownmixCoefficients {
+                loro_centre_mixgain: 0,
+                loro_surround_mixgain: 2,
+                ltrt_centre_mixgain: None,
+                ltrt_surround_mixgain: None,
+                lfe_mixinfo_present: None,
+                lfe_mixgain: None,
+                preferred_downmix_method: 3,
+            })
+        );
+        assert_eq!(reader.bit_position(), 10);
+
+        let mut lfe_absent = TestBits::new();
+        lfe_absent.push(1, 1); // b_stereo_dmx_coeff
+        lfe_absent.push(7, 3);
+        lfe_absent.push(7, 3);
+        lfe_absent.push(0, 1); // no LtRt mix info
+        lfe_absent.push(0, 1); // b_lfe_mixinfo = 0
+        lfe_absent.push(0, 2); // preferred method
+        let mut reader = BitReader::new(lfe_absent.as_bytes());
+        let parsed = parse_custom_downmix_data(
+            &mut reader,
+            PresentationChannelContext::new(Some(3), None, false, 0, true),
+        )
+        .unwrap();
+        let coefficients = parsed.stereo_coefficients().unwrap();
+        assert_eq!(coefficients.lfe_mixinfo_present, Some(false));
+        assert_eq!(coefficients.lfe_mixgain, None);
+        assert_eq!(reader.bit_position(), 11);
+    }
+
+    #[test]
+    fn rejects_unused_custom_outputs_and_reserved_stereo_surround_codes() {
+        for output_channel_config in 5u8..=7 {
+            let mut bits = TestBits::new();
+            bits.push(1, 1); // b_cdmx_data_present
+            bits.push(0, 2); // one configuration
+            bits.push(u64::from(output_channel_config), 3);
+            let mut reader = BitReader::new(bits.as_bytes());
+            assert_eq!(
+                parse_custom_downmix_data(
+                    &mut reader,
+                    PresentationChannelContext::new(Some(13), None, true, 2, false),
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::UnusedCustomDownmixOutputChannelConfig {
+                    output_channel_config,
+                    bit_position: 3,
+                }
+            );
+        }
+
+        for gain_code in 0u8..=1 {
+            let mut loro = TestBits::new();
+            loro.push(1, 1); // b_stereo_dmx_coeff
+            loro.push(0, 3); // centre
+            loro.push(u64::from(gain_code), 3); // reserved surround
+            let mut reader = BitReader::new(loro.as_bytes());
+            assert_eq!(
+                parse_custom_downmix_data(
+                    &mut reader,
+                    PresentationChannelContext::new(Some(3), None, false, 0, false),
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::ReservedStereoSurroundMixGain {
+                    kind: PresentationStereoDownmixKind::LoRo,
+                    gain_code,
+                    bit_position: 4,
+                }
+            );
+
+            let mut ltrt = TestBits::new();
+            ltrt.push(1, 1); // b_stereo_dmx_coeff
+            ltrt.push(0, 3); // LoRo centre
+            ltrt.push(2, 3); // LoRo surround
+            ltrt.push(1, 1); // b_ltrt_mixinfo
+            ltrt.push(0, 3); // LtRt centre
+            ltrt.push(u64::from(gain_code), 3); // reserved LtRt surround
+            let mut reader = BitReader::new(ltrt.as_bytes());
+            assert_eq!(
+                parse_custom_downmix_data(
+                    &mut reader,
+                    PresentationChannelContext::new(Some(3), None, false, 0, false),
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::ReservedStereoSurroundMixGain {
+                    kind: PresentationStereoDownmixKind::LtRt,
+                    gain_code,
+                    bit_position: 11,
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_truncated_custom_downmix_tools_and_optional_coefficients() {
+        let mut screen_gain = TestBits::new();
+        screen_gain.push(1, 1); // b_cdmx_data_present
+        screen_gain.push(0, 2); // one configuration
+        screen_gain.push(0, 3); // out_ch_config
+        screen_gain.push(1, 1); // b_put_screen_to_c
+        screen_gain.push(0, 1); // only one of three gain bits remains
+        let mut reader = BitReader::new(screen_gain.as_bytes());
+        assert_eq!(
+            parse_custom_downmix_data(
+                &mut reader,
+                PresentationChannelContext::new(Some(13), None, true, 2, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 3,
+                bit_position: 7,
+                remaining_bits: 1,
+            })
+        );
+
+        let mut ltrt = TestBits::new();
+        ltrt.push(1, 1); // b_stereo_dmx_coeff
+        ltrt.push(0, 3); // LoRo centre
+        ltrt.push(2, 3); // LoRo surround
+        ltrt.push(1, 1); // b_ltrt_mixinfo; LtRt fields are absent
+        let mut reader = BitReader::new(ltrt.as_bytes());
+        assert_eq!(
+            parse_custom_downmix_data(
+                &mut reader,
+                PresentationChannelContext::new(Some(3), None, false, 0, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 3,
+                bit_position: 8,
+                remaining_bits: 0,
+            })
+        );
+
+        let mut lfe = TestBits::new();
+        lfe.push(1, 1); // b_stereo_dmx_coeff
+        lfe.push(0, 3); // LoRo centre
+        lfe.push(2, 3); // LoRo surround
+        lfe.push(1, 1); // b_ltrt_mixinfo
+        lfe.push(0, 3); // LtRt centre
+        lfe.push(2, 3); // LtRt surround
+        lfe.push(1, 1); // b_lfe_mixinfo; only one padding bit remains
+        let mut reader = BitReader::new(lfe.as_bytes());
+        assert_eq!(
+            parse_custom_downmix_data(
+                &mut reader,
+                PresentationChannelContext::new(Some(3), None, false, 0, true),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 5,
+                bit_position: 15,
+                remaining_bits: 1,
+            })
+        );
     }
 
     #[test]

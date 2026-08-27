@@ -1698,9 +1698,17 @@ gain 数组长度。当前 API 只保留逐帧更新形态与码值，并返回�
 8 比特 `scale_main`、`scale_main_centre` 与 `scale_main_front`。按 P1
 `4.3.12.4.3`–`4.3.12.4.9`，`0x00..=0xfe` scale 与 `0xff` 静音码均合法，mono gate 为真时才读取
 `pan_associated`；pan 的 `0x00..=0xef` 原样保留，规范写明不得使用的 `0xf0..=0xff` 返回结构化
-错误。API 随后暴露 `custom_dmx_data()` 的精确 offset，不做 dB/角度换算，也不执行 gain 或 pan。
-custom downmix 与 loudness correction 仍未解析或验证，更不会执行。alternative
-presentation/dataset 与 direct-object 均无真实编码样本；
+错误。API 随后记录 `custom_dmx_data()` 的精确 offset，并按 P2 `6.2.9.2`–`6.2.9.10` 与
+`6.3.10.2`–`6.3.10.3` 从完整/core channel mode、four-back 与 top-pairs 派生六种
+`bs_ch_config`。`b_cdmx_data_present` 区分 gate 不适用、无数据与 1–4 个 configuration；
+`out_ch_config` 按输入配置读取 1/3 比特，表 127 的 unused `5..=7` 失败关闭。screen、back 与
+五类 top routing tool 均按分支保留 3 比特 gain 原值，码值 `7` 作为规范静音值合法保留。
+
+完整或 core mode 至少为 3 时继续解析 stereo gate；LoRo/LtRt centre/surround、可选 LFE 与
+preferred method 均只保留原始码值。P1 表 149a 的 surround 保留码 `0/1` 返回结构化错误；
+LFE gate 未传、传零和传输 5 比特 gain 三种状态不会合并。API 最后暴露 `loud_corr()` 的精确
+offset，不做 dB 换算或应用任何 downmix/gain。loudness correction 仍未解析或验证。
+alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
