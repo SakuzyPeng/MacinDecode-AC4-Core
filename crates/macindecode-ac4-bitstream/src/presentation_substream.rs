@@ -138,10 +138,16 @@ impl PresentationSubstreamSelectionContext {
 /// `pres_ch_mode_undefined` 精确对应规范中的 `pres_ch_mode == -1`：此时
 /// additional-data envelope 内会多传一个 `b_oamd_common_timing`。调用方应优先使用
 /// [`crate::topology::Ac4Topology::presentation_substream_context`]，避免自行推导该条件。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PresentationSubstreamContext {
     selection: PresentationSubstreamSelectionContext,
     pres_ch_mode_undefined: bool,
+}
+
+impl Default for PresentationSubstreamContext {
+    fn default() -> Self {
+        Self::new(false, 0, true)
+    }
 }
 
 impl PresentationSubstreamContext {
@@ -1185,7 +1191,7 @@ mod tests {
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 0, false),
+            PresentationSubstreamContext::new(false, 1, false),
         )
         .unwrap();
 
@@ -1193,6 +1199,28 @@ mod tests {
         assert_eq!(parsed.selection.common_metadata_bit_offset, 0);
         assert_eq!(parsed.additional_data, None);
         assert_eq!(parsed.dialnorm_bits_offset, 1);
+    }
+
+    #[test]
+    fn default_context_keeps_zero_group_channel_mode_undefined() {
+        let context = PresentationSubstreamContext::default();
+        assert_eq!(context, PresentationSubstreamContext::new(false, 0, true));
+
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_additional_data
+        bits.push(0, 4); // one additional-data byte
+        bits.byte_align();
+        bits.push(0, 1); // immersive_audio_indicator
+        bits.push(1, 1); // b_oamd_common_timing
+        bits.push(0, 1); // no advanced DE
+        bits.push(0, 5); // reserved add_data
+
+        let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
+        let additional = parsed.additional_data.unwrap();
+        assert_eq!(additional.oamd_common_timing, Some(true));
+        assert_eq!(additional.advanced_de_data, None);
+        assert_eq!(additional.add_data.len_bits(), 5);
+        assert_eq!(parsed.dialnorm_bits_offset, 16);
     }
 
     #[test]
