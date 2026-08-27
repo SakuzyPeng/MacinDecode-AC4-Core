@@ -185,17 +185,37 @@ impl Ac4Topology {
         &self,
         presentation_index: usize,
     ) -> Option<PresentationSubstreamSelectionContext> {
+        self.presentation_substream_context(presentation_index)
+            .map(PresentationSubstreamContext::selection_context)
+    }
+
+    /// 取得 presentation selection 与 common additional-data 的完整解析上下文。
+    ///
+    /// 除 `n_substreams_in_presentation` 外，本方法按 P2 `6.3.3.1.27` 的
+    /// Pseudocode 25 判断 `pres_ch_mode == -1`：presentation 没有可形成声道模式的 group，
+    /// 或任一 group 含对象/A-JOC substream 时，该条件成立，additional-data 中会传输
+    /// `b_oamd_common_timing`。
+    #[must_use]
+    pub fn presentation_substream_context(
+        &self,
+        presentation_index: usize,
+    ) -> Option<PresentationSubstreamContext> {
         let presentation = self.presentations().get(presentation_index)?;
         let substream = presentation.substream?;
         let mut n_audio_substreams = 0u32;
+        let mut has_channel_coded = false;
+        let mut has_object_coded = false;
         for &group_index in presentation.group_indices() {
             let group = self.groups().get(usize::try_from(group_index).ok()?)?;
             n_audio_substreams =
                 n_audio_substreams.checked_add(u32::try_from(group.substreams().len()).ok()?)?;
+            has_channel_coded |= group.channel_coded;
+            has_object_coded |= !group.channel_coded;
         }
-        Some(PresentationSubstreamSelectionContext::new(
+        Some(PresentationSubstreamContext::new(
             substream.alternative,
             n_audio_substreams,
+            has_object_coded || !has_channel_coded,
         ))
     }
 

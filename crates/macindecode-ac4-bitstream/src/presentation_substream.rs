@@ -1,13 +1,13 @@
-//! `ac4_presentation_substream()` 的 alternative 选择前缀。
+//! `ac4_presentation_substream()` 的选择前缀与 additional-data envelope。
 //!
-//! 对应 `TS103190-2:v1.3.1:6.2.2.3` 中 `b_alternative` 控制的第一段，
-//! 语义见 `6.3.3.1.1` 至 `6.3.3.1.15`。
+//! 对应 `TS103190-2:v1.3.1:6.2.2.3`、`6.2.2.5`；选择字段语义见
+//! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
+//! `6.3.3.1.16` 至 `6.3.3.1.18`。
 //!
-//! 本模块只解析 presentation 名称分片、播放目标和逐音频 substream 的
-//! activation/dataset map。紧随其后的 `b_additional_data`、响度、DRC、group gain、
-//! associated audio、custom downmix 与 loudness correction 属于公共 metadata 后缀，
-//! 由 [`Ac4PresentationSubstreamSelection::common_metadata_bit_offset`] 明确定界，但本阶段
-//! 不解释，也不执行任何处理。
+//! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
+//! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
+//! advanced dialogue-enhancement 原始码值。紧随其后的响度、DRC、group gain、associated
+//! audio、custom downmix 与 loudness correction 仍不解释；本模块也不执行任何处理。
 
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
 use crate::reader::{BitReader, ReadError};
@@ -28,7 +28,7 @@ pub const MAX_ALTERNATIVE_PRESENTATION_TARGETS: usize = 32;
 pub const MAX_AUDIO_SUBSTREAMS_PER_PRESENTATION: usize =
     MAX_GROUPS_PER_PRESENTATION * MAX_LF_SUBSTREAMS;
 
-/// presentation selection 前缀中超出固定容量的结构。
+/// presentation substream 前缀中超出固定容量的结构。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSubstreamCapacity {
     /// alternative target 数。
@@ -46,7 +46,7 @@ impl fmt::Display for PresentationSubstreamCapacity {
     }
 }
 
-/// alternative presentation selection 前缀解析失败的原因。
+/// presentation substream 前缀解析失败的原因。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSubstreamError {
     /// 底层读取失败或变长字段溢出。
@@ -72,7 +72,7 @@ impl fmt::Display for PresentationSubstreamError {
             PresentationSubstreamError::Read(error) => {
                 write!(
                     formatter,
-                    "Failed to read presentation selection metadata: {error}"
+                    "Failed to read presentation substream metadata: {error}"
                 )
             }
             PresentationSubstreamError::MissingAudioSubstreams => formatter.write_str(
@@ -132,6 +132,230 @@ impl PresentationSubstreamSelectionContext {
         self.n_audio_substreams
     }
 }
+
+/// 解析完整 presentation substream 前缀所需的 TOC/拓扑上下文。
+///
+/// `pres_ch_mode_undefined` 精确对应规范中的 `pres_ch_mode == -1`：此时
+/// additional-data envelope 内会多传一个 `b_oamd_common_timing`。调用方应优先使用
+/// [`crate::topology::Ac4Topology::presentation_substream_context`]，避免自行推导该条件。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PresentationSubstreamContext {
+    selection: PresentationSubstreamSelectionContext,
+    pres_ch_mode_undefined: bool,
+}
+
+impl PresentationSubstreamContext {
+    /// 构造完整解析上下文。
+    #[must_use]
+    pub const fn new(
+        alternative: bool,
+        n_audio_substreams: u32,
+        pres_ch_mode_undefined: bool,
+    ) -> Self {
+        Self {
+            selection: PresentationSubstreamSelectionContext::new(alternative, n_audio_substreams),
+            pres_ch_mode_undefined,
+        }
+    }
+
+    /// selection 前缀所需的上下文子集。
+    #[must_use]
+    pub const fn selection_context(self) -> PresentationSubstreamSelectionContext {
+        self.selection
+    }
+
+    /// presentation 的 `pres_ch_mode` 是否为规范中的未定义值 `-1`。
+    #[must_use]
+    pub const fn pres_ch_mode_undefined(self) -> bool {
+        self.pres_ch_mode_undefined
+    }
+}
+
+/// `advanced_de_data()` 中仅在配置存在时传输的 compressor 配置原值。
+///
+/// 这些字段只被解析和保留；本 crate 不在 presentation 层执行 dialogue enhancement。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AdvancedDeConfig {
+    /// `advanced_de_compr_tc_attack`，6 比特。
+    pub compressor_time_constant_attack: u8,
+    /// `advanced_de_compr_tc_release`，6 比特。
+    pub compressor_time_constant_release: u8,
+    /// `advanced_de_compr_ratio`，4 比特。
+    pub compressor_ratio: u8,
+}
+
+/// `advanced_de_data()` 的原始参数。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AdvancedDeData {
+    /// `b_advanced_de_config_present` 控制的 compressor 配置。
+    pub config: Option<AdvancedDeConfig>,
+    /// `advanced_de_compr_thresh`，按 6 比特二进制补码解释，范围 `-32..=31`。
+    pub compressor_threshold: i8,
+    /// `advanced_de_compr_gain`，5 比特原值。
+    pub compressor_gain: u8,
+}
+
+impl AdvancedDeData {
+    fn parse(reader: &mut BitReader<'_>) -> Result<Self, ReadError> {
+        let config = if reader.read_flag()? {
+            Some(AdvancedDeConfig {
+                compressor_time_constant_attack: u8::try_from(reader.read_bits(6)?).unwrap_or(0),
+                compressor_time_constant_release: u8::try_from(reader.read_bits(6)?).unwrap_or(0),
+                compressor_ratio: u8::try_from(reader.read_bits(4)?).unwrap_or(0),
+            })
+        } else {
+            None
+        };
+        let threshold_raw = u8::try_from(reader.read_bits(6)?).unwrap_or(0);
+        let threshold =
+            i16::from(threshold_raw).saturating_sub(if threshold_raw >= 32 { 64 } else { 0 });
+        Ok(Self {
+            config,
+            compressor_threshold: i8::try_from(threshold).unwrap_or(0),
+            compressor_gain: u8::try_from(reader.read_bits(5)?).unwrap_or(0),
+        })
+    }
+}
+
+/// presentation additional-data envelope 中保留的 `add_data` 比特视图。
+///
+/// 已知字段结束位置通常不在字节边界，因此本类型保留精确 bit offset/length 并按需读取，
+/// 不分配或复制。该区域由声明的 `add_data_bytes` 严格定界。
+#[derive(Debug, Clone, Copy)]
+pub struct PresentationAddDataBits<'a> {
+    source: &'a [u8],
+    bit_offset: u64,
+    bit_len: u64,
+}
+
+impl<'a, 'b> PartialEq<PresentationAddDataBits<'b>> for PresentationAddDataBits<'a> {
+    fn eq(&self, other: &PresentationAddDataBits<'b>) -> bool {
+        self.bit_len == other.bit_len && (*self).iter().eq((*other).iter())
+    }
+}
+
+impl Eq for PresentationAddDataBits<'_> {}
+
+impl<'a> PresentationAddDataBits<'a> {
+    /// 视图包含的比特数。
+    #[must_use]
+    pub const fn len_bits(self) -> u64 {
+        self.bit_len
+    }
+
+    /// 视图是否为空。
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.bit_len == 0
+    }
+
+    /// 读取一个比特。
+    #[must_use]
+    pub fn get(self, index: u64) -> Option<bool> {
+        if index >= self.bit_len {
+            return None;
+        }
+        let mut reader = BitReader::new(self.source);
+        reader.skip_bits(self.bit_offset.checked_add(index)?).ok()?;
+        reader.read_flag().ok()
+    }
+
+    /// 若起点和长度都在字节边界上，返回零拷贝字节切片。
+    #[must_use]
+    pub fn as_aligned_slice(self) -> Option<&'a [u8]> {
+        if !self.bit_offset.is_multiple_of(8) || !self.bit_len.is_multiple_of(8) {
+            return None;
+        }
+        let start = usize::try_from(self.bit_offset / 8).ok()?;
+        let len = usize::try_from(self.bit_len / 8).ok()?;
+        self.source.get(start..start.checked_add(len)?)
+    }
+
+    /// 按码流顺序遍历保留比特。
+    #[must_use]
+    pub fn iter(self) -> PresentationAddDataBitIter<'a> {
+        PresentationAddDataBitIter::new(self)
+    }
+}
+
+impl<'a> IntoIterator for PresentationAddDataBits<'a> {
+    type Item = bool;
+    type IntoIter = PresentationAddDataBitIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// [`PresentationAddDataBits`] 的无分配迭代器。
+#[derive(Debug, Clone)]
+pub struct PresentationAddDataBitIter<'a> {
+    reader: BitReader<'a>,
+    remaining: u64,
+}
+
+impl<'a> PresentationAddDataBitIter<'a> {
+    fn new(bits: PresentationAddDataBits<'a>) -> Self {
+        let mut reader = BitReader::new(bits.source);
+        let remaining = if reader.skip_bits(bits.bit_offset).is_ok() {
+            bits.bit_len
+        } else {
+            0
+        };
+        Self { reader, remaining }
+    }
+}
+
+impl Iterator for PresentationAddDataBitIter<'_> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+        let value = self.reader.read_flag().ok();
+        if value.is_some() {
+            self.remaining = self.remaining.saturating_sub(1);
+        } else {
+            self.remaining = 0;
+        }
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match usize::try_from(self.remaining) {
+            Ok(remaining) => (remaining, Some(remaining)),
+            Err(_) => (usize::MAX, None),
+        }
+    }
+}
+
+/// `b_additional_data` 控制的有界 presentation metadata。
+#[derive(Debug, Clone, Copy)]
+pub struct PresentationAdditionalData<'a> {
+    /// envelope 声明的 `add_data_bytes`。
+    pub add_data_bytes: u32,
+    /// 纯信息性的 `immersive_audio_indicator`。
+    pub immersive_audio: bool,
+    /// 仅 `pres_ch_mode == -1` 时传输的 `b_oamd_common_timing`。
+    pub oamd_common_timing: Option<bool>,
+    /// 可选 `advanced_de_data()`；仅解析原始参数，不执行处理。
+    pub advanced_de_data: Option<AdvancedDeData>,
+    /// 已知字段之后、envelope 末尾之前的保留 `add_data`。
+    pub add_data: PresentationAddDataBits<'a>,
+}
+
+impl<'a, 'b> PartialEq<PresentationAdditionalData<'b>> for PresentationAdditionalData<'a> {
+    fn eq(&self, other: &PresentationAdditionalData<'b>) -> bool {
+        self.add_data_bytes == other.add_data_bytes
+            && self.immersive_audio == other.immersive_audio
+            && self.oamd_common_timing == other.oamd_common_timing
+            && self.advanced_de_data == other.advanced_de_data
+            && self.add_data == other.add_data
+    }
+}
+
+impl Eq for PresentationAdditionalData<'_> {}
 
 /// presentation name 在当前帧中的分片形态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -620,6 +844,159 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
     }
 }
 
+/// `ac4_presentation_substream()` 已解析的 selection 与 additional-data 前缀。
+///
+/// [`dialnorm_bits_offset`](Self::dialnorm_bits_offset) 指向 additional-data envelope 之后的
+/// `dialnorm_bits`。该位置之后的响度、DRC 与其他 presentation 处理 metadata 尚未解析。
+#[derive(Debug, Clone, Copy)]
+pub struct Ac4PresentationSubstream<'a> {
+    /// 普通或 alternative presentation 的 selection 视图。
+    pub selection: Ac4PresentationSubstreamSelection<'a>,
+    /// `b_additional_data` 为真时的有界 additional-data metadata。
+    pub additional_data: Option<PresentationAdditionalData<'a>>,
+    /// `dialnorm_bits` 在 presentation substream payload 内的精确比特偏移。
+    pub dialnorm_bits_offset: u64,
+}
+
+impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
+    fn eq(&self, other: &Ac4PresentationSubstream<'b>) -> bool {
+        self.selection == other.selection
+            && self.additional_data == other.additional_data
+            && self.dialnorm_bits_offset == other.dialnorm_bits_offset
+    }
+}
+
+impl Eq for Ac4PresentationSubstream<'_> {}
+
+impl<'a> Ac4PresentationSubstream<'a> {
+    /// 解析 selection 前缀和 common additional-data envelope。
+    ///
+    /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
+    /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
+    /// 不执行 dialogue enhancement。`dialnorm_bits_offset` 之后的字段不解析或验证。
+    ///
+    /// # Errors
+    ///
+    /// selection 字段、additional-data 长度或其已知字段截断，变长字段溢出，或计数超过
+    /// 固定容量时返回错误。
+    pub fn parse(
+        payload: &'a [u8],
+        context: PresentationSubstreamContext,
+    ) -> Result<Self, PresentationSubstreamError> {
+        let selection =
+            Ac4PresentationSubstreamSelection::parse(payload, context.selection_context())?;
+        let mut reader = BitReader::new(payload);
+        reader.skip_bits(selection.common_metadata_bit_offset)?;
+        let additional_data = parse_additional_data(&mut reader, payload, context)?;
+        Ok(Self {
+            selection,
+            additional_data,
+            dialnorm_bits_offset: reader.bit_position(),
+        })
+    }
+}
+
+fn parse_additional_data<'a>(
+    reader: &mut BitReader<'a>,
+    source: &'a [u8],
+    context: PresentationSubstreamContext,
+) -> Result<Option<PresentationAdditionalData<'a>>, PresentationSubstreamError> {
+    if !reader.read_flag()? {
+        return Ok(None);
+    }
+
+    let mut add_data_bytes = u32::try_from(reader.read_bits(4)?)
+        .unwrap_or(0)
+        .saturating_add(1);
+    if add_data_bytes == 16 {
+        add_data_bytes = reader.variable_bits_scaled_u32(2, add_data_bytes, 0)?;
+    }
+    reader.byte_align()?;
+
+    let region_bit_offset = reader.bit_position();
+    let region_bits = u64::from(add_data_bytes).saturating_mul(8);
+    reader.skip_bits(region_bits)?;
+
+    let region_byte_offset = usize::try_from(region_bit_offset / 8).map_err(|_| {
+        PresentationSubstreamError::Read(ReadError::ValueOverflow {
+            bit_position: region_bit_offset,
+        })
+    })?;
+    let region_len = usize::try_from(add_data_bytes).map_err(|_| {
+        PresentationSubstreamError::Read(ReadError::ValueOverflow {
+            bit_position: region_bit_offset,
+        })
+    })?;
+    let region_end =
+        region_byte_offset
+            .checked_add(region_len)
+            .ok_or(PresentationSubstreamError::Read(ReadError::ValueOverflow {
+                bit_position: region_bit_offset,
+            }))?;
+    let region_source =
+        source
+            .get(region_byte_offset..region_end)
+            .ok_or(PresentationSubstreamError::Read(ReadError::ValueOverflow {
+                bit_position: region_bit_offset,
+            }))?;
+
+    let mut region = BitReader::new(region_source);
+    let parsed = (|| -> Result<_, ReadError> {
+        let immersive_audio = region.read_flag()?;
+        let oamd_common_timing = if context.pres_ch_mode_undefined() {
+            Some(region.read_flag()?)
+        } else {
+            None
+        };
+        let advanced_de_data = if region.read_flag()? {
+            Some(AdvancedDeData::parse(&mut region)?)
+        } else {
+            None
+        };
+        Ok((immersive_audio, oamd_common_timing, advanced_de_data))
+    })()
+    .map_err(|error| {
+        PresentationSubstreamError::Read(rebase_read_error(error, region_bit_offset))
+    })?;
+
+    let add_data = PresentationAddDataBits {
+        source,
+        bit_offset: region_bit_offset.saturating_add(region.bit_position()),
+        bit_len: region.remaining_bits(),
+    };
+    Ok(Some(PresentationAdditionalData {
+        add_data_bytes,
+        immersive_audio: parsed.0,
+        oamd_common_timing: parsed.1,
+        advanced_de_data: parsed.2,
+        add_data,
+    }))
+}
+
+fn rebase_read_error(error: ReadError, base: u64) -> ReadError {
+    match error {
+        ReadError::OutOfBounds {
+            requested_bits,
+            bit_position,
+            remaining_bits,
+        } => ReadError::OutOfBounds {
+            requested_bits,
+            bit_position: base.saturating_add(bit_position),
+            remaining_bits,
+        },
+        ReadError::WidthUnsupported {
+            requested_bits,
+            bit_position,
+        } => ReadError::WidthUnsupported {
+            requested_bits,
+            bit_position: base.saturating_add(bit_position),
+        },
+        ReadError::ValueOverflow { bit_position } => ReadError::ValueOverflow {
+            bit_position: base.saturating_add(bit_position),
+        },
+    }
+}
+
 fn parse_alternative<'a>(
     reader: &mut BitReader<'a>,
     source: &'a [u8],
@@ -764,6 +1141,12 @@ mod tests {
             self.push(u64::from(value), 8);
         }
 
+        fn byte_align(&mut self) {
+            while !self.len.is_multiple_of(8) {
+                self.push(0, 1);
+            }
+        }
+
         fn as_bytes(&self) -> &[u8] {
             self.bytes
                 .get(..self.len.div_ceil(8))
@@ -792,6 +1175,247 @@ mod tests {
 
         assert_eq!(parsed.alternative, None);
         assert_eq!(parsed.common_metadata_bit_offset, 0);
+    }
+
+    #[test]
+    fn ordinary_full_parse_stops_at_dialnorm_without_additional_data() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // b_additional_data
+        bits.push(0b101_0101, 7); // 尚未解析的 dialnorm_bits
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 0, false),
+        )
+        .unwrap();
+
+        assert_eq!(parsed.selection.alternative, None);
+        assert_eq!(parsed.selection.common_metadata_bit_offset, 0);
+        assert_eq!(parsed.additional_data, None);
+        assert_eq!(parsed.dialnorm_bits_offset, 1);
+    }
+
+    #[test]
+    fn parses_object_additional_data_and_ignores_dialnorm_suffix_in_equality() {
+        let mut envelope = TestBits::new();
+        envelope.push(1, 1); // b_additional_data
+        envelope.push(0, 4); // one additional-data byte
+        envelope.byte_align();
+        envelope.push(1, 1); // immersive_audio_indicator
+        envelope.push(0, 1); // b_oamd_common_timing
+        envelope.push(0, 1); // no advanced DE
+        envelope.push(0b10101, 5); // reserved add_data
+        let expected_dialnorm_offset = envelope.len as u64;
+
+        let mut left_bits = envelope.clone();
+        left_bits.push(0, 7);
+        let mut right_bits = envelope;
+        right_bits.push(0b111_1111, 7);
+        let context = PresentationSubstreamContext::new(false, 1, true);
+        let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
+        let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
+
+        let additional = left.additional_data.unwrap();
+        assert_eq!(additional.add_data_bytes, 1);
+        assert!(additional.immersive_audio);
+        assert_eq!(additional.oamd_common_timing, Some(false));
+        assert_eq!(additional.advanced_de_data, None);
+        assert_eq!(additional.add_data.len_bits(), 5);
+        assert_eq!(
+            additional.add_data.iter().collect::<std::vec::Vec<_>>(),
+            [true, false, true, false, true]
+        );
+        assert_eq!(additional.add_data.get(5), None);
+        assert_eq!(additional.add_data.as_aligned_slice(), None);
+        assert_eq!(left.dialnorm_bits_offset, expected_dialnorm_offset);
+        assert_eq!(left, right, "dialnorm 及更后字段尚未进入已解析视图");
+    }
+
+    #[test]
+    fn defined_channel_mode_omits_oamd_common_timing() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_additional_data
+        bits.push(0, 4); // one additional-data byte
+        bits.byte_align();
+        bits.push(0, 1); // immersive_audio_indicator
+        bits.push(0, 1); // no advanced DE; no OAMD timing bit on this path
+        bits.push(0b11_1000, 6); // reserved add_data
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 1, false),
+        )
+        .unwrap();
+        let additional = parsed.additional_data.unwrap();
+        assert_eq!(additional.oamd_common_timing, None);
+        assert_eq!(additional.add_data.len_bits(), 6);
+        assert_eq!(
+            additional.add_data.iter().collect::<std::vec::Vec<_>>(),
+            [true, true, true, false, false, false]
+        );
+        assert_eq!(parsed.dialnorm_bits_offset, 16);
+    }
+
+    #[test]
+    fn parses_advanced_de_raw_fields_and_exact_reserved_tail() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_additional_data
+        bits.push(3, 4); // four additional-data bytes
+        bits.byte_align();
+        bits.push(1, 1); // immersive_audio_indicator
+        bits.push(1, 1); // b_oamd_common_timing
+        bits.push(1, 1); // b_advanced_de_data_present
+        bits.push(1, 1); // b_advanced_de_config_present
+        bits.push(63, 6);
+        bits.push(62, 6);
+        bits.push(15, 4);
+        bits.push(32, 6); // signed threshold -32
+        bits.push(31, 5);
+        bits.push(1, 1); // one reserved add_data bit
+        let expected_dialnorm_offset = bits.len as u64;
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 1, true),
+        )
+        .unwrap();
+        let additional = parsed.additional_data.unwrap();
+        let advanced = additional.advanced_de_data.unwrap();
+        assert_eq!(
+            advanced.config,
+            Some(AdvancedDeConfig {
+                compressor_time_constant_attack: 63,
+                compressor_time_constant_release: 62,
+                compressor_ratio: 15,
+            })
+        );
+        assert_eq!(advanced.compressor_threshold, -32);
+        assert_eq!(advanced.compressor_gain, 31);
+        assert_eq!(additional.add_data.len_bits(), 1);
+        assert_eq!(additional.add_data.get(0), Some(true));
+        assert_eq!(parsed.dialnorm_bits_offset, expected_dialnorm_offset);
+    }
+
+    #[test]
+    fn parses_advanced_de_without_optional_config() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_additional_data
+        bits.push(1, 4); // two additional-data bytes
+        bits.byte_align();
+        bits.push(0, 1); // immersive_audio_indicator
+        bits.push(0, 1); // b_oamd_common_timing
+        bits.push(1, 1); // b_advanced_de_data_present
+        bits.push(0, 1); // no advanced DE config
+        bits.push(31, 6); // positive threshold endpoint
+        bits.push(0, 5); // gain endpoint
+        bits.push(0, 1); // one reserved add_data bit
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 1, true),
+        )
+        .unwrap();
+        let additional = parsed.additional_data.unwrap();
+        assert_eq!(
+            additional.advanced_de_data,
+            Some(AdvancedDeData {
+                config: None,
+                compressor_threshold: 31,
+                compressor_gain: 0,
+            })
+        );
+        assert_eq!(additional.add_data.len_bits(), 1);
+        assert_eq!(parsed.dialnorm_bits_offset, 24);
+    }
+
+    #[test]
+    fn advanced_de_cannot_read_past_declared_additional_data() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_additional_data
+        bits.push(0, 4); // one additional-data byte
+        bits.byte_align();
+        bits.push(0, 1); // immersive_audio_indicator
+        bits.push(0, 1); // b_oamd_common_timing
+        bits.push(1, 1); // b_advanced_de_data_present
+        bits.push(0, 1); // no advanced DE config
+        bits.push(0b1111, 4); // threshold is truncated inside the declared byte
+        bits.push_byte(0xff); // dialnorm/suffix bytes must not satisfy the bounded read
+
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                bits.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, true),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 6,
+                bit_position: 12,
+                remaining_bits: 4,
+            })
+        );
+    }
+
+    #[test]
+    fn extends_and_bounds_additional_data_byte_length() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_additional_data
+        bits.push(15, 4); // base 16 bytes
+        bits.push(2, 2); // variable_bits(2) = 2
+        bits.push(0, 1);
+        bits.push(1, 1); // immersive_audio_indicator
+        bits.push(1, 1); // b_oamd_common_timing
+        bits.push(0, 1); // no advanced DE
+        for _ in 0..141 {
+            bits.push(0, 1);
+        }
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 1, true),
+        )
+        .unwrap();
+        let additional = parsed.additional_data.unwrap();
+        assert_eq!(additional.add_data_bytes, 18);
+        assert_eq!(additional.add_data.len_bits(), 141);
+        assert_eq!(parsed.dialnorm_bits_offset, 152);
+    }
+
+    #[test]
+    fn rejects_truncated_and_overflowing_additional_data_lengths() {
+        let mut truncated = TestBits::new();
+        truncated.push(1, 1); // b_additional_data
+        truncated.push(1, 4); // two additional-data bytes
+        truncated.byte_align();
+        truncated.push_byte(0); // only one byte remains
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                truncated.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 16,
+                bit_position: 8,
+                remaining_bits: 8,
+            })
+        );
+
+        let mut overflowing = TestBits::new();
+        overflowing.push(1, 1);
+        overflowing.push(15, 4);
+        for _ in 0..40 {
+            overflowing.push(3, 2);
+            overflowing.push(1, 1);
+        }
+        assert!(matches!(
+            Ac4PresentationSubstream::parse(
+                overflowing.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, false),
+            ),
+            Err(PresentationSubstreamError::Read(
+                ReadError::ValueOverflow { .. }
+            ))
+        ));
     }
 
     #[test]

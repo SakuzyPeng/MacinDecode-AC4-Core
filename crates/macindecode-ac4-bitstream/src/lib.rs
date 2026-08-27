@@ -69,8 +69,10 @@ pub use emdf::{EmdfInfo, EmdfPayloadsSubstream};
 pub use huffman::{HuffmanError, HuffmanTable};
 pub use presentation::{Ac4PresentationV1Info, PresentationSubstreamInfo};
 pub use presentation_substream::{
-    Ac4PresentationSubstreamSelection, AlternativePresentationSelection,
-    PresentationSubstreamError, PresentationSubstreamSelectionContext,
+    Ac4PresentationSubstream, Ac4PresentationSubstreamSelection, AdvancedDeConfig, AdvancedDeData,
+    AlternativePresentationSelection, PresentationAddDataBits, PresentationAdditionalData,
+    PresentationSubstreamContext, PresentationSubstreamError,
+    PresentationSubstreamSelectionContext,
 };
 pub use reader::{BitReader, ReadError};
 #[cfg(feature = "audio-decode")]

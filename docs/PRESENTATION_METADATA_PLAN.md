@@ -1,8 +1,9 @@
 # Presentation 与元数据闭环计划
 
 > **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
-> substream activation/dataset selection 前缀已完成构造验证；公共 metadata 后缀、音频
-> substream tools metadata、EMDF payload 与 alternative dataset 数据路径仍待实现。当前
+> substream activation/dataset selection 前缀，以及公共 additional-data envelope 已完成
+> 构造验证；dialnorm 之后的 presentation metadata、音频 substream tools metadata、EMDF
+> payload 与 alternative dataset 数据路径仍待实现。当前
 > 工具链可再生产普通 presentation payload 与 dialog enhancement 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
 > 以[实施路线图](ROADMAP.md)为准。
@@ -48,14 +49,20 @@ EMDF opaque policy；后续实现不得在没有新 ADR 与明确需求的情况
 
 - presentation name、target level、target device category、ducking depth；
 - substream activation map 与 alternative dataset index；
+- immersive indicator、OAMD common timing、advanced dialogue-enhancement 原始参数与保留
+  `add_data`；
 - dialnorm、further loudness info 与 presentation DRC；
 - substream-group gains 与 associated-audio scaling/pan；
 - custom downmix 参数与 loudness-correction 码值。
 
-当前首个增量已解析 `b_alternative` 控制的 selection 前缀：presentation name 分片、target
+首个增量已解析 `b_alternative` 控制的 selection 前缀：presentation name 分片、target
 level/device category/ducking/loudness correction 码值，以及逐音频 substream 的 active 与
-alternative dataset index。普通 presentation 没有该前缀；解析器只给出公共 metadata 后缀
-的精确 bit offset，尚不把后缀标为已解析。
+alternative dataset index。第二个增量在 selection 之后验证 `b_additional_data` 的 4 比特
+字节数与 `variable_bits(2)` 扩展，完成 `byte_align` 后在声明的独立边界内解析 immersive
+indicator、`pres_ch_mode == -1` 路径的 OAMD common timing 和 12/28 比特 advanced DE 原始
+参数，并以无分配 bit view 保留剩余 `add_data`。普通 presentation 没有 selection 前缀；
+两条路径现在都返回紧随该 envelope 的 `dialnorm_bits` 精确 bit offset，之后字段仍不标为
+已解析。
 
 解析 API 必须显式接收 TOC/拓扑上下文以及前一有效 DRC 配置。所有长度 envelope 先验证边界，
 成功后才提交跨帧状态；dependent frame 缺少历史配置时失败关闭。

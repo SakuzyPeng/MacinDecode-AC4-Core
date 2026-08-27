@@ -12,7 +12,9 @@
 
 use crate::oamd::OamdError;
 use crate::presentation::{Ac4PresentationV1Info, MAX_GROUPS_PER_PRESENTATION};
-use crate::presentation_substream::PresentationSubstreamSelectionContext;
+use crate::presentation_substream::{
+    PresentationSubstreamContext, PresentationSubstreamSelectionContext,
+};
 use crate::reader::{BitReader, ReadError};
 use crate::substream::{Ac4SubstreamGroupInfo, SubstreamInfo};
 use crate::toc::{Ac4Toc, SequenceTransition};
@@ -380,7 +382,12 @@ mod tests {
             topology.presentation_substream_selection_context(0),
             Some(PresentationSubstreamSelectionContext::new(false, 1))
         );
+        assert_eq!(
+            topology.presentation_substream_context(0),
+            Some(PresentationSubstreamContext::new(false, 1, true))
+        );
         assert_eq!(topology.presentation_substream_selection_context(1), None);
+        assert_eq!(topology.presentation_substream_context(1), None);
 
         let substream = topology
             .groups()
@@ -470,6 +477,10 @@ mod tests {
             topology.presentation_substream_selection_context(0),
             Some(PresentationSubstreamSelectionContext::new(true, 3))
         );
+        assert_eq!(
+            topology.presentation_substream_context(0),
+            Some(PresentationSubstreamContext::new(true, 3, true))
+        );
     }
 
     /// 扩展 presentation config 按当前规范不携带 SGI，但普通 presentation 没有
@@ -500,6 +511,10 @@ mod tests {
         assert_eq!(
             topology.presentation_substream_selection_context(0),
             Some(PresentationSubstreamSelectionContext::new(false, 0))
+        );
+        assert_eq!(
+            topology.presentation_substream_context(0),
+            Some(PresentationSubstreamContext::new(false, 0, true))
         );
     }
 
@@ -557,6 +572,10 @@ mod tests {
         let topology = parse_frame(&[TOC_PREFIX, PRESENTATION_SINGLE_GROUP, group, table]);
 
         assert_eq!(topology.scene_path(), ScenePath::Ajoc);
+        assert_eq!(
+            topology.presentation_substream_context(0),
+            Some(PresentationSubstreamContext::new(false, 1, true))
+        );
         assert_eq!(
             topology.total_objects(),
             5,
@@ -618,6 +637,10 @@ mod tests {
 
         assert_eq!(topology.scene_path(), ScenePath::ChannelBased);
         assert_eq!(topology.total_objects(), 0);
+        assert_eq!(
+            topology.presentation_substream_context(0),
+            Some(PresentationSubstreamContext::new(false, 1, false))
+        );
         let SubstreamInfo::Chan(chan) = topology
             .groups()
             .first()
