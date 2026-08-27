@@ -459,7 +459,7 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 
 ## M4.5：Presentation/Metadata 解析闭环
 
-**前九个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
+**前十个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
 `6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
 device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
 active 与 alternative dataset index。名称即使不在字节边界也以无分配 8 比特元素视图保留；
@@ -484,8 +484,12 @@ I-frame gate 现直接使用拓扑的 `b_pres_ndot`，并按 P1 `4.2.14.5`–`4.
 `drc_config()`：固定容量保留 1–8 个 decoder mode、自定义输出电平范围、repeat/default/
 compression-curve/gains 四类 profile、E-AC-3 profile，以及 curve 的 boost/cut control points、
 默认或自定义 time constants 与 adaptive thresholds 原始码值。dependent frame 不错误读取
-配置；`drc_data()` 仍只按 envelope 内有界 bit view 保留。配置截断不能借用随后 metadata。
-逐帧 data、Huffman gains 和前一有效配置状态仍未解析。其后按规范 `n_substream_groups` 解析
+配置。I-frame 的 P1 `4.2.14.9` `drc_data()` 现继续解析 repeat profile 的有效 gain/curve
+形态、每 mode `drc_gainset_size` 及其 `variable_bits(2)` 扩展、2 比特 version，以及 curve
+mode 共用的 reset/reserved；未知版本与尚未解释的 gain-set body 均以有界 bit view 保留。
+缺失/循环 repeat、过短/截断/溢出 gainset、DRC absent 或完整 I-frame data 后的尾随比特均失败
+关闭，且不能借用随后 metadata。Huffman gains、dependent-frame 前一有效配置状态仍未解析。
+其后按规范 `n_substream_groups` 解析
 group-gain presence 与 `b_keep`，并以固定容量数组保留逐 group 六比特 `sg_gain` 原值；单
 group 不错误消费 presence bit，八 group 上限、截断和非法上下文均有构造门禁。当前只区分
 未传输、未携带、沿用上一帧和
@@ -509,9 +513,10 @@ gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关�
 构造门禁覆盖 0/32 字节名称、1/32 targets、非字节对齐分片、presence gate、截断、容量和
 `variable_bits` 溢出，以及 additional-data 的 1 字节基础长度与 18 字节扩展长度、对象/声道
 条件位、A-DE 两种长度、保留位边界与禁止越界借用后续 dialnorm，以及 further loudness 的
-presence gate、完整原值组合和 extension 边界；DRC 另覆盖 1 比特最小 frame、95/149 比特扩展
-frame、四类 profile、完整 curve 可选分支、I/dependent gate、envelope 内截断、零长度与变长
-长度溢出；group gain 覆盖单/multi-group gate、absent、keep、
+presence gate、完整原值组合和 extension 边界；DRC 另覆盖 1 比特最小 frame、95/165 比特扩展
+frame、四类 profile、完整 curve 可选分支、I/dependent gate、repeat 前向/链式/缺失/循环引用、
+9/70 比特 gainset、八 gainset 上限、未知 version、curve reset/reserved、envelope 内截断/尾随、
+零长度与两层变长长度溢出；group gain 覆盖单/multi-group gate、absent、keep、
 六比特码值端点、八 group 上限、截断与上下文容量；associated audio 覆盖 absent、三个 scale
 presence 的全部组合、`0x00`/`0xff` scale 端点、mono gate、`0x00`/`0xef` pan 端点、全部保留
 pan 码值与逐可选字段截断；custom downmix 覆盖六种输入配置派生、1/4 configuration、两种
@@ -522,7 +527,7 @@ direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续依次补 presentation `drc_data()` 与跨帧状态、audio-substream tools metadata、EMDF envelope
+后续依次补 presentation DRC Huffman gains 与跨帧状态、audio-substream tools metadata、EMDF envelope
 与 alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵

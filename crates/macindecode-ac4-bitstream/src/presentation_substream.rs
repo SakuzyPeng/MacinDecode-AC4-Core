@@ -5,8 +5,9 @@
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
 //! `6.3.3.1.16` 至 `6.3.3.1.18`；响度语法见 `6.2.7.3`，共享字段语义见
 //! `TS103190-1:v1.4.1:4.3.12.3`；DRC envelope 见 `6.3.3.1.19` 至
-//! `6.3.3.1.21`，其 I-frame 配置见 `TS103190-1:v1.4.1:4.2.14.5` 至
-//! `4.2.14.8`、`4.3.13.1` 至 `4.3.13.4`；substream-group gain 见
+//! `6.3.3.1.21`，其 I-frame 配置与 data envelope 见
+//! `TS103190-1:v1.4.1:4.2.14.5` 至 `4.2.14.9`、`4.3.13.1` 至 `4.3.13.5`；
+//! substream-group gain 见
 //! `6.3.3.1.22` 至 `6.3.3.1.24`，
 //! associated-audio 字段见 `6.3.3.1.25` 至 `6.3.3.1.26`，其码值语义见
 //! `TS103190-1:v1.4.1:4.3.12.4.3` 至 `4.3.12.4.9`；custom downmix 语法与语义见
@@ -18,9 +19,10 @@
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
 //! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
 //! `drc_frame()` 原始比特；I-frame 的 `drc_config()` 会解析 decoder modes、profile 与
-//! compression curve 原始参数，后续 `drc_data()` 仍作为有界视图保留。模块还解析逐帧
-//! substream-group gain 更新、associated-audio scale/pan 码值、custom downmix 的配置、路由与
-//! gain 码值，以及 loudness correction 的 presence 与 5 比特原始码值。DRC data、跨帧配置/
+//! compression curve 原始参数，`drc_data()` 再解析 repeat profile、gain-set 长度/版本和
+//! curve reset/reserved，并保留 gain-set body。模块还解析逐帧 substream-group gain 更新、
+//! associated-audio scale/pan 码值、custom downmix 的配置、路由与 gain 码值，以及 loudness
+//! correction 的 presence 与 5 比特原始码值。DRC Huffman gains、dependent-frame 配置状态与
 //! group gain 生效状态仍不解释；本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
@@ -64,6 +66,8 @@ pub enum PresentationSubstreamCapacity {
     SubstreamGroups,
     /// presentation `drc_config()` 声明的 decoder mode 数。
     DrcDecoderModes,
+    /// presentation `drc_data()` 携带的 gain set 数。
+    DrcGainSets,
 }
 
 impl fmt::Display for PresentationSubstreamCapacity {
@@ -73,6 +77,7 @@ impl fmt::Display for PresentationSubstreamCapacity {
             PresentationSubstreamCapacity::AudioSubstreams => "audio substreams in a presentation",
             PresentationSubstreamCapacity::SubstreamGroups => "substream groups in a presentation",
             PresentationSubstreamCapacity::DrcDecoderModes => "presentation DRC decoder modes",
+            PresentationSubstreamCapacity::DrcGainSets => "presentation DRC gain sets",
         })
     }
 }
@@ -103,6 +108,34 @@ pub enum PresentationSubstreamError {
         minimum: u32,
         /// `drc_metadata_size_value` 的比特偏移。
         bit_position: u64,
+    },
+    /// `drc_gainset_size` 不足以容纳必需的 2 比特 `drc_version`。
+    InvalidDrcGainSetSize {
+        /// 码流声明的 gain set 长度。
+        declared: u32,
+        /// 当前语法要求的最小长度。
+        minimum: u32,
+        /// `drc_gainset_size_value` 的比特偏移。
+        bit_position: u64,
+    },
+    /// repeat profile 引用了配置中不存在的 decoder mode ID。
+    MissingDrcRepeatProfile {
+        /// 携带 repeat profile 的 decoder mode ID。
+        mode_id: u8,
+        /// 未找到的 3 比特 `drc_repeat_id`。
+        repeat_id: u8,
+    },
+    /// repeat profile 引用形成循环，无法派生 gain/curve 传输形态。
+    CyclicDrcRepeatProfile {
+        /// 检测到循环的 decoder mode ID。
+        mode_id: u8,
+    },
+    /// 已知 `drc_frame()` 语法解析完成后仍有尾随比特。
+    TrailingDrcFrameBits {
+        /// 首个尾随比特在 presentation payload 内的偏移。
+        bit_position: u64,
+        /// 尚未消费的 DRC frame 比特数。
+        remaining_bits: u64,
     },
     /// `pan_associated` 使用了规范禁止的 `0xf0..=0xff` 码值。
     ReservedAssociatedPan {
@@ -170,6 +203,29 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation DRC metadata size is {declared} bits at offset {bit_position}; at least {minimum} bit is required"
+            ),
+            PresentationSubstreamError::InvalidDrcGainSetSize {
+                declared,
+                minimum,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation DRC gain-set size is {declared} bits at offset {bit_position}; at least {minimum} bits are required"
+            ),
+            PresentationSubstreamError::MissingDrcRepeatProfile { mode_id, repeat_id } => write!(
+                formatter,
+                "Presentation DRC decoder mode {mode_id} repeats missing mode {repeat_id}"
+            ),
+            PresentationSubstreamError::CyclicDrcRepeatProfile { mode_id } => write!(
+                formatter,
+                "Presentation DRC repeat profiles form a cycle at decoder mode {mode_id}"
+            ),
+            PresentationSubstreamError::TrailingDrcFrameBits {
+                bit_position,
+                remaining_bits,
+            } => write!(
+                formatter,
+                "Presentation DRC frame has {remaining_bits} trailing bits at bit offset {bit_position}"
             ),
             PresentationSubstreamError::ReservedAssociatedPan {
                 pan_associated,
@@ -523,8 +579,8 @@ impl<'a> PresentationAddDataBits<'a> {
 
 /// `drc_metadata_size` 严格定界的完整 `drc_frame()` 原始比特视图。
 ///
-/// 完整 frame 始终保留；I-frame 还会解析 `drc_config()`，后续 `drc_data()` 继续以同型 bit view
-/// 保留。本模块不换算或应用 DRC。
+/// 完整 frame 始终保留；I-frame 还会解析 `drc_config()` 与 `drc_data()` 的结构包络，同时继续
+/// 以同型 bit view 保留完整 data 和尚未解释的 gain-set body。本模块不换算或应用 DRC。
 pub type PresentationDrcFrameBits<'a> = PresentationAddDataBits<'a>;
 
 /// 自定义 DRC decoder mode 的参考输出电平范围原始码值。
@@ -646,6 +702,104 @@ impl PresentationDrcConfiguration {
     pub fn decoder_modes(&self) -> &[PresentationDrcDecoderMode] {
         let len = usize::from(self.decoder_mode_count_minus_one).saturating_add(1);
         self.decoder_modes.get(..len).unwrap_or(&[])
+    }
+}
+
+/// 一个 decoder mode 的有界 DRC gain-set envelope。
+///
+/// [`payload`](Self::payload) 从 2 比特 `drc_version` 开始，长度严格等于码流声明的
+/// `drc_gainset_size`。当前只解析版本并保留其后的 body；版本 `0..=1` 中的
+/// `drc_gains()`、版本 1 的 `drc2_bits` 分界及 Huffman gain 均留待后续。
+#[derive(Debug, Clone, Copy)]
+pub struct PresentationDrcGainSet<'a> {
+    /// 当前 gain set 对应的 3 比特 decoder mode ID。
+    pub decoder_mode_id: u8,
+    /// repeat profile 解析后的 2 比特 `drc_gains_config`。
+    pub gains_configuration: u8,
+    /// `drc_gainset_size_value` 在 presentation payload 内的精确比特偏移。
+    pub size_value_offset: u64,
+    /// 2 比特 `drc_version` 原值。
+    pub version: u8,
+    /// 由 `drc_gainset_size` 严格定界、包含 `drc_version` 的完整 payload。
+    pub payload: PresentationDrcFrameBits<'a>,
+}
+
+impl<'a, 'b> PartialEq<PresentationDrcGainSet<'b>> for PresentationDrcGainSet<'a> {
+    fn eq(&self, other: &PresentationDrcGainSet<'b>) -> bool {
+        self.decoder_mode_id == other.decoder_mode_id
+            && self.gains_configuration == other.gains_configuration
+            && self.size_value_offset == other.size_value_offset
+            && self.version == other.version
+            && self.payload == other.payload
+    }
+}
+
+impl Eq for PresentationDrcGainSet<'_> {}
+
+impl<'a> PresentationDrcGainSet<'a> {
+    const EMPTY: Self = Self {
+        decoder_mode_id: 0,
+        gains_configuration: 0,
+        size_value_offset: 0,
+        version: 0,
+        payload: PresentationAddDataBits {
+            source: &[],
+            bit_offset: 0,
+            bit_len: 0,
+        },
+    };
+
+    /// `drc_version` 之后尚未解释的 gain/extension body。
+    #[must_use]
+    pub const fn body(self) -> PresentationDrcFrameBits<'a> {
+        PresentationAddDataBits {
+            source: self.payload.source,
+            bit_offset: self.payload.bit_offset.saturating_add(2),
+            bit_len: self.payload.bit_len.saturating_sub(2),
+        }
+    }
+}
+
+/// compression-curve mode 共用的逐帧 reset 与保留码值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationDrcCurveData {
+    /// `drc_reset_flag`。
+    pub reset: bool,
+    /// 2 比特 `drc_reserved` 原值。
+    pub reserved: u8,
+}
+
+/// I-frame 中按有效 DRC 配置解析的 `drc_data()` 结构包络。
+///
+/// gain-set body 仍保持原始 bit view，不解 Huffman gain，也不执行或维护 DRC 状态。
+#[derive(Debug, Clone, Copy)]
+pub struct PresentationDrcData<'a> {
+    gain_set_count: u8,
+    gain_sets: [PresentationDrcGainSet<'a>; MAX_PRESENTATION_DRC_DECODER_MODES],
+    /// 至少一个有效 decoder mode 使用 compression curve 时的共用 frame data。
+    pub curve: Option<PresentationDrcCurveData>,
+}
+
+impl<'a, 'b> PartialEq<PresentationDrcData<'b>> for PresentationDrcData<'a> {
+    fn eq(&self, other: &PresentationDrcData<'b>) -> bool {
+        self.gain_set_count == other.gain_set_count
+            && self
+                .gain_sets()
+                .iter()
+                .zip(other.gain_sets())
+                .all(|(left, right)| left == right)
+            && self.curve == other.curve
+    }
+}
+
+impl Eq for PresentationDrcData<'_> {}
+
+impl<'a> PresentationDrcData<'a> {
+    /// 按 `drc_config()` 的 decoder-mode 顺序取得所有 gain-set envelope。
+    #[must_use]
+    pub fn gain_sets(&self) -> &[PresentationDrcGainSet<'a>] {
+        let len = usize::from(self.gain_set_count);
+        self.gain_sets.get(..len).unwrap_or(&[])
     }
 }
 
@@ -1547,7 +1701,8 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 /// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
 /// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
 /// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC I-frame
-/// 配置已解析，`drc_data()` 与 group gain 跨帧有效状态仍未解析。
+/// 配置与 I-frame `drc_data()` 包络已解析，Huffman gains、dependent-frame 配置状态与 group gain
+/// 跨帧有效状态仍未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1568,11 +1723,15 @@ pub struct Ac4PresentationSubstream<'a> {
     pub drc_frame: PresentationDrcFrameBits<'a>,
     /// I-frame 且 DRC present 时传输的 `drc_config()`；dependent frame 或 DRC absent 时为 `None`。
     pub drc_configuration: Option<PresentationDrcConfiguration>,
-    /// `drc_config()` 之后尚未解释的 `drc_data()` bit view。
+    /// `drc_config()` 之后的完整 `drc_data()` bit view。
     ///
     /// dependent frame 从 `b_drc_present` 后立即开始；DRC absent 时保留 envelope 中任何剩余比特，
     /// 但这些比特不属于规范 `drc_data()`，留待完整 frame 校验拒绝。
     pub drc_data: PresentationDrcFrameBits<'a>,
+    /// I-frame 中按当前配置解析的 `drc_data()` gain-set/reset 包络。
+    ///
+    /// dependent frame 在引入跨帧配置状态前为 `None`；gain-set 内的 Huffman gains 仍不解析。
+    pub drc_data_elements: Option<PresentationDrcData<'a>>,
     /// 当前帧传输的 substream-group gain 原始更新。
     pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,
     /// `b_associated` 在 payload 内的精确比特偏移。
@@ -1605,6 +1764,7 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.drc_frame == other.drc_frame
             && self.drc_configuration == other.drc_configuration
             && self.drc_data == other.drc_data
+            && self.drc_data_elements == other.drc_data_elements
             && self.substream_group_gain_update == other.substream_group_gain_update
             && self.b_associated_offset == other.b_associated_offset
             && self.associated_audio == other.associated_audio
@@ -1626,9 +1786,10 @@ impl<'a> Ac4PresentationSubstream<'a> {
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
-    /// `drc_metadata_size` 严格定界完整 `drc_frame()`，I-frame 的 `drc_config()` 只解析原始配置，
-    /// 后续 `drc_data()` 仍不解释，且不执行 DRC；group gain 只保留逐帧传输形态，不解析跨帧
-    /// 有效值或应用增益；associated-audio scale/pan 同样只保留原值，不执行 gain、pan 或
+    /// `drc_metadata_size` 严格定界完整 `drc_frame()`；I-frame 会解析 `drc_config()` 与
+    /// `drc_data()` 的 gain-set/reset 包络，gain-set body 仍保持原始视图，且不执行 DRC；group
+    /// gain 只保留逐帧传输形态，不解析跨帧有效值或应用增益；associated-audio scale/pan 同样
+    /// 只保留原值，不执行 gain、pan 或
     /// renderer 处理；custom downmix 同样只保留配置、路由与
     /// gain 码值，不执行矩阵运算；loudness correction 也只保留原始码值，不做 dB 换算或应用。
     ///
@@ -1696,6 +1857,7 @@ impl<'a> Ac4PresentationSubstream<'a> {
             drc_frame: drc.frame,
             drc_configuration: drc.configuration,
             drc_data: drc.data,
+            drc_data_elements: drc.data_elements,
             substream_group_gain_update,
             b_associated_offset,
             associated_audio,
@@ -2321,11 +2483,148 @@ fn parse_drc_compression_curve(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PresentationDrcModeDataKind {
+    CompressionCurve,
+    Gains { configuration: u8 },
+}
+
+fn resolve_drc_mode_data_kind(
+    configuration: &PresentationDrcConfiguration,
+    mode_id: u8,
+    visited: u8,
+) -> Result<PresentationDrcModeDataKind, PresentationSubstreamError> {
+    let mode_bit = 1u8.checked_shl(u32::from(mode_id)).unwrap_or(0);
+    if visited & mode_bit != 0 {
+        return Err(PresentationSubstreamError::CyclicDrcRepeatProfile { mode_id });
+    }
+    let Some(mode) = configuration
+        .decoder_modes()
+        .iter()
+        .rev()
+        .find(|mode| mode.mode_id == mode_id)
+    else {
+        return Err(PresentationSubstreamError::MissingDrcRepeatProfile {
+            mode_id,
+            repeat_id: mode_id,
+        });
+    };
+    match mode.profile {
+        PresentationDrcProfile::Repeat { repeat_id } => {
+            if !configuration
+                .decoder_modes()
+                .iter()
+                .any(|candidate| candidate.mode_id == repeat_id)
+            {
+                return Err(PresentationSubstreamError::MissingDrcRepeatProfile {
+                    mode_id,
+                    repeat_id,
+                });
+            }
+            resolve_drc_mode_data_kind(configuration, repeat_id, visited | mode_bit)
+        }
+        PresentationDrcProfile::DefaultEac3 | PresentationDrcProfile::CompressionCurve(_) => {
+            Ok(PresentationDrcModeDataKind::CompressionCurve)
+        }
+        PresentationDrcProfile::Gains { configuration } => {
+            Ok(PresentationDrcModeDataKind::Gains { configuration })
+        }
+    }
+}
+
+fn parse_drc_data<'a>(
+    reader: &mut BitReader<'a>,
+    source: &'a [u8],
+    configuration: &PresentationDrcConfiguration,
+) -> Result<PresentationDrcData<'a>, PresentationSubstreamError> {
+    let mut gain_sets = [PresentationDrcGainSet::EMPTY; MAX_PRESENTATION_DRC_DECODER_MODES];
+    let mut gain_set_count = 0usize;
+    let mut curve_present = false;
+
+    for mode in configuration.decoder_modes() {
+        match resolve_drc_mode_data_kind(configuration, mode.mode_id, 0)? {
+            PresentationDrcModeDataKind::CompressionCurve => curve_present = true,
+            PresentationDrcModeDataKind::Gains {
+                configuration: gains_configuration,
+            } => {
+                let size_value_offset = reader.bit_position();
+                let mut size = u32::try_from(reader.read_bits(6)?).unwrap_or(u32::MAX);
+                if reader.read_flag()? {
+                    size = reader.variable_bits_scaled_u32(2, size, 6)?;
+                }
+                if size < 2 {
+                    return Err(PresentationSubstreamError::InvalidDrcGainSetSize {
+                        declared: size,
+                        minimum: 2,
+                        bit_position: size_value_offset,
+                    });
+                }
+
+                let payload_offset = reader.bit_position();
+                if u64::from(size) > reader.remaining_bits() {
+                    return Err(PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                        requested_bits: size,
+                        bit_position: payload_offset,
+                        remaining_bits: reader.remaining_bits(),
+                    }));
+                }
+                let mut payload_reader =
+                    BitReader::new_bounded(source, payload_offset, u64::from(size))?;
+                let version = u8::try_from(payload_reader.read_bits(2)?).unwrap_or(u8::MAX);
+                let gain_set = PresentationDrcGainSet {
+                    decoder_mode_id: mode.mode_id,
+                    gains_configuration,
+                    size_value_offset,
+                    version,
+                    payload: PresentationAddDataBits {
+                        source,
+                        bit_offset: payload_offset,
+                        bit_len: u64::from(size),
+                    },
+                };
+                let Some(slot) = gain_sets.get_mut(gain_set_count) else {
+                    return Err(PresentationSubstreamError::CapacityExceeded {
+                        what: PresentationSubstreamCapacity::DrcGainSets,
+                        declared: u32::try_from(gain_set_count)
+                            .unwrap_or(u32::MAX)
+                            .saturating_add(1),
+                        limit: MAX_PRESENTATION_DRC_DECODER_MODES,
+                    });
+                };
+                *slot = gain_set;
+                gain_set_count = gain_set_count.saturating_add(1);
+                reader.skip_bits(u64::from(size))?;
+            }
+        }
+    }
+
+    let curve = if curve_present {
+        Some(PresentationDrcCurveData {
+            reset: reader.read_flag()?,
+            reserved: u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX),
+        })
+    } else {
+        None
+    };
+    if reader.remaining_bits() != 0 {
+        return Err(PresentationSubstreamError::TrailingDrcFrameBits {
+            bit_position: reader.bit_position(),
+            remaining_bits: reader.remaining_bits(),
+        });
+    }
+    Ok(PresentationDrcData {
+        gain_set_count: u8::try_from(gain_set_count).unwrap_or(u8::MAX),
+        gain_sets,
+        curve,
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ParsedPresentationDrcFrame<'a> {
     present: bool,
     frame: PresentationDrcFrameBits<'a>,
     configuration: Option<PresentationDrcConfiguration>,
     data: PresentationDrcFrameBits<'a>,
+    data_elements: Option<PresentationDrcData<'a>>,
 }
 
 fn parse_drc_frame_envelope<'a>(
@@ -2354,11 +2653,23 @@ fn parse_drc_frame_envelope<'a>(
     } else {
         None
     };
+    let data_offset = frame_reader.bit_position();
     let data = PresentationDrcFrameBits {
         source,
-        bit_offset: frame_reader.bit_position(),
+        bit_offset: data_offset,
         bit_len: frame_reader.remaining_bits(),
     };
+    let data_elements = if let Some(configuration) = configuration.as_ref() {
+        Some(parse_drc_data(&mut frame_reader, source, configuration)?)
+    } else {
+        None
+    };
+    if !present && frame_reader.remaining_bits() != 0 {
+        return Err(PresentationSubstreamError::TrailingDrcFrameBits {
+            bit_position: frame_reader.bit_position(),
+            remaining_bits: frame_reader.remaining_bits(),
+        });
+    }
     reader.skip_bits(u64::from(size))?;
     let frame = PresentationDrcFrameBits {
         source,
@@ -2370,6 +2681,7 @@ fn parse_drc_frame_envelope<'a>(
         frame,
         configuration,
         data,
+        data_elements,
     })
 }
 
@@ -2690,6 +3002,22 @@ mod tests {
         }
     }
 
+    fn drc_configuration(modes: &[PresentationDrcDecoderMode]) -> PresentationDrcConfiguration {
+        assert!(!modes.is_empty());
+        assert!(modes.len() <= MAX_PRESENTATION_DRC_DECODER_MODES);
+        let mut decoder_modes =
+            [PresentationDrcDecoderMode::EMPTY; MAX_PRESENTATION_DRC_DECODER_MODES];
+        for (slot, mode) in decoder_modes.iter_mut().zip(modes) {
+            *slot = *mode;
+        }
+        PresentationDrcConfiguration {
+            decoder_mode_count_minus_one: u8::try_from(modes.len().saturating_sub(1))
+                .unwrap_or(u8::MAX),
+            decoder_modes,
+            eac3_profile: 0,
+        }
+    }
+
     #[test]
     fn ordinary_presentation_has_no_selection_prefix() {
         let parsed = Ac4PresentationSubstreamSelection::parse(
@@ -2727,6 +3055,7 @@ mod tests {
         assert_eq!(parsed.drc_configuration, None);
         assert!(parsed.drc_data.is_empty());
         assert_eq!(parsed.drc_data.bit_offset(), 16);
+        assert_eq!(parsed.drc_data_elements, None);
         assert_eq!(
             parsed.substream_group_gain_update,
             PresentationSubstreamGroupGainUpdate::NotSignaled
@@ -3120,9 +3449,9 @@ mod tests {
         let mut bits = TestBits::new();
         bits.push(0, 1); // no additional data
         push_minimal_loudness_prefix(&mut bits, 0);
-        bits.push(21, 5); // 21 + (4 << 5) = 149-bit drc_frame
+        bits.push(5, 5); // 5 + (5 << 5) = 165-bit drc_frame
         bits.push(1, 1); // b_more_bits
-        bits.push(4, 3); // variable_bits(3) = 4
+        bits.push(5, 3); // variable_bits(3) = 5
         bits.push(0, 1); // stop variable_bits
         let frame_offset = bits.len as u64;
         bits.push(1, 1); // b_drc_present
@@ -3175,8 +3504,15 @@ mod tests {
         assert_eq!(bits.len.saturating_sub(configuration_offset), 145);
 
         let data_offset = bits.len as u64;
-        bits.push(0b101, 3); // opaque drc_data
-        assert_eq!((bits.len as u64).saturating_sub(frame_offset), 149);
+        let gainset_size_offset = bits.len as u64;
+        bits.push(9, 6); // version plus seven opaque drc_gains bits
+        bits.push(0, 1); // no gainset size extension
+        let gainset_offset = bits.len as u64;
+        bits.push(0, 2); // drc_version 0
+        bits.push(0b100_0000, 7); // opaque drc_gains body
+        bits.push(1, 1); // drc_reset_flag for curve modes
+        bits.push(3, 2); // drc_reserved
+        assert_eq!((bits.len as u64).saturating_sub(frame_offset), 165);
         let frame_end = bits.len as u64;
         bits.push(0, 1); // no associated audio
         bits.byte_align();
@@ -3193,7 +3529,7 @@ mod tests {
         assert!(context.presentation_is_independent());
         assert!(parsed.drc_present);
         assert_eq!(parsed.drc_frame.bit_offset(), frame_offset);
-        assert_eq!(parsed.drc_frame.len_bits(), 149);
+        assert_eq!(parsed.drc_frame.len_bits(), 165);
         assert_eq!(parsed.drc_frame.end_bit_offset(), frame_end);
         let configuration = parsed.drc_configuration.unwrap();
         assert_eq!(configuration.decoder_mode_count_minus_one(), 3);
@@ -3248,10 +3584,36 @@ mod tests {
             ]
         );
         assert_eq!(parsed.drc_data.bit_offset(), data_offset);
-        assert_eq!(parsed.drc_data.len_bits(), 3);
+        assert_eq!(parsed.drc_data.len_bits(), 19);
+        let data = parsed.drc_data_elements.unwrap();
+        assert_eq!(data.gain_sets().len(), 1);
         assert_eq!(
-            parsed.drc_data.iter().collect::<std::vec::Vec<_>>(),
-            [true, false, true]
+            data.gain_sets().first(),
+            Some(&PresentationDrcGainSet {
+                decoder_mode_id: 3,
+                gains_configuration: 3,
+                size_value_offset: gainset_size_offset,
+                version: 0,
+                payload: PresentationAddDataBits {
+                    source: bits.as_bytes(),
+                    bit_offset: gainset_offset,
+                    bit_len: 9,
+                },
+            })
+        );
+        let gain_set = data.gain_sets().first().copied().unwrap();
+        assert_eq!(gain_set.body().bit_offset(), gainset_offset + 2);
+        assert_eq!(gain_set.body().len_bits(), 7);
+        assert_eq!(
+            gain_set.body().iter().collect::<std::vec::Vec<_>>(),
+            [true, false, false, false, false, false, false]
+        );
+        assert_eq!(
+            data.curve,
+            Some(PresentationDrcCurveData {
+                reset: true,
+                reserved: 3,
+            })
         );
         assert_eq!(parsed.b_associated_offset, frame_end);
     }
@@ -3286,6 +3648,230 @@ mod tests {
             );
             assert_eq!(configuration.eac3_profile, 7);
         }
+    }
+
+    #[test]
+    fn parses_extended_unknown_drc_gainset_envelope() {
+        let configuration = drc_configuration(&[PresentationDrcDecoderMode {
+            mode_id: 0,
+            output_levels: None,
+            profile: PresentationDrcProfile::Gains { configuration: 0 },
+        }]);
+        let mut bits = TestBits::new();
+        bits.push(6, 6); // 6 + (1 << 6) = 70-bit gain set
+        bits.push(1, 1); // b_more_bits
+        bits.push(1, 2); // variable_bits(2) = 1
+        bits.push(0, 1); // stop variable_bits
+        let payload_offset = bits.len as u64;
+        bits.push(2, 2); // unknown drc_version
+        for index in 0u64..68 {
+            bits.push(index % 2, 1); // opaque drc2_bits
+        }
+
+        let mut reader = BitReader::new_bounded(bits.as_bytes(), 0, bits.len as u64).unwrap();
+        let parsed = parse_drc_data(&mut reader, bits.as_bytes(), &configuration).unwrap();
+
+        assert_eq!(reader.remaining_bits(), 0);
+        assert_eq!(parsed.curve, None);
+        assert_eq!(parsed.gain_sets().len(), 1);
+        let gain_set = parsed.gain_sets().first().copied().unwrap();
+        assert_eq!(gain_set.decoder_mode_id, 0);
+        assert_eq!(gain_set.gains_configuration, 0);
+        assert_eq!(gain_set.size_value_offset, 0);
+        assert_eq!(gain_set.version, 2);
+        assert_eq!(gain_set.payload.bit_offset(), payload_offset);
+        assert_eq!(gain_set.payload.len_bits(), 70);
+        assert_eq!(gain_set.body().len_bits(), 68);
+        assert_eq!(gain_set.body().get(0), Some(false));
+        assert_eq!(gain_set.body().get(1), Some(true));
+        assert_eq!(gain_set.body().get(68), None);
+    }
+
+    #[test]
+    fn resolves_forward_and_chained_drc_repeat_profiles_for_data() {
+        let configuration = drc_configuration(&[
+            PresentationDrcDecoderMode {
+                mode_id: 0,
+                output_levels: None,
+                profile: PresentationDrcProfile::Repeat { repeat_id: 2 },
+            },
+            PresentationDrcDecoderMode {
+                mode_id: 1,
+                output_levels: None,
+                profile: PresentationDrcProfile::Gains { configuration: 1 },
+            },
+            PresentationDrcDecoderMode {
+                mode_id: 2,
+                output_levels: None,
+                profile: PresentationDrcProfile::Repeat { repeat_id: 1 },
+            },
+        ]);
+        let mut bits = TestBits::new();
+        for _ in 0..3 {
+            bits.push(2, 6); // gainset contains only drc_version
+            bits.push(0, 1); // no size extension
+            bits.push(2, 2); // unknown version with an empty extension body
+        }
+        let mut reader = BitReader::new_bounded(bits.as_bytes(), 0, bits.len as u64).unwrap();
+        let parsed = parse_drc_data(&mut reader, bits.as_bytes(), &configuration).unwrap();
+
+        assert_eq!(parsed.curve, None);
+        assert_eq!(
+            parsed
+                .gain_sets()
+                .iter()
+                .map(|gain_set| (gain_set.decoder_mode_id, gain_set.gains_configuration))
+                .collect::<std::vec::Vec<_>>(),
+            [(0, 1), (1, 1), (2, 1)]
+        );
+    }
+
+    #[test]
+    fn parses_drc_gainsets_at_decoder_mode_capacity() {
+        let mut modes = [PresentationDrcDecoderMode::EMPTY; MAX_PRESENTATION_DRC_DECODER_MODES];
+        for (mode_id, mode) in (0u8..8).zip(modes.iter_mut()) {
+            *mode = PresentationDrcDecoderMode {
+                mode_id,
+                output_levels: (mode_id > 3).then_some(PresentationDrcOutputLevelRange {
+                    level_from: mode_id,
+                    level_to: mode_id,
+                }),
+                profile: PresentationDrcProfile::Gains {
+                    configuration: mode_id % 4,
+                },
+            };
+        }
+        let configuration = drc_configuration(&modes);
+        let mut bits = TestBits::new();
+        for _ in 0..MAX_PRESENTATION_DRC_DECODER_MODES {
+            bits.push(2, 6);
+            bits.push(0, 1);
+            bits.push(2, 2);
+        }
+        let mut reader = BitReader::new_bounded(bits.as_bytes(), 0, bits.len as u64).unwrap();
+        let parsed = parse_drc_data(&mut reader, bits.as_bytes(), &configuration).unwrap();
+
+        assert_eq!(parsed.gain_sets().len(), MAX_PRESENTATION_DRC_DECODER_MODES);
+        for (mode_id, gain_set) in (0u8..8).zip(parsed.gain_sets()) {
+            assert_eq!(gain_set.decoder_mode_id, mode_id);
+            assert_eq!(gain_set.gains_configuration, mode_id % 4);
+        }
+        assert_eq!(parsed.curve, None);
+    }
+
+    #[test]
+    fn rejects_missing_and_cyclic_drc_repeat_profiles() {
+        let missing = drc_configuration(&[PresentationDrcDecoderMode {
+            mode_id: 0,
+            output_levels: None,
+            profile: PresentationDrcProfile::Repeat { repeat_id: 7 },
+        }]);
+        assert_eq!(
+            parse_drc_data(&mut BitReader::new(&[]), &[], &missing).unwrap_err(),
+            PresentationSubstreamError::MissingDrcRepeatProfile {
+                mode_id: 0,
+                repeat_id: 7,
+            }
+        );
+
+        let cyclic = drc_configuration(&[
+            PresentationDrcDecoderMode {
+                mode_id: 0,
+                output_levels: None,
+                profile: PresentationDrcProfile::Repeat { repeat_id: 1 },
+            },
+            PresentationDrcDecoderMode {
+                mode_id: 1,
+                output_levels: None,
+                profile: PresentationDrcProfile::Repeat { repeat_id: 0 },
+            },
+        ]);
+        assert_eq!(
+            parse_drc_data(&mut BitReader::new(&[]), &[], &cyclic).unwrap_err(),
+            PresentationSubstreamError::CyclicDrcRepeatProfile { mode_id: 0 }
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_truncated_and_overflowing_drc_gainset_envelopes() {
+        let configuration = drc_configuration(&[PresentationDrcDecoderMode {
+            mode_id: 0,
+            output_levels: None,
+            profile: PresentationDrcProfile::Gains { configuration: 0 },
+        }]);
+
+        let mut too_small = TestBits::new();
+        too_small.push(1, 6);
+        too_small.push(0, 1);
+        too_small.push(0, 1);
+        let mut reader =
+            BitReader::new_bounded(too_small.as_bytes(), 0, too_small.len as u64).unwrap();
+        assert_eq!(
+            parse_drc_data(&mut reader, too_small.as_bytes(), &configuration).unwrap_err(),
+            PresentationSubstreamError::InvalidDrcGainSetSize {
+                declared: 1,
+                minimum: 2,
+                bit_position: 0,
+            }
+        );
+
+        let mut truncated = TestBits::new();
+        truncated.push(10, 6);
+        truncated.push(0, 1);
+        truncated.push(0, 2); // only two gainset bits inside the parent envelope
+        let parent_end = truncated.len as u64;
+        truncated.push_byte(0xff); // following metadata remains readable in the source
+        let mut reader = BitReader::new_bounded(truncated.as_bytes(), 0, parent_end).unwrap();
+        assert_eq!(
+            parse_drc_data(&mut reader, truncated.as_bytes(), &configuration).unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 10,
+                bit_position: 7,
+                remaining_bits: 2,
+            })
+        );
+
+        let mut overflowing = TestBits::new();
+        overflowing.push(63, 6);
+        overflowing.push(1, 1);
+        for _ in 0..16 {
+            overflowing.push(3, 2);
+            overflowing.push(1, 1);
+        }
+        overflowing.push(0, 2);
+        overflowing.push(0, 1);
+        assert!(matches!(
+            parse_drc_data(
+                &mut BitReader::new(overflowing.as_bytes()),
+                overflowing.as_bytes(),
+                &configuration,
+            ),
+            Err(PresentationSubstreamError::Read(
+                ReadError::ValueOverflow { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn rejects_trailing_bits_after_complete_curve_drc_data() {
+        let configuration = drc_configuration(&[PresentationDrcDecoderMode {
+            mode_id: 0,
+            output_levels: None,
+            profile: PresentationDrcProfile::DefaultEac3,
+        }]);
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // drc_reset_flag
+        bits.push(0, 2); // drc_reserved
+        bits.push(1, 1); // not part of drc_data()
+        let mut reader = BitReader::new_bounded(bits.as_bytes(), 0, bits.len as u64).unwrap();
+
+        assert_eq!(
+            parse_drc_data(&mut reader, bits.as_bytes(), &configuration).unwrap_err(),
+            PresentationSubstreamError::TrailingDrcFrameBits {
+                bit_position: 3,
+                remaining_bits: 1,
+            }
+        );
     }
 
     #[test]
@@ -3373,6 +3959,7 @@ mod tests {
         assert!(parsed.drc_present);
         assert_eq!(parsed.drc_frame.bit_offset(), frame_offset);
         assert_eq!(parsed.drc_configuration, None);
+        assert_eq!(parsed.drc_data_elements, None);
         assert_eq!(parsed.drc_data.bit_offset(), data_offset);
         assert_eq!(parsed.drc_data.len_bits(), 4);
         assert_eq!(
@@ -4377,6 +4964,25 @@ mod tests {
                 declared: 0,
                 minimum: 1,
                 bit_position: 9,
+            }
+        );
+
+        let mut absent_with_tail = TestBits::new();
+        absent_with_tail.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(&mut absent_with_tail, 0);
+        absent_with_tail.push(2, 5); // presence plus one invalid trailing bit
+        absent_with_tail.push(0, 1); // no size extension
+        absent_with_tail.push(0, 1); // b_drc_present
+        absent_with_tail.push(1, 1); // no syntax is permitted after absent DRC
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                absent_with_tail.as_bytes(),
+                test_context(false, 1, 1, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::TrailingDrcFrameBits {
+                bit_position: 16,
+                remaining_bits: 1,
             }
         );
 
