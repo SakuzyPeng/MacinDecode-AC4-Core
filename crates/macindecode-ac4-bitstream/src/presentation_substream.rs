@@ -1,15 +1,16 @@
-//! `ac4_presentation_substream()` 的选择前缀与 additional-data envelope。
+//! `ac4_presentation_substream()` 的选择、additional-data、响度与 DRC envelope。
 //!
 //! 对应 `TS103190-2:v1.3.1:6.2.2.3`、`6.2.2.5`；选择字段语义见
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
 //! `6.3.3.1.16` 至 `6.3.3.1.18`；响度语法见 `6.2.7.3`，共享字段语义见
-//! `TS103190-1:v1.4.1:4.3.12.3`。
+//! `TS103190-1:v1.4.1:4.3.12.3`；DRC envelope 见 `6.3.3.1.19` 至
+//! `6.3.3.1.21`。
 //!
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
-//! advanced dialogue-enhancement 原始码值，并保留 dialnorm 与 further loudness 原值。其后的
-//! DRC、group gain、associated audio、custom downmix 与 loudness correction 仍不解释；
-//! 本模块也不执行任何处理。
+//! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
+//! `drc_frame()` 原始比特。DRC 内部语法、group gain、associated audio、custom downmix 与
+//! loudness correction 仍不解释；本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -67,6 +68,15 @@ pub enum PresentationSubstreamError {
         /// 检测到不一致时的比特偏移。
         bit_position: u64,
     },
+    /// `drc_metadata_size` 不足以容纳必需的 `b_drc_present`。
+    InvalidDrcMetadataSize {
+        /// 码流声明的 `drc_frame()` 长度。
+        declared: u32,
+        /// 当前语法要求的最小长度。
+        minimum: u32,
+        /// `drc_metadata_size_value` 的比特偏移。
+        bit_position: u64,
+    },
     /// 结构规模超出固定容量。
     CapacityExceeded {
         /// 超限的结构种类。
@@ -97,6 +107,14 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation loudness e_bits_size is {declared} at bit offset {bit_position}; at least {required} bits are required"
+            ),
+            PresentationSubstreamError::InvalidDrcMetadataSize {
+                declared,
+                minimum,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation DRC metadata size is {declared} bits at offset {bit_position}; at least {minimum} bit is required"
             ),
             PresentationSubstreamError::CapacityExceeded {
                 what,
@@ -263,6 +281,18 @@ impl<'a, 'b> PartialEq<PresentationAddDataBits<'b>> for PresentationAddDataBits<
 impl Eq for PresentationAddDataBits<'_> {}
 
 impl<'a> PresentationAddDataBits<'a> {
+    /// 视图起点相对原 payload 的比特偏移。
+    #[must_use]
+    pub const fn bit_offset(self) -> u64 {
+        self.bit_offset
+    }
+
+    /// 视图末尾相对原 payload 的比特偏移。
+    #[must_use]
+    pub const fn end_bit_offset(self) -> u64 {
+        self.bit_offset.saturating_add(self.bit_len)
+    }
+
     /// 视图包含的比特数。
     #[must_use]
     pub const fn len_bits(self) -> u64 {
@@ -303,6 +333,11 @@ impl<'a> PresentationAddDataBits<'a> {
         PresentationAddDataBitIter::new(self)
     }
 }
+
+/// `drc_metadata_size` 严格定界的完整 `drc_frame()` 原始比特视图。
+///
+/// 当前增量只读取首个 `b_drc_present` 并保留整个 frame，不解释或执行 DRC。
+pub type PresentationDrcFrameBits<'a> = PresentationAddDataBits<'a>;
 
 impl<'a> IntoIterator for PresentationAddDataBits<'a> {
     type Item = bool;
@@ -870,10 +905,11 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
     }
 }
 
-/// `ac4_presentation_substream()` 已解析的 selection、additional-data 与响度前缀。
+/// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度与 DRC envelope。
 ///
 /// [`drc_metadata_size_value_offset`](Self::drc_metadata_size_value_offset) 指向响度字段之后的
-/// `drc_metadata_size_value`。该位置之后的 DRC 与其他 presentation 处理 metadata 尚未解析。
+/// `drc_metadata_size_value`；[`drc_frame`](Self::drc_frame) 的末尾则指向下一段 presentation
+/// metadata。DRC 内部语法及其后字段尚未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -888,6 +924,10 @@ pub struct Ac4PresentationSubstream<'a> {
     pub further_loudness: Option<FurtherLoudnessInfo>,
     /// `drc_metadata_size_value` 在 payload 内的精确比特偏移。
     pub drc_metadata_size_value_offset: u64,
+    /// `drc_frame()` 的首个 `b_drc_present`。
+    pub drc_present: bool,
+    /// 由 `drc_metadata_size` 严格定界的完整 `drc_frame()` 原始比特。
+    pub drc_frame: PresentationDrcFrameBits<'a>,
 }
 
 impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
@@ -898,23 +938,25 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.dialnorm_bits == other.dialnorm_bits
             && self.further_loudness == other.further_loudness
             && self.drc_metadata_size_value_offset == other.drc_metadata_size_value_offset
+            && self.drc_present == other.drc_present
+            && self.drc_frame == other.drc_frame
     }
 }
 
 impl Eq for Ac4PresentationSubstream<'_> {}
 
 impl<'a> Ac4PresentationSubstream<'a> {
-    /// 解析 selection、common additional-data envelope 与 presentation 响度前缀。
+    /// 解析 selection、common additional-data、presentation 响度与 DRC envelope。
     ///
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
     /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
-    /// `drc_metadata_size_value_offset` 之后的字段不解析或验证。
+    /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC。
     ///
     /// # Errors
     ///
-    /// selection 字段、additional-data 长度或其已知字段截断，变长字段溢出，或计数超过
-    /// 固定容量时返回错误。
+    /// selection 字段、additional-data/DRC 长度或其已知字段截断，变长字段溢出，或计数超过
+    /// 固定容量时返回错误。零长度 DRC envelope 不能容纳必需的 presence bit，同样返回错误。
     pub fn parse(
         payload: &'a [u8],
         context: PresentationSubstreamContext,
@@ -942,15 +984,49 @@ impl<'a> Ac4PresentationSubstream<'a> {
         } else {
             None
         };
+        let drc_metadata_size_value_offset = reader.bit_position();
+        let (drc_present, drc_frame) = parse_drc_frame_envelope(&mut reader, payload)?;
         Ok(Self {
             selection,
             additional_data,
             dialnorm_bits_offset,
             dialnorm_bits,
             further_loudness,
-            drc_metadata_size_value_offset: reader.bit_position(),
+            drc_metadata_size_value_offset,
+            drc_present,
+            drc_frame,
         })
     }
+}
+
+fn parse_drc_frame_envelope<'a>(
+    reader: &mut BitReader<'a>,
+    source: &'a [u8],
+) -> Result<(bool, PresentationDrcFrameBits<'a>), PresentationSubstreamError> {
+    let size_value_offset = reader.bit_position();
+    let mut size = u32::try_from(reader.read_bits(5)?).unwrap_or(u32::MAX);
+    if reader.read_flag()? {
+        size = reader.variable_bits_scaled_u32(3, size, 5)?;
+    }
+    if size == 0 {
+        return Err(PresentationSubstreamError::InvalidDrcMetadataSize {
+            declared: size,
+            minimum: 1,
+            bit_position: size_value_offset,
+        });
+    }
+
+    let bit_offset = reader.bit_position();
+    reader.skip_bits(u64::from(size))?;
+    let bits = PresentationDrcFrameBits {
+        source,
+        bit_offset,
+        bit_len: u64::from(size),
+    };
+    let mut frame_reader = BitReader::new(source);
+    frame_reader.skip_bits(bit_offset)?;
+    let present = frame_reader.read_flag()?;
+    Ok((present, bits))
 }
 
 fn parse_additional_data<'a>(
@@ -1227,6 +1303,17 @@ mod tests {
         bits.push(0, 1); // no further loudness info
     }
 
+    fn push_minimal_drc_frame(bits: &mut TestBits) {
+        bits.push(1, 5); // one-bit drc_frame
+        bits.push(0, 1); // no size extension
+        bits.push(0, 1); // b_drc_present
+    }
+
+    fn push_minimal_common_metadata_prefix(bits: &mut TestBits, dialnorm_bits: u8) {
+        push_minimal_loudness_prefix(bits, dialnorm_bits);
+        push_minimal_drc_frame(bits);
+    }
+
     #[test]
     fn ordinary_presentation_has_no_selection_prefix() {
         let parsed = Ac4PresentationSubstreamSelection::parse(
@@ -1243,7 +1330,7 @@ mod tests {
     fn ordinary_full_parse_reads_dialnorm_without_additional_data() {
         let mut bits = TestBits::new();
         bits.push(0, 1); // b_additional_data
-        push_minimal_loudness_prefix(&mut bits, 0b101_0101);
+        push_minimal_common_metadata_prefix(&mut bits, 0b101_0101);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1258,6 +1345,11 @@ mod tests {
         assert_eq!(parsed.dialnorm_bits, 0b101_0101);
         assert_eq!(parsed.further_loudness, None);
         assert_eq!(parsed.drc_metadata_size_value_offset, 9);
+        assert!(!parsed.drc_present);
+        assert_eq!(parsed.drc_frame.bit_offset(), 15);
+        assert_eq!(parsed.drc_frame.len_bits(), 1);
+        assert_eq!(parsed.drc_frame.get(0), Some(false));
+        assert_eq!(parsed.drc_frame.end_bit_offset(), 16);
     }
 
     #[test]
@@ -1293,7 +1385,7 @@ mod tests {
         bits.push(1, 1); // b_oamd_common_timing
         bits.push(0, 1); // no advanced DE
         bits.push(0, 5); // reserved add_data
-        push_minimal_loudness_prefix(&mut bits, 0);
+        push_minimal_common_metadata_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1305,7 +1397,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_object_additional_data_and_ignores_drc_suffix_in_equality() {
+    fn parses_object_additional_data_and_ignores_post_drc_suffix_in_equality() {
         let mut envelope = TestBits::new();
         envelope.push(1, 1); // b_additional_data
         envelope.push(0, 4); // one additional-data byte
@@ -1317,11 +1409,11 @@ mod tests {
         let expected_dialnorm_offset = envelope.len as u64;
 
         let mut left_bits = envelope.clone();
-        push_minimal_loudness_prefix(&mut left_bits, 0b101_0101);
-        left_bits.push(0, 5); // unparsed drc_metadata_size_value
+        push_minimal_common_metadata_prefix(&mut left_bits, 0b101_0101);
+        left_bits.push(0, 4); // unparsed metadata after drc_frame
         let mut right_bits = envelope;
-        push_minimal_loudness_prefix(&mut right_bits, 0b101_0101);
-        right_bits.push(0b1_1111, 5);
+        push_minimal_common_metadata_prefix(&mut right_bits, 0b101_0101);
+        right_bits.push(0b1111, 4);
         let context = PresentationSubstreamContext::new(false, 1, true);
         let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
         let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
@@ -1341,7 +1433,9 @@ mod tests {
         assert_eq!(left.dialnorm_bits_offset, expected_dialnorm_offset);
         assert_eq!(left.dialnorm_bits, 0b101_0101);
         assert_eq!(left.drc_metadata_size_value_offset, 24);
-        assert_eq!(left, right, "DRC 及更后字段尚未进入已解析视图");
+        assert_eq!(left.drc_frame.bit_offset(), 30);
+        assert_eq!(left.drc_frame.end_bit_offset(), 31);
+        assert_eq!(left, right, "DRC 之后的字段尚未进入已解析视图");
     }
 
     #[test]
@@ -1353,7 +1447,7 @@ mod tests {
         bits.push(0, 1); // immersive_audio_indicator
         bits.push(0, 1); // no advanced DE; no OAMD timing bit on this path
         bits.push(0b11_1000, 6); // reserved add_data
-        push_minimal_loudness_prefix(&mut bits, 0);
+        push_minimal_common_metadata_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1387,7 +1481,7 @@ mod tests {
         bits.push(31, 5);
         bits.push(1, 1); // one reserved add_data bit
         let expected_dialnorm_offset = bits.len as u64;
-        push_minimal_loudness_prefix(&mut bits, 0);
+        push_minimal_common_metadata_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1424,7 +1518,7 @@ mod tests {
         bits.push(31, 6); // positive threshold endpoint
         bits.push(0, 5); // gain endpoint
         bits.push(0, 1); // one reserved add_data bit
-        push_minimal_loudness_prefix(&mut bits, 0);
+        push_minimal_common_metadata_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1484,7 +1578,7 @@ mod tests {
         for _ in 0..141 {
             bits.push(0, 1);
         }
-        push_minimal_loudness_prefix(&mut bits, 0);
+        push_minimal_common_metadata_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1540,7 +1634,7 @@ mod tests {
         bits.push(5, 5);
         bits.push(0b10110, 5); // opaque extensions_bits
         let expected_drc_offset = bits.len as u64;
-        bits.push(0b1_1111, 5); // unparsed drc_metadata_size_value
+        push_minimal_drc_frame(&mut bits);
 
         let payload = bits.as_bytes();
         let parsed = Ac4PresentationSubstream::parse(
@@ -1553,6 +1647,8 @@ mod tests {
         assert_eq!(parsed.dialnorm_bits_offset, 1);
         assert_eq!(parsed.dialnorm_bits, 0b110_1101);
         assert_eq!(parsed.drc_metadata_size_value_offset, expected_drc_offset);
+        assert!(!parsed.drc_present);
+        assert_eq!(parsed.drc_frame.len_bits(), 1);
         assert_eq!(loudness.loudness_version, Some(3));
         assert_eq!(loudness.extended_loudness_version, Some(12));
         assert_eq!(loudness.effective_loudness_version(), Some(15));
@@ -1591,6 +1687,102 @@ mod tests {
         );
         assert_eq!(extension.get(5), None);
         assert_eq!(extension.as_aligned_slice(), None);
+    }
+
+    #[test]
+    fn extends_and_bounds_presentation_drc_frame() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(&mut bits, 0);
+        let expected_size_offset = bits.len as u64;
+        bits.push(31, 5); // base drc_metadata_size
+        bits.push(1, 1); // b_more_bits
+        bits.push(2, 3); // variable_bits(3) = 2
+        bits.push(0, 1);
+        let expected_frame_offset = bits.len as u64;
+        bits.push(1, 1); // b_drc_present
+        for _ in 1..95 {
+            bits.push(0, 1);
+        }
+        let expected_frame_end = bits.len as u64;
+        bits.push(0b10101, 5); // metadata after drc_frame must remain untouched
+
+        let parsed = Ac4PresentationSubstream::parse(
+            bits.as_bytes(),
+            PresentationSubstreamContext::new(false, 1, false),
+        )
+        .unwrap();
+
+        assert_eq!(parsed.drc_metadata_size_value_offset, expected_size_offset);
+        assert!(parsed.drc_present);
+        assert_eq!(parsed.drc_frame.bit_offset(), expected_frame_offset);
+        assert_eq!(parsed.drc_frame.len_bits(), 95);
+        assert_eq!(parsed.drc_frame.end_bit_offset(), expected_frame_end);
+        assert_eq!(parsed.drc_frame.get(0), Some(true));
+        assert_eq!(parsed.drc_frame.get(94), Some(false));
+        assert_eq!(parsed.drc_frame.get(95), None);
+        assert_eq!(parsed.drc_frame.as_aligned_slice(), None);
+    }
+
+    #[test]
+    fn rejects_empty_truncated_and_overflowing_drc_envelopes() {
+        let mut empty = TestBits::new();
+        empty.push(0, 1); // no additional data
+        push_minimal_loudness_prefix(&mut empty, 0);
+        empty.push(0, 5); // empty drc_frame cannot carry b_drc_present
+        empty.push(0, 1); // no size extension
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                empty.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::InvalidDrcMetadataSize {
+                declared: 0,
+                minimum: 1,
+                bit_position: 9,
+            }
+        );
+
+        let mut truncated = TestBits::new();
+        truncated.push(0, 1);
+        push_minimal_loudness_prefix(&mut truncated, 0);
+        truncated.push(16, 5); // declares sixteen drc_frame bits
+        truncated.push(0, 1);
+        truncated.push_byte(0xff); // only nine bits remain including byte padding
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                truncated.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 16,
+                bit_position: 15,
+                remaining_bits: 9,
+            })
+        );
+
+        let mut overflowing = TestBits::new();
+        overflowing.push(0, 1);
+        push_minimal_loudness_prefix(&mut overflowing, 0);
+        overflowing.push(31, 5);
+        overflowing.push(1, 1);
+        for _ in 0..12 {
+            overflowing.push(7, 3);
+            overflowing.push(1, 1);
+        }
+        overflowing.push(0, 3);
+        overflowing.push(0, 1);
+        assert!(matches!(
+            Ac4PresentationSubstream::parse(
+                overflowing.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, false),
+            ),
+            Err(PresentationSubstreamError::Read(
+                ReadError::ValueOverflow { .. }
+            ))
+        ));
     }
 
     #[test]

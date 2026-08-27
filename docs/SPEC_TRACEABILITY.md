@@ -1640,7 +1640,7 @@ Scene 公共 API 另以泛型 `PresentationSelectionMetadata<T>` 接受调用方
 未解析 ID 当作明确无 ID。只要 metadata 集合仍含身份 unavailable 的项，Scene 就不能证明
 其余已知候选唯一，关联结果保持 indeterminate。
 
-### 5.57 `ac4_presentation_substream()` 的 selection、additional data 与响度前缀
+### 5.57 `ac4_presentation_substream()` 的 selection、additional data、响度与 DRC envelope
 
 P2 `6.2.2.3` 在 `b_alternative` 为真时先传 presentation name、target 列表和逐音频
 substream 的 activation/dataset map；字段语义由 `6.3.3.1.1`–`6.3.3.1.15` 定义。新增的
@@ -1680,8 +1680,11 @@ dialnorm。构造反例特意在过短 envelope 后放置可读字节，解析�
 `further_loudness_info(1, 1)`，再返回 `drc_metadata_size_value` 的精确 bit offset。共享的
 P2 `6.2.7.3` 解析保留 loudness version/extension、practice、dialgate/correction type、
 programme boundary、量化响度、RTLL 和未定义 extension bit view，不换算或应用任何增益。
-DRC、group/associated gain、custom downmix 与 loudness correction 仍未解析或验证，更不会
-执行。alternative presentation/dataset 与 direct-object 均无真实编码样本；
+`6.3.3.1.19`–`6.3.3.1.21` 的 DRC 长度按 5 比特基础值和 `variable_bits(3) << 5` 扩展，
+完整 `drc_frame()` 在读取首个 `b_drc_present` 后作为有界 bit view 保留；长度为零、越过
+payload 或扩展溢出均拒绝，不能借用后续 metadata 补足。DRC 内部配置/逐帧数据、
+group/associated gain、custom downmix 与 loudness correction 仍未解析或验证，更不会执行。
+alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
