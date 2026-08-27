@@ -77,7 +77,7 @@ profile、E-AC-3 profile 及完整 compression-curve 原始参数，dependent fr
 I-frame `drc_data()` 进一步解析 repeat profile 的有效 gain/curve 形态、gainset 长度/版本和
 curve reset/reserved；未知版本及 gainset body 始终以有界 bit view 保留。`audio-decode` 下的
 独立 API 可按调用方显式提供的 channel-group/subframe 形状解码 version 0/1 的 `DRC_HCB`，还原
-最多 128 个整数 dB gain 与 version 1 扩展边界，但不应用 gain。dependent-frame data 解析仍须
+最多 128 个整数 dB₂ gain 与 version 1 扩展边界，但不应用 gain。dependent-frame data 解析仍须
 前一有效配置和跨帧状态。
 DRC envelope 后按规范 `n_substream_groups` 判定 group-gain
 presence：单 group 不消费该字段，多 group 则区分未携带、`b_keep` 沿用和逐 group 新传六比特

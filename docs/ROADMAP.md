@@ -488,7 +488,7 @@ compression-curve/gains 四类 profile、E-AC-3 profile，以及 curve 的 boost
 形态、每 mode `drc_gainset_size` 及其 `variable_bits(2)` 扩展、2 比特 version，以及 curve
 mode 共用的 reset/reserved；未知版本与 gain-set body 始终以有界 bit view 保留。启用
 `audio-decode` 时，独立 API 再按 P1 表 75 与附录 A.5 的 `DRC_HCB` 解码 version 0/1：调用方
-显式提供 `nr_drc_channels`/`nr_drc_subframes`，解析器按 channel→band→subframe 顺序还原整数 dB
+显式提供 `nr_drc_channels`/`nr_drc_subframes`，解析器按 channel→band→subframe 顺序还原整数 dB₂
 码值及 reference reset，并精确定出 version 1 的 `drc2_bits`；version 2/3 body 直接作为扩展
 保留。该 API 无状态且不应用 gain。缺失/循环 repeat、过短/截断/溢出 gainset、DRC absent 或
 完整 I-frame data 后的尾随比特均失败关闭，且不能借用随后 metadata。dependent-frame 前一有效

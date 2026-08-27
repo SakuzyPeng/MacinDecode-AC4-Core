@@ -2,7 +2,7 @@
 //!
 //! 对应 `TS103190-1:v1.4.1:4.2.14.9`–`4.2.14.10`、`4.3.13.5`–`4.3.13.7`
 //! 与附录 `A.5`。本模块只把 `DRC_HCB` 符号还原为逐 channel-group/subframe/band 的
-//! 整数 dB 码值，并保留 version 1+ 的扩展比特；不维护跨帧配置，不平滑或应用增益，也不
+//! 整数 dB₂ 码值，并保留 version 1+ 的扩展比特；不维护跨帧配置，不平滑或应用增益，也不
 //! 修改 PCM。
 
 use super::{PresentationDrcFrameBits, PresentationDrcGainSet};
@@ -38,12 +38,12 @@ pub struct PresentationDrcGainsContext {
 impl PresentationDrcGainsContext {
     /// 构造已经按规范派生的 gain 形状。
     ///
-    /// `nr_drc_channels` 必须为 `1..=4`；`nr_drc_subframes` 必须是表 169 的
-    /// `1, 2, 3, 4, 6, 8` 之一。范围外返回 `None`，不会静默钳位。
+    /// `nr_drc_channels` 必须是表 168 与 P2 表 69 定义的 `1, 3, 4` 之一；
+    /// `nr_drc_subframes` 必须是表 169 的
+    /// `1, 2, 3, 4, 6, 8` 之一。不在上述集合内时返回 `None`，不会静默钳位。
     #[must_use]
     pub const fn new(nr_drc_channels: u8, nr_drc_subframes: u8) -> Option<Self> {
-        if nr_drc_channels == 0
-            || nr_drc_channels > MAX_PRESENTATION_DRC_CHANNEL_GROUPS as u8
+        if !matches!(nr_drc_channels, 1 | 3 | 4)
             || !matches!(nr_drc_subframes, 1 | 2 | 3 | 4 | 6 | 8)
         {
             return None;
@@ -153,9 +153,9 @@ impl From<HuffmanError> for PresentationDrcGainsError {
 
 /// 已差分还原的 `drc_gains()` 整数码值。
 ///
-/// [`gain`](Self::gain) 返回 `drc_gain[ch][sf][band]`，单位是规范定义的整数 dB；首值
+/// [`gain`](Self::gain) 返回 `drc_gain[ch][sf][band]`，单位是规范定义的整数 dB₂；首值
 /// 等于 `drc_gain_val - 64`，其余值按表 75 的 reference reset 顺序累加 Huffman diff。
-/// 这里不做平滑、限幅或增益应用。
+/// 规范的 1 dB₂ 对应幅度因子 `2^(1/6)`；这里不做平滑、限幅、单位换算或增益应用。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PresentationDrcGains {
     values: [i16; MAX_PRESENTATION_DRC_GAIN_VALUES],
@@ -429,6 +429,7 @@ mod tests {
             8
         );
         assert_eq!(PresentationDrcGainsContext::new(0, 1), None);
+        assert_eq!(PresentationDrcGainsContext::new(2, 1), None);
         assert_eq!(PresentationDrcGainsContext::new(5, 1), None);
         assert_eq!(PresentationDrcGainsContext::new(1, 0), None);
         assert_eq!(PresentationDrcGainsContext::new(1, 5), None);
@@ -475,28 +476,30 @@ mod tests {
         let mut bits = BitBuf::new();
         bits.push_bits(1, 2);
         bits.push_bits(64, 7);
-        for difference in 1u16..=7 {
+        for difference in 1u16..=11 {
             bits.push_symbol(&tables::DRC_HCB, DRC_HCB_OFFSET as u16 + difference);
         }
         let extension_offset = bits.bit_len();
         bits.push_bits(0b110, 3);
-        let context = PresentationDrcGainsContext::new(2, 2).unwrap();
+        let context = PresentationDrcGainsContext::new(3, 2).unwrap();
         let decoded = gain_set(&bits, bits.bit_len(), 2, 1)
             .decode_gains(Some(context))
             .unwrap();
         let gains = decoded.gains.unwrap();
 
         assert_eq!(gains.gains_configuration(), 2);
-        assert_eq!(gains.nr_drc_channels(), 2);
+        assert_eq!(gains.nr_drc_channels(), 3);
         assert_eq!(gains.nr_drc_subframes(), 2);
         assert_eq!(gains.nr_drc_bands(), 2);
-        assert_eq!(gains.values(), [0, 1, 2, 5, 4, 9, 10, 17]);
+        assert_eq!(gains.values(), [0, 1, 2, 5, 4, 9, 10, 17, 12, 21, 22, 33]);
         assert_eq!(gains.gain(0, 0, 0), Some(0));
         assert_eq!(gains.gain(0, 1, 0), Some(1));
         assert_eq!(gains.gain(0, 0, 1), Some(2));
         assert_eq!(gains.gain(0, 1, 1), Some(5));
         assert_eq!(gains.gain(1, 0, 0), Some(4));
         assert_eq!(gains.gain(1, 1, 1), Some(17));
+        assert_eq!(gains.gain(2, 0, 0), Some(12));
+        assert_eq!(gains.gain(2, 1, 1), Some(33));
         let extension = decoded.extension.unwrap();
         assert_eq!(
             extension.bit_offset(),

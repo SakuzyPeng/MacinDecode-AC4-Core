@@ -1698,7 +1698,7 @@ frame 还按 `4.2.14.9`/`4.3.13.5` 解析 repeat profile 的有效 gain/curve �
 任一 curve mode 触发的共用 reset/reserved。gainset 从 version 开始严格按声明长度定界，完整
 body 始终以原始 bit view 保留。`audio-decode` 下的显式 API 再按 `4.2.14.10` 与附录 A.5 解码
 version 0/1 的首个 7 比特 gain 和最多 127 个 `DRC_HCB` diff，按 channel→band→subframe 与表 75
-的 band/channel reference reset 还原最多 128 个整数 dB 值；调用方必须显式传入表 168/169 与
+的 band/channel reference reset 还原最多 128 个整数 dB₂ 值；调用方必须显式传入表 168/169 与
 P2 表 69 派生的 channel-group/subframe 数。version 1 解码到规定符号数后把剩余位精确定界为
 `drc2_bits`，version 2/3 则把整个 body 作为未知扩展。配置/gainset 截断即使后面仍有可读
 metadata，也必须在 DRC 边界失败，不能借用后续字段补足；缺失/循环 repeat、过短/溢出
