@@ -55,6 +55,9 @@ pub const MAX_CUSTOM_DOWNMIX_CONFIGURATIONS: usize = 4;
 /// `drc_decoder_nr_modes` 为 3 比特且语义为 count minus one，因此固定为 `1..=8`。
 pub const MAX_PRESENTATION_DRC_DECODER_MODES: usize = 8;
 
+/// `drc_version` 与所有已知版本必需的首个 `drc_gain_val` 总位数。
+const MIN_KNOWN_DRC_GAIN_SET_BITS: u32 = 2 + 7;
+
 /// presentation substream 前缀中超出固定容量的结构。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSubstreamCapacity {
@@ -109,12 +112,21 @@ pub enum PresentationSubstreamError {
         /// `drc_metadata_size_value` 的比特偏移。
         bit_position: u64,
     },
-    /// `drc_gainset_size` 不足以容纳必需的 2 比特 `drc_version`。
+    /// `drc_gainset_size` 不足以容纳当前版本的必需字段。
     InvalidDrcGainSetSize {
         /// 码流声明的 gain set 长度。
         declared: u32,
         /// 当前语法要求的最小长度。
         minimum: u32,
+        /// `drc_gainset_size_value` 的比特偏移。
+        bit_position: u64,
+    },
+    /// version 0 的单一 wideband gain-set 长度不是固定的 9 比特。
+    InvalidFixedDrcGainSetSize {
+        /// 码流声明的 gain set 长度。
+        declared: u32,
+        /// 当前语法要求的精确长度。
+        expected: u32,
         /// `drc_gainset_size_value` 的比特偏移。
         bit_position: u64,
     },
@@ -211,6 +223,14 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation DRC gain-set size is {declared} bits at offset {bit_position}; at least {minimum} bits are required"
+            ),
+            PresentationSubstreamError::InvalidFixedDrcGainSetSize {
+                declared,
+                expected,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation fixed DRC gain-set size is {declared} bits at offset {bit_position}; exactly {expected} bits are required"
             ),
             PresentationSubstreamError::MissingDrcRepeatProfile { mode_id, repeat_id } => write!(
                 formatter,
@@ -2570,6 +2590,20 @@ fn parse_drc_data<'a>(
                 let mut payload_reader =
                     BitReader::new_bounded(source, payload_offset, u64::from(size))?;
                 let version = u8::try_from(payload_reader.read_bits(2)?).unwrap_or(u8::MAX);
+                if version <= 1 && size < MIN_KNOWN_DRC_GAIN_SET_BITS {
+                    return Err(PresentationSubstreamError::InvalidDrcGainSetSize {
+                        declared: size,
+                        minimum: MIN_KNOWN_DRC_GAIN_SET_BITS,
+                        bit_position: size_value_offset,
+                    });
+                }
+                if version == 0 && gains_configuration == 0 && size != MIN_KNOWN_DRC_GAIN_SET_BITS {
+                    return Err(PresentationSubstreamError::InvalidFixedDrcGainSetSize {
+                        declared: size,
+                        expected: MIN_KNOWN_DRC_GAIN_SET_BITS,
+                        bit_position: size_value_offset,
+                    });
+                }
                 let gain_set = PresentationDrcGainSet {
                     decoder_mode_id: mode.mode_id,
                     gains_configuration,
@@ -3850,6 +3884,77 @@ mod tests {
                 ReadError::ValueOverflow { .. }
             ))
         ));
+    }
+
+    #[test]
+    fn validates_known_drc_gainset_sizes() {
+        let configuration = drc_configuration(&[PresentationDrcDecoderMode {
+            mode_id: 0,
+            output_levels: None,
+            profile: PresentationDrcProfile::Gains { configuration: 0 },
+        }]);
+
+        for version in 0u8..=1 {
+            let mut too_short = TestBits::new();
+            too_short.push(8, 6); // version plus only six of seven required gain bits
+            too_short.push(0, 1); // no size extension
+            too_short.push(u64::from(version), 2);
+            too_short.push(0, 6);
+            let mut reader =
+                BitReader::new_bounded(too_short.as_bytes(), 0, too_short.len as u64).unwrap();
+            assert_eq!(
+                parse_drc_data(&mut reader, too_short.as_bytes(), &configuration).unwrap_err(),
+                PresentationSubstreamError::InvalidDrcGainSetSize {
+                    declared: 8,
+                    minimum: MIN_KNOWN_DRC_GAIN_SET_BITS,
+                    bit_position: 0,
+                }
+            );
+        }
+
+        let mut fixed_with_tail = TestBits::new();
+        fixed_with_tail.push(10, 6); // version 0 config 0 has no extension after seven gain bits
+        fixed_with_tail.push(0, 1);
+        fixed_with_tail.push(0, 2);
+        fixed_with_tail.push(0, 8);
+        let mut reader =
+            BitReader::new_bounded(fixed_with_tail.as_bytes(), 0, fixed_with_tail.len as u64)
+                .unwrap();
+        assert_eq!(
+            parse_drc_data(&mut reader, fixed_with_tail.as_bytes(), &configuration).unwrap_err(),
+            PresentationSubstreamError::InvalidFixedDrcGainSetSize {
+                declared: 10,
+                expected: MIN_KNOWN_DRC_GAIN_SET_BITS,
+                bit_position: 0,
+            }
+        );
+
+        let mut fixed = TestBits::new();
+        fixed.push(u64::from(MIN_KNOWN_DRC_GAIN_SET_BITS), 6);
+        fixed.push(0, 1);
+        fixed.push(0, 2); // version 0
+        fixed.push(64, 7); // the single wideband drc_gain_val
+        let mut reader = BitReader::new_bounded(fixed.as_bytes(), 0, fixed.len as u64).unwrap();
+        let parsed = parse_drc_data(&mut reader, fixed.as_bytes(), &configuration).unwrap();
+        assert_eq!(reader.remaining_bits(), 0);
+        assert_eq!(parsed.gain_sets().len(), 1);
+        let gain_set = parsed.gain_sets().first().copied().unwrap();
+        assert_eq!(gain_set.version, 0);
+        assert_eq!(gain_set.body().len_bits(), 7);
+
+        let mut version_one = TestBits::new();
+        version_one.push(10, 6);
+        version_one.push(0, 1);
+        version_one.push(1, 2);
+        version_one.push(64, 7);
+        version_one.push(1, 1); // one opaque drc2 extension bit
+        let mut reader =
+            BitReader::new_bounded(version_one.as_bytes(), 0, version_one.len as u64).unwrap();
+        let parsed = parse_drc_data(&mut reader, version_one.as_bytes(), &configuration).unwrap();
+        assert_eq!(reader.remaining_bits(), 0);
+        let gain_set = parsed.gain_sets().first().copied().unwrap();
+        assert_eq!(gain_set.version, 1);
+        assert_eq!(gain_set.body().len_bits(), 8);
     }
 
     #[test]
