@@ -471,7 +471,8 @@ target 与 activation map 同样借用有界 payload 迭代，不复制或自动
 解析 immersive indicator、`pres_ch_mode == -1` 路径的 OAMD common timing，以及固定
 12/28 比特的 advanced DE 原始参数；剩余保留 `add_data` 以精确 bit view 借用。拓扑按
 Pseudocode 25/26 与 `6.3.3.1.29`–`6.3.3.1.31` 派生完整/core channel mode、
-four-back、top-pairs 与 LFE；`superset()` 查表已与 Dolby 参考 parser 交叉核对。
+four-back、top-pairs 与 LFE；`superset()` 按无 LFE layout family 与 LFE presence
+分别归一化，避免旧参考查表中的非交换与 LFE 丢失矛盾项。
 OAMD timing 的 presence 现在直接使用该完整上下文中的 `pres_ch_mode`。
 
 envelope 之后固定的 7 比特 `dialnorm_bits` 与可选 `further_loudness_info(1, 1)` 现已解析；

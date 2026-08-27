@@ -2,50 +2,40 @@
 
 use super::*;
 
-/// P2 `6.3.3.1.27` 定义的 `superset()` 查找表。
-///
-/// 规范只给出「能包含两个输入所有声道的最低 ch_mode」的语义、
-/// `superset(0, 1) == 1` 和 `superset(4, 11) == 12` 的例子；此表与
-/// Dolby 参考 parser `parser_ac4.c` 的 `superset_channel_mode` 一致。
-const SUPERSET_CHANNEL_MODE: [[u8; 16]; 16] = [
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    [1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    [2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    [3, 3, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    [4, 4, 4, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14, 15],
-    [5, 5, 5, 5, 6, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    [6, 6, 6, 6, 6, 6, 6, 6, 8, 6, 10, 12, 12, 14, 14, 15],
-    [7, 7, 7, 7, 8, 7, 6, 7, 8, 9, 10, 12, 12, 13, 14, 15],
-    [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 10, 11, 12, 14, 14, 15],
-    [9, 9, 9, 9, 10, 9, 10, 9, 9, 9, 10, 11, 12, 13, 14, 15],
-    [
-        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 12, 13, 14, 15,
-    ],
-    [
-        11, 11, 11, 11, 12, 11, 12, 11, 12, 11, 12, 11, 13, 13, 14, 15,
-    ],
-    [
-        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 14, 15,
-    ],
-    [
-        13, 13, 13, 13, 14, 13, 14, 13, 14, 13, 14, 13, 14, 13, 14, 15,
-    ],
-    [
-        14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 15,
-    ],
-    [
-        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-    ],
-];
+/// 表 56 中含 LFE 的声道模式。
+const fn channel_mode_contains_lfe(mode: u8) -> bool {
+    matches!(mode, 4 | 6 | 8 | 10 | 12 | 14 | 15)
+}
 
+/// 把表 56 的声道模式拆为无 LFE 的 layout family 与 LFE presence。
+///
+/// 3–14 从 5.X 开始成对排列：奇数是不含 LFE 的 family，紧随的偶数是
+/// 同一 family 的含 LFE 变体。22.2 只有含 LFE 的 mode 15。
+fn channel_mode_parts(mode: u8) -> Option<(u8, bool)> {
+    match mode {
+        0..=3 | 5 | 7 | 9 | 11 | 13 => Some((mode, false)),
+        4 | 6 | 8 | 10 | 12 | 14 => mode.checked_sub(1).map(|base| (base, true)),
+        15 => Some((15, true)),
+        _ => None,
+    }
+}
+
+/// P2 `6.3.3.1.27` 的 `superset()`。
+///
+/// 先在无 LFE 的 layout family 上取最低共同 family，再只要任一输入含 LFE
+/// 就选择该 family 的含 LFE 变体。这样合并满足交换律、结合律和幂等性，且不会像
+/// 旧参考查表的矛盾项那样因 substream 顺序不同而改变结果或丢失 LFE。
 fn superset_channel_mode(left: Option<u8>, right: Option<u8>) -> Option<u8> {
     let (Some(left), Some(right)) = (left, right) else {
         return left.or(right);
     };
-    SUPERSET_CHANNEL_MODE
-        .get(usize::from(left))
-        .and_then(|row| row.get(usize::from(right)))
-        .copied()
+    let (left_base, left_lfe) = channel_mode_parts(left)?;
+    let (right_base, right_lfe) = channel_mode_parts(right)?;
+    let base = left_base.max(right_base);
+    if base == 15 || !(left_lfe || right_lfe) {
+        return Some(base);
+    }
+    base.checked_add(1)
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -114,7 +104,7 @@ impl PresentationChannelAccumulator {
         }
         let has_lfe = presentation_channel_mode.map_or_else(
             || matches!(core_channel_mode, Some(4 | 6)),
-            |mode| matches!(mode, 4 | 6 | 8 | 10 | 12 | 14 | 15),
+            channel_mode_contains_lfe,
         );
         PresentationChannelContext::new(
             presentation_channel_mode,
@@ -682,5 +672,57 @@ impl Ac4Topology {
             index_table,
             bits_consumed: reader.bit_position(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn superset_channel_mode_matches_normative_examples_and_preserves_lfe() {
+        assert_eq!(superset_channel_mode(None, None), None);
+        assert_eq!(superset_channel_mode(Some(0), Some(1)), Some(1));
+        assert_eq!(superset_channel_mode(Some(4), Some(11)), Some(12));
+
+        // 7.0.4 已经是 7.1.4 的无 LFE family；旧参考表在这个顺序下误得
+        // 9.0.4，既不是最低 family，还会丢失右侧的 LFE。
+        assert_eq!(superset_channel_mode(Some(11), Some(12)), Some(12));
+        assert_eq!(superset_channel_mode(Some(12), Some(11)), Some(12));
+    }
+
+    #[test]
+    fn superset_channel_mode_is_stable_for_every_defined_mode() {
+        for left in 0..=15u8 {
+            assert_eq!(superset_channel_mode(None, Some(left)), Some(left));
+            assert_eq!(superset_channel_mode(Some(left), None), Some(left));
+            assert_eq!(superset_channel_mode(Some(left), Some(left)), Some(left));
+
+            for right in 0..=15u8 {
+                let combined = superset_channel_mode(Some(left), Some(right));
+                assert_eq!(
+                    combined,
+                    superset_channel_mode(Some(right), Some(left)),
+                    "superset must be commutative for modes {left} and {right}"
+                );
+                if channel_mode_contains_lfe(left) || channel_mode_contains_lfe(right) {
+                    assert!(
+                        combined.is_some_and(channel_mode_contains_lfe),
+                        "superset of modes {left} and {right} lost the LFE"
+                    );
+                }
+
+                for third in 0..=15u8 {
+                    assert_eq!(
+                        superset_channel_mode(combined, Some(third)),
+                        superset_channel_mode(
+                            Some(left),
+                            superset_channel_mode(Some(right), Some(third)),
+                        ),
+                        "superset must be associative for modes {left}, {right}, and {third}"
+                    );
+                }
+            }
+        }
     }
 }

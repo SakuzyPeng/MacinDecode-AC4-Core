@@ -1670,8 +1670,9 @@ config 1/4 中 dialogue-enhancement 的额外 SGI 即使不增加 `n_substream_g
 字节 envelope，再对齐并在独立的有界 reader 中读取 `immersive_audio_indicator`。拓扑依据
 `6.3.3.1.27`–`6.3.3.1.31` 完整派生 `pres_ch_mode`、`pres_ch_mode_core`、
 `b_pres_4_back_channels_present`、`pres_top_channel_pairs` 与 `b_pres_has_lfe`；
-`superset()` 查表与 Dolby 参考 parser 交叉核对，并以规范明示的 5.1 + 7.0.4 →
-7.1.4 反例防止误用数值 `max`。任一对象/A-JOC 会把完整模式置为 `-1`；
+`superset()` 分别归一化无 LFE layout family 与 LFE presence，并以规范明示的
+5.1 + 7.0.4 → 7.1.4 反例及全模式交换律/结合律/幂等性回归，防止误用数值
+`max`、结果依赖 substream 顺序或丢失 LFE。任一对象/A-JOC 会把完整模式置为 `-1`；
 adaptive A-JOC 与 direct-object 还会把 core 模式置为 `-1`，static A-JOC 则派生
 5.0/5.1 core。只有 `pres_ch_mode == -1` 时才消费 `b_oamd_common_timing`。
 
