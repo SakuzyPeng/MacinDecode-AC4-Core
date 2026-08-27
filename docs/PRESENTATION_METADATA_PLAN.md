@@ -1,8 +1,9 @@
 # Presentation 与元数据闭环计划
 
 > **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
-> substream activation/dataset selection 前缀，以及公共 additional-data envelope 已完成
-> 构造验证；dialnorm 之后的 presentation metadata、音频 substream tools metadata、EMDF
+> substream activation/dataset selection 前缀、公共 additional-data envelope，以及
+> dialnorm/further-loudness 前缀已完成构造验证；DRC 及之后的 presentation metadata、音频
+> substream tools metadata、EMDF
 > payload 与 alternative dataset 数据路径仍待实现。当前
 > 工具链可再生产普通 presentation payload 与 dialog enhancement 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
@@ -61,8 +62,10 @@ alternative dataset index。第二个增量在 selection 之后验证 `b_additio
 字节数与 `variable_bits(2)` 扩展，完成 `byte_align` 后在声明的独立边界内解析 immersive
 indicator、`pres_ch_mode == -1` 路径的 OAMD common timing 和 12/28 比特 advanced DE 原始
 参数，并以无分配 bit view 保留剩余 `add_data`。普通 presentation 没有 selection 前缀；
-两条路径现在都返回紧随该 envelope 的 `dialnorm_bits` 精确 bit offset，之后字段仍不标为
-已解析。
+两条路径现在都解析 7 比特 `dialnorm_bits` 与可选 `further_loudness_info(1, 1)`，并返回紧随
+响度字段的 `drc_metadata_size_value` 精确 bit offset。共享响度解析保留 version/practice、
+dialgate/correction、programme boundary、量化响度与 RTLL 原值；未定义 extension 以无分配
+bit view 回取。DRC 及之后字段仍不标为已解析。
 
 解析 API 必须显式接收 TOC/拓扑上下文以及前一有效 DRC 配置。所有长度 envelope 先验证边界，
 成功后才提交跨帧状态；dependent frame 缺少历史配置时失败关闭。

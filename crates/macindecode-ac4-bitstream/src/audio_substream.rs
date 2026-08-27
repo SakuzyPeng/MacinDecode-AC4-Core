@@ -169,11 +169,150 @@ const fn channel_mode_is_seven_x(ch_mode: u32) -> bool {
     matches!(ch_mode, 5..=10)
 }
 
+/// `further_loudness_info()` 中的 programme boundary 原始信息。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LoudnessProgrammeBoundary {
+    /// `prgmbndy`，即当前帧与 programme boundary 所在帧的距离。
+    pub frame_distance: u64,
+    /// `b_end_or_start`；为真时 boundary 位于当前帧之后，否则位于之前。
+    pub upcoming: bool,
+    /// `b_prgmbndy_offset` 控制的 11 比特 sample offset。
+    pub sample_offset: Option<u16>,
+}
+
+/// `further_loudness_info()` 中未定义的 `extensions_bits` 视图。
+///
+/// 视图借用调用 [`FurtherLoudnessInfo::extension_data`] 时传入的原 payload，不分配或复制。
+#[derive(Debug, Clone, Copy)]
+pub struct LoudnessExtensionBits<'a> {
+    source: &'a [u8],
+    bit_offset: u64,
+    bit_len: u32,
+}
+
+impl<'a, 'b> PartialEq<LoudnessExtensionBits<'b>> for LoudnessExtensionBits<'a> {
+    fn eq(&self, other: &LoudnessExtensionBits<'b>) -> bool {
+        self.bit_len == other.bit_len && (*self).iter().eq((*other).iter())
+    }
+}
+
+impl Eq for LoudnessExtensionBits<'_> {}
+
+impl<'a> LoudnessExtensionBits<'a> {
+    /// 视图包含的比特数。
+    #[must_use]
+    pub const fn len_bits(self) -> u32 {
+        self.bit_len
+    }
+
+    /// 视图是否为空。
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.bit_len == 0
+    }
+
+    /// 读取一个 extension bit。
+    #[must_use]
+    pub fn get(self, index: u32) -> Option<bool> {
+        if index >= self.bit_len {
+            return None;
+        }
+        let mut reader = BitReader::new(self.source);
+        reader
+            .skip_bits(self.bit_offset.checked_add(u64::from(index))?)
+            .ok()?;
+        reader.read_flag().ok()
+    }
+
+    /// 若起点和长度都位于字节边界，返回零拷贝字节切片。
+    #[must_use]
+    pub fn as_aligned_slice(self) -> Option<&'a [u8]> {
+        if !self.bit_offset.is_multiple_of(8) || !self.bit_len.is_multiple_of(8) {
+            return None;
+        }
+        let start = usize::try_from(self.bit_offset / 8).ok()?;
+        let len = usize::try_from(self.bit_len / 8).ok()?;
+        self.source.get(start..start.checked_add(len)?)
+    }
+
+    /// 按码流顺序遍历 extension bits。
+    #[must_use]
+    pub fn iter(self) -> LoudnessExtensionBitIter<'a> {
+        LoudnessExtensionBitIter::new(self)
+    }
+}
+
+impl<'a> IntoIterator for LoudnessExtensionBits<'a> {
+    type Item = bool;
+    type IntoIter = LoudnessExtensionBitIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// [`LoudnessExtensionBits`] 的无分配迭代器。
+#[derive(Debug, Clone)]
+pub struct LoudnessExtensionBitIter<'a> {
+    reader: BitReader<'a>,
+    remaining: u32,
+}
+
+impl<'a> LoudnessExtensionBitIter<'a> {
+    fn new(bits: LoudnessExtensionBits<'a>) -> Self {
+        let mut reader = BitReader::new(bits.source);
+        let remaining = if reader.skip_bits(bits.bit_offset).is_ok() {
+            bits.bit_len
+        } else {
+            0
+        };
+        Self { reader, remaining }
+    }
+}
+
+impl Iterator for LoudnessExtensionBitIter<'_> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+        let value = self.reader.read_flag().ok();
+        if value.is_some() {
+            self.remaining = self.remaining.saturating_sub(1);
+        } else {
+            self.remaining = 0;
+        }
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = usize::try_from(self.remaining).unwrap_or(usize::MAX);
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for LoudnessExtensionBitIter<'_> {}
+
 /// `further_loudness_info()` 中的原始码值，见 `6.2.7.3`。
 ///
-/// 全部保留量化码值，不换算为 LKFS。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// 全部保留量化码值，不换算为 LKFS。`extensions_bits` 的内容未由规范定义，
+/// 可通过 [`Self::extension_data`] 从原 payload 取得。结构相等性比较已定义字段与 extension
+/// 长度，不比较 payload 内的位置或 opaque 内容；后者应比较返回的 [`LoudnessExtensionBits`]。
+#[derive(Debug, Clone, Copy, Default)]
 pub struct FurtherLoudnessInfo {
+    /// 2 比特 `loudness_version`；该分支不传输时为 `None`。
+    pub loudness_version: Option<u8>,
+    /// `loudness_version == 3` 时传输的 4 比特扩展原值。
+    pub extended_loudness_version: Option<u8>,
+    /// 4 比特 `loud_prac_type`；该分支不传输时为 `None`。
+    pub loud_prac_type: Option<u8>,
+    /// `b_loudcorr_dialgate`；由 practice 或调用上下文决定是否传输。
+    pub loudcorr_dialgate: Option<bool>,
+    /// 上一个 `b_loudcorr_dialgate` 为真时的 3 比特 practice type。
+    pub loudcorr_dialgate_prac_type: Option<u8>,
+    /// `b_loudcorr_type`；为真表示实时响度测量，为假表示 file-based correction。
+    pub loudcorr_type: Option<bool>,
     /// `loudrelgat`，11 比特。
     pub loudrelgat: Option<u16>,
     /// `loudspchgat`，11 比特，附带 `dialgate_prac_type`。
@@ -186,6 +325,8 @@ pub struct FurtherLoudnessInfo {
     pub truepk: Option<u16>,
     /// `max_truepk`，11 比特。
     pub max_truepk: Option<u16>,
+    /// 可选 programme boundary。
+    pub programme_boundary: Option<LoudnessProgrammeBoundary>,
     /// `lra`，10 比特，附带 `lra_prac_type`。
     pub lra: Option<(u16, u8)>,
     /// `loudmntry`，11 比特。
@@ -196,9 +337,67 @@ pub struct FurtherLoudnessInfo {
     pub rtll_comp: Option<u8>,
     /// 未解释的 `extensions_bits` 比特数。
     pub extension_bits: Option<u32>,
+    /// `extensions_bits` 相对构造 [`BitReader`] 所用切片的精确比特偏移。
+    pub extension_bits_offset: Option<u64>,
 }
 
+impl PartialEq for FurtherLoudnessInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.loudness_version == other.loudness_version
+            && self.extended_loudness_version == other.extended_loudness_version
+            && self.loud_prac_type == other.loud_prac_type
+            && self.loudcorr_dialgate == other.loudcorr_dialgate
+            && self.loudcorr_dialgate_prac_type == other.loudcorr_dialgate_prac_type
+            && self.loudcorr_type == other.loudcorr_type
+            && self.loudrelgat == other.loudrelgat
+            && self.loudspchgat == other.loudspchgat
+            && self.loudstrm3s == other.loudstrm3s
+            && self.max_loudstrm3s == other.max_loudstrm3s
+            && self.truepk == other.truepk
+            && self.max_truepk == other.max_truepk
+            && self.programme_boundary == other.programme_boundary
+            && self.lra == other.lra
+            && self.loudmntry == other.loudmntry
+            && self.max_loudmntry == other.max_loudmntry
+            && self.rtll_comp == other.rtll_comp
+            && self.extension_bits == other.extension_bits
+    }
+}
+
+impl Eq for FurtherLoudnessInfo {}
+
 impl FurtherLoudnessInfo {
+    /// 取得扩展后的有效 loudness version。
+    #[must_use]
+    pub const fn effective_loudness_version(self) -> Option<u8> {
+        match self.loudness_version {
+            Some(3) => match self.extended_loudness_version {
+                Some(extension) => 3u8.checked_add(extension),
+                None => None,
+            },
+            version => version,
+        }
+    }
+
+    /// 从解析时使用的同一 payload 取得未定义的 `extensions_bits`。
+    ///
+    /// `payload` 必须是构造该 [`BitReader`] 时使用的同一切片；无法覆盖原 bit range 时
+    /// 返回 `None`。
+    #[must_use]
+    pub fn extension_data<'a>(self, payload: &'a [u8]) -> Option<LoudnessExtensionBits<'a>> {
+        let bit_offset = self.extension_bits_offset?;
+        let bit_len = self.extension_bits?;
+        let end = bit_offset.checked_add(u64::from(bit_len))?;
+        if end > (payload.len() as u64).saturating_mul(8) {
+            return None;
+        }
+        Some(LoudnessExtensionBits {
+            source: payload,
+            bit_offset,
+            bit_len,
+        })
+    }
+
     /// 解析 `further_loudness_info(sus_ver, b_presentation_ldn)`。
     ///
     /// # Errors
@@ -209,23 +408,50 @@ impl FurtherLoudnessInfo {
         sus_ver: u8,
         presentation_ldn: bool,
     ) -> Result<Self, AudioSubstreamError> {
+        Self::parse_with_error(
+            reader,
+            sus_ver,
+            presentation_ldn,
+            |declared, required, bit_position| AudioSubstreamError::InvalidExtensionSize {
+                declared,
+                required,
+                bit_position,
+            },
+        )
+    }
+
+    pub(crate) fn parse_with_error<E, F>(
+        reader: &mut BitReader<'_>,
+        sus_ver: u8,
+        presentation_ldn: bool,
+        invalid_extension_size: F,
+    ) -> Result<Self, E>
+    where
+        E: From<ReadError>,
+        F: Fn(u32, u32, u64) -> E,
+    {
         let mut out = Self::default();
 
         if presentation_ldn || sus_ver == 0 {
-            // loudness_version 取 3 时由 extended_loudness_version 扩展；
-            // 两者都不影响后续比特消耗，只按语法读走。
-            if reader.read_bits(2)? == 3 {
-                let _extended_loudness_version = reader.read_bits(4)?;
+            let loudness_version = u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX);
+            out.loudness_version = Some(loudness_version);
+            if loudness_version == 3 {
+                out.extended_loudness_version =
+                    Some(u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX));
             }
-            let loud_prac_type = reader.read_bits(4)?;
+            let loud_prac_type = u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX);
+            out.loud_prac_type = Some(loud_prac_type);
             if loud_prac_type != 0 {
-                if reader.read_flag()? {
-                    let _dialgate_prac_type = reader.read_bits(3)?;
+                let loudcorr_dialgate = reader.read_flag()?;
+                out.loudcorr_dialgate = Some(loudcorr_dialgate);
+                if loudcorr_dialgate {
+                    out.loudcorr_dialgate_prac_type =
+                        Some(u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX));
                 }
-                let _b_loudcorr_type = reader.read_flag()?;
+                out.loudcorr_type = Some(reader.read_flag()?);
             }
         } else {
-            let _b_loudcorr_dialgate = reader.read_flag()?;
+            out.loudcorr_dialgate = Some(reader.read_flag()?);
         }
 
         if reader.read_flag()? {
@@ -251,15 +477,29 @@ impl FurtherLoudnessInfo {
 
         if (presentation_ldn || sus_ver == 0) && reader.read_flag()? {
             // prgmbndy 以一元编码给出 2 的幂次，读到首个 1 为止。
+            let start = reader.bit_position();
+            let mut frame_distance = 1u64;
             loop {
+                frame_distance = frame_distance.checked_mul(2).ok_or_else(|| {
+                    E::from(ReadError::ValueOverflow {
+                        bit_position: start,
+                    })
+                })?;
                 if reader.read_flag()? {
                     break;
                 }
             }
-            let _b_end_or_start = reader.read_flag()?;
-            if reader.read_flag()? {
-                let _prgmbndy_offset = reader.read_bits(11)?;
-            }
+            let upcoming = reader.read_flag()?;
+            let sample_offset = if reader.read_flag()? {
+                Some(u16::try_from(reader.read_bits(11)?).unwrap_or(u16::MAX))
+            } else {
+                None
+            };
+            out.programme_boundary = Some(LoudnessProgrammeBoundary {
+                frame_distance,
+                upcoming,
+                sample_offset,
+            });
         }
 
         if reader.read_flag()? {
@@ -284,6 +524,7 @@ impl FurtherLoudnessInfo {
                     size = reader.variable_bits_scaled_u32(4, size, 0)?;
                 }
                 out.extension_bits = Some(size);
+                out.extension_bits_offset = Some(reader.bit_position());
                 reader.skip_bits(u64::from(size))?;
             }
         } else if reader.read_flag()? {
@@ -296,17 +537,14 @@ impl FurtherLoudnessInfo {
             // 声明的扩展区段内；extension_bits 只表示其后的未知扩展位。
             let rtll_present = reader.read_flag()?;
             let required = if rtll_present { 9 } else { 1 };
-            let extension_bits =
-                size.checked_sub(required)
-                    .ok_or(AudioSubstreamError::InvalidExtensionSize {
-                        declared: size,
-                        required,
-                        bit_position: reader.bit_position(),
-                    })?;
+            let extension_bits = size
+                .checked_sub(required)
+                .ok_or_else(|| invalid_extension_size(size, required, reader.bit_position()))?;
             if rtll_present {
                 out.rtll_comp = Some(u8::try_from(reader.read_bits(8)?).unwrap_or(u8::MAX));
             }
             out.extension_bits = Some(extension_bits);
+            out.extension_bits_offset = Some(reader.bit_position());
             reader.skip_bits(u64::from(extension_bits))?;
         }
         Ok(out)
@@ -846,6 +1084,25 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn current_substream_loudness_preserves_standalone_dialgate_flag() {
+        let (bits, _) = pack(
+            // sus_ver=1、presentation_ldn=false：只有 standalone
+            // b_loudcorr_dialgate 为真，其余 presence flags 均为假。
+            "1 0 0 0 0 0 0 0 0 0 0 0",
+        );
+        let mut reader = BitReader::new(&bits);
+
+        let parsed = FurtherLoudnessInfo::parse(&mut reader, 1, false).unwrap();
+
+        assert_eq!(parsed.loudness_version, None);
+        assert_eq!(parsed.loud_prac_type, None);
+        assert_eq!(parsed.loudcorr_dialgate, Some(true));
+        assert_eq!(parsed.loudcorr_dialgate_prac_type, None);
+        assert_eq!(parsed.loudcorr_type, None);
+        assert_eq!(reader.bit_position(), 12);
+    }
+
     /// sus_ver = 0 的扩展区段走另一条分支，同样不得接受溢出长度。
     #[test]
     fn legacy_loudness_extension_rejects_length_above_u32() {
@@ -879,8 +1136,21 @@ mod tests {
 
         let parsed = FurtherLoudnessInfo::parse(&mut reader, 0, false).unwrap();
 
+        assert_eq!(parsed.loudness_version, Some(0));
+        assert_eq!(parsed.extended_loudness_version, None);
+        assert_eq!(parsed.effective_loudness_version(), Some(0));
+        assert_eq!(parsed.loud_prac_type, Some(0));
+        assert_eq!(parsed.loudcorr_dialgate, None);
+        assert_eq!(parsed.loudcorr_type, None);
         assert_eq!(parsed.rtll_comp, Some(0b1010_0101));
         assert_eq!(parsed.extension_bits, Some(2));
+        assert_eq!(parsed.extension_bits_offset, Some(31));
+        let extension = parsed.extension_data(&bits).unwrap();
+        assert_eq!(extension.len_bits(), 2);
+        assert_eq!(extension.get(0), Some(true));
+        assert_eq!(extension.get(1), Some(false));
+        assert_eq!(extension.get(2), None);
+        assert_eq!(extension.as_aligned_slice(), None);
         assert_eq!(reader.bit_position(), 33);
         assert_eq!(reader.read_bits(4).unwrap(), 0b1101, "不得吞掉后续字段");
     }

@@ -2,13 +2,16 @@
 //!
 //! 对应 `TS103190-2:v1.3.1:6.2.2.3`、`6.2.2.5`；选择字段语义见
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
-//! `6.3.3.1.16` 至 `6.3.3.1.18`。
+//! `6.3.3.1.16` 至 `6.3.3.1.18`；响度语法见 `6.2.7.3`，共享字段语义见
+//! `TS103190-1:v1.4.1:4.3.12.3`。
 //!
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
-//! advanced dialogue-enhancement 原始码值。紧随其后的响度、DRC、group gain、associated
-//! audio、custom downmix 与 loudness correction 仍不解释；本模块也不执行任何处理。
+//! advanced dialogue-enhancement 原始码值，并保留 dialnorm 与 further loudness 原值。其后的
+//! DRC、group gain、associated audio、custom downmix 与 loudness correction 仍不解释；
+//! 本模块也不执行任何处理。
 
+use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
 use crate::reader::{BitReader, ReadError};
 use crate::substream::MAX_LF_SUBSTREAMS;
@@ -55,6 +58,15 @@ pub enum PresentationSubstreamError {
     ///
     /// 这通常表示调用方没有取得完整的 SGI/group 拓扑，不能把未知计数当成零继续解析。
     MissingAudioSubstreams,
+    /// `further_loudness_info()` 的扩展长度不足以容纳已声明字段。
+    InvalidLoudnessExtensionSize {
+        /// `e_bits_size` 声明的扩展区段长度。
+        declared: u32,
+        /// 当前标志组合至少需要的长度。
+        required: u32,
+        /// 检测到不一致时的比特偏移。
+        bit_position: u64,
+    },
     /// 结构规模超出固定容量。
     CapacityExceeded {
         /// 超限的结构种类。
@@ -77,6 +89,14 @@ impl fmt::Display for PresentationSubstreamError {
             }
             PresentationSubstreamError::MissingAudioSubstreams => formatter.write_str(
                 "Alternative presentation selection requires at least one mapped audio substream",
+            ),
+            PresentationSubstreamError::InvalidLoudnessExtensionSize {
+                declared,
+                required,
+                bit_position,
+            } => write!(
+                formatter,
+                "Presentation loudness e_bits_size is {declared} at bit offset {bit_position}; at least {required} bits are required"
             ),
             PresentationSubstreamError::CapacityExceeded {
                 what,
@@ -850,10 +870,10 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
     }
 }
 
-/// `ac4_presentation_substream()` 已解析的 selection 与 additional-data 前缀。
+/// `ac4_presentation_substream()` 已解析的 selection、additional-data 与响度前缀。
 ///
-/// [`dialnorm_bits_offset`](Self::dialnorm_bits_offset) 指向 additional-data envelope 之后的
-/// `dialnorm_bits`。该位置之后的响度、DRC 与其他 presentation 处理 metadata 尚未解析。
+/// [`drc_metadata_size_value_offset`](Self::drc_metadata_size_value_offset) 指向响度字段之后的
+/// `drc_metadata_size_value`。该位置之后的 DRC 与其他 presentation 处理 metadata 尚未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -862,6 +882,12 @@ pub struct Ac4PresentationSubstream<'a> {
     pub additional_data: Option<PresentationAdditionalData<'a>>,
     /// `dialnorm_bits` 在 presentation substream payload 内的精确比特偏移。
     pub dialnorm_bits_offset: u64,
+    /// 7 比特 presentation `dialnorm_bits` 原值。
+    pub dialnorm_bits: u8,
+    /// `b_further_loudness_info` 控制的进一步响度信息。
+    pub further_loudness: Option<FurtherLoudnessInfo>,
+    /// `drc_metadata_size_value` 在 payload 内的精确比特偏移。
+    pub drc_metadata_size_value_offset: u64,
 }
 
 impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
@@ -869,17 +895,21 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
         self.selection == other.selection
             && self.additional_data == other.additional_data
             && self.dialnorm_bits_offset == other.dialnorm_bits_offset
+            && self.dialnorm_bits == other.dialnorm_bits
+            && self.further_loudness == other.further_loudness
+            && self.drc_metadata_size_value_offset == other.drc_metadata_size_value_offset
     }
 }
 
 impl Eq for Ac4PresentationSubstream<'_> {}
 
 impl<'a> Ac4PresentationSubstream<'a> {
-    /// 解析 selection 前缀和 common additional-data envelope。
+    /// 解析 selection、common additional-data envelope 与 presentation 响度前缀。
     ///
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
-    /// 不执行 dialogue enhancement。`dialnorm_bits_offset` 之后的字段不解析或验证。
+    /// 不执行 dialogue enhancement。进一步响度字段同样只保留原值，不执行归一化；
+    /// `drc_metadata_size_value_offset` 之后的字段不解析或验证。
     ///
     /// # Errors
     ///
@@ -894,10 +924,31 @@ impl<'a> Ac4PresentationSubstream<'a> {
         let mut reader = BitReader::new(payload);
         reader.skip_bits(selection.common_metadata_bit_offset)?;
         let additional_data = parse_additional_data(&mut reader, payload, context)?;
+        let dialnorm_bits_offset = reader.bit_position();
+        let dialnorm_bits = u8::try_from(reader.read_bits(7)?).unwrap_or(u8::MAX);
+        let further_loudness = if reader.read_flag()? {
+            Some(FurtherLoudnessInfo::parse_with_error(
+                &mut reader,
+                1,
+                true,
+                |declared, required, bit_position| {
+                    PresentationSubstreamError::InvalidLoudnessExtensionSize {
+                        declared,
+                        required,
+                        bit_position,
+                    }
+                },
+            )?)
+        } else {
+            None
+        };
         Ok(Self {
             selection,
             additional_data,
-            dialnorm_bits_offset: reader.bit_position(),
+            dialnorm_bits_offset,
+            dialnorm_bits,
+            further_loudness,
+            drc_metadata_size_value_offset: reader.bit_position(),
         })
     }
 }
@@ -1171,6 +1222,11 @@ mod tests {
         }
     }
 
+    fn push_minimal_loudness_prefix(bits: &mut TestBits, dialnorm_bits: u8) {
+        bits.push(u64::from(dialnorm_bits), 7);
+        bits.push(0, 1); // no further loudness info
+    }
+
     #[test]
     fn ordinary_presentation_has_no_selection_prefix() {
         let parsed = Ac4PresentationSubstreamSelection::parse(
@@ -1184,10 +1240,10 @@ mod tests {
     }
 
     #[test]
-    fn ordinary_full_parse_stops_at_dialnorm_without_additional_data() {
+    fn ordinary_full_parse_reads_dialnorm_without_additional_data() {
         let mut bits = TestBits::new();
         bits.push(0, 1); // b_additional_data
-        bits.push(0b101_0101, 7); // 尚未解析的 dialnorm_bits
+        push_minimal_loudness_prefix(&mut bits, 0b101_0101);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1199,6 +1255,29 @@ mod tests {
         assert_eq!(parsed.selection.common_metadata_bit_offset, 0);
         assert_eq!(parsed.additional_data, None);
         assert_eq!(parsed.dialnorm_bits_offset, 1);
+        assert_eq!(parsed.dialnorm_bits, 0b101_0101);
+        assert_eq!(parsed.further_loudness, None);
+        assert_eq!(parsed.drc_metadata_size_value_offset, 9);
+    }
+
+    #[test]
+    fn rejects_missing_further_loudness_presence_flag() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // b_additional_data
+        bits.push(0, 7); // dialnorm_bits exactly fills the only byte
+
+        assert_eq!(
+            Ac4PresentationSubstream::parse(
+                bits.as_bytes(),
+                PresentationSubstreamContext::new(false, 1, false),
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 1,
+                bit_position: 8,
+                remaining_bits: 0,
+            })
+        );
     }
 
     #[test]
@@ -1214,6 +1293,7 @@ mod tests {
         bits.push(1, 1); // b_oamd_common_timing
         bits.push(0, 1); // no advanced DE
         bits.push(0, 5); // reserved add_data
+        push_minimal_loudness_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -1221,10 +1301,11 @@ mod tests {
         assert_eq!(additional.advanced_de_data, None);
         assert_eq!(additional.add_data.len_bits(), 5);
         assert_eq!(parsed.dialnorm_bits_offset, 16);
+        assert_eq!(parsed.drc_metadata_size_value_offset, 24);
     }
 
     #[test]
-    fn parses_object_additional_data_and_ignores_dialnorm_suffix_in_equality() {
+    fn parses_object_additional_data_and_ignores_drc_suffix_in_equality() {
         let mut envelope = TestBits::new();
         envelope.push(1, 1); // b_additional_data
         envelope.push(0, 4); // one additional-data byte
@@ -1236,9 +1317,11 @@ mod tests {
         let expected_dialnorm_offset = envelope.len as u64;
 
         let mut left_bits = envelope.clone();
-        left_bits.push(0, 7);
+        push_minimal_loudness_prefix(&mut left_bits, 0b101_0101);
+        left_bits.push(0, 5); // unparsed drc_metadata_size_value
         let mut right_bits = envelope;
-        right_bits.push(0b111_1111, 7);
+        push_minimal_loudness_prefix(&mut right_bits, 0b101_0101);
+        right_bits.push(0b1_1111, 5);
         let context = PresentationSubstreamContext::new(false, 1, true);
         let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
         let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
@@ -1256,7 +1339,9 @@ mod tests {
         assert_eq!(additional.add_data.get(5), None);
         assert_eq!(additional.add_data.as_aligned_slice(), None);
         assert_eq!(left.dialnorm_bits_offset, expected_dialnorm_offset);
-        assert_eq!(left, right, "dialnorm 及更后字段尚未进入已解析视图");
+        assert_eq!(left.dialnorm_bits, 0b101_0101);
+        assert_eq!(left.drc_metadata_size_value_offset, 24);
+        assert_eq!(left, right, "DRC 及更后字段尚未进入已解析视图");
     }
 
     #[test]
@@ -1268,6 +1353,7 @@ mod tests {
         bits.push(0, 1); // immersive_audio_indicator
         bits.push(0, 1); // no advanced DE; no OAMD timing bit on this path
         bits.push(0b11_1000, 6); // reserved add_data
+        push_minimal_loudness_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1301,6 +1387,7 @@ mod tests {
         bits.push(31, 5);
         bits.push(1, 1); // one reserved add_data bit
         let expected_dialnorm_offset = bits.len as u64;
+        push_minimal_loudness_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1337,6 +1424,7 @@ mod tests {
         bits.push(31, 6); // positive threshold endpoint
         bits.push(0, 5); // gain endpoint
         bits.push(0, 1); // one reserved add_data bit
+        push_minimal_loudness_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1396,6 +1484,7 @@ mod tests {
         for _ in 0..141 {
             bits.push(0, 1);
         }
+        push_minimal_loudness_prefix(&mut bits, 0);
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -1406,6 +1495,102 @@ mod tests {
         assert_eq!(additional.add_data_bytes, 18);
         assert_eq!(additional.add_data.len_bits(), 141);
         assert_eq!(parsed.dialnorm_bits_offset, 152);
+    }
+
+    #[test]
+    fn parses_complete_presentation_further_loudness_prefix() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        bits.push(0b110_1101, 7); // dialnorm_bits
+        bits.push(1, 1); // b_further_loudness_info
+        bits.push(3, 2); // loudness_version
+        bits.push(12, 4); // extended_loudness_version; effective version 15
+        bits.push(1, 4); // loud_prac_type: ATSC A/85
+        bits.push(1, 1); // b_loudcorr_dialgate
+        bits.push(2, 3); // dialgate_prac_type
+        bits.push(1, 1); // b_loudcorr_type
+        bits.push(1, 1); // b_loudrelgat
+        bits.push(1023, 11);
+        bits.push(1, 1); // b_loudspchgat
+        bits.push(1000, 11);
+        bits.push(3, 3);
+        bits.push(1, 1); // b_loudstrm3s
+        bits.push(0, 11);
+        bits.push(1, 1); // b_max_loudstrm3s
+        bits.push(2047, 11);
+        bits.push(1, 1); // b_truepk
+        bits.push(1024, 11);
+        bits.push(1, 1); // b_max_truepk
+        bits.push(1500, 11);
+        bits.push(1, 1); // b_prgmbndy
+        bits.push(0b001, 3); // prgmbndy = 8
+        bits.push(1, 1); // boundary is upcoming
+        bits.push(1, 1); // b_prgmbndy_offset
+        bits.push(2047, 11);
+        bits.push(1, 1); // b_lra
+        bits.push(1023, 10);
+        bits.push(7, 3);
+        bits.push(1, 1); // b_loudmntry
+        bits.push(1, 11);
+        bits.push(1, 1); // b_max_loudmntry
+        bits.push(2, 11);
+        bits.push(1, 1); // b_rtllcomp
+        bits.push(0xa5, 8);
+        bits.push(1, 1); // b_extension
+        bits.push(5, 5);
+        bits.push(0b10110, 5); // opaque extensions_bits
+        let expected_drc_offset = bits.len as u64;
+        bits.push(0b1_1111, 5); // unparsed drc_metadata_size_value
+
+        let payload = bits.as_bytes();
+        let parsed = Ac4PresentationSubstream::parse(
+            payload,
+            PresentationSubstreamContext::new(false, 1, false),
+        )
+        .unwrap();
+        let loudness = parsed.further_loudness.unwrap();
+
+        assert_eq!(parsed.dialnorm_bits_offset, 1);
+        assert_eq!(parsed.dialnorm_bits, 0b110_1101);
+        assert_eq!(parsed.drc_metadata_size_value_offset, expected_drc_offset);
+        assert_eq!(loudness.loudness_version, Some(3));
+        assert_eq!(loudness.extended_loudness_version, Some(12));
+        assert_eq!(loudness.effective_loudness_version(), Some(15));
+        assert_eq!(loudness.loud_prac_type, Some(1));
+        assert_eq!(loudness.loudcorr_dialgate, Some(true));
+        assert_eq!(loudness.loudcorr_dialgate_prac_type, Some(2));
+        assert_eq!(loudness.loudcorr_type, Some(true));
+        assert_eq!(loudness.loudrelgat, Some(1023));
+        assert_eq!(loudness.loudspchgat, Some((1000, 3)));
+        assert_eq!(loudness.loudstrm3s, Some(0));
+        assert_eq!(loudness.max_loudstrm3s, Some(2047));
+        assert_eq!(loudness.truepk, Some(1024));
+        assert_eq!(loudness.max_truepk, Some(1500));
+        assert_eq!(
+            loudness.programme_boundary,
+            Some(crate::audio_substream::LoudnessProgrammeBoundary {
+                frame_distance: 8,
+                upcoming: true,
+                sample_offset: Some(2047),
+            })
+        );
+        assert_eq!(loudness.lra, Some((1023, 7)));
+        assert_eq!(loudness.loudmntry, Some(1));
+        assert_eq!(loudness.max_loudmntry, Some(2));
+        assert_eq!(loudness.rtll_comp, Some(0xa5));
+        assert_eq!(loudness.extension_bits, Some(5));
+        assert_eq!(
+            loudness.extension_bits_offset,
+            Some(expected_drc_offset.saturating_sub(5))
+        );
+        let extension = loudness.extension_data(payload).unwrap();
+        assert_eq!(extension.len_bits(), 5);
+        assert_eq!(
+            extension.iter().collect::<std::vec::Vec<_>>(),
+            [true, false, true, true, false]
+        );
+        assert_eq!(extension.get(5), None);
+        assert_eq!(extension.as_aligned_slice(), None);
     }
 
     #[test]
