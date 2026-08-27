@@ -84,6 +84,13 @@ pub use presentation_substream::{
     PresentationSubstreamGroupGainUpdate, PresentationSubstreamSelectionContext,
     PresentationTopDownmix, PresentationTopPairDestination, PresentationTopPairDownmix,
 };
+#[cfg(feature = "audio-decode")]
+pub use presentation_substream::{
+    MAX_PRESENTATION_DRC_BANDS, MAX_PRESENTATION_DRC_CHANNEL_GROUPS,
+    MAX_PRESENTATION_DRC_GAIN_VALUES, MAX_PRESENTATION_DRC_SUBFRAMES,
+    PresentationDrcDecodedGainSet, PresentationDrcGains, PresentationDrcGainsContext,
+    PresentationDrcGainsError,
+};
 pub use reader::{BitReader, ReadError};
 #[cfg(feature = "audio-decode")]
 pub use substream_audio::{

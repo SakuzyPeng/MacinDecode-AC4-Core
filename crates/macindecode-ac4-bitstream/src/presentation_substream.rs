@@ -22,14 +22,25 @@
 //! compression curve 原始参数，`drc_data()` 再解析 repeat profile、gain-set 长度/版本和
 //! curve reset/reserved，并保留 gain-set body。模块还解析逐帧 substream-group gain 更新、
 //! associated-audio scale/pan 码值、custom downmix 的配置、路由与 gain 码值，以及 loudness
-//! correction 的 presence 与 5 比特原始码值。DRC Huffman gains、dependent-frame 配置状态与
-//! group gain 生效状态仍不解释；本模块也不执行任何处理。
+//! correction 的 presence 与 5 比特原始码值。启用 `audio-decode` 时还可解码 DRC Huffman
+//! gains 并还原整数码值；dependent-frame 配置状态与 group gain 生效状态仍不解释，本模块也
+//! 不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
 use crate::reader::{BitReader, ReadError};
 use crate::substream::MAX_LF_SUBSTREAMS;
 use core::fmt;
+
+#[cfg(feature = "audio-decode")]
+mod drc_gains;
+#[cfg(feature = "audio-decode")]
+pub use drc_gains::{
+    MAX_PRESENTATION_DRC_BANDS, MAX_PRESENTATION_DRC_CHANNEL_GROUPS,
+    MAX_PRESENTATION_DRC_GAIN_VALUES, MAX_PRESENTATION_DRC_SUBFRAMES,
+    PresentationDrcDecodedGainSet, PresentationDrcGains, PresentationDrcGainsContext,
+    PresentationDrcGainsError,
+};
 
 /// alternative presentation 可保存的 target 数上限。
 ///
@@ -728,8 +739,8 @@ impl PresentationDrcConfiguration {
 /// 一个 decoder mode 的有界 DRC gain-set envelope。
 ///
 /// [`payload`](Self::payload) 从 2 比特 `drc_version` 开始，长度严格等于码流声明的
-/// `drc_gainset_size`。当前只解析版本并保留其后的 body；版本 `0..=1` 中的
-/// `drc_gains()`、版本 1 的 `drc2_bits` 分界及 Huffman gain 均留待后续。
+/// `drc_gainset_size`。默认构建只解析版本并保留其后的 body；启用 `audio-decode` 后可调用
+/// `decode_gains()` 解码版本 `0..=1` 的 `drc_gains()` 并定出 `drc2_bits` 边界。
 #[derive(Debug, Clone, Copy)]
 pub struct PresentationDrcGainSet<'a> {
     /// 当前 gain set 对应的 3 比特 decoder mode ID。
@@ -791,7 +802,8 @@ pub struct PresentationDrcCurveData {
 
 /// I-frame 中按有效 DRC 配置解析的 `drc_data()` 结构包络。
 ///
-/// gain-set body 仍保持原始 bit view，不解 Huffman gain，也不执行或维护 DRC 状态。
+/// gain-set body 始终保持原始 bit view；`audio-decode` 下可另行熵解码，但仍不执行或维护 DRC
+/// 状态。
 #[derive(Debug, Clone, Copy)]
 pub struct PresentationDrcData<'a> {
     gain_set_count: u8,
@@ -1721,8 +1733,8 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 /// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
 /// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
 /// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC I-frame
-/// 配置与 I-frame `drc_data()` 包络已解析，Huffman gains、dependent-frame 配置状态与 group gain
-/// 跨帧有效状态仍未解析。
+/// 配置与 I-frame `drc_data()` 包络已解析；`audio-decode` 下可另行解码 Huffman gains，
+/// dependent-frame 配置状态与 group gain 跨帧有效状态仍未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1750,7 +1762,8 @@ pub struct Ac4PresentationSubstream<'a> {
     pub drc_data: PresentationDrcFrameBits<'a>,
     /// I-frame 中按当前配置解析的 `drc_data()` gain-set/reset 包络。
     ///
-    /// dependent frame 在引入跨帧配置状态前为 `None`；gain-set 内的 Huffman gains 仍不解析。
+    /// dependent frame 在引入跨帧配置状态前为 `None`；gain-set 内的 Huffman gains 仅在调用
+    /// `audio-decode` 提供的显式解码 API 时解析。
     pub drc_data_elements: Option<PresentationDrcData<'a>>,
     /// 当前帧传输的 substream-group gain 原始更新。
     pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,
