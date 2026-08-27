@@ -63,6 +63,8 @@ alternative dataset index。第二个增量在 selection 之后验证 `b_additio
 字节数与 `variable_bits(2)` 扩展，完成 `byte_align` 后在声明的独立边界内解析 immersive
 indicator、`pres_ch_mode == -1` 路径的 OAMD common timing 和 12/28 比特 advanced DE 原始
 参数，并以无分配 bit view 保留剩余 `add_data`。普通 presentation 没有 selection 前缀；
+拓扑现已按 Pseudocode 25/26 与 `6.3.3.1.29`–`6.3.3.1.31` 同时派生完整/core
+channel mode、four-back、top-pairs 与 LFE，作为后续 `custom_dmx_data()` 的不可歧义上下文。
 两条路径现在都解析 7 比特 `dialnorm_bits` 与可选 `further_loudness_info(1, 1)`，并返回紧随
 响度字段的 `drc_metadata_size_value` 精确 bit offset。其 5 比特长度与 `variable_bits(3)`
 扩展会严格定界完整 `drc_frame()`，保留 `b_drc_present` 和无分配原始 bit view。共享响度解析

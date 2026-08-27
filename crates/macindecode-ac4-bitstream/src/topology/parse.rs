@@ -2,6 +2,130 @@
 
 use super::*;
 
+/// P2 `6.3.3.1.27` 定义的 `superset()` 查找表。
+///
+/// 规范只给出「能包含两个输入所有声道的最低 ch_mode」的语义、
+/// `superset(0, 1) == 1` 和 `superset(4, 11) == 12` 的例子；此表与
+/// Dolby 参考 parser `parser_ac4.c` 的 `superset_channel_mode` 一致。
+const SUPERSET_CHANNEL_MODE: [[u8; 16]; 16] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [3, 3, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [4, 4, 4, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14, 15],
+    [5, 5, 5, 5, 6, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [6, 6, 6, 6, 6, 6, 6, 6, 8, 6, 10, 12, 12, 14, 14, 15],
+    [7, 7, 7, 7, 8, 7, 6, 7, 8, 9, 10, 12, 12, 13, 14, 15],
+    [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 10, 11, 12, 14, 14, 15],
+    [9, 9, 9, 9, 10, 9, 10, 9, 9, 9, 10, 11, 12, 13, 14, 15],
+    [
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 12, 13, 14, 15,
+    ],
+    [
+        11, 11, 11, 11, 12, 11, 12, 11, 12, 11, 12, 11, 13, 13, 14, 15,
+    ],
+    [
+        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 13, 14, 15,
+    ],
+    [
+        13, 13, 13, 13, 14, 13, 14, 13, 14, 13, 14, 13, 14, 13, 14, 15,
+    ],
+    [
+        14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 15,
+    ],
+    [
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    ],
+];
+
+fn superset_channel_mode(left: Option<u8>, right: Option<u8>) -> Option<u8> {
+    let (Some(left), Some(right)) = (left, right) else {
+        return left.or(right);
+    };
+    SUPERSET_CHANNEL_MODE
+        .get(usize::from(left))
+        .and_then(|row| row.get(usize::from(right)))
+        .copied()
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct PresentationChannelAccumulator {
+    presentation_channel_mode: Option<u8>,
+    core_channel_mode: Option<u8>,
+    object_or_ajoc: bool,
+    adaptive_object_or_ajoc: bool,
+    four_back_channels_present: bool,
+    top_channel_pairs: u8,
+}
+
+impl PresentationChannelAccumulator {
+    fn include(&mut self, substream: &SubstreamInfo) -> Option<()> {
+        match *substream {
+            SubstreamInfo::Chan(ref info) => {
+                let channel_mode = u8::try_from(info.channel_mode.ch_mode).ok()?;
+                self.presentation_channel_mode =
+                    superset_channel_mode(self.presentation_channel_mode, Some(channel_mode));
+
+                let core_channel_mode = match channel_mode {
+                    11 | 13 => Some(5),
+                    12 | 14 => Some(6),
+                    _ => None,
+                };
+                self.core_channel_mode =
+                    superset_channel_mode(self.core_channel_mode, core_channel_mode);
+                self.four_back_channels_present |= info.four_back_channels_present.unwrap_or(false);
+                self.top_channel_pairs = match info.top_channels_present {
+                    Some(3) => 2,
+                    Some(1 | 2) => self.top_channel_pairs.max(1),
+                    _ => self.top_channel_pairs,
+                };
+            }
+            SubstreamInfo::Ajoc(ref info) => {
+                self.object_or_ajoc = true;
+                if info.static_dmx {
+                    let core_channel_mode = if info.b_lfe { 4 } else { 3 };
+                    self.core_channel_mode =
+                        superset_channel_mode(self.core_channel_mode, Some(core_channel_mode));
+                } else {
+                    self.adaptive_object_or_ajoc = true;
+                }
+            }
+            SubstreamInfo::Obj(_) => {
+                self.object_or_ajoc = true;
+                self.adaptive_object_or_ajoc = true;
+            }
+        }
+        Some(())
+    }
+
+    fn finish(self) -> PresentationChannelContext {
+        let presentation_channel_mode = if self.object_or_ajoc {
+            None
+        } else {
+            self.presentation_channel_mode
+        };
+        let mut core_channel_mode = if self.adaptive_object_or_ajoc {
+            None
+        } else {
+            self.core_channel_mode
+        };
+        if core_channel_mode == presentation_channel_mode {
+            core_channel_mode = None;
+        }
+        let has_lfe = presentation_channel_mode.map_or_else(
+            || matches!(core_channel_mode, Some(4 | 6)),
+            |mode| matches!(mode, 4 | 6 | 8 | 10 | 12 | 14 | 15),
+        );
+        PresentationChannelContext::new(
+            presentation_channel_mode,
+            core_channel_mode,
+            self.four_back_channels_present,
+            self.top_channel_pairs,
+            has_lfe,
+        )
+    }
+}
+
 /// `substream_index_table()` 中的一条 substream 尺寸。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SubstreamSize {
@@ -189,13 +313,15 @@ impl Ac4Topology {
             .map(PresentationSubstreamContext::selection_context)
     }
 
-    /// 取得 presentation selection、common metadata 与 group gain 的完整解析上下文。
+    /// 取得 presentation selection、common metadata 与 downmix helper 的完整解析上下文。
     ///
-    /// 除 `n_substreams_in_presentation` 外，本方法按 P2 `6.3.3.1.27` 的
-    /// Pseudocode 25 判断 `pres_ch_mode == -1`：presentation 没有可形成声道模式的 group，
-    /// 或任一 group 含对象/A-JOC substream 时，该条件成立，additional-data 中会传输
-    /// `b_oamd_common_timing`。同时直接保留 presentation 语法声明的 `n_substream_groups`，
-    /// 不能用可能包含额外 dialogue-enhancement SGI 的 `group_indices()` 长度替代。
+    /// 除 `n_substreams_in_presentation` 外，本方法按 P2 `6.3.3.1.27`–
+    /// `6.3.3.1.31` 的 Pseudocode 25/26 与 helper 规则，派生 `pres_ch_mode`、
+    /// `pres_ch_mode_core`、four-back、top-pairs 与 LFE。任一对象/A-JOC
+    /// substream 会令 `pres_ch_mode = -1`；adaptive A-JOC 或 direct-object 还会令
+    /// `pres_ch_mode_core = -1`。同时直接保留 presentation 语法声明的
+    /// `n_substream_groups`，不能用可能包含额外 dialogue-enhancement SGI 的
+    /// `group_indices()` 长度替代。
     #[must_use]
     pub fn presentation_substream_context(
         &self,
@@ -204,20 +330,20 @@ impl Ac4Topology {
         let presentation = self.presentations().get(presentation_index)?;
         let substream = presentation.substream?;
         let mut n_audio_substreams = 0u32;
-        let mut has_channel_coded = false;
-        let mut has_object_coded = false;
+        let mut channel = PresentationChannelAccumulator::default();
         for &group_index in presentation.group_indices() {
             let group = self.groups().get(usize::try_from(group_index).ok()?)?;
             n_audio_substreams =
                 n_audio_substreams.checked_add(u32::try_from(group.substreams().len()).ok()?)?;
-            has_channel_coded |= group.channel_coded;
-            has_object_coded |= !group.channel_coded;
+            for info in group.substreams() {
+                channel.include(info)?;
+            }
         }
         Some(PresentationSubstreamContext::new(
             substream.alternative,
             n_audio_substreams,
             presentation.n_substream_groups,
-            has_object_coded || !has_channel_coded,
+            channel.finish(),
         ))
     }
 

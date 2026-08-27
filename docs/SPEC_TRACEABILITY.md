@@ -51,7 +51,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | TOC 与序列配置 | Part 1/2 | `macindecode-ac4-bitstream` | trace 与独立 inspection 对比 |
 | presentation/group/substream | P2 `6.2.1.3`–`6.2.1.14`；P1 `4.2.3.3`–`4.2.3.5`、`4.2.3.7`、`4.2.3.11`、`4.2.14.15` | `macindecode-ac4-bitstream` | `dac4` 与 TOC 一致性；`payload_base`/尺寸自洽；引用精确覆盖索引表 |
 | alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
-| presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；`pres_ch_mode` 见 `6.3.3.1.27` Pseudocode 25 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
+| presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
 | presentation 响度、DRC envelope、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.3.12.3`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95 比特 DRC envelope、单/multi-group gain gate、associated scale 全组合、mono pan 合法/保留区间、截断/容量/变长溢出构造测试；DRC 内部与有效 gain 状态待后续 |
 | 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
@@ -1668,9 +1668,12 @@ config 1/4 中 dialogue-enhancement 的额外 SGI 即使不增加 `n_substream_g
 仍由同一视图精确定界。其后的 `b_additional_data` 按 `6.3.3.1.16`–`6.3.3.1.18` 解析：
 `add_data_bytes_minus1` 是 4 比特，得到 16 字节时再加 `variable_bits(2)`；解析器先验证完整
 字节 envelope，再对齐并在独立的有界 reader 中读取 `immersive_audio_indicator`。拓扑依据
-`6.3.3.1.27` Pseudocode 25 判断 `pres_ch_mode == -1`，只有该条件成立时才消费
-`b_oamd_common_timing`；没有 SGI 的扩展 config 仍保持 `-1`，任一对象/A-JOC group 也会把
-presentation 的结果置回 `-1`。
+`6.3.3.1.27`–`6.3.3.1.31` 完整派生 `pres_ch_mode`、`pres_ch_mode_core`、
+`b_pres_4_back_channels_present`、`pres_top_channel_pairs` 与 `b_pres_has_lfe`；
+`superset()` 查表与 Dolby 参考 parser 交叉核对，并以规范明示的 5.1 + 7.0.4 →
+7.1.4 反例防止误用数值 `max`。任一对象/A-JOC 会把完整模式置为 `-1`；
+adaptive A-JOC 与 direct-object 还会把 core 模式置为 `-1`，static A-JOC 则派生
+5.0/5.1 core。只有 `pres_ch_mode == -1` 时才消费 `b_oamd_common_timing`。
 
 `b_advanced_de_data_present` 为真时，`6.2.2.5` 的 config presence 精确决定该元素为 12 或
 28 比特；attack/release/ratio、6 比特补码 threshold 与 gain 都只按原值保留，不执行 DE。

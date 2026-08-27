@@ -191,25 +191,98 @@ impl PresentationSubstreamSelectionContext {
     }
 }
 
+/// presentation 的声道与 core downmix 派生上下文。
+///
+/// 这五个值分别对应 P2 `6.3.3.1.27`–`6.3.3.1.31` 中传给
+/// `custom_dmx_data()` 的同名 helper。`None` 精确表示规范伪码中的 `-1`，
+/// 不是「已定义但具体值未知」。应优先从
+/// [`crate::topology::Ac4Topology::presentation_substream_context`] 取得。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PresentationChannelContext {
+    presentation_channel_mode: Option<u8>,
+    core_channel_mode: Option<u8>,
+    four_back_channels_present: bool,
+    top_channel_pairs: u8,
+    has_lfe: bool,
+}
+
+impl PresentationChannelContext {
+    /// 没有可形成声道模式的 presentation 上下文。
+    pub const UNDEFINED: Self = Self {
+        presentation_channel_mode: None,
+        core_channel_mode: None,
+        four_back_channels_present: false,
+        top_channel_pairs: 0,
+        has_lfe: false,
+    };
+
+    /// 以已派生的规范 helper 构造上下文。
+    #[must_use]
+    pub const fn new(
+        presentation_channel_mode: Option<u8>,
+        core_channel_mode: Option<u8>,
+        four_back_channels_present: bool,
+        top_channel_pairs: u8,
+        has_lfe: bool,
+    ) -> Self {
+        Self {
+            presentation_channel_mode,
+            core_channel_mode,
+            four_back_channels_present,
+            top_channel_pairs,
+            has_lfe,
+        }
+    }
+
+    /// `pres_ch_mode`；`None` 对应 `-1`。
+    #[must_use]
+    pub const fn presentation_channel_mode(self) -> Option<u8> {
+        self.presentation_channel_mode
+    }
+
+    /// `pres_ch_mode_core`；`None` 对应 `-1`。
+    #[must_use]
+    pub const fn core_channel_mode(self) -> Option<u8> {
+        self.core_channel_mode
+    }
+
+    /// `b_pres_4_back_channels_present`。
+    #[must_use]
+    pub const fn four_back_channels_present(self) -> bool {
+        self.four_back_channels_present
+    }
+
+    /// `pres_top_channel_pairs`，规范取值为 `0..=2`。
+    #[must_use]
+    pub const fn top_channel_pairs(self) -> u8 {
+        self.top_channel_pairs
+    }
+
+    /// `b_pres_has_lfe`。
+    #[must_use]
+    pub const fn has_lfe(self) -> bool {
+        self.has_lfe
+    }
+}
+
 /// 解析完整 presentation substream 前缀所需的 TOC/拓扑上下文。
 ///
 /// `n_substream_groups` 是 presentation 语法声明的角色 group 数，用于读取逐 group gain；它与
 /// [`PresentationSubstreamSelectionContext::n_audio_substreams`] 的音频 substream 数以及 SGI
 /// specifier 数都不是同一概念。
 ///
-/// `pres_ch_mode_undefined` 精确对应规范中的 `pres_ch_mode == -1`：此时
-/// additional-data envelope 内会多传一个 `b_oamd_common_timing`。调用方应优先使用
-/// [`crate::topology::Ac4Topology::presentation_substream_context`]，避免自行推导该条件。
+/// [`PresentationChannelContext::presentation_channel_mode`] 为 `None` 时，
+/// additional-data envelope 内会多传一个 `b_oamd_common_timing`。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PresentationSubstreamContext {
     selection: PresentationSubstreamSelectionContext,
     n_substream_groups: u32,
-    pres_ch_mode_undefined: bool,
+    channel: PresentationChannelContext,
 }
 
 impl Default for PresentationSubstreamContext {
     fn default() -> Self {
-        Self::new(false, 0, 0, true)
+        Self::new(false, 0, 0, PresentationChannelContext::UNDEFINED)
     }
 }
 
@@ -220,12 +293,12 @@ impl PresentationSubstreamContext {
         alternative: bool,
         n_audio_substreams: u32,
         n_substream_groups: u32,
-        pres_ch_mode_undefined: bool,
+        channel: PresentationChannelContext,
     ) -> Self {
         Self {
             selection: PresentationSubstreamSelectionContext::new(alternative, n_audio_substreams),
             n_substream_groups,
-            pres_ch_mode_undefined,
+            channel,
         }
     }
 
@@ -243,10 +316,16 @@ impl PresentationSubstreamContext {
         self.n_substream_groups
     }
 
+    /// presentation 的完整声道与 core downmix 派生上下文。
+    #[must_use]
+    pub const fn channel_context(self) -> PresentationChannelContext {
+        self.channel
+    }
+
     /// presentation 的 `pres_ch_mode` 是否为规范中的未定义值 `-1`。
     #[must_use]
     pub const fn pres_ch_mode_undefined(self) -> bool {
-        self.pres_ch_mode_undefined
+        self.channel.presentation_channel_mode().is_none()
     }
 }
 
@@ -1463,6 +1542,25 @@ mod tests {
 
     use super::*;
 
+    fn test_context(
+        alternative: bool,
+        n_audio_substreams: u32,
+        n_substream_groups: u32,
+        pres_ch_mode_undefined: bool,
+    ) -> PresentationSubstreamContext {
+        let channel = if pres_ch_mode_undefined {
+            PresentationChannelContext::UNDEFINED
+        } else {
+            PresentationChannelContext::new(Some(0), None, false, 0, false)
+        };
+        PresentationSubstreamContext::new(
+            alternative,
+            n_audio_substreams,
+            n_substream_groups,
+            channel,
+        )
+    }
+
     #[derive(Debug, Clone)]
     struct TestBits {
         bytes: [u8; 256],
@@ -1558,11 +1656,9 @@ mod tests {
         bits.push(0, 1); // b_additional_data
         push_minimal_complete_common_metadata(&mut bits, 0b101_0101);
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, 1, false),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
+                .unwrap();
 
         assert_eq!(parsed.selection.alternative, None);
         assert_eq!(parsed.selection.common_metadata_bit_offset, 0);
@@ -1592,11 +1688,8 @@ mod tests {
         bits.push(0, 7); // dialnorm_bits exactly fills the only byte
 
         assert_eq!(
-            Ac4PresentationSubstream::parse(
-                bits.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
-            )
-            .unwrap_err(),
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false),)
+                .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
                 requested_bits: 1,
                 bit_position: 8,
@@ -1608,10 +1701,7 @@ mod tests {
     #[test]
     fn default_context_keeps_zero_group_channel_mode_undefined() {
         let context = PresentationSubstreamContext::default();
-        assert_eq!(
-            context,
-            PresentationSubstreamContext::new(false, 0, 0, true)
-        );
+        assert_eq!(context, test_context(false, 0, 0, true));
 
         let mut bits = TestBits::new();
         bits.push(1, 1); // b_additional_data
@@ -1650,7 +1740,7 @@ mod tests {
         let mut right_bits = envelope;
         push_minimal_complete_common_metadata(&mut right_bits, 0b101_0101);
         right_bits.push(0b1111, 4);
-        let context = PresentationSubstreamContext::new(false, 1, 1, true);
+        let context = test_context(false, 1, 1, true);
         let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
         let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
 
@@ -1692,11 +1782,9 @@ mod tests {
         bits.push(0b11_1000, 6); // reserved add_data
         push_minimal_complete_common_metadata(&mut bits, 0);
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, 1, false),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
+                .unwrap();
         let additional = parsed.additional_data.unwrap();
         assert_eq!(additional.oamd_common_timing, None);
         assert_eq!(additional.add_data.len_bits(), 6);
@@ -1726,11 +1814,9 @@ mod tests {
         let expected_dialnorm_offset = bits.len as u64;
         push_minimal_complete_common_metadata(&mut bits, 0);
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, 1, true),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true))
+                .unwrap();
         let additional = parsed.additional_data.unwrap();
         let advanced = additional.advanced_de_data.unwrap();
         assert_eq!(
@@ -1763,11 +1849,9 @@ mod tests {
         bits.push(0, 1); // one reserved add_data bit
         push_minimal_complete_common_metadata(&mut bits, 0);
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, 1, true),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true))
+                .unwrap();
         let additional = parsed.additional_data.unwrap();
         assert_eq!(
             additional.advanced_de_data,
@@ -1795,11 +1879,8 @@ mod tests {
         bits.push_byte(0xff); // dialnorm/suffix bytes must not satisfy the bounded read
 
         assert_eq!(
-            Ac4PresentationSubstream::parse(
-                bits.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, true),
-            )
-            .unwrap_err(),
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true),)
+                .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
                 requested_bits: 6,
                 bit_position: 12,
@@ -1823,11 +1904,9 @@ mod tests {
         }
         push_minimal_complete_common_metadata(&mut bits, 0);
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, 1, true),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true))
+                .unwrap();
         let additional = parsed.additional_data.unwrap();
         assert_eq!(additional.add_data_bytes, 18);
         assert_eq!(additional.add_data.len_bits(), 141);
@@ -1881,11 +1960,8 @@ mod tests {
         bits.push(0, 1); // no associated audio
 
         let payload = bits.as_bytes();
-        let parsed = Ac4PresentationSubstream::parse(
-            payload,
-            PresentationSubstreamContext::new(false, 1, 1, false),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(payload, test_context(false, 1, 1, false)).unwrap();
         let loudness = parsed.further_loudness.unwrap();
 
         assert_eq!(parsed.dialnorm_bits_offset, 1);
@@ -1953,11 +2029,9 @@ mod tests {
         let expected_custom_downmix_offset = bits.len as u64;
         bits.push(0b10101, 5); // custom_dmx_data() must remain untouched
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 1, 1, false),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
+                .unwrap();
 
         assert_eq!(parsed.drc_metadata_size_value_offset, expected_size_offset);
         assert!(parsed.drc_present);
@@ -1987,11 +2061,9 @@ mod tests {
         absent.push(0, 1); // b_substream_group_gains_present
         absent.push(0, 1); // no associated audio
         absent.push(0b11_1111, 6); // custom_dmx_data() must remain untouched
-        let absent = Ac4PresentationSubstream::parse(
-            absent.as_bytes(),
-            PresentationSubstreamContext::new(false, 2, 2, false),
-        )
-        .unwrap();
+        let absent =
+            Ac4PresentationSubstream::parse(absent.as_bytes(), test_context(false, 2, 2, false))
+                .unwrap();
         assert_eq!(
             absent.substream_group_gain_update,
             PresentationSubstreamGroupGainUpdate::NotPresent
@@ -2005,11 +2077,9 @@ mod tests {
         kept.push(1, 1); // b_keep
         kept.push(0, 1); // no associated audio
         kept.push(0b1_1111, 5); // custom_dmx_data() must remain untouched
-        let kept = Ac4PresentationSubstream::parse(
-            kept.as_bytes(),
-            PresentationSubstreamContext::new(false, 2, 2, false),
-        )
-        .unwrap();
+        let kept =
+            Ac4PresentationSubstream::parse(kept.as_bytes(), test_context(false, 2, 2, false))
+                .unwrap();
         assert_eq!(
             kept.substream_group_gain_update,
             PresentationSubstreamGroupGainUpdate::KeepPrevious
@@ -2034,11 +2104,9 @@ mod tests {
         let expected_custom_downmix_offset = bits.len as u64;
         bits.push(0b10, 2); // custom_dmx_data() must remain untouched
 
-        let parsed = Ac4PresentationSubstream::parse(
-            bits.as_bytes(),
-            PresentationSubstreamContext::new(false, 8, 8, false),
-        )
-        .unwrap();
+        let parsed =
+            Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 8, 8, false))
+                .unwrap();
         let PresentationSubstreamGroupGainUpdate::NewValues(codes) =
             parsed.substream_group_gain_update
         else {
@@ -2075,11 +2143,9 @@ mod tests {
             let expected_custom_downmix_offset = bits.len as u64;
             bits.push_byte(0xff); // custom_dmx_data(), not pan_associated
 
-            let parsed = Ac4PresentationSubstream::parse(
-                bits.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
-            )
-            .unwrap();
+            let parsed =
+                Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
+                    .unwrap();
 
             assert_eq!(parsed.b_associated_offset, expected_associated_offset);
             assert_eq!(
@@ -2111,11 +2177,9 @@ mod tests {
             let expected_custom_downmix_offset = bits.len as u64;
             bits.push(0b101, 3); // custom_dmx_data() must remain untouched
 
-            let parsed = Ac4PresentationSubstream::parse(
-                bits.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
-            )
-            .unwrap();
+            let parsed =
+                Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
+                    .unwrap();
 
             assert_eq!(
                 parsed.associated_audio,
@@ -2146,11 +2210,8 @@ mod tests {
             bits.push(u64::from(pan_associated), 8);
 
             assert_eq!(
-                Ac4PresentationSubstream::parse(
-                    bits.as_bytes(),
-                    PresentationSubstreamContext::new(false, 1, 1, false),
-                )
-                .unwrap_err(),
+                Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false),)
+                    .unwrap_err(),
                 PresentationSubstreamError::ReservedAssociatedPan {
                     pan_associated,
                     bit_position: expected_pan_offset,
@@ -2167,7 +2228,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 missing_presence.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
+                test_context(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -2204,11 +2265,8 @@ mod tests {
             }
 
             assert_eq!(
-                Ac4PresentationSubstream::parse(
-                    bits.as_bytes(),
-                    PresentationSubstreamContext::new(false, 1, 1, false),
-                )
-                .unwrap_err(),
+                Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false),)
+                    .unwrap_err(),
                 PresentationSubstreamError::Read(ReadError::OutOfBounds {
                     requested_bits: 8,
                     bit_position,
@@ -2229,7 +2287,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 truncated.as_bytes(),
-                PresentationSubstreamContext::new(false, 2, 2, false),
+                test_context(false, 2, 2, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -2240,11 +2298,7 @@ mod tests {
         );
 
         assert_eq!(
-            Ac4PresentationSubstream::parse(
-                &[],
-                PresentationSubstreamContext::new(false, 0, 9, true),
-            )
-            .unwrap_err(),
+            Ac4PresentationSubstream::parse(&[], test_context(false, 0, 9, true),).unwrap_err(),
             PresentationSubstreamError::CapacityExceeded {
                 what: PresentationSubstreamCapacity::SubstreamGroups,
                 declared: 9,
@@ -2261,11 +2315,8 @@ mod tests {
         empty.push(0, 5); // empty drc_frame cannot carry b_drc_present
         empty.push(0, 1); // no size extension
         assert_eq!(
-            Ac4PresentationSubstream::parse(
-                empty.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
-            )
-            .unwrap_err(),
+            Ac4PresentationSubstream::parse(empty.as_bytes(), test_context(false, 1, 1, false),)
+                .unwrap_err(),
             PresentationSubstreamError::InvalidDrcMetadataSize {
                 declared: 0,
                 minimum: 1,
@@ -2282,7 +2333,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 truncated.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
+                test_context(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -2306,7 +2357,7 @@ mod tests {
         assert!(matches!(
             Ac4PresentationSubstream::parse(
                 overflowing.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
+                test_context(false, 1, 1, false),
             ),
             Err(PresentationSubstreamError::Read(
                 ReadError::ValueOverflow { .. }
@@ -2324,7 +2375,7 @@ mod tests {
         assert_eq!(
             Ac4PresentationSubstream::parse(
                 truncated.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
+                test_context(false, 1, 1, false),
             )
             .unwrap_err(),
             PresentationSubstreamError::Read(ReadError::OutOfBounds {
@@ -2344,7 +2395,7 @@ mod tests {
         assert!(matches!(
             Ac4PresentationSubstream::parse(
                 overflowing.as_bytes(),
-                PresentationSubstreamContext::new(false, 1, 1, false),
+                test_context(false, 1, 1, false),
             ),
             Err(PresentationSubstreamError::Read(
                 ReadError::ValueOverflow { .. }

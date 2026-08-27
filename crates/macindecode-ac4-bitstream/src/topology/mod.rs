@@ -13,7 +13,7 @@
 use crate::oamd::OamdError;
 use crate::presentation::{Ac4PresentationV1Info, MAX_GROUPS_PER_PRESENTATION};
 use crate::presentation_substream::{
-    PresentationSubstreamContext, PresentationSubstreamSelectionContext,
+    PresentationChannelContext, PresentationSubstreamContext, PresentationSubstreamSelectionContext,
 };
 use crate::reader::{BitReader, ReadError};
 use crate::substream::{Ac4SubstreamGroupInfo, SubstreamInfo};
@@ -384,7 +384,12 @@ mod tests {
         );
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 1, 1, true))
+            Some(PresentationSubstreamContext::new(
+                false,
+                1,
+                1,
+                PresentationChannelContext::UNDEFINED,
+            ))
         );
         assert_eq!(topology.presentation_substream_selection_context(1), None);
         assert_eq!(topology.presentation_substream_context(1), None);
@@ -479,7 +484,12 @@ mod tests {
         );
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(true, 3, 1, true))
+            Some(PresentationSubstreamContext::new(
+                true,
+                3,
+                1,
+                PresentationChannelContext::UNDEFINED,
+            ))
         );
     }
 
@@ -514,7 +524,12 @@ mod tests {
         );
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 0, 0, true))
+            Some(PresentationSubstreamContext::new(
+                false,
+                0,
+                0,
+                PresentationChannelContext::UNDEFINED,
+            ))
         );
     }
 
@@ -574,7 +589,12 @@ mod tests {
         assert_eq!(topology.scene_path(), ScenePath::Ajoc);
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 1, 1, true))
+            Some(PresentationSubstreamContext::new(
+                false,
+                1,
+                1,
+                PresentationChannelContext::UNDEFINED,
+            ))
         );
         assert_eq!(
             topology.total_objects(),
@@ -625,6 +645,26 @@ mod tests {
         assert!(group_descriptors.as_slice().first().unwrap().b_lfe);
     }
 
+    /// static A-JOC 依表 71 把固定 5.0/5.1 床作为 core 声道模式；
+    /// full presentation 仍是对象编码，因此 `pres_ch_mode = -1`。
+    #[test]
+    fn static_ajoc_derives_core_channel_mode_and_lfe() {
+        // A-JOC: b_lfe=1, b_static_dmx=1, 无内嵌 OAMD common，
+        // n_fullband_upmix_signals=4 且全部是动态对象。
+        let group = "1 0 1 0 0 1 1 1 0 0011 1 0 0 0 00 0";
+        let topology = parse_frame(&[TOC_PREFIX, PRESENTATION_SINGLE_GROUP, group, "01 0"]);
+
+        let context = topology
+            .presentation_substream_context(0)
+            .unwrap()
+            .channel_context();
+        assert_eq!(context.presentation_channel_mode(), None);
+        assert_eq!(context.core_channel_mode(), Some(4));
+        assert!(!context.four_back_channels_present());
+        assert_eq!(context.top_channel_pairs(), 0);
+        assert!(context.has_lfe());
+    }
+
     /// 声道编码路径不产生对象。
     #[test]
     fn recognises_channel_based_path() {
@@ -639,7 +679,12 @@ mod tests {
         assert_eq!(topology.total_objects(), 0);
         assert_eq!(
             topology.presentation_substream_context(0),
-            Some(PresentationSubstreamContext::new(false, 1, 1, false))
+            Some(PresentationSubstreamContext::new(
+                false,
+                1,
+                1,
+                PresentationChannelContext::new(Some(4), None, false, 0, true),
+            ))
         );
         let SubstreamInfo::Chan(chan) = topology
             .groups()
@@ -652,6 +697,41 @@ mod tests {
             panic!("应识别为声道编码");
         };
         assert_eq!(chan.channel_mode.label(), Some("5.1"));
+    }
+
+    /// immersive channel mode 同时派生 core mode、four-back、top-pairs 与 LFE。
+    #[test]
+    fn immersive_channel_mode_derives_complete_downmix_context() {
+        // ch_mode=14 (9.1.4), four-back=1, centre=1, top_channels_present=3。
+        let group = "1 0 1 1 111111101 1 1 11 0 0 0 00 0";
+        let topology = parse_frame(&[TOC_PREFIX, PRESENTATION_SINGLE_GROUP, group, "01 0"]);
+
+        assert_eq!(
+            topology
+                .presentation_substream_context(0)
+                .unwrap()
+                .channel_context(),
+            PresentationChannelContext::new(Some(14), Some(6), true, 2, true)
+        );
+    }
+
+    /// 规范的 `superset()` 不能以数值 `max` 代替：明示例子
+    /// 5.1 (mode 4) + 7.0.4 (mode 11) 必须得到 7.1.4 (mode 12)。
+    #[test]
+    fn combines_channel_substreams_with_normative_superset() {
+        let group = "1 0 0 00 1 \
+                     1110 0 0 0 00 \
+                     11111100 0 0 00 0 0 0 00 \
+                     0";
+        let topology = parse_frame(&[TOC_PREFIX, PRESENTATION_SINGLE_GROUP, group, "01 0"]);
+
+        assert_eq!(
+            topology
+                .presentation_substream_context(0)
+                .unwrap()
+                .channel_context(),
+            PresentationChannelContext::new(Some(12), Some(5), false, 0, true)
+        );
     }
 
     /// TOC 前置字段中把 b_iframe_global 置 0 的变体。
