@@ -72,12 +72,14 @@ pub use presentation_substream::{
     Ac4PresentationSubstream, Ac4PresentationSubstreamSelection, AdvancedDeConfig, AdvancedDeData,
     AlternativePresentationSelection, PresentationAddDataBits, PresentationAdditionalData,
     PresentationAssociatedAudio, PresentationChannelContext,
-    PresentationCustomDownmixConfiguration, PresentationCustomDownmixData,
-    PresentationCustomDownmixParameters, PresentationDrcFrameBits, PresentationScreenDownmix,
-    PresentationStereoDownmixCoefficients, PresentationStereoDownmixKind,
-    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
-    PresentationSubstreamGroupGainUpdate, PresentationSubstreamSelectionContext,
-    PresentationTopDownmix, PresentationTopPairDestination, PresentationTopPairDownmix,
+    PresentationCoreStereoLoudnessCorrection, PresentationCustomDownmixConfiguration,
+    PresentationCustomDownmixData, PresentationCustomDownmixParameters, PresentationDrcFrameBits,
+    PresentationLoudnessCorrectionCode, PresentationLoudnessCorrectionData,
+    PresentationScreenDownmix, PresentationStereoDownmixCoefficients,
+    PresentationStereoDownmixKind, PresentationSubstreamContext, PresentationSubstreamError,
+    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainUpdate,
+    PresentationSubstreamSelectionContext, PresentationTopDownmix, PresentationTopPairDestination,
+    PresentationTopPairDownmix,
 };
 pub use reader::{BitReader, ReadError};
 #[cfg(feature = "audio-decode")]

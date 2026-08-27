@@ -459,7 +459,7 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 
 ## M4.5：Presentation/Metadata 解析闭环
 
-**前七个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
+**前八个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
 `6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
 device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
 active 与 alternative dataset index。名称即使不在字节边界也以无分配 8 比特元素视图保留；
@@ -492,9 +492,11 @@ channel mode、four-back、top-pairs 与 LFE 派生 `bs_ch_config`，区分 cust
 gate 不适用与显式 absent，并用固定容量数组保留最多四个 `out_ch_config`。screen、back 与
 五类 top routing tool 的全部 3 比特 gain 只按原值保留，`7` 静音码合法；unused output
 config `5..=7` 失败关闭。stereo 分支保留 LoRo/LtRt centre/surround、LFE presence/5 比特
-gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关闭。解析现止于
-`loud_corr()` 的精确 offset，不执行响度归一化、DRC、group/associated gain、pan、advanced
-DE、custom downmix 或任何 gain。
+gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关闭。P2
+`6.2.9.1`/`6.3.10.1` 的 `loud_corr()` 现也按 full/core/object 条件解析：所有 presence gate
+与 5 比特 correction 原值保持可区分，core LoRo/LtRt 共用 gate，object 分支接续 9.X.4；
+码值 `31` 合法保留。解析最后消费 `byte_align` 并要求恰好落在 presentation payload 末尾，
+不执行响度归一化、DRC、group/associated gain、pan、advanced DE、custom downmix 或任何 gain。
 
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
@@ -506,14 +508,15 @@ frame、零长度、截断与变长长度溢出；group gain 覆盖单/multi-gro
 六比特码值端点、八 group 上限、截断与上下文容量；associated audio 覆盖 absent、三个 scale
 presence 的全部组合、`0x00`/`0xff` scale 端点、mono gate、`0x00`/`0xef` pan 端点、全部保留
 pan 码值与逐可选字段截断；custom downmix 覆盖六种输入配置派生、1/4 configuration、两种
-output 位宽、全部 tool 分支、stereo/LtRt/LFE gate、合法静音端点、unused/reserved 码值、
-逐可选字段截断与 `loud_corr()` 精确落点。alternative 与
+output 位宽、全部 tool 分支、stereo/LtRt/LFE gate、合法静音端点、unused/reserved 码值及
+逐可选字段截断；loudness correction 再覆盖 mode/core 阈值、完整 full/object 分支、9.X.4、
+合法码值 `31`、单值/core pair 截断、非零对齐和尾随字节拒绝。alternative 与
 direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造覆盖，外部向量状态保持待验证。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续依次补公共 presentation metadata 后缀、audio-substream tools metadata、EMDF envelope 与
-alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
+后续依次补 presentation DRC 内部与跨帧状态、audio-substream tools metadata、EMDF envelope
+与 alternative dataset 数据路径；边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵
 

@@ -3,8 +3,8 @@
 > **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
 > substream activation/dataset selection 前缀、公共 additional-data envelope，以及
 > dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新及
-> associated-audio scaling/pan、custom downmix 已完成构造验证；DRC 内部、group gain 有效状态及
-> 后续 presentation metadata、音频 substream tools metadata、EMDF payload 与 alternative dataset
+> associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC
+> 内部、group gain 有效状态、音频 substream tools metadata、EMDF payload 与 alternative dataset
 > 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
 > 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
@@ -80,8 +80,10 @@ presence：单 group 不消费该字段，多 group 则区分未携带、`b_keep
 1–4 个 output configuration，并逐分支解析 screen/back/top routing tool 与所有 3 比特 gain
 原值。stereo gate 同时考虑完整/core mode，保留 LoRo/LtRt、LFE 与 preferred method；unused
 output config 和 stereo surround 保留码失败关闭。custom/stereo/LFE 的 gate 未传与显式 absent
-保持可区分，解析最终停在 `loud_corr()` 的精确 offset。这里不执行 gain、角度换算、pan 或
-downmix。
+保持可区分。随后按 full/core/object mode gate 解析 `loud_corr()`，保留所有 presence 与 5 比特
+correction 原值；core LoRo/LtRt 共用 presence，object correction 分支包含 9.X.4，规范解释为
+0 dB 的码值 `31` 仍合法保留。末尾 `byte_align` 的填充值不解释，但对齐后必须恰好耗尽有界
+payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角度换算、pan 或 downmix。
 
 解析 API 必须显式接收 TOC/拓扑上下文、前一有效 DRC 配置和 group gain 状态。所有长度 envelope
 先验证边界，成功后才提交跨帧状态；dependent frame 缺少历史配置时失败关闭。

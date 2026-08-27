@@ -53,6 +53,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
 | presentation 响度、DRC envelope、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.3.12.3`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95 比特 DRC envelope、单/multi-group gain gate、associated scale 全组合、mono pan 合法/保留区间、截断/容量/变长溢出构造测试；DRC 内部与有效 gain 状态待后续 |
+| presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
 | 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
@@ -1706,8 +1707,13 @@ gain 数组长度。当前 API 只保留逐帧更新形态与码值，并返回�
 
 完整或 core mode 至少为 3 时继续解析 stereo gate；LoRo/LtRt centre/surround、可选 LFE 与
 preferred method 均只保留原始码值。P1 表 149a 的 surround 保留码 `0/1` 返回结构化错误；
-LFE gate 未传、传零和传输 5 比特 gain 三种状态不会合并。API 最后暴露 `loud_corr()` 的精确
-offset，不做 dB 换算或应用任何 downmix/gain。loudness correction 仍未解析或验证。
+LFE gate 未传、传零和传输 5 比特 gain 三种状态不会合并。随后按 P2 `6.2.9.1`/`6.3.10.1`
+解析 `loud_corr()`：`pres_ch_mode == -1` 时保留 object gate，full/object immersive gate 决定
+5.X.2、7.X 及 7.X.4/7.X.2/5.X.4 分支，core mode 分别控制 5.X.2、5.X 和共用 presence 的
+LoRo/LtRt pair；object correction 还控制 9.X.4。所有 correction 均保留 5 比特原值，码值
+`31` 按规范合法保留而不错误拒绝。末尾 `byte_align` 的填充值不赋予语义，但成功解析必须恰好
+落在 presentation payload 末尾，额外完整字节失败关闭。API 不做 dB 换算或应用任何
+downmix/gain。
 alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。

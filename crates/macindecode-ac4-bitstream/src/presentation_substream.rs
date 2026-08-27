@@ -1,4 +1,5 @@
-//! `ac4_presentation_substream()` 的选择、additional-data、响度、DRC、group gain 与关联音频。
+//! `ac4_presentation_substream()` 的选择、additional-data、响度、DRC、group gain、关联音频、
+//! custom downmix 与 loudness correction。
 //!
 //! 对应 `TS103190-2:v1.3.1:6.2.2.3`、`6.2.2.5`；选择字段语义见
 //! `6.3.3.1.1` 至 `6.3.3.1.15`，additional-data 字段见
@@ -8,14 +9,15 @@
 //! associated-audio 字段见 `6.3.3.1.25` 至 `6.3.3.1.26`，其码值语义见
 //! `TS103190-1:v1.4.1:4.3.12.4.3` 至 `4.3.12.4.9`；custom downmix 语法与语义见
 //! `TS103190-2:v1.3.1:6.2.9.2` 至 `6.2.9.10`、`6.3.10.2` 至 `6.3.10.3`，共享的
-//! stereo downmix 码值见 `TS103190-1:v1.4.1:4.3.12.2.8` 至 `4.3.12.2.19`。
+//! stereo downmix 码值见 `TS103190-1:v1.4.1:4.3.12.2.8` 至 `4.3.12.2.19`；
+//! loudness correction 语法与码值见 `TS103190-2:v1.3.1:6.2.9.1`、`6.3.10.1`。
 //!
 //! 本模块解析 presentation 名称分片、播放目标、逐音频 substream 的
 //! activation/dataset map，以及有界 additional-data 区域中的 immersive/OAMD timing 与
 //! advanced dialogue-enhancement 原始码值，并保留 dialnorm、further loudness 和严格定界的
-//! `drc_frame()` 原始比特、逐帧 substream-group gain 更新、associated-audio scale/pan 码值及
-//! custom downmix 的配置、路由与 gain 码值。DRC 内部语法、group gain 跨帧生效状态与
-//! loudness correction 仍不解释；本模块也不执行任何处理。
+//! `drc_frame()` 原始比特、逐帧 substream-group gain 更新、associated-audio scale/pan 码值、
+//! custom downmix 的配置、路由与 gain 码值，以及 loudness correction 的 presence 与 5 比特
+//! 原始码值。DRC 内部语法与 group gain 跨帧生效状态仍不解释；本模块也不执行任何处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -113,6 +115,11 @@ pub enum PresentationSubstreamError {
         /// surround mix gain 在 payload 内的比特偏移。
         bit_position: u64,
     },
+    /// `loud_corr()` 后的 `byte_align` 未落在 presentation payload 末尾。
+    TrailingBits {
+        /// 对齐后仍未消费的比特数；完整字节 payload 下必为 8 的倍数。
+        remaining_bits: u64,
+    },
     /// 结构规模超出固定容量。
     CapacityExceeded {
         /// 超限的结构种类。
@@ -173,6 +180,10 @@ impl fmt::Display for PresentationSubstreamError {
             } => write!(
                 formatter,
                 "Presentation {kind} surround mix-gain code {gain_code} is reserved at bit offset {bit_position}"
+            ),
+            PresentationSubstreamError::TrailingBits { remaining_bits } => write!(
+                formatter,
+                "Presentation substream has {remaining_bits} trailing bits after loud_corr and byte_align"
             ),
             PresentationSubstreamError::CapacityExceeded {
                 what,
@@ -753,6 +764,68 @@ impl PresentationCustomDownmixData {
     }
 }
 
+/// 一个 `b_loud_comp`/downmix loud-comp presence bit 及其可选 5 比特 correction 码值。
+///
+/// `Value(31)` 仍是合法码流：规范把该 reserved value 解释为 0 dB。本类型不换算或应用 gain。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationLoudnessCorrectionCode {
+    /// 对应 presence bit 为零，没有传输 5 比特码值。
+    NotPresent,
+    /// presence bit 为一，并保留紧随其后的 5 比特原值。
+    Value(u8),
+}
+
+/// core LoRo/LtRt 共用的 `b_loud_comp` 及其两个 5 比特 correction 码值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentationCoreStereoLoudnessCorrection {
+    /// 共用 presence bit 为零，没有传输两个码值。
+    NotPresent,
+    /// presence bit 为一，LoRo 与 LtRt 两个码值均存在。
+    Values {
+        /// 5 比特 `loud_corr_core_loro` 原值。
+        loro: u8,
+        /// 5 比特 `loud_corr_core_ltrt` 原值。
+        ltrt: u8,
+    },
+}
+
+/// presentation `loud_corr()` 的全部 presence gate 与原始 correction 码值。
+///
+/// correction 字段外层的 `None` 表示其 presence bit 因 channel/object 条件不适用而未传输；
+/// `Some(NotPresent)` 表示 presence bit 明确为零。对象与 immersive-output 两个布尔字段也用
+/// `None` 区分 gate 不适用。所有 5 比特码值均原样保留，不换算或应用 gain。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PresentationLoudnessCorrectionData {
+    /// `b_obj_loud_corr` 是否传输及其值；仅 `pres_ch_mode == -1` 时传输。
+    pub object_loudness_correction: Option<bool>,
+    /// `b_corr_for_immersive_out` 是否传输及其值。
+    pub corrections_for_immersive_output: Option<bool>,
+    /// `b_loro_loud_comp` 与可选 `loro_dmx_loud_corr`。
+    pub loro_downmix: Option<PresentationLoudnessCorrectionCode>,
+    /// `b_ltrt_loud_comp` 与可选 `ltrt_dmx_loud_corr`。
+    pub ltrt_downmix: Option<PresentationLoudnessCorrectionCode>,
+    /// `b_loud_comp` 与可选 `loud_corr_5_X`。
+    pub five_x: Option<PresentationLoudnessCorrectionCode>,
+    /// immersive-output gate 下的 `loud_corr_5_X_2`。
+    pub five_x_two: Option<PresentationLoudnessCorrectionCode>,
+    /// immersive-output gate 下的 `loud_corr_7_X`。
+    pub seven_x: Option<PresentationLoudnessCorrectionCode>,
+    /// immersive-output gate 下的 `loud_corr_7_X_4`。
+    pub seven_x_four: Option<PresentationLoudnessCorrectionCode>,
+    /// immersive-output gate 下的 `loud_corr_7_X_2`。
+    pub seven_x_two: Option<PresentationLoudnessCorrectionCode>,
+    /// immersive-output gate 下的 `loud_corr_5_X_4`。
+    pub five_x_four: Option<PresentationLoudnessCorrectionCode>,
+    /// `pres_ch_mode_core >= 5` 时的 `loud_corr_core_5_X_2`。
+    pub core_five_x_two: Option<PresentationLoudnessCorrectionCode>,
+    /// `pres_ch_mode_core >= 3` 时的 `loud_corr_core_5_X`。
+    pub core_five_x: Option<PresentationLoudnessCorrectionCode>,
+    /// core LoRo/LtRt 共用 presence bit 的两个 correction 码值。
+    pub core_stereo: Option<PresentationCoreStereoLoudnessCorrection>,
+    /// object loudness-correction gate 下的 `loud_corr_9_X_4`。
+    pub nine_x_four: Option<PresentationLoudnessCorrectionCode>,
+}
+
 impl<'a> IntoIterator for PresentationAddDataBits<'a> {
     type Item = bool;
     type IntoIter = PresentationAddDataBitIter<'a>;
@@ -1320,13 +1393,14 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 }
 
 /// `ac4_presentation_substream()` 已解析的 selection、additional-data、响度、DRC、group gain、
-/// associated audio 与 custom downmix。
+/// associated audio、custom downmix 与 loudness correction。
 ///
 /// [`drc_metadata_size_value_offset`](Self::drc_metadata_size_value_offset) 指向响度字段之后的
 /// `drc_metadata_size_value`；[`b_associated_offset`](Self::b_associated_offset) 指向 group gain
 /// 之后的 associated-audio metadata；[`custom_downmix_offset`](Self::custom_downmix_offset) 指向
-/// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向随后的
-/// `loud_corr()`。DRC 内部语法、group gain 跨帧有效状态和 loudness correction 尚未解析。
+/// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
+/// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC 内部语法与
+/// group gain 跨帧有效状态仍未解析。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1357,6 +1431,12 @@ pub struct Ac4PresentationSubstream<'a> {
     pub custom_downmix: PresentationCustomDownmixData,
     /// `loud_corr()` 在 payload 内的精确比特偏移。
     pub loudness_correction_offset: u64,
+    /// 已解析的 loudness-correction presence 与 5 比特原始码值。
+    pub loudness_correction: PresentationLoudnessCorrectionData,
+    /// presentation 末尾 `byte_align` 开始前的精确比特偏移。
+    pub byte_alignment_offset: u64,
+    /// 末尾 `byte_align` 消耗的填充比特数，取值为 `0..=7`。
+    pub alignment_bits: u32,
 }
 
 impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstream<'a> {
@@ -1375,6 +1455,9 @@ impl<'a, 'b> PartialEq<Ac4PresentationSubstream<'b>> for Ac4PresentationSubstrea
             && self.custom_downmix_offset == other.custom_downmix_offset
             && self.custom_downmix == other.custom_downmix
             && self.loudness_correction_offset == other.loudness_correction_offset
+            && self.loudness_correction == other.loudness_correction
+            && self.byte_alignment_offset == other.byte_alignment_offset
+            && self.alignment_bits == other.alignment_bits
     }
 }
 
@@ -1382,7 +1465,7 @@ impl Eq for Ac4PresentationSubstream<'_> {}
 
 impl<'a> Ac4PresentationSubstream<'a> {
     /// 解析 selection、common additional-data、presentation 响度、DRC envelope、group gain、
-    /// associated audio 与 custom downmix。
+    /// associated audio、custom downmix 与 loudness correction，并消费末尾 `byte_align`。
     ///
     /// `payload` 必须恰好是 TOC 中 presentation substream index 对应的有界 payload。
     /// additional-data 声明的完整字节区域会先验界；`advanced_de_data()` 仅保留原始码值，
@@ -1390,14 +1473,15 @@ impl<'a> Ac4PresentationSubstream<'a> {
     /// `drc_metadata_size` 只严格定界并保留完整 `drc_frame()`，不解释或执行 DRC；group gain
     /// 只保留逐帧传输形态，不解析跨帧有效值或应用增益；associated-audio scale/pan 同样只
     /// 保留原值，不执行 gain、pan 或 renderer 处理；custom downmix 同样只保留配置、路由与
-    /// gain 码值，不执行矩阵运算。
+    /// gain 码值，不执行矩阵运算；loudness correction 也只保留原始码值，不做 dB 换算或应用。
     ///
     /// # Errors
     ///
-    /// selection 字段、additional-data/DRC/group gain/associated audio/custom downmix 或其已知
-    /// 字段截断，变长字段溢出，或计数超过固定容量时返回错误。零长度 DRC envelope 不能容纳
+    /// selection 字段、additional-data/DRC/group gain/associated audio/custom downmix/
+    /// loudness correction 或其已知字段截断，变长字段溢出，或计数超过固定容量时返回错误。
+    /// 零长度 DRC envelope 不能容纳
     /// 必需的 presence bit，以及 associated pan、custom output config 或 stereo surround gain
-    /// 使用禁止码值时，同样返回错误。
+    /// 使用禁止码值时，同样返回错误。`byte_align` 后仍有完整尾随字节也会失败关闭。
     pub fn parse(
         payload: &'a [u8],
         context: PresentationSubstreamContext,
@@ -1435,6 +1519,14 @@ impl<'a> Ac4PresentationSubstream<'a> {
         let custom_downmix_offset = reader.bit_position();
         let custom_downmix = parse_custom_downmix_data(&mut reader, context.channel_context())?;
         let loudness_correction_offset = reader.bit_position();
+        let loudness_correction =
+            parse_loudness_correction(&mut reader, context.channel_context())?;
+        let byte_alignment_offset = reader.bit_position();
+        let alignment_bits = reader.byte_align()?;
+        let remaining_bits = reader.remaining_bits();
+        if remaining_bits != 0 {
+            return Err(PresentationSubstreamError::TrailingBits { remaining_bits });
+        }
         Ok(Self {
             selection,
             additional_data,
@@ -1450,6 +1542,9 @@ impl<'a> Ac4PresentationSubstream<'a> {
             custom_downmix_offset,
             custom_downmix,
             loudness_correction_offset,
+            loudness_correction,
+            byte_alignment_offset,
+            alignment_bits,
         })
     }
 }
@@ -1849,6 +1944,90 @@ fn read_stereo_surround_mixgain(
     Ok(gain_code)
 }
 
+fn parse_loudness_correction(
+    reader: &mut BitReader<'_>,
+    context: PresentationChannelContext,
+) -> Result<PresentationLoudnessCorrectionData, PresentationSubstreamError> {
+    let mut data = PresentationLoudnessCorrectionData::default();
+    let objects = context.presentation_channel_mode().is_none();
+    if objects {
+        data.object_loudness_correction = Some(reader.read_flag()?);
+    }
+    let object_corrections = data.object_loudness_correction == Some(true);
+
+    let full_five_x_or_objects = context
+        .presentation_channel_mode()
+        .is_some_and(|mode| mode > 4)
+        || object_corrections;
+    if full_five_x_or_objects {
+        data.corrections_for_immersive_output = Some(reader.read_flag()?);
+    }
+
+    if context
+        .presentation_channel_mode()
+        .is_some_and(|mode| mode > 1)
+        || object_corrections
+    {
+        data.loro_downmix = Some(parse_loudness_correction_code(reader)?);
+        data.ltrt_downmix = Some(parse_loudness_correction_code(reader)?);
+    }
+
+    if full_five_x_or_objects {
+        data.five_x = Some(parse_loudness_correction_code(reader)?);
+        if data.corrections_for_immersive_output == Some(true) {
+            data.five_x_two = Some(parse_loudness_correction_code(reader)?);
+            data.seven_x = Some(parse_loudness_correction_code(reader)?);
+        }
+    }
+
+    if (context
+        .presentation_channel_mode()
+        .is_some_and(|mode| mode > 10)
+        || object_corrections)
+        && data.corrections_for_immersive_output == Some(true)
+    {
+        data.seven_x_four = Some(parse_loudness_correction_code(reader)?);
+        data.seven_x_two = Some(parse_loudness_correction_code(reader)?);
+        data.five_x_four = Some(parse_loudness_correction_code(reader)?);
+    }
+
+    if context.core_channel_mode().is_some_and(|mode| mode >= 5) {
+        data.core_five_x_two = Some(parse_loudness_correction_code(reader)?);
+    }
+    if context.core_channel_mode().is_some_and(|mode| mode >= 3) {
+        data.core_five_x = Some(parse_loudness_correction_code(reader)?);
+        data.core_stereo = Some(parse_core_stereo_loudness_correction(reader)?);
+    }
+
+    if object_corrections {
+        data.nine_x_four = Some(parse_loudness_correction_code(reader)?);
+    }
+    Ok(data)
+}
+
+fn parse_loudness_correction_code(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationLoudnessCorrectionCode, PresentationSubstreamError> {
+    if reader.read_flag()? {
+        return Ok(PresentationLoudnessCorrectionCode::Value(
+            u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+        ));
+    }
+    Ok(PresentationLoudnessCorrectionCode::NotPresent)
+}
+
+fn parse_core_stereo_loudness_correction(
+    reader: &mut BitReader<'_>,
+) -> Result<PresentationCoreStereoLoudnessCorrection, PresentationSubstreamError> {
+    if !reader.read_flag()? {
+        return Ok(PresentationCoreStereoLoudnessCorrection::NotPresent);
+    }
+    Ok(PresentationCoreStereoLoudnessCorrection::Values {
+        loro: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+        ltrt: u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX),
+    })
+}
+
 fn parse_drc_frame_envelope<'a>(
     reader: &mut BitReader<'a>,
     source: &'a [u8],
@@ -2188,6 +2367,13 @@ mod tests {
         bits.push(0, 1); // no associated audio
     }
 
+    fn push_loudness_correction_code(bits: &mut TestBits, value: Option<u8>) {
+        bits.push(u64::from(value.is_some()), 1);
+        if let Some(value) = value {
+            bits.push(u64::from(value), 5);
+        }
+    }
+
     #[test]
     fn ordinary_presentation_has_no_selection_prefix() {
         let parsed = Ac4PresentationSubstreamSelection::parse(
@@ -2262,6 +2448,7 @@ mod tests {
         bits.push(0, 1); // no advanced DE
         bits.push(0, 5); // reserved add_data
         push_minimal_complete_common_metadata(&mut bits, 0);
+        bits.push(0, 1); // b_obj_loud_corr
 
         let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
         let additional = parsed.additional_data.unwrap();
@@ -2273,7 +2460,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_object_additional_data_and_ignores_loudness_correction_suffix_in_equality() {
+    fn parses_object_additional_data_and_ignores_byte_alignment_values_in_equality() {
         let mut envelope = TestBits::new();
         envelope.push(1, 1); // b_additional_data
         envelope.push(0, 4); // one additional-data byte
@@ -2286,10 +2473,12 @@ mod tests {
 
         let mut left_bits = envelope.clone();
         push_minimal_complete_common_metadata(&mut left_bits, 0b101_0101);
-        left_bits.push(0, 4); // unparsed loud_corr()
+        left_bits.push(0, 1); // b_obj_loud_corr
+        left_bits.push(0, 7); // byte_align
         let mut right_bits = envelope;
         push_minimal_complete_common_metadata(&mut right_bits, 0b101_0101);
-        right_bits.push(0b1111, 4);
+        right_bits.push(0, 1); // same b_obj_loud_corr
+        right_bits.push(0x7f, 7); // different byte_align values
         let context = test_context(false, 1, 1, true);
         let left = Ac4PresentationSubstream::parse(left_bits.as_bytes(), context).unwrap();
         let right = Ac4PresentationSubstream::parse(right_bits.as_bytes(), context).unwrap();
@@ -2318,7 +2507,10 @@ mod tests {
         assert_eq!(left.b_associated_offset, 31);
         assert_eq!(left.associated_audio, None);
         assert_eq!(left.custom_downmix_offset, 32);
-        assert_eq!(left, right, "loudness correction 尚未进入已解析视图");
+        assert_eq!(left.loudness_correction_offset, 32);
+        assert_eq!(left.byte_alignment_offset, 33);
+        assert_eq!(left.alignment_bits, 7);
+        assert_eq!(left, right, "byte_align 的填充值没有语义，不进入解析视图");
     }
 
     #[test]
@@ -2363,6 +2555,7 @@ mod tests {
         bits.push(1, 1); // one reserved add_data bit
         let expected_dialnorm_offset = bits.len as u64;
         push_minimal_complete_common_metadata(&mut bits, 0);
+        bits.push(0, 1); // b_obj_loud_corr
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true))
@@ -2398,6 +2591,7 @@ mod tests {
         bits.push(0, 5); // gain endpoint
         bits.push(0, 1); // one reserved add_data bit
         push_minimal_complete_common_metadata(&mut bits, 0);
+        bits.push(0, 1); // b_obj_loud_corr
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true))
@@ -2453,6 +2647,7 @@ mod tests {
             bits.push(0, 1);
         }
         push_minimal_complete_common_metadata(&mut bits, 0);
+        bits.push(0, 1); // b_obj_loud_corr
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, true))
@@ -2577,7 +2772,7 @@ mod tests {
         let expected_frame_end = bits.len as u64;
         bits.push(0, 1); // no associated audio
         let expected_custom_downmix_offset = bits.len as u64;
-        bits.push(0b10101, 5); // loud_corr() must remain untouched
+        bits.push(0b10101, 5); // byte_align
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
@@ -2610,7 +2805,7 @@ mod tests {
         let mut absent = prefix.clone();
         absent.push(0, 1); // b_substream_group_gains_present
         absent.push(0, 1); // no associated audio
-        absent.push(0b11_1111, 6); // loud_corr() must remain untouched
+        absent.push(0b11_1111, 6); // byte_align
         let absent =
             Ac4PresentationSubstream::parse(absent.as_bytes(), test_context(false, 2, 2, false))
                 .unwrap();
@@ -2626,7 +2821,7 @@ mod tests {
         kept.push(1, 1); // b_substream_group_gains_present
         kept.push(1, 1); // b_keep
         kept.push(0, 1); // no associated audio
-        kept.push(0b1_1111, 5); // loud_corr() must remain untouched
+        kept.push(0b1_1111, 5); // byte_align
         let kept =
             Ac4PresentationSubstream::parse(kept.as_bytes(), test_context(false, 2, 2, false))
                 .unwrap();
@@ -2652,7 +2847,7 @@ mod tests {
         let expected_associated_offset = bits.len as u64;
         bits.push(0, 1); // no associated audio
         let expected_custom_downmix_offset = bits.len as u64;
-        bits.push(0b10, 2); // loud_corr() must remain untouched
+        bits.push(0b10, 2); // byte_align
 
         let parsed =
             Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 8, 8, false))
@@ -2691,7 +2886,6 @@ mod tests {
             }
             bits.push(0, 1); // associated audio is not mono
             let expected_custom_downmix_offset = bits.len as u64;
-            bits.push_byte(0xff); // loud_corr(), not pan_associated
 
             let parsed =
                 Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
@@ -2725,7 +2919,7 @@ mod tests {
             bits.push(1, 1); // associated audio is mono
             bits.push(u64::from(pan_associated), 8);
             let expected_custom_downmix_offset = bits.len as u64;
-            bits.push(0b101, 3); // loud_corr() must remain untouched
+            bits.push(0b101, 3); // byte_align
 
             let parsed =
                 Ac4PresentationSubstream::parse(bits.as_bytes(), test_context(false, 1, 1, false))
@@ -2920,7 +3114,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_complete_nine_x_four_custom_downmix_and_stops_at_loud_corr() {
+    fn parses_complete_nine_x_four_custom_downmix_and_minimal_loud_corr() {
         let mut bits = TestBits::new();
         bits.push(0, 1); // no additional data
         push_minimal_complete_common_metadata(&mut bits, 0);
@@ -2945,10 +3139,18 @@ mod tests {
         bits.push(31, 5); // lfe_mixgain
         bits.push(3, 2); // preferred_dmx_method
         let expected_loudness_correction_offset = bits.len as u64;
+        bits.push(0, 1); // no immersive-output corrections
+        bits.push(0, 1); // no LoRo correction
+        bits.push(0, 1); // no LtRt correction
+        bits.push(0, 1); // no 5.X correction
+        bits.push(0, 1); // no core 5.X.2 correction
+        bits.push(0, 1); // no core 5.X correction
+        bits.push(0, 1); // no core LoRo/LtRt correction
+        let expected_alignment_offset = bits.len as u64;
 
         let mut right_bits = bits.clone();
-        bits.push(0, 4); // unparsed loud_corr() suffix
-        right_bits.push(0b1111, 4); // different unparsed loud_corr() suffix
+        bits.push(0, 5); // byte_align
+        right_bits.push(0b1_1111, 5); // different byte_align values
         let context = PresentationSubstreamContext::new(
             false,
             1,
@@ -2964,6 +3166,8 @@ mod tests {
             parsed.loudness_correction_offset,
             expected_loudness_correction_offset
         );
+        assert_eq!(parsed.byte_alignment_offset, expected_alignment_offset);
+        assert_eq!(parsed.alignment_bits, 5);
         let custom = parsed.custom_downmix;
         assert_eq!(custom.bitstream_channel_config(), Some(0));
         assert_eq!(custom.custom_data_present(), Some(true));
@@ -2999,6 +3203,207 @@ mod tests {
                 lfe_mixgain: Some(31),
                 preferred_downmix_method: 3,
             })
+        );
+    }
+
+    #[test]
+    fn parses_complete_channel_and_core_loudness_corrections() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_corr_for_immersive_out
+        push_loudness_correction_code(&mut bits, Some(0)); // LoRo
+        push_loudness_correction_code(&mut bits, None); // LtRt
+        push_loudness_correction_code(&mut bits, Some(31)); // 5.X; reserved means 0 dB
+        push_loudness_correction_code(&mut bits, Some(1)); // 5.X.2
+        push_loudness_correction_code(&mut bits, Some(2)); // 7.X
+        push_loudness_correction_code(&mut bits, Some(3)); // 7.X.4
+        push_loudness_correction_code(&mut bits, None); // 7.X.2
+        push_loudness_correction_code(&mut bits, Some(4)); // 5.X.4
+        push_loudness_correction_code(&mut bits, Some(5)); // core 5.X.2
+        push_loudness_correction_code(&mut bits, Some(6)); // core 5.X
+        bits.push(1, 1); // shared core LoRo/LtRt presence
+        bits.push(31, 5); // core LoRo; reserved means 0 dB
+        bits.push(7, 5); // core LtRt
+
+        let mut reader = BitReader::new(bits.as_bytes());
+        let parsed = parse_loudness_correction(
+            &mut reader,
+            PresentationChannelContext::new(Some(14), Some(6), true, 2, true),
+        )
+        .unwrap();
+
+        assert_eq!(reader.bit_position(), bits.len as u64);
+        assert_eq!(
+            parsed,
+            PresentationLoudnessCorrectionData {
+                object_loudness_correction: None,
+                corrections_for_immersive_output: Some(true),
+                loro_downmix: Some(PresentationLoudnessCorrectionCode::Value(0)),
+                ltrt_downmix: Some(PresentationLoudnessCorrectionCode::NotPresent),
+                five_x: Some(PresentationLoudnessCorrectionCode::Value(31)),
+                five_x_two: Some(PresentationLoudnessCorrectionCode::Value(1)),
+                seven_x: Some(PresentationLoudnessCorrectionCode::Value(2)),
+                seven_x_four: Some(PresentationLoudnessCorrectionCode::Value(3)),
+                seven_x_two: Some(PresentationLoudnessCorrectionCode::NotPresent),
+                five_x_four: Some(PresentationLoudnessCorrectionCode::Value(4)),
+                core_five_x_two: Some(PresentationLoudnessCorrectionCode::Value(5)),
+                core_five_x: Some(PresentationLoudnessCorrectionCode::Value(6)),
+                core_stereo: Some(PresentationCoreStereoLoudnessCorrection::Values {
+                    loro: 31,
+                    ltrt: 7,
+                }),
+                nine_x_four: None,
+            }
+        );
+    }
+
+    #[test]
+    fn parses_complete_object_loudness_corrections_and_nine_x_four() {
+        let mut bits = TestBits::new();
+        bits.push(1, 1); // b_obj_loud_corr
+        bits.push(1, 1); // b_corr_for_immersive_out
+        for value in 8u8..=15 {
+            push_loudness_correction_code(&mut bits, Some(value));
+        }
+        push_loudness_correction_code(&mut bits, Some(31)); // 9.X.4
+
+        let mut reader = BitReader::new(bits.as_bytes());
+        let parsed =
+            parse_loudness_correction(&mut reader, PresentationChannelContext::UNDEFINED).unwrap();
+
+        assert_eq!(reader.bit_position(), bits.len as u64);
+        assert_eq!(
+            parsed,
+            PresentationLoudnessCorrectionData {
+                object_loudness_correction: Some(true),
+                corrections_for_immersive_output: Some(true),
+                loro_downmix: Some(PresentationLoudnessCorrectionCode::Value(8)),
+                ltrt_downmix: Some(PresentationLoudnessCorrectionCode::Value(9)),
+                five_x: Some(PresentationLoudnessCorrectionCode::Value(10)),
+                five_x_two: Some(PresentationLoudnessCorrectionCode::Value(11)),
+                seven_x: Some(PresentationLoudnessCorrectionCode::Value(12)),
+                seven_x_four: Some(PresentationLoudnessCorrectionCode::Value(13)),
+                seven_x_two: Some(PresentationLoudnessCorrectionCode::Value(14)),
+                five_x_four: Some(PresentationLoudnessCorrectionCode::Value(15)),
+                core_five_x_two: None,
+                core_five_x: None,
+                core_stereo: None,
+                nine_x_four: Some(PresentationLoudnessCorrectionCode::Value(31)),
+            }
+        );
+    }
+
+    #[test]
+    fn loudness_correction_gates_consume_only_applicable_fields() {
+        let zeroes = [0u8; 2];
+        for (presentation_mode, core_mode, expected_bits) in [
+            (Some(1), None, 0),
+            (Some(2), None, 2),
+            (Some(4), None, 2),
+            (Some(5), None, 4),
+            (Some(10), None, 4),
+            (Some(11), None, 4),
+            (Some(0), Some(2), 0),
+            (Some(0), Some(3), 2),
+            (Some(0), Some(4), 2),
+            (Some(0), Some(5), 3),
+            (Some(0), Some(6), 3),
+        ] {
+            let mut reader = BitReader::new(&zeroes);
+            parse_loudness_correction(
+                &mut reader,
+                PresentationChannelContext::new(presentation_mode, core_mode, false, 0, false),
+            )
+            .unwrap();
+            assert_eq!(
+                reader.bit_position(),
+                expected_bits,
+                "pres_ch_mode={presentation_mode:?}, pres_ch_mode_core={core_mode:?}"
+            );
+        }
+
+        let immersive = [0x80u8, 0];
+        for (presentation_mode, expected_bits) in [(5, 6), (10, 6), (11, 9), (14, 9)] {
+            let mut reader = BitReader::new(&immersive);
+            parse_loudness_correction(
+                &mut reader,
+                PresentationChannelContext::new(Some(presentation_mode), None, false, 0, false),
+            )
+            .unwrap();
+            assert_eq!(
+                reader.bit_position(),
+                expected_bits,
+                "pres_ch_mode={presentation_mode}, immersive corrections enabled"
+            );
+        }
+
+        let mut reader = BitReader::new(&[0]);
+        let object_disabled =
+            parse_loudness_correction(&mut reader, PresentationChannelContext::UNDEFINED).unwrap();
+        assert_eq!(reader.bit_position(), 1);
+        assert_eq!(
+            object_disabled,
+            PresentationLoudnessCorrectionData {
+                object_loudness_correction: Some(false),
+                ..PresentationLoudnessCorrectionData::default()
+            }
+        );
+
+        let mut reader = BitReader::new(&[0x80]);
+        let object_enabled =
+            parse_loudness_correction(&mut reader, PresentationChannelContext::UNDEFINED).unwrap();
+        assert_eq!(reader.bit_position(), 6);
+        assert_eq!(object_enabled.object_loudness_correction, Some(true));
+        assert_eq!(object_enabled.corrections_for_immersive_output, Some(false));
+        assert_eq!(
+            object_enabled.nine_x_four,
+            Some(PresentationLoudnessCorrectionCode::NotPresent)
+        );
+    }
+
+    #[test]
+    fn rejects_truncated_loudness_correction_values_and_core_stereo_pair() {
+        let mut single = BitReader::new(&[0xff]);
+        single.skip_bits(3).unwrap();
+        assert_eq!(
+            parse_loudness_correction_code(&mut single).unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 5,
+                bit_position: 4,
+                remaining_bits: 4,
+            })
+        );
+
+        let mut core_stereo = BitReader::new(&[0xff, 0xff]);
+        core_stereo.skip_bits(6).unwrap();
+        assert_eq!(
+            parse_core_stereo_loudness_correction(&mut core_stereo).unwrap_err(),
+            PresentationSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 5,
+                bit_position: 12,
+                remaining_bits: 4,
+            })
+        );
+    }
+
+    #[test]
+    fn accepts_nonzero_byte_alignment_and_rejects_trailing_bytes() {
+        let mut bits = TestBits::new();
+        bits.push(0, 1); // no additional data
+        push_minimal_complete_common_metadata(&mut bits, 0);
+        bits.push(0, 1); // b_obj_loud_corr
+        let expected_alignment_offset = bits.len as u64;
+        bits.push(0b10_1011, 6); // nonzero byte_align bits are opaque
+
+        let context =
+            PresentationSubstreamContext::new(false, 1, 1, PresentationChannelContext::UNDEFINED);
+        let parsed = Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap();
+        assert_eq!(parsed.byte_alignment_offset, expected_alignment_offset);
+        assert_eq!(parsed.alignment_bits, 6);
+
+        bits.push_byte(0xa5);
+        assert_eq!(
+            Ac4PresentationSubstream::parse(bits.as_bytes(), context).unwrap_err(),
+            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
         );
     }
 
@@ -3055,7 +3460,7 @@ mod tests {
         bits.push(0, 1); // no additional data
         push_minimal_complete_common_metadata(&mut bits, 0);
         let expected_offset = bits.len as u64;
-        bits.push(1, 1); // unparsed loud_corr()
+        bits.push(0, 1); // b_obj_loud_corr
 
         let parsed = Ac4PresentationSubstream::parse(
             bits.as_bytes(),
@@ -3065,6 +3470,8 @@ mod tests {
         assert!(parsed.selection.alternative.is_some());
         assert_eq!(parsed.custom_downmix_offset, expected_offset);
         assert_eq!(parsed.loudness_correction_offset, expected_offset);
+        assert_eq!(parsed.byte_alignment_offset, expected_offset + 1);
+        assert_eq!(parsed.alignment_bits, 0);
         assert_eq!(parsed.custom_downmix.custom_data_present(), None);
         assert_eq!(parsed.custom_downmix.stereo_coefficients_present(), None);
     }
