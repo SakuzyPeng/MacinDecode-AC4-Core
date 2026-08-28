@@ -538,8 +538,10 @@ info 无法确定逐 substream `b_iframe` 时，活动 DE 也失败关闭。现�
 frame 事务性延续配置、panning 与 primary/separate-core 两份参数历史。I-frame 首个 absolute
 index 后按 P1 表 78 的 `ref_val` 规则跨 band/channel 还原，dependent differential 逐项加到
 `de_par_prev`；上一帧 DE 不活动时该基准归零，而 parameter keep 仍使用 latest-transmitted
-历史。method/channel mapping 变化清空不兼容历史，仅 max-gain 变化保留索引；primary 与
-simulcast 永不共用 differential 基准。任何失败都不提交候选状态。本层仍不反量化或执行 DE。
+历史。dependent configuration 更新按表 171 的 L/R/C 身份迁移 differential 基准，新出现的
+声道取零；M/S 历史只匹配相同声道对。panning/parameter keep 要求完整映射兼容，仅 max-gain
+变化不影响兼容性；primary 与 simulcast 永不共用 differential 基准。任何失败都不提交候选
+状态。本层仍不反量化或执行 DE。
 
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
@@ -568,8 +570,9 @@ mono/stereo 全部 3 比特码值、配置后的非字节对齐 bit view、未�
 M/S channel reduction、I/dependent keep、新旧配置、simulcast present/absent、零 channel、每个
 代表性 data bit 的截断及尾随；stateful data 再覆盖 I-frame `ref_val` 的跨 band/channel 锚点、
 dependent `de_par_prev`、inactive-frame 零基准、latest keep、primary/simulcast 隔离、max-gain
-兼容更新、channel mapping 失效、物理 substream 隔离、I-frame absence reset 与失败事务性，并由
-所有默认及 `audio-decode` 固定载荷共同验证末尾边界。
+兼容更新、method 更新延续、channel mapping 的物理声道迁移与新声道零基准、物理 substream
+隔离、I-frame absence reset 与失败事务性，并由所有默认及 `audio-decode` 固定载荷共同验证
+末尾边界。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。

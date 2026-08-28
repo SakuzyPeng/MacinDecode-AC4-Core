@@ -1787,11 +1787,13 @@ dependent inactive frame 只清空后者。primary 与 P2 separate-core simulcas
 不因同帧第二次调用 `de_data()` 而相互覆盖。
 
 状态实例由调用方按物理 `substream_index` 隔离。I-frame 从空候选开始；dependent frame 延续
-configuration 与兼容历史。method/channel mapping 改变会清空 panning 与两份参数历史，只改变
-`de_max_gain` 则不改变参数形状。configuration、position、primary/simulcast 参数在全部 keep、
-differential 与尾随验证成功后一次提交；任何错误均保留旧状态。I-frame absence 清空状态；
-dependent absence 保留 configuration/latest-transmitted data，但使下一 differential 使用零基准。
-stateful absence 同样需要精确的物理 `b_iframe`，未知时失败而不猜测。
+configuration 与兼容历史。dependent configuration 更新时，两份 differential 历史分别按表 171
+的 L/R/C 身份迁移，上一帧未使用的声道按 `4.3.14.5.3` 取零；M/S 参数只匹配相同声道对的 M/S
+表示。panning keep 与 parameter keep 仍要求完整映射兼容，只改变 `de_max_gain` 不影响兼容性。
+configuration、position、primary/simulcast 参数在全部 keep、differential 与尾随验证成功后一次
+提交；任何错误均保留旧状态。I-frame absence 清空状态；dependent absence 保留
+configuration/latest-transmitted data，但使下一 differential 使用零基准。stateful absence 同样
+需要精确的物理 `b_iframe`，未知时失败而不猜测。
 
 解析层仍不反量化或执行 dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC
 `ajoc_dmx_de_data()` 共用状态。现有真实向量均只观察到 `tools_metadata_size = 1`、

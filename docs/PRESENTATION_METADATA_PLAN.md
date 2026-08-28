@@ -145,8 +145,10 @@ body。默认构建不依赖本地规范码本，继续保留相同原始 bit vi
 第四个增量新增 `DialogEnhancementState`，调用方为每个物理 `substream_index` 分别持有一个实例。
 I-frame 从空候选开始；dependent frame 延续 configuration、primary panning、最近一次传输的
 primary/simulcast 参数，以及仅属于上一帧的两份 `de_par_prev`。primary 与 separate-core
-simulcast 的参数历史彼此独立，第二份 data 不会覆盖第一份的 differential 基准。method 或
-channel mapping 改变会使 panning 与两份参数历史失效，仅 `de_max_gain` 改变则保留索引形状。
+simulcast 的参数历史彼此独立，第二份 data 不会覆盖第一份的 differential 基准。dependent
+configuration 更新时，参数基准按表 171 的 L/R/C 身份迁移；上一帧未使用的声道取零，M/S
+表示只与相同声道对的 M/S 历史对应。panning keep 与 parameter keep 仍要求完整映射兼容；仅
+`de_max_gain` 改变不影响兼容性。
 
 P1 表 78 的 I-frame 还原从首个 absolute index 开始：同一 channel 沿 band 用 `ref_val` 累加，
 下一 channel 的 band 0 以前一 channel 的 band 0 为锚点，再沿新 channel 累加；dependent frame

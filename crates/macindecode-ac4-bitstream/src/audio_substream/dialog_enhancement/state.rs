@@ -180,14 +180,26 @@ impl From<DialogEnhancementDataError> for DialogEnhancementStateError {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogEnhancementPositionHistory {
+    coefficients: DialogEnhancementMixCoefficients,
+    channel_config: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogEnhancementParameterSnapshot {
+    configuration: DialogEnhancementConfiguration,
+    data: DialogEnhancementEffectiveParameterData,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 struct DialogEnhancementParameterHistory {
     // `de_keep_data_flag` repeats the latest transmitted parameter data, not merely the previous
     // frame. Keep this across dependent inactive frames.
-    latest: Option<DialogEnhancementEffectiveParameterData>,
+    latest: Option<DialogEnhancementParameterSnapshot>,
     // `de_par_prev` is explicitly the corresponding parameter set in the previous frame. An
     // inactive frame therefore clears only this differential base.
-    previous: Option<DialogEnhancementEffectiveParameterData>,
+    previous: Option<DialogEnhancementParameterSnapshot>,
 }
 
 /// 一个物理 audio substream 的 dialogue-enhancement metadata 状态。
@@ -203,7 +215,7 @@ struct DialogEnhancementParameterHistory {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DialogEnhancementState {
     configuration: Option<DialogEnhancementConfiguration>,
-    position: Option<DialogEnhancementMixCoefficients>,
+    position: Option<DialogEnhancementPositionHistory>,
     primary: DialogEnhancementParameterHistory,
     simulcast: DialogEnhancementParameterHistory,
 }
@@ -235,19 +247,28 @@ impl DialogEnhancementState {
     /// 上一成功帧可由 `de_keep_pos_flag` 沿用的 panning。
     #[must_use]
     pub const fn position(self) -> Option<DialogEnhancementMixCoefficients> {
-        self.position
+        match self.position {
+            Some(position) => Some(position.coefficients),
+            None => None,
+        }
     }
 
     /// 最近一次成功传输的 primary 参数集，可由 `de_keep_data_flag` 沿用。
     #[must_use]
     pub const fn primary_parameters(self) -> Option<DialogEnhancementEffectiveParameterData> {
-        self.primary.latest
+        match self.primary.latest {
+            Some(parameters) => Some(parameters.data),
+            None => None,
+        }
     }
 
     /// 最近一次成功传输的 simulcast 参数集，可由 separate core data 的 keep flag 沿用。
     #[must_use]
     pub const fn simulcast_parameters(self) -> Option<DialogEnhancementEffectiveParameterData> {
-        self.simulcast.latest
+        match self.simulcast.latest {
+            Some(parameters) => Some(parameters.data),
+            None => None,
+        }
     }
 
     /// 在 seek、换源、物理拓扑变化、不连续或丢帧后清空全部 DE 历史。
@@ -260,8 +281,9 @@ impl DialogEnhancementState {
     /// `metadata` 必须来自以同一 `payload` 解析出的 [`DialogEnhancementMetadata`]。DE 缺席时
     /// 返回 `Ok(None)`；dependent 缺席帧保留 configuration 与 latest-transmitted 参数，但会按
     /// P1 `4.3.14.5.3` 使下一帧 differential 的 `de_par_prev` 归零。I-frame 缺席会清空状态。
-    /// configuration 的 method/channel mapping 改变时，旧 panning 与两份参数历史不再兼容，
-    /// 候选状态会先清空这些历史；仅 `de_max_gain` 改变不影响参数索引形状。
+    /// configuration 更新时，dependent differential 会按 L/R/C 对应关系迁移上一帧参数；上一帧
+    /// 未使用的声道以零为基准。panning keep 与 parameter keep 仍要求其各自的完整映射兼容；仅
+    /// `de_max_gain` 改变不影响兼容性。
     ///
     /// # Errors
     ///
@@ -317,14 +339,6 @@ impl DialogEnhancementState {
             });
         }
 
-        if self.configuration.is_some_and(|previous| {
-            previous.method != decoded.configuration.method
-                || previous.channel_config != decoded.configuration.channel_config
-        }) {
-            self.position = None;
-            self.primary = DialogEnhancementParameterHistory::default();
-            self.simulcast = DialogEnhancementParameterHistory::default();
-        }
         self.configuration = Some(decoded.configuration);
 
         let primary_position = resolve_position(
@@ -397,7 +411,7 @@ fn resolve_position(
     configuration: DialogEnhancementConfiguration,
     b_iframe: bool,
     simulcast: bool,
-    history: Option<&mut Option<DialogEnhancementMixCoefficients>>,
+    history: Option<&mut Option<DialogEnhancementPositionHistory>>,
     bit_position: u64,
 ) -> Result<Option<DialogEnhancementMixCoefficients>, DialogEnhancementStateError> {
     let applicable =
@@ -435,7 +449,12 @@ fn resolve_position(
                     bit_position,
                 });
             }
-            history.ok_or(DialogEnhancementStateError::MissingPosition { bit_position })?
+            let previous =
+                history.ok_or(DialogEnhancementStateError::MissingPosition { bit_position })?;
+            if previous.channel_config != configuration.channel_config {
+                return Err(DialogEnhancementStateError::MissingPosition { bit_position });
+            }
+            previous.coefficients
         }
         DialogEnhancementPositionUpdate::New(coefficients) => {
             let second_matches = match configuration.channel_count() {
@@ -455,7 +474,10 @@ fn resolve_position(
             coefficients
         }
     };
-    *history = Some(effective);
+    *history = Some(DialogEnhancementPositionHistory {
+        coefficients: effective,
+        channel_config: configuration.channel_config,
+    });
     Ok(Some(effective))
 }
 
@@ -492,20 +514,20 @@ fn resolve_parameters(
                     bit_position,
                 });
             }
-            let effective =
+            let snapshot =
                 history
                     .latest
                     .ok_or(DialogEnhancementStateError::MissingParameters {
                         simulcast,
                         bit_position,
                     })?;
-            if !effective_parameters_match_configuration(effective, configuration) {
+            if !effective_parameters_match_configuration(snapshot, configuration) {
                 return Err(DialogEnhancementStateError::MissingParameters {
                     simulcast,
                     bit_position,
                 });
             }
-            effective
+            snapshot.data
         }
         DialogEnhancementParameterUpdate::New(parameters) => reconstruct_parameters(
             parameters,
@@ -517,15 +539,25 @@ fn resolve_parameters(
         )?,
     };
 
-    history.latest = Some(effective);
-    history.previous = Some(effective);
+    let snapshot = DialogEnhancementParameterSnapshot {
+        configuration,
+        data: effective,
+    };
+    history.latest = Some(snapshot);
+    history.previous = Some(snapshot);
     Ok(Some(effective))
 }
 
 fn effective_parameters_match_configuration(
-    parameters: DialogEnhancementEffectiveParameterData,
+    snapshot: DialogEnhancementParameterSnapshot,
     configuration: DialogEnhancementConfiguration,
 ) -> bool {
+    if snapshot.configuration.method != configuration.method
+        || snapshot.configuration.channel_config != configuration.channel_config
+    {
+        return false;
+    }
+    let parameters = snapshot.data;
     let mid_side_gate = matches!(configuration.method, 0 | 2) && configuration.channel_count() == 2;
     if parameters.mid_side_processing && !mid_side_gate {
         return false;
@@ -542,7 +574,7 @@ fn reconstruct_parameters(
     configuration: DialogEnhancementConfiguration,
     b_iframe: bool,
     simulcast: bool,
-    previous: Option<DialogEnhancementEffectiveParameterData>,
+    previous: Option<DialogEnhancementParameterSnapshot>,
     bit_position: u64,
 ) -> Result<DialogEnhancementEffectiveParameterData, DialogEnhancementStateError> {
     if data.first_code_is_absolute() != b_iframe {
@@ -596,10 +628,6 @@ fn reconstruct_parameters(
         });
     }
 
-    let previous = previous.filter(|previous| {
-        previous.parameter_channels == parameter_channels
-            && previous.mid_side_processing == mid_side_processing
-    });
     let mut indices = [0i32; MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES];
     for channel in 0..usize::from(parameter_channels) {
         for band in 0..DIALOG_ENHANCEMENT_PARAMETER_BANDS {
@@ -640,9 +668,14 @@ fn reconstruct_parameters(
                         },
                     )?
                 } else {
-                    previous
-                        .and_then(|previous| previous.indices.get(index).copied())
-                        .unwrap_or(0)
+                    previous_parameter_index(
+                        previous,
+                        configuration,
+                        mid_side_processing,
+                        channel,
+                        band,
+                    )
+                    .unwrap_or(0)
                 };
                 reference.checked_add(i32::from(code)).ok_or(
                     DialogEnhancementStateError::ParameterIndexOverflow {
@@ -671,6 +704,51 @@ fn reconstruct_parameters(
         mid_side_processing,
         signal_contribution: data.signal_contribution,
     })
+}
+
+fn previous_parameter_index(
+    previous: Option<DialogEnhancementParameterSnapshot>,
+    configuration: DialogEnhancementConfiguration,
+    mid_side_processing: bool,
+    channel: usize,
+    band: usize,
+) -> Option<i32> {
+    let previous = previous?;
+    let key = parameter_channel_key(configuration, mid_side_processing, channel)?;
+    for previous_channel in 0..usize::from(previous.data.parameter_channels) {
+        if parameter_channel_key(
+            previous.configuration,
+            previous.data.mid_side_processing,
+            previous_channel,
+        ) == Some(key)
+        {
+            return previous.data.index(previous_channel, band);
+        }
+    }
+    None
+}
+
+fn parameter_channel_key(
+    configuration: DialogEnhancementConfiguration,
+    mid_side_processing: bool,
+    channel: usize,
+) -> Option<u8> {
+    const MID_SIDE_KEY: u8 = 1 << 3;
+    if mid_side_processing {
+        return (channel == 0).then_some(MID_SIDE_KEY | configuration.channel_config);
+    }
+
+    let mut parameter_channel = 0usize;
+    for channel_mask in [0b100u8, 0b010, 0b001] {
+        if configuration.channel_config & channel_mask == 0 {
+            continue;
+        }
+        if parameter_channel == channel {
+            return Some(channel_mask);
+        }
+        parameter_channel = parameter_channel.saturating_add(1);
+    }
+    None
 }
 
 #[cfg(test)]
@@ -947,7 +1025,141 @@ mod tests {
     }
 
     #[test]
-    fn topology_change_zeros_differential_history_but_max_gain_change_keeps_it() {
+    fn configuration_update_maps_previous_parameters_by_physical_channel() {
+        let first_configuration = configuration(0, 0, 7);
+        let mut iframe = BitBuf::new();
+        push_parameter_values(
+            &mut iframe,
+            first_configuration.method,
+            true,
+            &[
+                10, 0, 0, 0, 0, 0, 0, 0, // Left becomes 10 in every band.
+                10, 0, 0, 0, 0, 0, 0, 0, // Right becomes 20 in every band.
+                10, 0, 0, 0, 0, 0, 0, 0, // Centre becomes 30 in every band.
+            ],
+        );
+        let mut state = DialogEnhancementState::new();
+        decode_active(
+            &mut state,
+            &iframe,
+            DialogEnhancementConfigurationUpdate::New(first_configuration),
+            true,
+            false,
+        );
+
+        let remapped = configuration(0, 0, 5);
+        let mut changed_channel = BitBuf::new();
+        changed_channel.push(false); // de_keep_data_flag
+        changed_channel.push(false); // de_ms_proc_flag
+        push_parameter_values(&mut changed_channel, remapped.method, false, &[1; 16]);
+        let effective = decode_active(
+            &mut state,
+            &changed_channel,
+            DialogEnhancementConfigurationUpdate::New(remapped),
+            false,
+            false,
+        );
+        assert_eq!(
+            effective.primary.parameters.unwrap().indices(),
+            [
+                11, 11, 11, 11, 11, 11, 11, 11, // Left keeps its previous base.
+                31, 31, 31, 31, 31, 31, 31, 31, // Centre moves from slot 2 to slot 1.
+            ]
+        );
+
+        let introduced = configuration(0, 0, 6);
+        let mut introduced_channel = BitBuf::new();
+        introduced_channel.push(false); // de_keep_data_flag
+        introduced_channel.push(false); // de_ms_proc_flag
+        push_parameter_values(&mut introduced_channel, introduced.method, false, &[1; 16]);
+        let effective = decode_active(
+            &mut state,
+            &introduced_channel,
+            DialogEnhancementConfigurationUpdate::New(introduced),
+            false,
+            false,
+        );
+        assert_eq!(
+            effective.primary.parameters.unwrap().indices(),
+            [
+                12, 12, 12, 12, 12, 12, 12, 12, // Left remains present.
+                1, 1, 1, 1, 1, 1, 1, 1, // Right was unused in the previous frame.
+            ]
+        );
+    }
+
+    #[test]
+    fn mid_side_differential_history_only_matches_the_same_representation() {
+        let configuration = configuration(0, 0, 6);
+        let mut iframe = BitBuf::new();
+        iframe.push(true); // de_ms_proc_flag
+        push_parameter_values(
+            &mut iframe,
+            configuration.method,
+            true,
+            &[5, 0, 0, 0, 0, 0, 0, 0],
+        );
+        let mut state = DialogEnhancementState::new();
+        decode_active(
+            &mut state,
+            &iframe,
+            DialogEnhancementConfigurationUpdate::New(configuration),
+            true,
+            false,
+        );
+
+        let mut continued_mid = BitBuf::new();
+        continued_mid.push(false); // de_keep_data_flag
+        continued_mid.push(true); // de_ms_proc_flag
+        push_parameter_values(&mut continued_mid, configuration.method, false, &[1; 8]);
+        let effective = decode_active(
+            &mut state,
+            &continued_mid,
+            DialogEnhancementConfigurationUpdate::KeepPrevious,
+            false,
+            false,
+        );
+        assert_eq!(effective.primary.parameters.unwrap().indices(), [6; 8]);
+
+        let mut switched_to_channels = BitBuf::new();
+        switched_to_channels.push(false); // de_keep_data_flag
+        switched_to_channels.push(false); // de_ms_proc_flag
+        push_parameter_values(
+            &mut switched_to_channels,
+            configuration.method,
+            false,
+            &[1; 16],
+        );
+        let effective = decode_active(
+            &mut state,
+            &switched_to_channels,
+            DialogEnhancementConfigurationUpdate::KeepPrevious,
+            false,
+            false,
+        );
+        assert_eq!(effective.primary.parameters.unwrap().indices(), [1; 16]);
+
+        let mut switched_back_to_mid = BitBuf::new();
+        switched_back_to_mid.push(false); // de_keep_data_flag
+        switched_back_to_mid.push(true); // de_ms_proc_flag
+        push_parameter_values(
+            &mut switched_back_to_mid,
+            configuration.method,
+            false,
+            &[2; 8],
+        );
+        let effective = decode_active(
+            &mut state,
+            &switched_back_to_mid,
+            DialogEnhancementConfigurationUpdate::KeepPrevious,
+            false,
+            false,
+        );
+        assert_eq!(effective.primary.parameters.unwrap().indices(), [2; 8]);
+    }
+
+    #[test]
+    fn compatible_method_and_max_gain_updates_keep_differential_history() {
         let first_configuration = configuration(0, 0, 1);
         let mut iframe = BitBuf::new();
         push_constant_parameter_values(&mut iframe, first_configuration, true, 5);
@@ -960,36 +1172,25 @@ mod tests {
             false,
         );
 
-        let remapped = configuration(0, 0, 2);
-        let mut changed_channel = BitBuf::new();
-        changed_channel.push(false);
-        push_parameter_values(
-            &mut changed_channel,
-            remapped.method,
-            false,
-            &[3, 0, 0, 0, 0, 0, 0, 0],
-        );
+        let hybrid = configuration(2, 0, 1);
+        let mut changed_method = BitBuf::new();
+        changed_method.push(false); // de_keep_data_flag
+        push_parameter_values(&mut changed_method, hybrid.method, false, &[1; 8]);
+        changed_method.push_bits(7, 5);
         let effective = decode_active(
             &mut state,
-            &changed_channel,
-            DialogEnhancementConfigurationUpdate::New(remapped),
+            &changed_method,
+            DialogEnhancementConfigurationUpdate::New(hybrid),
             false,
             false,
         );
-        assert_eq!(
-            effective.primary.parameters.unwrap().indices(),
-            [3, 0, 0, 0, 0, 0, 0, 0]
-        );
+        let parameters = effective.primary.parameters.unwrap();
+        assert_eq!(parameters.indices(), [6; 8]);
+        assert_eq!(parameters.signal_contribution, Some(7));
 
-        let new_gain = configuration(0, 3, 2);
+        let new_gain = configuration(2, 3, 1);
         let mut gain_only = BitBuf::new();
-        gain_only.push(false);
-        push_parameter_values(
-            &mut gain_only,
-            new_gain.method,
-            false,
-            &[1, 1, 1, 1, 1, 1, 1, 1],
-        );
+        gain_only.push(true); // de_keep_data_flag
         let effective = decode_active(
             &mut state,
             &gain_only,
@@ -997,10 +1198,36 @@ mod tests {
             false,
             false,
         );
-        assert_eq!(
-            effective.primary.parameters.unwrap().indices(),
-            [4, 1, 1, 1, 1, 1, 1, 1]
+        assert_eq!(effective.primary.parameters, Some(parameters));
+
+        let first_cross = configuration(1, 0, 6);
+        let mut iframe = BitBuf::new();
+        iframe.push_bits(9, 5);
+        push_constant_parameter_values(&mut iframe, first_cross, true, 3);
+        let mut cross_state = DialogEnhancementState::new();
+        decode_active(
+            &mut cross_state,
+            &iframe,
+            DialogEnhancementConfigurationUpdate::New(first_cross),
+            true,
+            false,
         );
+
+        let hybrid_cross = configuration(3, 0, 6);
+        let mut dependent = BitBuf::new();
+        dependent.push(true); // de_keep_pos_flag
+        dependent.push(false); // de_keep_data_flag
+        push_parameter_values(&mut dependent, hybrid_cross.method, false, &[1; 16]);
+        dependent.push_bits(11, 5);
+        let effective = decode_active(
+            &mut cross_state,
+            &dependent,
+            DialogEnhancementConfigurationUpdate::New(hybrid_cross),
+            false,
+            false,
+        );
+        assert_eq!(effective.primary.position.unwrap().first_index, 9);
+        assert_eq!(effective.primary.parameters.unwrap().indices(), [4; 16]);
     }
 
     #[test]
