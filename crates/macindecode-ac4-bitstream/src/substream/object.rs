@@ -170,40 +170,67 @@ pub(super) fn isf_object_count(config: usize) -> u32 {
 ///
 /// 位按读取顺序对应规范循环中的 `i`；`skip_lfe` 为真时跳过 LFE 所在的
 /// `i == 3` 与 `i == 16`。
-pub(super) fn count_nonstd_bed(flags: u64, skip_lfe: bool) -> u32 {
-    let mut count = 0u32;
+#[derive(Debug, Clone, Copy, Default)]
+struct BedLayout {
+    count: u32,
+    lfe_mask: u32,
+}
+
+impl BedLayout {
+    fn push(&mut self, b_lfe: bool) {
+        if b_lfe && let Some(bit) = 1u32.checked_shl(self.count) {
+            self.lfe_mask |= bit;
+        }
+        self.count = self.count.saturating_add(1);
+    }
+}
+
+fn nonstd_bed_layout(flags: u64, skip_lfe: bool) -> BedLayout {
+    let mut layout = BedLayout::default();
     for i in 0..17u32 {
         let shift = 16u32.saturating_sub(i);
         if flags.checked_shr(shift).unwrap_or(0) & 1 == 0 {
             continue;
         }
-        if skip_lfe && (i == 3 || i == 16) {
+        let b_lfe = i == 3 || i == 16;
+        if skip_lfe && b_lfe {
             continue;
         }
-        count = count.saturating_add(1);
+        layout.push(b_lfe);
     }
-    count
+    layout
+}
+
+pub(super) fn count_nonstd_bed(flags: u64, skip_lfe: bool) -> u32 {
+    nonstd_bed_layout(flags, skip_lfe).count
 }
 
 /// 统计 10 比特标准床位置标志，每个位置对应 1 或 2 个声道。
-pub(super) fn count_std_bed(flags: u64, skip_lfe: bool) -> u32 {
+fn std_bed_layout(flags: u64, skip_lfe: bool) -> BedLayout {
     const WIDTH: [u32; 10] = [2, 1, 1, 2, 2, 2, 2, 2, 2, 1];
-    let mut count = 0u32;
+    let mut layout = BedLayout::default();
     for i in 0..10u32 {
         let shift = 9u32.saturating_sub(i);
         if flags.checked_shr(shift).unwrap_or(0) & 1 == 0 {
             continue;
         }
-        if skip_lfe && (i == 2 || i == 9) {
+        let b_lfe = i == 2 || i == 9;
+        if skip_lfe && b_lfe {
             continue;
         }
         let width = WIDTH
             .get(usize::try_from(i).unwrap_or(usize::MAX))
             .copied()
             .unwrap_or(0);
-        count = count.saturating_add(width);
+        for _ in 0..width {
+            layout.push(b_lfe);
+        }
     }
-    count
+    layout
+}
+
+pub(super) fn count_std_bed(flags: u64, skip_lfe: bool) -> u32 {
+    std_bed_layout(flags, skip_lfe).count
 }
 
 /// `ceil(log2(n))`，用于 `bed_ch_bits`。
@@ -349,12 +376,13 @@ pub struct SubstreamInfoObj {
     pub n_objects: u32,
     /// 是否为动态对象。
     pub dynamic_objects: bool,
-    /// 是否含 LFE。
+    /// 动态对象路径传输的 `b_lfe` 原值。
     pub b_lfe: bool,
     /// 床对象数。
     pub n_bed: u32,
     /// ISF 对象数。
     pub n_isf: u32,
+    bed_lfe_mask: u32,
     pub(super) tail: SubstreamTail,
 }
 
@@ -369,6 +397,15 @@ impl SubstreamInfoObj {
     #[must_use]
     pub const fn audio_ndot(&self) -> bool {
         self.tail.audio_ndot
+    }
+
+    /// 给定床对象是否是 LFE；`index` 按当前 substream 的床对象码流顺序计数。
+    #[must_use]
+    pub const fn bed_object_is_lfe(&self, index: u32) -> bool {
+        match self.bed_lfe_mask.checked_shr(index) {
+            Some(mask) => mask & 1 != 0,
+            None => false,
+        }
     }
 
     pub(super) fn parse(
@@ -409,12 +446,19 @@ impl SubstreamInfoObj {
                         .get(code)
                         .copied()
                         .unwrap_or(0);
+                    if out.n_bed > 3 {
+                        out.bed_lfe_mask = 1u32 << 3;
+                    }
                 } else if reader.read_flag()? {
                     let flags = reader.read_bits(17)?;
-                    out.n_bed = count_nonstd_bed(flags, false);
+                    let layout = nonstd_bed_layout(flags, false);
+                    out.n_bed = layout.count;
+                    out.bed_lfe_mask = layout.lfe_mask;
                 } else {
                     let flags = reader.read_bits(10)?;
-                    out.n_bed = count_std_bed(flags, false);
+                    let layout = std_bed_layout(flags, false);
+                    out.n_bed = layout.count;
+                    out.bed_lfe_mask = layout.lfe_mask;
                 }
             }
             out.n_objects = out.n_bed;

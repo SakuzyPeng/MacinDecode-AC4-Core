@@ -126,10 +126,10 @@ impl ObjectDescriptors {
         &mut self,
         obj: &crate::substream::SubstreamInfoObj,
     ) -> Result<(), OamdError> {
-        for _ in 0..obj.n_bed {
+        for index in 0..obj.n_bed {
             self.push(ObjectDescriptor {
                 obj_type: ObjectType::Bed,
-                b_lfe: false,
+                b_lfe: obj.bed_object_is_lfe(index),
                 b_ajoc_coded: false,
             })?;
         }

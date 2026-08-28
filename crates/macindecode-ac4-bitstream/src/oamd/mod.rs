@@ -82,7 +82,7 @@ pub enum OamdError {
     TimingUnavailable,
     /// I-frame 的 `oamd_dyndata_single()` 没有任何对象信息块。
     ZeroBlocksInIframe,
-    /// alternative dataset 存在，但该 substream 的对象描述为空。
+    /// 非 `b_keep` alternative dataset 需要传输新对象数据，但对象描述为空。
     AlternativeDataWithoutObjects {
         /// 声明的 alternative dataset 数。
         data_sets: u32,
@@ -139,7 +139,7 @@ impl fmt::Display for OamdError {
                 bit_position,
             } => write!(
                 f,
-                "Alternative OAMD declares {data_sets} datasets for an empty object list at bit offset {bit_position}"
+                "Alternative OAMD carries new object data in {data_sets} dataset(s), but the object list is empty at bit offset {bit_position}"
             ),
         }
     }

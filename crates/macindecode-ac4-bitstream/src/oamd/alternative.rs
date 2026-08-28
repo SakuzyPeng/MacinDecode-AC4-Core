@@ -75,13 +75,6 @@ impl OamdDyndataSingle {
             } else {
                 count_base
             };
-            if n_data_sets != 0 && objects.as_slice().is_empty() {
-                return Err(OamdError::AlternativeDataWithoutObjects {
-                    data_sets: n_data_sets,
-                    bit_position: reader.bit_position(),
-                });
-            }
-
             let data_sets_bit_offset = reader.bit_position();
             for index in 0..n_data_sets {
                 parse_alternative_data_set(reader, &objects, index)?;
@@ -1058,6 +1051,39 @@ mod tests {
         assert_eq!(points.len(), 1);
         assert_eq!(points[0].target, OamdAlternativeDataPointTarget::AllObjects);
         assert!(data_sets.iter().skip(1).all(|data_set| data_set.keep));
+    }
+
+    #[test]
+    fn zero_objects_allow_kept_datasets_but_reject_new_data() {
+        let mut kept = TestBits::new();
+        kept.push(false); // ducking
+        kept.push_bits(0, 2); // category
+        kept.push_bits(1, 2); // one dataset
+        kept.push(true); // keep：不访问 obj_type[0]
+        kept.push(false); // no additional data
+
+        let mut reader = kept.reader();
+        let parsed = OamdDyndataSingle::parse(&mut reader, &[], 0, false, true).unwrap();
+        assert_eq!(reader.bit_position(), kept.bit_len as u64);
+        let data_set = parsed
+            .alternative_data_sets(kept.as_slice())
+            .unwrap()
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        assert!(data_set.keep);
+        assert_eq!(data_set.data_point_count, 0);
+
+        let mut replaced = TestBits::new();
+        replaced.push(false); // ducking
+        replaced.push_bits(0, 2); // category
+        replaced.push_bits(1, 2); // one dataset
+        replaced.push(false); // keep=0 必须取得 obj_type[0]
+        assert!(matches!(
+            OamdDyndataSingle::parse(&mut replaced.reader(), &[], 0, false, true),
+            Err(OamdError::AlternativeDataWithoutObjects { data_sets: 1, .. })
+        ));
     }
 
     #[test]

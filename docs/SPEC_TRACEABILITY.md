@@ -1846,8 +1846,8 @@ group effective timing 交给 audio metadata parser；同一物理 substream 的
 读取 gain，且仅非 LFE DYN 可读取标准精度位置。additional-data 字节数按
 `(variable_bits(2) + 1) × 8` 建立继承父 reader 末端的子边界；`ext_prec_alt_pos()` 只遍历非
 LFE DYN，余下未定义 bit 原样暴露。过短 envelope 即使后方还有足够比特也返回 underflow，不能
-把后续 tools metadata 当成扩展位置。扩展计数溢出、I-frame 零 block、空对象却声明 dataset、
-源切片截断和对象容量同样失败关闭。
+把后续 tools metadata 当成扩展位置。扩展计数溢出、I-frame 零 block、空对象 dataset 试图
+传输新值、源切片截断和对象容量同样失败关闭；空对象的 keep-only dataset 保持可解析。
 
 为保持默认 `no_std` 入口轻量，解析时会完整验证所有内容，但不把最多 256 个 metadata block
 和无固定小上限的 datasets 复制进每个 `Ac4AudioSubstream`。结果只保存对象布局与精确 bit range；
@@ -1856,8 +1856,9 @@ opaque bit view。presentation 的 `alt_data_set_index` 不进入本解析器，
 设备探测或自动 dataset 选择；gain/位置也不应用到 OAMD 或 PCM。
 
 构造门禁覆盖 BED/ISF/DYN/LFE、逐对象与公共点、gain/position presence、category/dataset
-扩展、零 dataset、`b_keep`、一/两字节 additional data、扩展精度三轴 presence、opaque tail、
-envelope 后可读反例、变长溢出、I-frame 零块及完整 `ac4_substream()` 接线。当前提交只保留
+扩展、零 dataset、`b_keep`、零对象 keep-only dataset、静态床 LFE 对象序位、一/两字节
+additional data、扩展精度三轴 presence、opaque tail、envelope 后可读反例、变长溢出、
+I-frame 零块及完整 `ac4_substream()` 接线。当前提交只保留
 `b_keep` 原始更新；按物理 substream 事务性延续有效 dataset、把同一共享解析器接入 A-JOC
 `audio_data_ajoc()` 的两处调用，以及真实 alternative/direct-object 向量仍待后续。Channel-based
 没有对象 metadata 上下文，按既定范围继续失败关闭。

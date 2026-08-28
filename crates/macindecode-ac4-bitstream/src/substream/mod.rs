@@ -244,6 +244,31 @@ mod tests {
     }
 
     #[test]
+    fn direct_bed_layout_preserves_lfe_object_ordinals() {
+        for (bits, expected_count, expected_lfe_mask) in [
+            // 固定 5.1 配置：LFE 是第 4 个床对象。
+            ("000 0 1 1 1 010 0 1", 6u32, 0b1000u32),
+            // 非标准标志的位置 3 与 16 都是 LFE；输出序位分别为 1、2。
+            ("000 0 1 1 0 1 10010000000000001 0 1", 3, 0b110),
+            // 标准位置 0 先展开为两个对象，位置 2 与 9 的 LFE 随后位于 2、3。
+            ("000 0 1 1 0 0 1010000001 0 1", 4, 0b1100),
+        ] {
+            let data = pack(bits);
+            let info = SubstreamInfoObj::parse(&mut BitReader::new(&data), 0, 1, false).unwrap();
+            assert_eq!(info.n_bed, expected_count, "{bits}");
+
+            let descriptors = crate::oamd::ObjectDescriptors::from_object_substream(&info).unwrap();
+            assert_eq!(descriptors.as_slice().len(), expected_count as usize);
+            for (index, descriptor) in descriptors.as_slice().iter().enumerate() {
+                let index = u32::try_from(index).unwrap_or(u32::MAX);
+                let expected = expected_lfe_mask.checked_shr(index).unwrap_or(0) & 1 != 0;
+                assert_eq!(info.bed_object_is_lfe(index), expected, "{bits}: {index}");
+                assert_eq!(descriptor.b_lfe, expected, "{bits}: {index}");
+            }
+        }
+    }
+
+    #[test]
     fn dynamic_only_assignment_reads_single_bit() {
         let data = pack("1");
         let mut reader = BitReader::new(&data);
