@@ -69,9 +69,12 @@ pub use audio_substream::{
 #[cfg(feature = "audio-decode")]
 pub use audio_substream::{
     DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
-    DialogEnhancementDecodedData, DialogEnhancementMixCoefficients, DialogEnhancementParameterData,
-    DialogEnhancementParameterUpdate, DialogEnhancementPositionUpdate,
-    DialogEnhancementSimulcastData, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
+    DialogEnhancementDecodedData, DialogEnhancementEffectiveData,
+    DialogEnhancementEffectiveDataBlock, DialogEnhancementEffectiveParameterData,
+    DialogEnhancementEffectiveSimulcastData, DialogEnhancementMixCoefficients,
+    DialogEnhancementParameterData, DialogEnhancementParameterUpdate,
+    DialogEnhancementPositionUpdate, DialogEnhancementSimulcastData, DialogEnhancementState,
+    DialogEnhancementStateError, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
     MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
 };
 pub use emdf::{EmdfInfo, EmdfPayloadsSubstream};

@@ -3,8 +3,8 @@
 //! 对应 `TS103190-2:v1.3.1:6.2.7.5`–`6.2.7.6` 与
 //! `TS103190-1:v1.4.1:4.2.14.13`、`4.3.14.4`–`4.3.14.5`、附录
 //! `A.4`。本模块把四张 DE 码本解为 absolute/differential 整数码值，并解析 panning、
-//! keep、M/S、hybrid contribution 与 simulcast gate。它不延续 `de_par_prev`、不反量化、
-//! 不执行 dialogue enhancement，也不修改 PCM。
+//! keep、M/S、hybrid contribution 与 simulcast gate；[`DialogEnhancementState`] 再按物理
+//! substream 延续配置与参数索引。它不反量化、不执行 dialogue enhancement，也不修改 PCM。
 
 use super::{
     DialogEnhancementConfiguration, DialogEnhancementConfigurationUpdate, DialogEnhancementMetadata,
@@ -12,6 +12,13 @@ use super::{
 use crate::huffman::{HuffmanError, HuffmanTable, tables};
 use crate::reader::{BitReader, ReadError};
 use core::fmt;
+
+mod state;
+pub use state::{
+    DialogEnhancementEffectiveData, DialogEnhancementEffectiveDataBlock,
+    DialogEnhancementEffectiveParameterData, DialogEnhancementEffectiveSimulcastData,
+    DialogEnhancementState, DialogEnhancementStateError,
+};
 
 /// P1 `4.3.14.5.1` 固定的 DE 参数频带数。
 pub const DIALOG_ENHANCEMENT_PARAMETER_BANDS: usize = 8;
@@ -263,7 +270,7 @@ impl DialogEnhancementMetadata {
 
         let bit_position = self.unparsed_body_bit_offset;
         let b_iframe = self
-            .data_iframe
+            .b_iframe()
             .ok_or(DialogEnhancementDataError::InconsistentMetadata { bit_position })?;
         let configuration = match self.configuration {
             DialogEnhancementConfigurationUpdate::NotPresent => {
@@ -470,7 +477,7 @@ mod tests {
             configuration: update,
             unparsed_body_bit_offset: 0,
             unparsed_body_bits: u32::try_from(bit_len).unwrap_or(u32::MAX),
-            data_iframe: Some(b_iframe),
+            frame_iframe: Some(b_iframe),
             simulcast_gate,
         }
     }
@@ -776,7 +783,7 @@ mod tests {
             configuration: DialogEnhancementConfigurationUpdate::NotPresent,
             unparsed_body_bit_offset: 0,
             unparsed_body_bits: 0,
-            data_iframe: None,
+            frame_iframe: None,
             simulcast_gate: false,
         };
         assert_eq!(absent.decode_data(empty.as_slice(), None).unwrap(), None);
@@ -912,6 +919,10 @@ mod tests {
             b_iframe: Some(true),
         };
         let parsed = Ac4AudioSubstream::parse(payload.as_slice(), context).unwrap();
+        assert_eq!(
+            parsed.tools_metadata.dialog_enhancement.b_iframe(),
+            Some(true)
+        );
         let decoded = parsed
             .tools_metadata
             .dialog_enhancement
@@ -927,5 +938,14 @@ mod tests {
             decoded.simulcast,
             DialogEnhancementSimulcastData::NotSignaled
         );
+
+        let mut state = DialogEnhancementState::new();
+        let effective = state
+            .decode_frame(parsed.tools_metadata.dialog_enhancement, payload.as_slice())
+            .unwrap()
+            .unwrap();
+        assert_eq!(effective.configuration, configuration);
+        assert_eq!(effective.primary.parameters, None);
+        assert_eq!(state.configuration(), Some(configuration));
     }
 }

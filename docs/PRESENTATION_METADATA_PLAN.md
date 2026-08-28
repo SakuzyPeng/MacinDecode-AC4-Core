@@ -8,8 +8,9 @@
 > `audio-decode` 下可显式解码 Huffman gains；音频 substream 的 tools metadata 已严格定界并
 > 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置；默认构建
 > 仍以原始 bit view 保留 `de_data()`/simulcast body，`audio-decode` 下已可显式解码完整帧内
-> Huffman data 与 simulcast。物理 substream 配置/参数状态、EMDF payload 与 alternative dataset
-> 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
+> Huffman data 与 simulcast，并按物理 substream 事务性延续配置、panning 与两份参数索引。
+> EMDF payload 与 alternative dataset 数据路径仍待实现。当前工具链可再生产普通 presentation
+> payload 与 dialog enhancement
 > 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
 > 以[实施路线图](ROADMAP.md)为准。
@@ -115,8 +116,8 @@ payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角�
   `dialog_enhancement()` 的配置与逐帧数据；
 - 保留 loudness version、practice type、dialgate、correction type、program boundary 等当前只读走
   的原始字段；
-- 配置按物理 substream 隔离，I-frame 更新成功后才替换历史；seek、配置变化、不连续和解析失败
-  清空相应历史；
+- 配置按物理 substream 隔离，I-frame 与 dependent 更新完成后才事务性替换历史；失败不提交，
+  seek、拓扑变化、不连续或丢帧后由调用方显式清空相应历史；
 - 区分 `dialog_enhancement()` 与已经实现的 A-JOC `ajoc_dmx_de_data()`，两套状态不得共用。
 
 前两个增量已按 P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6` 与 P1
@@ -141,10 +142,23 @@ panning index、双声道 M/S gate、5 比特 hybrid contribution，以及 chann
 保留 3 channel × 8 band 的 24 个 absolute/differential 整数码值；成功必须恰好耗尽 tools
 body。默认构建不依赖本地规范码本，继续保留相同原始 bit view。
 
-当前还不按 `de_par_prev` 还原跨 band/channel 或跨帧的有效参数，也不维护按物理 substream
-隔离的配置、panning、parameter 与 simulcast 历史；这些是本节下一增量。现有真实向量的
-`tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实验证；活动
-分支仍只有构造验证。解析结果不反量化或执行 dialogue enhancement，也不修改 PCM。
+第四个增量新增 `DialogEnhancementState`，调用方为每个物理 `substream_index` 分别持有一个实例。
+I-frame 从空候选开始；dependent frame 延续 configuration、primary panning、最近一次传输的
+primary/simulcast 参数，以及仅属于上一帧的两份 `de_par_prev`。primary 与 separate-core
+simulcast 的参数历史彼此独立，第二份 data 不会覆盖第一份的 differential 基准。method 或
+channel mapping 改变会使 panning 与两份参数历史失效，仅 `de_max_gain` 改变则保留索引形状。
+
+P1 表 78 的 I-frame 还原从首个 absolute index 开始：同一 channel 沿 band 用 `ref_val` 累加，
+下一 channel 的 band 0 以前一 channel 的 band 0 为锚点，再沿新 channel 累加；dependent frame
+逐 channel/band 加到各自 `de_par_prev`。上一帧 DE 不活动时，规范要求 differential 基准归零；
+`de_keep_data_flag` 的“latest transmitted”历史仍单独保留。panning keep 只接受上一帧兼容值。
+所有 configuration、position、primary 与 simulcast 更新在整帧成功后一次提交；任何帧内解码、
+keep 或还原错误均不污染已提交状态。I-frame absence 清空全部状态；缺少精确物理 `b_iframe`
+上下文时，stateful API 失败而不猜测随机访问边界。
+
+现有真实向量的 `tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实
+验证；活动分支与跨帧状态仍只有构造验证。解析结果只保留有效整数索引，不反量化或执行 dialogue
+enhancement，也不修改 PCM。
 
 ### 3.3 EMDF 与 alternative 数据路径
 

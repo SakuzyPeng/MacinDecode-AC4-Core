@@ -24,8 +24,8 @@
 //! `tools_metadata_size` 另以比特数严格定界 DRC 与 dialogue enhancement。当前
 //! `sus_ver >= 1` 路径解析 `b_de_data_present`、I/dependent configuration gate 与
 //! `de_config()`，并把 `de_data()`/simulcast body 保留为零拷贝 bit view；启用
-//! `audio-decode` 后可显式熵解码完整帧内 data 语法，但不延续有效参数或执行 dialogue
-//! enhancement。
+//! `audio-decode` 后可显式熵解码完整帧内 data 语法，并以调用方按物理 substream 隔离的状态
+//! 还原有效参数索引；仍不反量化或执行 dialogue enhancement。
 
 use crate::emdf::EmdfPayloadsSubstream;
 use crate::reader::{BitReader, ReadError};
@@ -36,9 +36,12 @@ mod dialog_enhancement;
 #[cfg(feature = "audio-decode")]
 pub use dialog_enhancement::{
     DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
-    DialogEnhancementDecodedData, DialogEnhancementMixCoefficients, DialogEnhancementParameterData,
-    DialogEnhancementParameterUpdate, DialogEnhancementPositionUpdate,
-    DialogEnhancementSimulcastData, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
+    DialogEnhancementDecodedData, DialogEnhancementEffectiveData,
+    DialogEnhancementEffectiveDataBlock, DialogEnhancementEffectiveParameterData,
+    DialogEnhancementEffectiveSimulcastData, DialogEnhancementMixCoefficients,
+    DialogEnhancementParameterData, DialogEnhancementParameterUpdate,
+    DialogEnhancementPositionUpdate, DialogEnhancementSimulcastData, DialogEnhancementState,
+    DialogEnhancementStateError, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
     MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
 };
 
@@ -329,7 +332,8 @@ impl Iterator for AudioToolsMetadataBitIter<'_> {
 
 /// `de_config()` 的三个原始码值。
 ///
-/// 配置只用于继续定界 `de_data()`；本类型不换算最大增益，也不执行 dialogue enhancement。
+/// 配置用于继续定界 `de_data()`，并在 `audio-decode` 状态层选择参数形状；本类型不换算最大
+/// 增益，也不执行 dialogue enhancement。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DialogEnhancementConfiguration {
     /// 2 比特 `de_method`。
@@ -361,8 +365,8 @@ pub enum DialogEnhancementConfigurationUpdate {
 
 /// `dialog_enhancement()` 的 presence、configuration 与活动 data body。
 ///
-/// 默认构建以原始 bit view 保留 `de_data()`；启用 `audio-decode` 后可显式解码帧内语法。
-/// 本类型不执行 dialogue enhancement。
+/// 默认构建以原始 bit view 保留 `de_data()`；启用 `audio-decode` 后可显式解码帧内语法，或交给
+/// `DialogEnhancementState` 延续有效索引。本类型不执行 dialogue enhancement。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DialogEnhancementMetadata {
     /// `b_de_data_present`。
@@ -371,11 +375,20 @@ pub struct DialogEnhancementMetadata {
     pub configuration: DialogEnhancementConfigurationUpdate,
     unparsed_body_bit_offset: u64,
     unparsed_body_bits: u32,
-    data_iframe: Option<bool>,
+    frame_iframe: Option<bool>,
     simulcast_gate: bool,
 }
 
 impl DialogEnhancementMetadata {
+    /// 前置 info 为当前物理 substream 提供的 `b_audio_ndot`/`b_iframe`。
+    ///
+    /// 一个 info 覆盖多个物理 substream 且无法恢复逐一 ndot 时为 `None`。活动 DE 的帧内解析
+    /// 会拒绝该情况；DE 缺席仍可无状态解析，但跨帧状态无法判定是否应在随机访问点清空。
+    #[must_use]
+    pub const fn b_iframe(self) -> Option<bool> {
+        self.frame_iframe
+    }
+
     /// 已解析 configuration 之后尚未解释的 `de_data()`/simulcast body 比特数。
     #[must_use]
     pub const fn unparsed_body_len_bits(self) -> u32 {
@@ -1262,7 +1275,7 @@ fn parse_tools_metadata(
             configuration,
             unparsed_body_bit_offset,
             unparsed_body_bits,
-            data_iframe: if data_present { context.b_iframe } else { None },
+            frame_iframe: context.b_iframe,
             simulcast_gate: data_present && matches!(context.channel_mode, Some(13 | 14)),
         },
     })

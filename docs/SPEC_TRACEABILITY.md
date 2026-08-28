@@ -54,7 +54,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
-| 音频 substream 框架、metadata 与 DE config/data | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、逐 bit 截断/尾随与 offset 构造测试；活动真实向量待验证 |
+| 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；活动真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
 | ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
@@ -1740,7 +1740,7 @@ alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
-### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement config/data
+### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement config/data/state
 
 P2 `6.2.7.1` 先用 7 比特 `tools_metadata_size_value` 和可选的
 `variable_bits(3) << 7` 给出完整 tools metadata 的**精确比特数**；P1 `4.3.12.1.1` 明确该
@@ -1774,15 +1774,29 @@ dependent frame。
 P1 附录 A.4 表 A.58–A.61 的 `DE_HCB_ABS_0`、`DE_HCB_DIFF_0`、`DE_HCB_ABS_1` 与
 `DE_HCB_DIFF_1` 分别使用 `cb_off = 0/31/30/60`。method 的低位选择 0/1 表族；固定容量按表 171
 与 `4.3.14.5.1` 保存最多 `3 × 8 = 24` 个 channel-major 码值。I-frame 首值来自 absolute 表，
-其余值来自 differential 表；dependent frame 全部来自 differential 表。当前 API 有意只返回这些
-Huffman 映射后的整数码值，不把它们冒充已经按 `ref_val`/`de_par_prev` 还原的有效参数。成功解析
-要求恰好耗尽 tools body；固定字段、任一码字或 simulcast 截断，以及已知语法后的尾随位均失败。
+其余值来自 differential 表；dependent frame 全部来自 differential 表。无状态 API 有意返回这些
+Huffman 映射后的 absolute/differential 整数码值；成功解析要求恰好耗尽 tools body，固定字段、
+任一码字或 simulcast 截断，以及已知语法后的尾随位均失败。
 
-尚待后续的是按物理 substream 隔离并事务提交的 configuration、panning、primary/simulcast
-parameter 历史，以及跨 band/channel/帧的 `de_par` 差分还原。解析层不反量化或执行 dialogue
-enhancement，不生成处理后的 PCM，也不与 A-JOC `ajoc_dmx_de_data()` 共用状态。现有真实向量
-均只观察到 `tools_metadata_size = 1`、`b_de_data_present = 0`；活动路径的 config/data、
-非字节对齐 view 和失败边界由构造码流覆盖，不能标作真实正向验证。
+`DialogEnhancementState` 在其上还原 P1 表 78 的有效整数索引。I-frame 的首 channel/band 使用
+absolute 值；同 channel 后续 band 以前一 band 为 `ref_val`，下一 channel 的 band 0 以前一
+channel 的 band 0 为锚点。dependent frame 每项加到对应 `de_par_prev`；P1 `4.3.14.5.3`
+规定上一帧 inactive 或对应 channel 未使用时该基准为 0。parameter keep 的定义是 latest
+transmitted data，因此实现把 keep 历史与 strictly-previous-frame differential 基准分开保存；
+dependent inactive frame 只清空后者。primary 与 P2 separate-core simulcast 各持一套参数历史，
+不因同帧第二次调用 `de_data()` 而相互覆盖。
+
+状态实例由调用方按物理 `substream_index` 隔离。I-frame 从空候选开始；dependent frame 延续
+configuration 与兼容历史。method/channel mapping 改变会清空 panning 与两份参数历史，只改变
+`de_max_gain` 则不改变参数形状。configuration、position、primary/simulcast 参数在全部 keep、
+differential 与尾随验证成功后一次提交；任何错误均保留旧状态。I-frame absence 清空状态；
+dependent absence 保留 configuration/latest-transmitted data，但使下一 differential 使用零基准。
+stateful absence 同样需要精确的物理 `b_iframe`，未知时失败而不猜测。
+
+解析层仍不反量化或执行 dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC
+`ajoc_dmx_de_data()` 共用状态。现有真实向量均只观察到 `tools_metadata_size = 1`、
+`b_de_data_present = 0`；活动路径的 config/data/state、非字节对齐 view 和失败边界由构造码流
+覆盖，不能标作真实正向验证。
 
 ## 6. 未决规范问题
 
@@ -1793,6 +1807,7 @@ enhancement，不生成处理后的 PCM，也不与 A-JOC `ajoc_dmx_de_data()` �
 - ~~direct-object 测试流是否能由现有编码链稳定生成。~~ **已关闭（M2）**：不能。TOC 拓扑显示 `b_channel_coded = 0` 且 `b_ajoc = 1`，两个案例全部 143 帧均为 A-JOC。见测试向量策略 9.2a。取得能产生 direct-object 的编码器前，该路径只有构造码流的分支覆盖。
 - A-JOC 输出 identity 的规范语义和稳定性。M2 已查明输出槽位总数即码流声明的 `n_fullband_upmix_signals` 加 `b_lfe`（P2 `6.2.1.9`），与创作对象无关，且单个孤立对象不被摊分（测试向量策略 9.2、9.2a）；但规范层面 identity 的定义、跨帧稳定性要求，以及槽位接近上限时是否仍保持分离，均需核对条款并补充实验。
 - **规范内部不一致（P1 `4.3.3.2.7` 与 P2 `6.3.2.1.3`）**：同一个 `b_iframe_global`，Part 1 表述为「所有 presentation 中的所有 substream 的 `b_iframe` 为真」，Part 2 表述为「每个 presentation 的**第一个** substream 独立编码」。二者对随机访问的强度要求不同。本实现按 Part 2 处理（它针对当前覆盖的 `bitstream_version = 2`），并要求全部 ndot 标志为真才判定为完整随机访问点，见测试向量策略 9.2b。
+- **规范内部不一致（P1 表 78 与 P2 `6.2.7.6`）**：I-frame 的非首 channel 参数循环中，P1 每次令 `ref_val = de_par[ch][band]`，P2 却写成固定的 `de_par[0][band]`；两者从第二个 channel 的 band 1 起产生不同索引。P2 同一循环末尾又令 `ref_val = de_par[ch][0]`，与 P1 的 current-channel 递推更自洽。当前按 P1 表 78 实现，并以三 channel 非零 differential 构造测试锁定；在 ETSI 澄清或取得活动真实向量前不把该选择冒充外部验证。
 - **规范内部不一致（P2 `6.2.8.5` 与 `6.2.8.10`）**：`add_per_object_md()` 的定义写作 `add_per_object_md(b_object_not_active, b_dynamic_object)`，而 `object_info_block()` 中的调用写作 `add_per_object_md(b_dynamic_object, b_object_not_active)`，两者形参顺序相反。函数体用 `if (b_object_not_active == 0) { if (b_dynamic_object) { b_ext_prec_pos; …` 决定是否读取扩展精度位置，按调用处的顺序绑定，这个条件几乎恰好相反。
 
 **该差异不会被任何比特级门禁发现**：`object_info_block()` 里 `remain_bits = 8 * atd_size - used_bits`，总消耗恒为 `8 × atd_size`，`add_per_object_md()` 内部读多读少都被 `add_table_data` 吸收。实测确认——把绑定顺序换过来，八条流 568 帧的落点判据**照常全部通过**。
