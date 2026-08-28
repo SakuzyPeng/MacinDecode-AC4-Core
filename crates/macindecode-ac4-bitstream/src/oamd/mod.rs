@@ -16,6 +16,9 @@
 //! 本模块同时提供 `oamd_substream` 载荷解析和共享的 `oamd_dyndata_single` 语法模型。
 //! non-A-JOC alternative 路径由 `audio_substream::metadata()` 调用后者；A-JOC 路径的
 //! 同类数据位于 `audio_data_ajoc`，在 `var_channel_element()` 与 `ajoc()` 之后。
+//! [`OamdAlternativeDataSetState`] 可由两条路径共享，用于按物理 audio substream 与
+//! dataset loop index 延续 dependent frame 的 `b_keep` 有效属性；它只拥有化保存规范已定义的
+//! gain 与位置原值，opaque additional data 仍由当前帧的只读 view 保留。
 //!
 //! # 原始量化值
 //!

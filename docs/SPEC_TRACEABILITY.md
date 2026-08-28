@@ -55,7 +55,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
 | 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；活动真实向量待验证 |
-| alternative OAMD datasets | P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream`、`audio_data`、`full_ajoc` | per-substream 对象/块上下文；non-A-JOC 及 A-JOC core/full 接线；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view 构造测试；未应用时对象出口失败关闭；有效 keep 状态与真实向量待验证 |
+| alternative OAMD datasets | P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream`、`audio_data`、`full_ajoc` | per-substream 对象/块上下文；non-A-JOC 及 A-JOC core/full 接线；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view；按 substream/index 隔离的 keep 有效状态、无历史/独立帧/布局变化/失败事务构造测试；未应用时对象出口失败关闭；真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
 | ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
@@ -1864,12 +1864,21 @@ P2 `6.2.3.4` 的 A-JOC 音频数据在 core/downmix 动态数据与 full/upmix �
 都不得把未应用 metadata 静默变成 PCM，ObserveFull 仍可保留语法 observation；Scene 将该原因
 稳定映射到 OAMD syntax path。
 
+`6.3.9.4.5` 只规定 `b_keep` 表示上一份 object-property update 仍有效，没有给无历史情形定义
+默认值。`OamdAlternativeDataSetState` 因而要求调用方按 `(physical audio substream,
+data_set_index)` 隔离实例：非 keep 更新拥有化保存当前规范已定义的 gain、标准精度位置和
+`ext_prec_alt_pos()` 原值，dependent keep 返回同一快照；首次 keep、reset 后 keep 与 I-frame
+keep 均失败关闭。dependent frame 未 reset 改变对象布局或把同一实例用于另一 dataset index 也
+结构化失败，且任何失败都不提交候选。按单 index 建模避免为无固定小上限的 dataset 列表引入
+任意容量限制，也不会代替 presentation target 做选择。additional-data 中规范未定义的
+`skip_data` 继续由当前帧零拷贝 view 完整保留；状态不猜测未来扩展是否属于 keep 的属性集合。
+
 构造门禁覆盖 BED/ISF/DYN/LFE、逐对象与公共点、gain/position presence、category/dataset
 扩展、零 dataset、`b_keep`、零对象 keep-only dataset、静态床 LFE 对象序位、一/两字节
 additional data、扩展精度三轴 presence、opaque tail、envelope 后可读反例、变长溢出、
-I-frame 零块及完整 `ac4_substream()` 接线。当前只保留
-`b_keep` 原始更新；按物理 substream 事务性延续有效 dataset，以及真实 alternative/direct-object
-向量仍待后续。Channel-based 没有对象 metadata 上下文，按既定范围继续失败关闭。
+I-frame 零块、完整 `ac4_substream()` 接线，以及 new→keep、首次/独立帧 keep、显式 reset、
+dataset index 串用、dependent 对象布局变化和失败事务。真实 alternative/direct-object 向量仍待
+后续。Channel-based 没有对象 metadata 上下文，按既定范围继续失败关闭。
 
 ## 6. 未决规范问题
 

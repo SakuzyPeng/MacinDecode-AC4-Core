@@ -11,7 +11,7 @@
 > Huffman data 与 simulcast，并按物理 substream 事务性延续配置、panning 与两份参数索引。
 > EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证；non-A-JOC
 > `metadata()` 与 A-JOC `audio_data_ajoc()` 两处动态数据中的 alternative OAMD 原始 dataset
-> 已完成构造验证，`b_keep` 有效状态仍待实现。当前工具链可再生产普通 presentation payload
+> 及 `b_keep` 有效状态已完成构造验证。当前工具链可再生产普通 presentation payload
 > 与 dialog enhancement 正向候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节
 > 保持外部向量待验证。当前实际进度以[实施路线图](ROADMAP.md)为准。
 
@@ -188,8 +188,11 @@ view 保留。结果按码流顺序暴露全部 dataset，不读取 presentation
 公共结构只保存已验证边界并按需迭代。`b_keep` 原值已保留。A-JOC `audio_data_ajoc()` 现在也
 复用同一解析器，分别保留 core/downmix 与 full/upmix 的完整 block 和 dataset 边界。语法观察
 不选择或应用 dataset；Core/Full 对象出口在应用语义落地前以类型化
-`AlternativeObjectMetadata` 失败关闭，避免静默输出错误 PCM。余项是跨帧有效 dataset 状态与
-真实向量验证；Channel-based 路径没有对象上下文，按既定范围继续失败关闭。
+`AlternativeObjectMetadata` 失败关闭，避免静默输出错误 PCM。`OamdAlternativeDataSetState`
+按物理 substream 与 dataset loop index 隔离，拥有化保存规范已定义的 gain、标准/扩展精度位置，
+并在 dependent `b_keep` 帧复用；无历史、I-frame keep、dependent 布局变化与 index 串用均
+事务性失败。opaque 尾部仍由当前帧原始 view 保留，状态不猜测未来扩展语义。余项只是真实向量
+验证；Channel-based 路径没有对象上下文，按既定范围继续失败关闭。
 
 ## 4. 明确延后或不在范围内
 

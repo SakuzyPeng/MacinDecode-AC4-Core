@@ -204,6 +204,7 @@ impl OamdDyndataSingle {
             )?,
             source: payload,
             objects: self.objects,
+            b_iframe: self.b_iframe,
             next_index: 0,
             remaining: alternative.n_data_sets,
             failed: false,
@@ -319,6 +320,220 @@ pub struct OamdAlternativeExtendedPosition {
     pub position: Option<ExtendedPrecisionPosition>,
 }
 
+const EMPTY_ALTERNATIVE_DATA_POINT: OamdAlternativeDataPoint = OamdAlternativeDataPoint {
+    data_point_index: 0,
+    target: OamdAlternativeDataPointTarget::Object(0),
+    descriptor: ObjectDescriptor {
+        obj_type: ObjectType::Dynamic,
+        b_lfe: false,
+        b_ajoc_coded: false,
+    },
+    alternative_gain: None,
+    alternative_position: None,
+};
+
+const EMPTY_ALTERNATIVE_EXTENDED_POSITION: OamdAlternativeExtendedPosition =
+    OamdAlternativeExtendedPosition {
+        object_index: 0,
+        position: None,
+    };
+
+/// 一次非 keep alternative dataset 中当前规范已定义的 object-property 原值。
+///
+/// 本快照拥有 gain、标准精度位置与扩展精度位置，可跨 payload 生命周期保留并由
+/// [`OamdAlternativeDataSetState`] 在 `b_keep` 帧复用。additional-data 中规范未定义的
+/// opaque `skip_data` 仍只由 [`OamdAlternativeDataSet::opaque_additional_data`] 原样暴露；
+/// 本类型不猜测未来扩展是否属于 `b_keep` 的 object-property update。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OamdAlternativePropertySnapshot {
+    /// dataset 在 `n_alt_data_sets` 循环内的零基下标。
+    pub data_set_index: u32,
+    /// 非 ISF 隐式公共分支传输的 `b_common_data`。
+    pub common_data: Option<bool>,
+    data_points: [OamdAlternativeDataPoint; MAX_OAMD_OBJECTS],
+    data_points_len: usize,
+    extended_positions: [OamdAlternativeExtendedPosition; MAX_OAMD_OBJECTS],
+    extended_positions_len: usize,
+}
+
+impl OamdAlternativePropertySnapshot {
+    /// 当前有效的 gain/标准精度位置数据点，保持码流顺序与作用范围。
+    #[must_use]
+    pub fn data_points(&self) -> &[OamdAlternativeDataPoint] {
+        self.data_points.get(..self.data_points_len).unwrap_or(&[])
+    }
+
+    /// 当前有效的扩展精度位置原值，保持对象顺序。
+    #[must_use]
+    pub fn extended_positions(&self) -> &[OamdAlternativeExtendedPosition] {
+        self.extended_positions
+            .get(..self.extended_positions_len)
+            .unwrap_or(&[])
+    }
+}
+
+/// 延续一个 alternative dataset 的已定义 object-property update 时的状态错误。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OamdAlternativeDataSetStateError {
+    /// 回取已验证 bit range 时发生底层 OAMD 错误。
+    Oamd(OamdError),
+    /// 同一状态实例收到了另一个 dataset loop index。
+    DataSetIndexChanged {
+        /// 状态已经绑定的零基下标。
+        previous: u32,
+        /// 当前更新的零基下标。
+        current: u32,
+    },
+    /// dependent frame 未经 reset 改变了本物理 substream 的对象布局。
+    ObjectLayoutChanged {
+        /// 发生布局变化的 dataset 零基下标。
+        data_set_index: u32,
+    },
+    /// `b_keep == 1`，但当前连续解码区间没有上一份 object-property update。
+    HistoryUnavailable {
+        /// 缺少历史的 dataset 零基下标。
+        data_set_index: u32,
+    },
+}
+
+impl fmt::Display for OamdAlternativeDataSetStateError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::Oamd(error) => write!(
+                formatter,
+                "Failed to recover an alternative OAMD property update: {error}"
+            ),
+            Self::DataSetIndexChanged { previous, current } => write!(
+                formatter,
+                "Alternative OAMD state is bound to dataset {previous}, but received dataset {current}; isolate state by physical substream and dataset index"
+            ),
+            Self::ObjectLayoutChanged { data_set_index } => write!(
+                formatter,
+                "Dependent alternative OAMD dataset {data_set_index} changed object layout; reset state at the topology boundary"
+            ),
+            Self::HistoryUnavailable { data_set_index } => write!(
+                formatter,
+                "Alternative OAMD dataset {data_set_index} uses b_keep without a previous object-property update"
+            ),
+        }
+    }
+}
+
+impl core::error::Error for OamdAlternativeDataSetStateError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::Oamd(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+impl From<OamdError> for OamdAlternativeDataSetStateError {
+    fn from(error: OamdError) -> Self {
+        Self::Oamd(error)
+    }
+}
+
+/// 一个 alternative dataset loop index 的当前有效 object-property 状态。
+///
+/// 状态实例必须按 `(physical audio substream, data_set_index)` 隔离；它不读取 presentation
+/// target，也不选择 dataset。一次成功的新更新会复制规范已定义的量化原值，后续 dependent
+/// frame 的 `b_keep` 返回同一快照。规范没有为“无历史的 keep”定义默认 object properties，
+/// 因而首次 keep、reset 后 keep 以及 I-frame keep 都失败关闭。
+///
+/// I-frame 的新更新不依赖旧对象布局；dependent frame 若改变布局则要求调用方先
+/// [`reset`](Self::reset)。seek、换源、拓扑变化、不连续或丢帧后也应 reset。所有更新均为
+/// 事务性，本类型不反量化、不选择 target，也不把属性应用到 OAMD 或 PCM。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct OamdAlternativeDataSetState {
+    data_set_index: Option<u32>,
+    objects: Option<ObjectDescriptors>,
+    effective: Option<OamdAlternativePropertySnapshot>,
+}
+
+impl OamdAlternativeDataSetState {
+    /// 创建尚未绑定 dataset loop index 的空状态。
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            data_set_index: None,
+            objects: None,
+            effective: None,
+        }
+    }
+
+    /// 当前状态绑定的 dataset 零基下标；首次成功更新前为 `None`。
+    #[must_use]
+    pub const fn data_set_index(self) -> Option<u32> {
+        self.data_set_index
+    }
+
+    /// 最近一次成功提交后当前有效的已定义 object properties。
+    #[must_use]
+    pub const fn effective(self) -> Option<OamdAlternativePropertySnapshot> {
+        self.effective
+    }
+
+    /// 清除 dataset 绑定、对象布局与有效更新。
+    pub fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    /// 应用当前帧同一 dataset loop index 的原始更新。
+    ///
+    /// `data_set` 自带其 `oamd_dyndata_single()` 的精确 `b_iframe` 与对象布局。非 keep 更新复制
+    /// 当前规范已定义的属性；dependent keep 沿用历史。调用方仍可从原始 `data_set` 取得当前帧
+    /// 的 opaque additional-data view，本状态不解释或复制该保留区。
+    ///
+    /// # Errors
+    ///
+    /// 状态被误用于另一 dataset index、dependent frame 改变对象布局、keep 没有连续历史，或
+    /// 回取已验证 bit range 失败时返回错误。任何失败都不会修改状态。
+    pub fn apply(
+        &mut self,
+        data_set: OamdAlternativeDataSet<'_>,
+    ) -> Result<OamdAlternativePropertySnapshot, OamdAlternativeDataSetStateError> {
+        if let Some(previous) = self.data_set_index
+            && previous != data_set.index
+        {
+            return Err(OamdAlternativeDataSetStateError::DataSetIndexChanged {
+                previous,
+                current: data_set.index,
+            });
+        }
+
+        if !data_set.b_iframe
+            && self
+                .objects
+                .is_some_and(|objects| objects != data_set.objects)
+        {
+            return Err(OamdAlternativeDataSetStateError::ObjectLayoutChanged {
+                data_set_index: data_set.index,
+            });
+        }
+
+        let effective = if data_set.keep {
+            if data_set.b_iframe {
+                None
+            } else {
+                self.effective
+            }
+            .ok_or(OamdAlternativeDataSetStateError::HistoryUnavailable {
+                data_set_index: data_set.index,
+            })?
+        } else {
+            snapshot_defined_properties(data_set)?
+        };
+
+        *self = Self {
+            data_set_index: Some(data_set.index),
+            objects: Some(data_set.objects),
+            effective: Some(effective),
+        };
+        Ok(effective)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ParsedAlternativeAdditionalData {
     declared_bytes: u32,
@@ -357,6 +572,7 @@ pub struct OamdAlternativeDataSet<'a> {
     pub additional_data_bytes: Option<u32>,
     source: &'a [u8],
     objects: ObjectDescriptors,
+    b_iframe: bool,
     parsed: ParsedAlternativeDataSet,
 }
 
@@ -432,6 +648,7 @@ pub struct OamdAlternativeDataSetIter<'a> {
     reader: BitReader<'a>,
     source: &'a [u8],
     objects: ObjectDescriptors,
+    b_iframe: bool,
     next_index: u32,
     remaining: u32,
     failed: bool,
@@ -458,6 +675,7 @@ impl<'a> Iterator for OamdAlternativeDataSetIter<'a> {
                         .map(|additional| additional.declared_bytes),
                     source: self.source,
                     objects: self.objects,
+                    b_iframe: self.b_iframe,
                     parsed,
                 }))
             }
@@ -687,6 +905,48 @@ impl Iterator for OamdAlternativeOpaqueBitIter<'_> {
     }
 }
 
+fn snapshot_defined_properties(
+    data_set: OamdAlternativeDataSet<'_>,
+) -> Result<OamdAlternativePropertySnapshot, OamdError> {
+    let mut snapshot = OamdAlternativePropertySnapshot {
+        data_set_index: data_set.index,
+        common_data: data_set.common_data,
+        data_points: [EMPTY_ALTERNATIVE_DATA_POINT; MAX_OAMD_OBJECTS],
+        data_points_len: 0,
+        extended_positions: [EMPTY_ALTERNATIVE_EXTENDED_POSITION; MAX_OAMD_OBJECTS],
+        extended_positions_len: 0,
+    };
+
+    for point in data_set.data_points()? {
+        let point = point?;
+        let Some(slot) = snapshot.data_points.get_mut(snapshot.data_points_len) else {
+            return Err(OamdError::TooManyObjects {
+                limit: MAX_OAMD_OBJECTS,
+            });
+        };
+        *slot = point;
+        snapshot.data_points_len = snapshot.data_points_len.saturating_add(1);
+    }
+
+    if let Some(positions) = data_set.extended_positions()? {
+        for position in positions {
+            let position = position?;
+            let Some(slot) = snapshot
+                .extended_positions
+                .get_mut(snapshot.extended_positions_len)
+            else {
+                return Err(OamdError::TooManyObjects {
+                    limit: MAX_OAMD_OBJECTS,
+                });
+            };
+            *slot = position;
+            snapshot.extended_positions_len = snapshot.extended_positions_len.saturating_add(1);
+        }
+    }
+
+    Ok(snapshot)
+}
+
 fn parse_alternative_data_set(
     reader: &mut BitReader<'_>,
     objects: &ObjectDescriptors,
@@ -889,6 +1149,27 @@ mod tests {
         b_lfe: false,
         b_ajoc_coded: false,
     };
+
+    fn data_set_at<'a>(
+        bits: &'a TestBits,
+        objects: &[ObjectDescriptor],
+        num_obj_info_blocks: u8,
+        b_iframe: bool,
+        index: usize,
+    ) -> OamdAlternativeDataSet<'a> {
+        let mut reader = bits.reader();
+        let parsed =
+            OamdDyndataSingle::parse(&mut reader, objects, num_obj_info_blocks, b_iframe, true)
+                .unwrap();
+        assert_eq!(reader.bit_position(), bits.bit_len as u64);
+        parsed
+            .alternative_data_sets(bits.as_slice())
+            .unwrap()
+            .unwrap()
+            .nth(index)
+            .unwrap()
+            .unwrap()
+    }
 
     #[test]
     fn parses_and_preserves_every_alternative_dataset() {
@@ -1154,6 +1435,217 @@ mod tests {
                 z: 3,
             })
         );
+    }
+
+    #[test]
+    fn data_set_state_keeps_defined_properties_across_dependent_frames() {
+        let objects = [DYNAMIC];
+        let mut first = TestBits::new();
+        first.push(true); // I-frame object_info_block: inactive
+        first.push(false); // no object additional data
+        first.push(false); // ducking
+        first.push_bits(0, 2); // category
+        first.push_bits(1, 2); // one dataset
+        first.push(false); // new update
+        first.push(false); // per-object data
+        first.push(true); // gain present
+        first.push_bits(7, 6);
+        first.push(true); // position present
+        first.push_bits(10, 6);
+        first.push_bits(20, 6);
+        first.push(true);
+        first.push_bits(3, 4);
+        first.push(true); // additional data present
+        first.push_bits(0, 2); // one byte
+        first.push(false);
+        first.push(true); // extended position present
+        first.push_bits(0b100, 3);
+        first.push_bits(2, 2);
+        first.push_bits(0b11, 2); // opaque tail
+
+        let first_data_set = data_set_at(&first, &objects, 1, true, 0);
+        assert_eq!(
+            first_data_set
+                .opaque_additional_data()
+                .unwrap()
+                .iter()
+                .collect::<Vec<_>>(),
+            [true, true]
+        );
+
+        let mut state = OamdAlternativeDataSetState::new();
+        let effective = state.apply(first_data_set).unwrap();
+        assert_eq!(state.data_set_index(), Some(0));
+        assert_eq!(state.effective(), Some(effective));
+        assert_eq!(effective.data_set_index, 0);
+        assert_eq!(effective.common_data, Some(false));
+        assert_eq!(
+            effective.data_points(),
+            &[OamdAlternativeDataPoint {
+                data_point_index: 0,
+                target: OamdAlternativeDataPointTarget::Object(0),
+                descriptor: DYNAMIC,
+                alternative_gain: Some(7),
+                alternative_position: Some(AbsolutePosition {
+                    x: 10,
+                    y: 20,
+                    z_sign: true,
+                    z: 3,
+                }),
+            }]
+        );
+        assert_eq!(
+            effective.extended_positions(),
+            &[OamdAlternativeExtendedPosition {
+                object_index: 0,
+                position: Some(ExtendedPrecisionPosition {
+                    presence: 0b100,
+                    x: Some(2),
+                    y: None,
+                    z: None,
+                }),
+            }]
+        );
+
+        let mut kept = TestBits::new();
+        kept.push(false); // ducking
+        kept.push_bits(0, 2); // category
+        kept.push_bits(1, 2); // one dataset
+        kept.push(true); // keep previous object properties
+        kept.push(true); // additional data present; keep makes all of it opaque
+        kept.push_bits(0, 2); // one byte
+        kept.push(false);
+        kept.push_bits(0xa5, 8);
+        let kept_data_set = data_set_at(&kept, &objects, 0, false, 0);
+        assert_eq!(
+            kept_data_set
+                .opaque_additional_data()
+                .unwrap()
+                .iter()
+                .collect::<Vec<_>>(),
+            [true, false, true, false, false, true, false, true]
+        );
+        assert_eq!(state.apply(kept_data_set).unwrap(), effective);
+        assert_eq!(state.effective(), Some(effective));
+    }
+
+    #[test]
+    fn data_set_state_rejects_keep_without_continuous_history_transactionally() {
+        let objects = [DYNAMIC];
+        let mut kept = TestBits::new();
+        kept.push(false); // ducking
+        kept.push_bits(0, 2);
+        kept.push_bits(1, 2);
+        kept.push(true); // keep
+        kept.push(false); // no additional data
+        let dependent_keep = data_set_at(&kept, &objects, 0, false, 0);
+
+        let mut state = OamdAlternativeDataSetState::new();
+        assert_eq!(
+            state.apply(dependent_keep),
+            Err(OamdAlternativeDataSetStateError::HistoryUnavailable { data_set_index: 0 })
+        );
+        assert_eq!(state, OamdAlternativeDataSetState::new());
+
+        let mut transmitted = TestBits::new();
+        transmitted.push(false); // ducking
+        transmitted.push_bits(0, 2);
+        transmitted.push_bits(1, 2);
+        transmitted.push(false); // new update
+        transmitted.push(true); // common
+        transmitted.push(true); // gain present
+        transmitted.push_bits(12, 6);
+        transmitted.push(false); // position absent
+        transmitted.push(false); // additional absent
+        let effective = state
+            .apply(data_set_at(&transmitted, &objects, 0, false, 0))
+            .unwrap();
+        let previous = state;
+
+        let mut independent_keep = TestBits::new();
+        independent_keep.push(true); // I-frame object block: inactive
+        independent_keep.push(false);
+        independent_keep.push(false); // ducking
+        independent_keep.push_bits(0, 2);
+        independent_keep.push_bits(1, 2);
+        independent_keep.push(true); // keep cannot use pre-I-frame history
+        independent_keep.push(false); // additional absent
+        assert_eq!(
+            state.apply(data_set_at(&independent_keep, &objects, 1, true, 0)),
+            Err(OamdAlternativeDataSetStateError::HistoryUnavailable { data_set_index: 0 })
+        );
+        assert_eq!(state, previous, "失败的独立帧不得半提交 reset");
+        assert_eq!(state.effective(), Some(effective));
+
+        state.reset();
+        assert_eq!(state, OamdAlternativeDataSetState::new());
+    }
+
+    #[test]
+    fn data_set_state_binds_index_and_rejects_dependent_layout_changes() {
+        let mut dynamic = TestBits::new();
+        dynamic.push(false); // ducking
+        dynamic.push_bits(0, 2);
+        dynamic.push_bits(1, 2);
+        dynamic.push(false); // new
+        dynamic.push(true); // common
+        dynamic.push(false); // gain absent
+        dynamic.push(false); // position absent
+        dynamic.push(false); // additional absent
+        let mut state = OamdAlternativeDataSetState::new();
+        state
+            .apply(data_set_at(&dynamic, &[DYNAMIC], 0, false, 0))
+            .unwrap();
+        let previous = state;
+
+        let mut bed = TestBits::new();
+        bed.push(false); // ducking
+        bed.push_bits(0, 2);
+        bed.push_bits(1, 2);
+        bed.push(false); // new
+        bed.push(true); // common
+        bed.push(false); // gain absent; BED has no position flag
+        bed.push(false); // additional absent
+        assert_eq!(
+            state.apply(data_set_at(&bed, &[BED], 0, false, 0)),
+            Err(OamdAlternativeDataSetStateError::ObjectLayoutChanged { data_set_index: 0 })
+        );
+        assert_eq!(state, previous);
+
+        let mut two_sets = TestBits::new();
+        two_sets.push(false); // ducking
+        two_sets.push_bits(0, 2);
+        two_sets.push_bits(2, 2);
+        for _ in 0..2 {
+            two_sets.push(false); // new
+            two_sets.push(true); // common
+            two_sets.push(false); // gain absent
+            two_sets.push(false); // position absent
+            two_sets.push(false); // additional absent
+        }
+        assert_eq!(
+            state.apply(data_set_at(&two_sets, &[DYNAMIC], 0, false, 1)),
+            Err(OamdAlternativeDataSetStateError::DataSetIndexChanged {
+                previous: 0,
+                current: 1,
+            })
+        );
+        assert_eq!(state, previous);
+
+        let mut independent_bed = TestBits::new();
+        independent_bed.push(true); // I-frame object block: inactive
+        independent_bed.push(false);
+        independent_bed.push(false); // ducking
+        independent_bed.push_bits(0, 2);
+        independent_bed.push_bits(1, 2);
+        independent_bed.push(false); // new
+        independent_bed.push(true); // common
+        independent_bed.push(false); // gain absent
+        independent_bed.push(false); // additional absent
+        let rebased = state
+            .apply(data_set_at(&independent_bed, &[BED], 1, true, 0))
+            .unwrap();
+        assert_eq!(rebased.data_points()[0].descriptor, BED);
     }
 
     #[test]
