@@ -1,6 +1,6 @@
 # 渲染前输出契约
 
-> **状态：A-JOC Core/Full 子集的流式 Rust 场景入口已发布，core/A-SPX 诊断基线、CoreCAF、ADM/DAMF 诊断探针与三条 Full CLI batch 出口已落地。** M4 已收口容器、拓扑、OAMD、音频语法、core/A-SPX PCM 与受限的动态 A-JOC core 对象输出；M6 又完成 full A-JOC 上混、LFE 插回和对象 PCM 导出。`macindecode-ac4-scene` 现已定义 `Ac4SceneFrame` Rust 数据模型、presentation/mode 选择和结构化错误，并在 `audio-decode` 下由公开 `decode_access_unit` 按配置选择同一 A-JOC engine 的 Core 诊断出口或 Full 重建出口，把对应的对象/LFE PCM、group OAMD common、完整 downmix/upmix 对象状态、raw timing、changed mask 与跨帧事件队列放入 Session 自有、可复用的表 188 对齐存储后借用返回；`export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 已改为消费该 Session。batch adapter 在 Scene 外应用容器 edit 投影，需要历史量级的 PCM 时将 normalized 样本乘精确的 `2^15`，并保持既有轨序；pre-A-SPX 核心带通过 `DecodedAccessUnit` 上不属于 SceneFrame 的 normalized 诊断侧车传递，但必须显式启用，普通 renderer 默认不复制它。ADM/DAMF 诊断探针只保留已完整解码并完成控制对齐的场景元数据。所选 presentation 的 OAMD 更新继续投影到既有 writer 契约。M4.5 的 presentation processing metadata 与 opaque EMDF 已在 bitstream 层解析和保留，但尚未作为 `Ac4SceneFrame` 字段发布，也未应用到 PCM。实施进度以[路线图](ROADMAP.md)为准。
+> **状态：A-JOC Core/Full 子集的流式 Rust 场景入口已发布，core/A-SPX 诊断基线、CoreCAF、ADM/DAMF 诊断探针与三条 Full CLI batch 出口已落地。** M4 已收口容器、拓扑、OAMD、音频语法、core/A-SPX PCM 与受限的动态 A-JOC core 对象输出；M6 又完成 full A-JOC 上混、LFE 插回和对象 PCM 导出。`macindecode-ac4-scene` 现已定义 `Ac4SceneFrame` Rust 数据模型、presentation/mode 选择和结构化错误，并在 `audio-decode` 下由公开 `decode_access_unit` 按配置选择同一 A-JOC engine 的 Core 诊断出口或 Full 重建出口，把对应的对象/LFE PCM、group OAMD common、完整 downmix/upmix 对象状态、raw timing、changed mask 与跨帧事件队列放入 Session 自有、可复用的表 188 对齐存储后借用返回；`export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 已改为消费该 Session。batch adapter 在 Scene 外应用容器 edit 投影，需要历史量级的 PCM 时将 normalized 样本乘精确的 `2^15`，并保持既有轨序；pre-A-SPX 核心带通过 `DecodedAccessUnit` 上不属于 SceneFrame 的 normalized 诊断侧车传递，但必须显式启用，普通 renderer 默认不复制它。所选 presentation 的完整 `ac4_presentation_substream()` payload 也由 Session 在成功 AU 事务中复制，并通过 `DecodedAccessUnit::presentation_metadata` 发布只读侧车；本帧原始传输形态、有效 DRC 配置和 group-gain 码值保持可区分，但不执行任何 presentation processing，也不进入 `Ac4SceneFrame`。ADM/DAMF 诊断探针只保留已完整解码并完成控制对齐的场景元数据。所选 presentation 的 OAMD 更新继续投影到既有 writer 契约。audio-substream dialogue enhancement、alternative OAMD 与 opaque EMDF 仍只在 bitstream 层解析和保留，且都未应用到 PCM。实施进度以[路线图](ROADMAP.md)为准。
 
 ## 1. 目的
 
@@ -117,8 +117,22 @@ distance、divergence 等尚无可靠通用映射的字段只保留 raw。如果
 
 ### 2.7 Presentation processing metadata 与 opaque EMDF
 
-当前实现只在 `macindecode-ac4-bitstream` Rust API 公开这些解析结果；`Ac4SceneFrame` 尚无
-对应字段。未来接入 Scene 或其他回放端观察面时，必须保持以下契约：
+所选 presentation 的 `ac4_presentation_substream()` 解析结果现已通过
+`DecodedAccessUnit::presentation_metadata` 作为 AU 级侧车公开；`Ac4SceneFrame` 仍无对应字段。
+audio-substream dialogue enhancement、alternative OAMD 与 opaque EMDF 目前仍只在
+`macindecode-ac4-bitstream` Rust API 公开。现有侧车及未来其他回放端观察面必须保持以下契约：
+
+- 侧车只有在 presentation payload、音频 DSP 与 Scene 组装全部成功提交后才可见；等待随机
+  访问点或所选 presentation 没有 presentation substream 时返回 `None`。解析或 DSP 失败不得
+  发布当前 AU 的半成品，也不得提交 DRC/group-gain 候选状态。
+- `PresentationSubstreamMetadata::payload` 借用 Session 自持的完整 bounded payload；
+  `parsed_substream` 从同一份已验证存储重建完整只读语法视图。`effective_drc_configuration`
+  与 `effective_group_gain_codes` 另外报告当前 AU 成功后有效的状态，不能与
+  `Ac4PresentationSubstream` 中“本帧是否传输配置”及 absent/keep/new 原始更新形态混为一谈。
+- 已观测的 Dolby object/A-JOC independent DRC 帧会在规范语法后追加单字节 `0x80`。Scene
+  兼容入口只接受“independent、object/A-JOC 上下文、本帧携带 DRC configuration、唯一尾字节
+  恰为 `0x80`”这一精确组合；`syntax_payload` 排除该字节，`compatibility_tail` 原样返回它且
+  不赋予处理语义。bitstream parser 继续严格拒绝尾随，其他尾部也全部失败关闭。
 
 - presentation name/target、逐 substream activation/dataset map、响度、DRC、group gain、
   associated audio、custom downmix、loudness correction 与 dialogue-enhancement 都保留 presence、
@@ -131,9 +145,9 @@ distance、divergence 等尚无可靠通用映射的字段只保留 raw。如果
   Scene 语义。终止符、容量和边界仍必须在发布 view 前完整验证。
 - 所有依赖原 payload 的 view——包括 presentation name/target selection、additional-data 与
   loudness extension、DRC/DE、EMDF 及 alternative OAMD opaque data——只在其有界输入切片的
-  生命周期内有效。若未来由 Session 以借用 view 发布，必须借用 Session 拥有且已验证的存储，
-  并沿用下一次可变调用即失效的 Rust 生命周期；也可显式复制为 Session 自有值，但不得只暴露
-  无法安全回取数据的裸 offset 或长期裸指针。
+  生命周期内有效。当前 presentation 侧车借用 Session 拥有且已验证的副本，并沿用下一次可变
+  调用即失效的 Rust 生命周期；未来其他 Session view 也必须采用相同所有权，或显式复制为
+  Session 自有值，不得只暴露无法安全回取数据的裸 offset 或长期裸指针。
 - 任何这些字段的解析、状态还原或 opaque 保留都不得原地修改 `Ac4SceneFrame` PCM、对象 identity、
   OAMD 事件顺序或时间线。DRC、DE、gain、downmix 与 loudness processing 需要独立、显式请求的
   后续处理接口。

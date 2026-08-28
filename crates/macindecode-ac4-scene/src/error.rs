@@ -4,6 +4,7 @@ use core::fmt;
 #[cfg(feature = "audio-decode")]
 use macindecode_ac4_bitstream::full_ajoc::FullAjocUnsupported;
 use macindecode_ac4_bitstream::{
+    PresentationSubstreamError, PresentationSubstreamGroupGainStateError,
     oamd::{OamdError, OamdStateError},
     reader::ReadError,
     topology::{Capacity, TopologyError, Unsupported as TopologyUnsupported},
@@ -323,6 +324,8 @@ impl core::error::Error for UnsupportedReason {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BitstreamFailure {
     Topology(TopologyError),
+    PresentationSubstream(PresentationSubstreamError),
+    PresentationSubstreamGroupGain(PresentationSubstreamGroupGainStateError),
     Oamd(OamdError),
     OamdState(OamdStateError),
     OamdCommonConflict,
@@ -346,6 +349,8 @@ impl fmt::Display for BitstreamFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Self::Topology(error) => write!(formatter, "{error}"),
+            Self::PresentationSubstream(error) => write!(formatter, "{error}"),
+            Self::PresentationSubstreamGroupGain(error) => write!(formatter, "{error}"),
             Self::Oamd(error) => write!(formatter, "{error}"),
             Self::OamdState(error) => write!(formatter, "{error}"),
             Self::OamdCommonConflict => {
@@ -380,6 +385,8 @@ impl core::error::Error for BitstreamFailure {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             Self::Topology(error) => Some(error),
+            Self::PresentationSubstream(error) => Some(error),
+            Self::PresentationSubstreamGroupGain(error) => Some(error),
             Self::Oamd(error) => Some(error),
             Self::OamdState(error) => Some(error),
             Self::OamdCommonConflict
@@ -582,6 +589,44 @@ impl DecodeError {
         };
         Self::new(kind, context)
     }
+
+    pub(crate) fn from_presentation_substream(
+        error: PresentationSubstreamError,
+        access_unit_index: u64,
+        presentation_index: u32,
+        presentation_id: Option<u32>,
+        substream_index: u32,
+    ) -> Self {
+        let mut context = DecodeErrorContext::for_access_unit(access_unit_index)
+            .with_presentation(presentation_index, presentation_id)
+            .with_substream(substream_index)
+            .with_syntax_path("raw_ac4_frame/ac4_presentation_substream");
+        if let Some(bit_offset) = presentation_substream_bit_offset(error) {
+            context = context.with_bit_offset(bit_offset);
+        }
+        Self::new(
+            DecodeErrorKind::InvalidBitstream(BitstreamFailure::PresentationSubstream(error)),
+            context,
+        )
+    }
+
+    pub(crate) fn from_presentation_group_gain(
+        error: PresentationSubstreamGroupGainStateError,
+        access_unit_index: u64,
+        presentation_index: u32,
+        presentation_id: Option<u32>,
+        substream_index: u32,
+    ) -> Self {
+        Self::new(
+            DecodeErrorKind::InvalidBitstream(BitstreamFailure::PresentationSubstreamGroupGain(
+                error,
+            )),
+            DecodeErrorContext::for_access_unit(access_unit_index)
+                .with_presentation(presentation_index, presentation_id)
+                .with_substream(substream_index)
+                .with_syntax_path("raw_ac4_frame/ac4_presentation_substream/sg_gain"),
+        )
+    }
 }
 
 impl fmt::Display for DecodeError {
@@ -687,6 +732,30 @@ const fn read_bit_offset(error: ReadError) -> u64 {
         ReadError::OutOfBounds { bit_position, .. }
         | ReadError::WidthUnsupported { bit_position, .. }
         | ReadError::ValueOverflow { bit_position } => bit_position,
+    }
+}
+
+const fn presentation_substream_bit_offset(error: PresentationSubstreamError) -> Option<u64> {
+    match error {
+        PresentationSubstreamError::Read(error) => Some(read_bit_offset(error)),
+        PresentationSubstreamError::InvalidLoudnessExtensionSize { bit_position, .. }
+        | PresentationSubstreamError::InvalidDrcMetadataSize { bit_position, .. }
+        | PresentationSubstreamError::InvalidDrcGainSetSize { bit_position, .. }
+        | PresentationSubstreamError::InvalidFixedDrcGainSetSize { bit_position, .. }
+        | PresentationSubstreamError::MissingDrcConfiguration { bit_position }
+        | PresentationSubstreamError::TrailingDrcFrameBits { bit_position, .. }
+        | PresentationSubstreamError::ReservedAssociatedPan { bit_position, .. }
+        | PresentationSubstreamError::UnusedCustomDownmixOutputChannelConfig {
+            bit_position, ..
+        }
+        | PresentationSubstreamError::ReservedStereoSurroundMixGain { bit_position, .. } => {
+            Some(bit_position)
+        }
+        PresentationSubstreamError::MissingAudioSubstreams
+        | PresentationSubstreamError::MissingDrcRepeatProfile { .. }
+        | PresentationSubstreamError::CyclicDrcRepeatProfile { .. }
+        | PresentationSubstreamError::TrailingBits { .. }
+        | PresentationSubstreamError::CapacityExceeded { .. } => None,
     }
 }
 

@@ -4,6 +4,11 @@
 `Ac4SceneFrame` 数据契约、presentation 选择、整数采样时间线、结构化错误和
 `Ac4DecoderSession`，并以借用视图发布对象/LFE PCM 与 OAMD 状态。
 
+成功解码的 AU 还可从 `DecodedAccessUnit::presentation_metadata` 借用所选 presentation 的
+完整 processing-metadata payload、当前帧解析视图、有效 DRC 配置和 substream-group gain
+码值。该 AU 级侧车只解析、验证和保留原值，不进入 `Ac4SceneFrame`，也不执行 DRC、gain、
+pan、downmix、loudness correction 或 renderer 处理。
+
 容器或系统层已经解析的 presentation metadata 可由调用方放入泛型
 `PresentationSelectionMetadata<T>`；已选择的
 `ScenePresentation::match_selection_metadata` 只按双方唯一的 effective presentation ID

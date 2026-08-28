@@ -3,10 +3,11 @@
 #[cfg(any(feature = "audio-decode", test))]
 use alloc::vec::Vec;
 use macindecode_ac4_bitstream::{
-    Ac4PresentationV1Info,
+    Ac4PresentationSubstream, Ac4PresentationV1Info, PresentationDrcState,
+    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainState,
     substream::{ObjectAssignment, SubstreamInfo, SubstreamInfoAjoc},
     topology::{
-        Ac4Topology, DecoderAction, MAX_PRESENTATIONS, MAX_SUBSTREAMS, ResetReason,
+        Ac4Topology, DecoderAction, MAX_PRESENTATIONS, MAX_SUBSTREAMS, ResetReason, TopologyError,
         TopologyStateMachine, TopologyTransition, validate_group_references,
         validate_substream_references,
     },
@@ -21,6 +22,7 @@ use crate::{
     DecodeErrorKind, DecodeMode, DecodeStage, DecodedAccessUnit, PresentationSelection,
     PresentationSelectionError, ResetKind, UnsupportedReason,
     group_oamd::{ErrorScope, GroupOamdDecoder, PreparedGroupOamd},
+    model::{PresentationSubstreamMetadataRecord, PresentationSubstreamMetadataStorage},
 };
 #[cfg(feature = "audio-decode")]
 use crate::{
@@ -35,6 +37,29 @@ use macindecode_ac4_bitstream::full_ajoc::{
 
 const PRESENTATION_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info";
 const GROUP_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info/ac4_substream_group_info";
+const PRESENTATION_SUBSTREAM_SYNTAX: &str = "raw_ac4_frame/ac4_presentation_substream";
+/// Dolby object/A-JOC 生产链在 independent DRC 帧规范语法之后写入的已观测尾字节。
+const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTE: u8 = 0x80;
+
+/// 所选 presentation 的解析历史与当前 AU 可见存储。
+#[derive(Debug, Default)]
+struct PresentationMetadataState {
+    drc: PresentationDrcState,
+    group_gain: PresentationSubstreamGroupGainState,
+    storage: PresentationSubstreamMetadataStorage,
+}
+
+impl PresentationMetadataState {
+    fn clear_view(&mut self) {
+        self.storage.clear();
+    }
+
+    fn reset(&mut self) {
+        self.drc.reset();
+        self.group_gain.reset();
+        self.storage.clear();
+    }
+}
 
 /// 一个连续 AC-4 时间线的 Scene 解码会话。
 ///
@@ -46,6 +71,7 @@ pub struct Ac4DecoderSession {
     config: Ac4DecoderConfig,
     topology: TopologyStateMachine,
     group_oamd: GroupOamdDecoder,
+    presentation_metadata: PresentationMetadataState,
     #[cfg(feature = "audio-decode")]
     full_decoder: FullAjocDecoder,
     #[cfg(feature = "audio-decode")]
@@ -66,6 +92,7 @@ impl Ac4DecoderSession {
             config,
             topology: TopologyStateMachine::new(),
             group_oamd: GroupOamdDecoder::new(),
+            presentation_metadata: PresentationMetadataState::default(),
             #[cfg(feature = "audio-decode")]
             full_decoder: FullAjocDecoder::new(),
             #[cfg(feature = "audio-decode")]
@@ -131,6 +158,7 @@ impl Ac4DecoderSession {
                     Ok(DecodedAccessUnit::new(
                         DecodeStatus::WaitingForRandomAccess { reason },
                         frames,
+                        None,
                         #[cfg(feature = "audio-decode")]
                         None,
                     ))
@@ -154,6 +182,7 @@ impl Ac4DecoderSession {
                     Ok(DecodedAccessUnit::new(
                         DecodeStatus::Decoded,
                         frames,
+                        self.presentation_metadata.storage.view(),
                         #[cfg(feature = "audio-decode")]
                         core_band_pcm,
                     ))
@@ -168,6 +197,7 @@ impl Ac4DecoderSession {
     pub fn mark_discontinuity(&mut self) {
         self.output_frame_count = 0;
         self.group_oamd.reset();
+        self.presentation_metadata.reset();
         #[cfg(feature = "audio-decode")]
         {
             self.full_decoder.reset();
@@ -182,6 +212,7 @@ impl Ac4DecoderSession {
     pub fn reset(&mut self) {
         self.output_frame_count = 0;
         self.group_oamd.reset();
+        self.presentation_metadata.reset();
         #[cfg(feature = "audio-decode")]
         {
             self.full_decoder.reset();
@@ -206,6 +237,7 @@ impl Ac4DecoderSession {
         &mut self,
         access_unit: AccessUnit<'frame>,
     ) -> Result<AccessUnitPreflight<'frame>, DecodeError> {
+        self.presentation_metadata.clear_view();
         let context = access_unit.context();
         if self.reset_required {
             return Err(DecodeError::new(
@@ -257,6 +289,7 @@ impl Ac4DecoderSession {
             DecoderAction::WaitForRandomAccess { reason } => {
                 self.output_frame_count = 0;
                 self.group_oamd.reset();
+                self.presentation_metadata.reset();
                 #[cfg(feature = "audio-decode")]
                 {
                     self.full_decoder.reset();
@@ -270,6 +303,19 @@ impl Ac4DecoderSession {
             }
             DecoderAction::Continue | DecoderAction::Reset { .. } => {
                 let reset_history = matches!(transition.action, DecoderAction::Reset { .. });
+                let presentation_metadata = match self.prepare_presentation_metadata(
+                    access_unit.raw_frame(),
+                    &topology,
+                    presentation,
+                    context,
+                    reset_history,
+                ) {
+                    Ok(prepared) => prepared,
+                    Err(error) => {
+                        self.apply_error_policy(error);
+                        return Err(error);
+                    }
+                };
                 let group_oamd = match self.group_oamd.prepare(
                     access_unit.raw_frame(),
                     &topology,
@@ -309,12 +355,129 @@ impl Ac4DecoderSession {
                     presentation,
                     transition,
                     group_oamd,
+                    presentation_metadata,
                     #[cfg(feature = "audio-decode")]
                     engine_input,
                     next_topology,
                 }))
             }
         }
+    }
+
+    /// 验证所选 presentation substream，并形成尚未发布的状态候选。
+    ///
+    /// payload 继续借用当前输入 AU；Session 只在这里预留复制容量，等音频 DSP 与 Scene
+    /// 组装成功后才由 `commit_prepared` 复制、提交状态并发布借用侧车。
+    fn prepare_presentation_metadata<'frame>(
+        &mut self,
+        raw_frame: &'frame [u8],
+        topology: &Ac4Topology,
+        presentation: ResolvedPresentation,
+        access_unit_context: AccessUnitContext,
+        reset_history: bool,
+    ) -> Result<Option<PreparedPresentationMetadata<'frame>>, DecodeError> {
+        let presentation_position = usize::try_from(presentation.index).unwrap_or(usize::MAX);
+        let selected = topology
+            .presentations()
+            .get(presentation_position)
+            .ok_or_else(|| {
+                presentation_metadata_internal_error(
+                    access_unit_context.index(),
+                    presentation,
+                    None,
+                    DecodeStage::Topology,
+                )
+            })?;
+        let Some(substream) = selected.substream else {
+            return Ok(None);
+        };
+        let parse_context = topology
+            .presentation_substream_context(presentation_position)
+            .ok_or_else(|| {
+                presentation_metadata_internal_error(
+                    access_unit_context.index(),
+                    presentation,
+                    Some(substream.substream_index),
+                    DecodeStage::Topology,
+                )
+            })?;
+        let payload = topology
+            .substream_payload(raw_frame, substream.substream_index)
+            .map_err(|error| {
+                scoped_presentation_topology_error(
+                    error,
+                    access_unit_context.index(),
+                    presentation,
+                    substream.substream_index,
+                )
+            })?;
+
+        let replay_drc_state = if reset_history {
+            PresentationDrcState::new()
+        } else {
+            self.presentation_metadata.drc
+        };
+        let mut next_drc_state = replay_drc_state;
+        let (parsed, syntax_payload_len) =
+            parse_presentation_substream_for_scene(payload, parse_context, &mut next_drc_state)
+                .map_err(|error| {
+                    DecodeError::from_presentation_substream(
+                        error,
+                        access_unit_context.index(),
+                        presentation.index,
+                        presentation.id,
+                        substream.substream_index,
+                    )
+                })?;
+
+        let mut next_group_gain_state = if reset_history {
+            PresentationSubstreamGroupGainState::new()
+        } else {
+            self.presentation_metadata.group_gain
+        };
+        let effective_group_gain_codes = next_group_gain_state
+            .apply(parsed.substream_group_gain_update, parse_context)
+            .map_err(|error| {
+                DecodeError::from_presentation_group_gain(
+                    error,
+                    access_unit_context.index(),
+                    presentation.index,
+                    presentation.id,
+                    substream.substream_index,
+                )
+            })?;
+
+        self.presentation_metadata
+            .storage
+            .try_reserve_payload(payload.len())
+            .map_err(|()| {
+                DecodeError::new(
+                    DecodeErrorKind::DecodeFailure {
+                        stage: DecodeStage::AudioSyntax,
+                    },
+                    DecodeErrorContext::for_access_unit(access_unit_context.index())
+                        .with_presentation(presentation.index, presentation.id)
+                        .with_substream(substream.substream_index)
+                        .with_syntax_path("DecodedAccessUnit/presentation_metadata"),
+                )
+            })?;
+
+        Ok(Some(PreparedPresentationMetadata {
+            payload,
+            record: PresentationSubstreamMetadataRecord {
+                access_unit_index: access_unit_context.index(),
+                presentation_index: presentation.index,
+                presentation_id: presentation.id,
+                substream_index: substream.substream_index,
+                context: parse_context,
+                syntax_payload_len,
+                replay_drc_state,
+                effective_drc_configuration: next_drc_state.configuration(),
+                effective_group_gain_codes,
+            },
+            next_drc_state,
+            next_group_gain_state,
+        }))
     }
 
     /// 驱动当前 AU 候选对应的唯一 A-JOC engine。
@@ -338,6 +501,7 @@ impl Ac4DecoderSession {
         let Self {
             topology,
             group_oamd,
+            presentation_metadata,
             full_decoder,
             scene_assembler,
             output_frame_count,
@@ -362,6 +526,7 @@ impl Ac4DecoderSession {
                     error,
                     topology,
                     group_oamd,
+                    presentation_metadata,
                     output_frame_count,
                     reset_required,
                 );
@@ -385,6 +550,7 @@ impl Ac4DecoderSession {
             config,
             topology,
             group_oamd,
+            presentation_metadata,
             full_decoder,
             scene_assembler,
             output_frames,
@@ -433,6 +599,7 @@ impl Ac4DecoderSession {
                     error,
                     topology,
                     group_oamd,
+                    presentation_metadata,
                     output_frame_count,
                     reset_required,
                 );
@@ -452,6 +619,7 @@ impl Ac4DecoderSession {
                     error,
                     topology,
                     group_oamd,
+                    presentation_metadata,
                     output_frame_count,
                     reset_required,
                 );
@@ -468,6 +636,15 @@ impl Ac4DecoderSession {
     )]
     fn commit_prepared(&mut self, prepared: PreparedAccessUnit<'_>) {
         self.group_oamd.commit(&prepared.group_oamd);
+        if let Some(metadata) = prepared.presentation_metadata {
+            self.presentation_metadata.drc = metadata.next_drc_state;
+            self.presentation_metadata.group_gain = metadata.next_group_gain_state;
+            self.presentation_metadata
+                .storage
+                .publish(metadata.payload, metadata.record);
+        } else {
+            self.presentation_metadata.reset();
+        }
         self.topology = prepared.next_topology;
     }
 
@@ -484,6 +661,7 @@ impl Ac4DecoderSession {
     fn invalidate_history(&mut self, reason: ResetReason) {
         self.output_frame_count = 0;
         self.group_oamd.reset();
+        self.presentation_metadata.reset();
         #[cfg(feature = "audio-decode")]
         {
             self.full_decoder.reset();
@@ -492,6 +670,85 @@ impl Ac4DecoderSession {
         }
         self.topology.mark_discontinuity(reason);
     }
+}
+
+/// 保持 bitstream parser 的规范严格边界，同时接纳回放端已验证的一种窄兼容形态。
+///
+/// 多条 Dolby object/A-JOC 生产链只在携带 DRC configuration 的 independent frame 中，于
+/// 完整 `ac4_presentation_substream()` 之后追加单字节 `0x80`。它不是
+/// `TS103190-2:v1.3.1:6.2.2.3` 的字段；Scene 保留完整 bounded payload，但只把前缀交给
+/// 严格 parser。任何其他尾部仍原样报错。
+fn parse_presentation_substream_for_scene<'payload>(
+    payload: &'payload [u8],
+    context: PresentationSubstreamContext,
+    state: &mut PresentationDrcState,
+) -> Result<(Ac4PresentationSubstream<'payload>, usize), PresentationSubstreamError> {
+    let initial_state = *state;
+    let mut candidate_state = initial_state;
+    match Ac4PresentationSubstream::parse_with_drc_state(payload, context, &mut candidate_state) {
+        Ok(parsed) => {
+            *state = candidate_state;
+            Ok((parsed, payload.len()))
+        }
+        Err(error @ PresentationSubstreamError::TrailingBits { remaining_bits: 8 })
+            if context.presentation_is_independent() && context.pres_ch_mode_undefined() =>
+        {
+            let Some((&INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTE, syntax_payload)) =
+                payload.split_last()
+            else {
+                return Err(error);
+            };
+            let mut compatibility_state = initial_state;
+            let parsed = Ac4PresentationSubstream::parse_with_drc_state(
+                syntax_payload,
+                context,
+                &mut compatibility_state,
+            )?;
+            if !parsed.drc_present || parsed.drc_configuration.is_none() {
+                return Err(error);
+            }
+            *state = compatibility_state;
+            Ok((parsed, syntax_payload.len()))
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn presentation_metadata_internal_error(
+    access_unit_index: u64,
+    presentation: ResolvedPresentation,
+    substream_index: Option<u32>,
+    stage: DecodeStage,
+) -> DecodeError {
+    let mut context = DecodeErrorContext::for_access_unit(access_unit_index)
+        .with_presentation(presentation.index, presentation.id)
+        .with_syntax_path(PRESENTATION_SUBSTREAM_SYNTAX);
+    if let Some(substream_index) = substream_index {
+        context = context.with_substream(substream_index);
+    }
+    DecodeError::new(DecodeErrorKind::InternalInvariant { stage }, context)
+}
+
+fn scoped_presentation_topology_error(
+    error: TopologyError,
+    access_unit_index: u64,
+    presentation: ResolvedPresentation,
+    substream_index: u32,
+) -> DecodeError {
+    let mapped = DecodeError::from_topology(error, access_unit_index);
+    let mapped_context = mapped.context();
+    let mut context = DecodeErrorContext::for_access_unit(access_unit_index)
+        .with_presentation(presentation.index, presentation.id)
+        .with_substream(substream_index)
+        .with_syntax_path(
+            mapped_context
+                .syntax_path()
+                .unwrap_or(PRESENTATION_SUBSTREAM_SYNTAX),
+        );
+    if let Some(bit_offset) = mapped_context.bit_offset() {
+        context = context.with_bit_offset(bit_offset);
+    }
+    DecodeError::new(mapped.kind(), context)
 }
 
 #[cfg(feature = "audio-decode")]
@@ -668,6 +925,7 @@ fn apply_control_error_policy(
     error: DecodeError,
     topology: &mut TopologyStateMachine,
     group_oamd: &mut GroupOamdDecoder,
+    presentation_metadata: &mut PresentationMetadataState,
     output_frame_count: &mut usize,
     reset_required: &mut bool,
 ) {
@@ -675,6 +933,7 @@ fn apply_control_error_policy(
     if let Some(reason) = policy.invalidation {
         *output_frame_count = 0;
         group_oamd.reset();
+        presentation_metadata.reset();
         topology.mark_discontinuity(reason);
     }
     if policy.reset_required {
@@ -705,9 +964,19 @@ struct PreparedAccessUnit<'frame> {
     presentation: ResolvedPresentation,
     transition: TopologyTransition,
     group_oamd: PreparedGroupOamd,
+    presentation_metadata: Option<PreparedPresentationMetadata<'frame>>,
     #[cfg(feature = "audio-decode")]
     engine_input: FullAjocAudioFrameInput<'frame>,
     next_topology: TopologyStateMachine,
+}
+
+/// 一个已经完整验证、但尚未复制到 Session 存储或提交跨帧状态的 presentation payload。
+#[derive(Debug, Clone, Copy)]
+struct PreparedPresentationMetadata<'frame> {
+    payload: &'frame [u8],
+    record: PresentationSubstreamMetadataRecord,
+    next_drc_state: PresentationDrcState,
+    next_group_gain_state: PresentationSubstreamGroupGainState,
 }
 
 /// AU 控制面预检的两种非错误结果。
@@ -1510,9 +1779,15 @@ mod tests {
     const FULL_AJOC_GROUP_SUBSTREAM_2: &str = "1 0 1 0 0 1 1 0 1000 1 0 0011 1 0 0 1 10 0";
     /// presentation substream 0、A-JOC audio 1、OAMD 2。
     const FULL_AJOC_GROUP_WITH_OAMD: &str = "1 0 1 0 1 1 10 1 1 0 1000 1 0 0011 1 0 0 1 01 0";
-    const TWO_EMPTY_SUBSTREAMS: &str = "10 0 0000000000 0 0000000000";
-    /// index 0、1 为空，index 2 声明一个字节但测试帧不追加该载荷。
-    const THREE_SUBSTREAMS_WITH_TRUNCATED_LAST: &str = "11 0 0000000000 0 0000000000 0 0000000001";
+    /// index 0 是三字节 presentation metadata，index 1 为空。
+    const TWO_SUBSTREAMS_WITH_PRESENTATION: &str = "10 0 0000000011 0 0000000000";
+    /// index 0 是三字节 presentation metadata，index 1 为空，index 2 声明一个字节但不追加。
+    const THREE_SUBSTREAMS_WITH_TRUNCATED_LAST: &str = "11 0 0000000011 0 0000000000 0 0000000001";
+    /// 普通 object/A-JOC presentation：无 additional data、dialnorm 0x55、DRC absent、
+    /// associated audio absent、object loudness correction absent。
+    const MINIMAL_PRESENTATION_PAYLOAD: [u8; 3] = [0x55, 0x04, 0x00];
+    /// independent object/A-JOC presentation：单一 default DRC mode，随后是已知 `0x80` 兼容尾部。
+    const INDEPENDENT_DRC_PRESENTATION_PAYLOAD: [u8; 5] = [0x00, 0x3d, 0x01, 0x00, 0x80];
     /// bitstream crate 的最小有效 Full A-JOC I-frame：单 ASF/A-SPX 输入、单对象。
     #[cfg(feature = "audio-decode")]
     const MINIMAL_FULL_AUDIO_PAYLOAD: [u8; 24] = [
@@ -1550,14 +1825,21 @@ mod tests {
         Ac4Topology::parse(&frame_bytes(parts)).expect("构造拓扑必须合法")
     }
 
+    fn frame_with_minimal_presentation(parts: &[&str]) -> Vec<u8> {
+        let mut frame = frame_bytes(parts);
+        frame.extend_from_slice(&MINIMAL_PRESENTATION_PAYLOAD);
+        frame
+    }
+
     fn frame_with_oamd(toc: &str, payload: u8) -> Vec<u8> {
         frame_with_oamd_payload(toc, &[payload])
     }
 
     fn frame_with_oamd_payload(toc: &str, payload: &[u8]) -> Vec<u8> {
         let size = format!("{size:010b}", size = payload.len());
-        let table = ["11 0 0000000000 0 0000000000 0 ", &size].concat();
+        let table = ["11 0 0000000011 0 0000000000 0 ", &size].concat();
         let mut frame = frame_bytes(&[toc, PRESENTATION_NDOT, FULL_AJOC_GROUP_WITH_OAMD, &table]);
+        frame.extend_from_slice(&MINIMAL_PRESENTATION_PAYLOAD);
         frame.extend_from_slice(payload);
         frame
     }
@@ -1565,8 +1847,9 @@ mod tests {
     #[cfg(feature = "audio-decode")]
     fn frame_with_full_payload(payload: &[u8]) -> Vec<u8> {
         let size = format!("{size:010b}", size = payload.len());
-        let table = ["10 0 0000000000 0 ", &size].concat();
+        let table = ["10 0 0000000011 0 ", &size].concat();
         let mut frame = frame_bytes(&[TOC_PREFIX, PRESENTATION_NDOT, FULL_AJOC_GROUP, &table]);
+        frame.extend_from_slice(&MINIMAL_PRESENTATION_PAYLOAD);
         frame.extend_from_slice(payload);
         frame
     }
@@ -1597,17 +1880,36 @@ mod tests {
         group: &str,
         payload: &[u8],
     ) -> Vec<u8> {
-        let size = format!("{size:010b}", size = payload.len());
-        let table = ["10 0 0000000000 0 ", &size].concat();
+        frame_with_presentation_and_audio_payload(
+            toc,
+            presentation,
+            group,
+            &MINIMAL_PRESENTATION_PAYLOAD,
+            payload,
+        )
+    }
+
+    #[cfg(feature = "audio-decode")]
+    fn frame_with_presentation_and_audio_payload(
+        toc: &str,
+        presentation: &str,
+        group: &str,
+        presentation_payload: &[u8],
+        audio_payload: &[u8],
+    ) -> Vec<u8> {
+        let presentation_size = format!("{size:010b}", size = presentation_payload.len());
+        let audio_size = format!("{size:010b}", size = audio_payload.len());
+        let table = ["10 0 ", &presentation_size, " 0 ", &audio_size].concat();
         let mut frame = frame_bytes(&[toc, presentation, group, &table]);
-        frame.extend_from_slice(payload);
+        frame.extend_from_slice(presentation_payload);
+        frame.extend_from_slice(audio_payload);
         frame
     }
 
     #[cfg(feature = "audio-decode")]
     fn frame_with_reversed_full_groups(toc: &str, payload: &[u8]) -> Vec<u8> {
         let size = format!("{size:010b}", size = payload.len());
-        let table = ["10 0 0000000000 0 ", &size].concat();
+        let table = ["10 0 0000000011 0 ", &size].concat();
         let mut frame = frame_bytes(&[
             toc,
             FULL_AUDIO_PRESENTATION_REVERSED_GROUPS,
@@ -1615,6 +1917,7 @@ mod tests {
             FULL_AUDIO_GROUP,
             &table,
         ]);
+        frame.extend_from_slice(&MINIMAL_PRESENTATION_PAYLOAD);
         frame.extend_from_slice(payload);
         frame
     }
@@ -1743,6 +2046,191 @@ mod tests {
         assert!(frame.diagnostics().state_complete());
         assert_eq!(metadata.element_id(), element_id);
         assert_eq!(metadata.control_source_access_unit_index(), 100);
+    }
+
+    #[cfg(feature = "audio-decode")]
+    #[test]
+    fn public_decode_exposes_owned_presentation_metadata_and_reuses_payload_storage() {
+        let first_frame = frame_with_minimal_full_topology(&MINIMAL_FULL_AUDIO_PAYLOAD);
+        let second_frame = frame_with_minimal_full_topology_toc(
+            FULL_AUDIO_TOC_PREFIX_SEQUENCE_1,
+            &MINIMAL_FULL_AUDIO_PAYLOAD,
+        );
+        let topology = Ac4Topology::parse(&first_frame).expect("首帧拓扑应有效");
+        let source_payload_address = topology
+            .substream_payload(&first_frame, 0)
+            .expect("presentation payload 应可定位")
+            .as_ptr();
+        let mut session = Ac4DecoderSession::default();
+
+        let payload_address = {
+            let decoded = session
+                .decode_access_unit(AccessUnit::new(
+                    &first_frame,
+                    AccessUnitContext::new(130).with_random_access_hint(true),
+                ))
+                .expect("完整 AU 应发布 presentation metadata");
+            let metadata = decoded
+                .presentation_metadata()
+                .expect("所选 presentation 应有 metadata sidecar");
+
+            assert_eq!(metadata.access_unit_index(), 130);
+            assert_eq!(metadata.presentation_index(), 0);
+            assert_eq!(metadata.presentation_id(), None);
+            assert_eq!(metadata.substream_index(), 0);
+            assert!(metadata.context().presentation_is_independent());
+            assert_eq!(metadata.context().n_substream_groups(), 1);
+            assert_eq!(metadata.payload(), MINIMAL_PRESENTATION_PAYLOAD);
+            assert_eq!(metadata.syntax_payload(), MINIMAL_PRESENTATION_PAYLOAD);
+            assert!(metadata.compatibility_tail().is_empty());
+            assert_ne!(metadata.payload().as_ptr(), source_payload_address);
+            assert_eq!(metadata.effective_drc_configuration(), None);
+            assert_eq!(metadata.effective_group_gain_codes().as_slice(), &[0]);
+
+            let parsed = metadata
+                .parsed_substream()
+                .expect("Session 自持 payload 应可重建完整解析视图");
+            assert_eq!(parsed.dialnorm_bits, 0x55);
+            assert!(!parsed.drc_present);
+            assert_eq!(
+                parsed.substream_group_gain_update,
+                macindecode_ac4_bitstream::PresentationSubstreamGroupGainUpdate::NotSignaled
+            );
+            assert!(parsed.associated_audio.is_none());
+            metadata.payload().as_ptr()
+        };
+
+        let decoded = session
+            .decode_access_unit(AccessUnit::new(&second_frame, AccessUnitContext::new(131)))
+            .expect("连续 AU 应复用 presentation payload 存储");
+        let metadata = decoded
+            .presentation_metadata()
+            .expect("连续 AU 应继续发布 metadata sidecar");
+        assert_eq!(metadata.access_unit_index(), 131);
+        assert_eq!(metadata.payload().as_ptr(), payload_address);
+    }
+
+    #[test]
+    fn scene_compatibility_tail_is_narrow_and_transactional() {
+        let context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            macindecode_ac4_bitstream::PresentationChannelContext::UNDEFINED,
+        );
+        let mut state = PresentationDrcState::new();
+        let (parsed, syntax_payload_len) = parse_presentation_substream_for_scene(
+            &INDEPENDENT_DRC_PRESENTATION_PAYLOAD,
+            context,
+            &mut state,
+        )
+        .expect("已验证的 independent object DRC 尾部应进入窄兼容路径");
+        assert_eq!(syntax_payload_len, 4);
+        assert!(parsed.drc_present);
+        assert!(parsed.drc_configuration.is_some());
+        assert!(state.configuration().is_some());
+
+        let mut wrong_byte = INDEPENDENT_DRC_PRESENTATION_PAYLOAD;
+        wrong_byte[4] = 0x81;
+        let mut rejected_state = PresentationDrcState::new();
+        assert_eq!(
+            parse_presentation_substream_for_scene(&wrong_byte, context, &mut rejected_state)
+                .unwrap_err(),
+            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+        );
+        assert_eq!(rejected_state, PresentationDrcState::new());
+
+        let absent_drc_with_tail = [0x55, 0x04, 0x00, 0x80];
+        assert_eq!(
+            parse_presentation_substream_for_scene(
+                &absent_drc_with_tail,
+                context,
+                &mut rejected_state,
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+        );
+        assert_eq!(rejected_state, PresentationDrcState::new());
+    }
+
+    #[cfg(feature = "audio-decode")]
+    #[test]
+    fn public_decode_preserves_known_presentation_compatibility_tail() {
+        let frame = frame_with_presentation_and_audio_payload(
+            FULL_AUDIO_TOC_PREFIX,
+            FULL_AUDIO_PRESENTATION,
+            FULL_AUDIO_GROUP,
+            &INDEPENDENT_DRC_PRESENTATION_PAYLOAD,
+            &MINIMAL_FULL_AUDIO_PAYLOAD,
+        );
+        let mut session = Ac4DecoderSession::default();
+        let decoded = session
+            .decode_access_unit(AccessUnit::new(&frame, AccessUnitContext::new(131)))
+            .expect("已知独立帧兼容尾部不得阻断 Scene 回放入口");
+        let metadata = decoded
+            .presentation_metadata()
+            .expect("成功 AU 应发布 presentation metadata");
+
+        assert_eq!(metadata.payload(), INDEPENDENT_DRC_PRESENTATION_PAYLOAD);
+        assert_eq!(
+            metadata.syntax_payload(),
+            &INDEPENDENT_DRC_PRESENTATION_PAYLOAD[..4]
+        );
+        assert_eq!(metadata.compatibility_tail(), &[0x80]);
+        assert!(metadata.effective_drc_configuration().is_some());
+        let parsed = metadata
+            .parsed_substream()
+            .expect("Session 自持规范前缀应可重建借用视图");
+        assert!(parsed.drc_present);
+        assert!(parsed.drc_configuration.is_some());
+    }
+
+    #[cfg(feature = "audio-decode")]
+    #[test]
+    fn invalid_presentation_metadata_is_structured_and_never_published() {
+        let frame = frame_with_presentation_and_audio_payload(
+            FULL_AUDIO_TOC_PREFIX,
+            FULL_AUDIO_PRESENTATION,
+            FULL_AUDIO_GROUP,
+            &[0],
+            &MINIMAL_FULL_AUDIO_PAYLOAD,
+        );
+        let mut session = Ac4DecoderSession::default();
+
+        let error = session
+            .decode_access_unit(AccessUnit::new(&frame, AccessUnitContext::new(132)))
+            .expect_err("有界 presentation payload 内部截断必须失败关闭");
+
+        assert_eq!(
+            error.kind(),
+            DecodeErrorKind::InvalidBitstream(crate::BitstreamFailure::PresentationSubstream(
+                macindecode_ac4_bitstream::PresentationSubstreamError::Read(
+                    macindecode_ac4_bitstream::reader::ReadError::OutOfBounds {
+                        requested_bits: 1,
+                        bit_position: 8,
+                        remaining_bits: 0,
+                    }
+                )
+            ))
+        );
+        assert_eq!(error.context().access_unit_index(), 132);
+        assert_eq!(error.context().presentation_index(), Some(0));
+        assert_eq!(error.context().substream_index(), Some(0));
+        assert_eq!(error.context().bit_offset(), Some(8));
+        assert_eq!(
+            error.context().syntax_path(),
+            Some(PRESENTATION_SUBSTREAM_SYNTAX)
+        );
+        assert!(session.presentation_metadata.storage.view().is_none());
+        assert!(
+            session
+                .presentation_metadata
+                .group_gain
+                .effective_codes()
+                .is_none()
+        );
+        assert!(session.topology.is_waiting_for_random_access());
     }
 
     #[cfg(feature = "audio-decode")]
@@ -1918,6 +2406,7 @@ mod tests {
             );
             assert_eq!(waiting.frame_count(), 0);
             assert!(waiting.frames().next().is_none());
+            assert!(waiting.presentation_metadata().is_none());
             assert!(waiting.core_band_pcm().is_none());
         }
 
@@ -1968,11 +2457,11 @@ mod tests {
 
     #[test]
     fn truncated_preflight_does_not_commit_discontinuity_or_topology() {
-        let frame = frame_bytes(&[
+        let frame = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let mut session = Ac4DecoderSession::default();
         let state_before = session.topology;
@@ -2013,6 +2502,71 @@ mod tests {
     }
 
     #[test]
+    fn presentation_metadata_state_and_visibility_commit_transactionally() {
+        let frame = frame_with_minimal_presentation(&[
+            TOC_PREFIX,
+            PRESENTATION_NDOT,
+            FULL_AJOC_GROUP,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
+        ]);
+        let mut session = Ac4DecoderSession::default();
+
+        let prepared = expect_ready(
+            session
+                .prepare_access_unit(AccessUnit::new(&frame, AccessUnitContext::new(24)))
+                .expect("有效 presentation metadata 应形成候选"),
+        );
+        assert!(
+            session
+                .presentation_metadata
+                .group_gain
+                .effective_codes()
+                .is_none()
+        );
+        assert!(session.presentation_metadata.storage.view().is_none());
+        let candidate = prepared
+            .presentation_metadata
+            .expect("候选应保留 presentation payload 和有效状态");
+        assert_eq!(candidate.payload, MINIMAL_PRESENTATION_PAYLOAD);
+        assert_eq!(candidate.record.effective_group_gain_codes.as_slice(), &[0]);
+
+        session.commit_prepared(prepared);
+        assert_eq!(
+            session
+                .presentation_metadata
+                .group_gain
+                .effective_codes()
+                .expect("提交后应有有效 group gain")
+                .as_slice(),
+            &[0]
+        );
+        assert_eq!(
+            session
+                .presentation_metadata
+                .storage
+                .view()
+                .expect("提交后 sidecar 才可见")
+                .payload(),
+            MINIMAL_PRESENTATION_PAYLOAD
+        );
+
+        let error = session
+            .prepare_access_unit(AccessUnit::new(&[0], AccessUnitContext::new(25)))
+            .expect_err("下一份截断 TOC 应保持可重试");
+        assert!(matches!(error.kind(), DecodeErrorKind::NeedMoreData(_)));
+        assert!(session.presentation_metadata.storage.view().is_none());
+        assert_eq!(
+            session
+                .presentation_metadata
+                .group_gain
+                .effective_codes()
+                .expect("可重试读取耗尽不得清空已提交历史")
+                .as_slice(),
+            &[0]
+        );
+    }
+
+    #[test]
     fn selected_full_presentation_rejects_fullband_bed_and_isf_before_dsp() {
         let cases = [
             (
@@ -2032,8 +2586,12 @@ mod tests {
         ];
 
         for (group, expected) in cases {
-            let topology =
-                parse_frame(&[TOC_PREFIX, PRESENTATION_NDOT, group, TWO_EMPTY_SUBSTREAMS]);
+            let topology = parse_frame(&[
+                TOC_PREFIX,
+                PRESENTATION_NDOT,
+                group,
+                TWO_SUBSTREAMS_WITH_PRESENTATION,
+            ]);
             let error = resolve_presentation(
                 &topology,
                 PresentationSelection::AutoUnique,
@@ -2055,7 +2613,7 @@ mod tests {
             TOC_PREFIX,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP_WITH_FULLBAND_BED,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
 
         let resolved = resolve_presentation(
@@ -2767,8 +3325,8 @@ mod tests {
     #[cfg(feature = "audio-decode")]
     #[test]
     fn preflight_scopes_physical_substreams_to_the_selected_presentation() {
-        let table = "11 0 0000000000 0 0000000000 0 0000000000";
-        let frame = frame_bytes(&[
+        let table = "11 0 0000000011 0 0000000000 0 0000000000";
+        let frame = frame_with_minimal_presentation(&[
             TOC_PREFIX_TWO_PRESENTATIONS,
             PRESENTATION_NDOT,
             PRESENTATION_NDOT_GROUP_1,
@@ -2835,11 +3393,11 @@ mod tests {
     fn full_engine_context_failure_is_structured_and_invalidates_history() {
         // A-JOC info 的 b_static_dmx=1，因而缺少构造 core 对象所需的 dmx_assignment。
         let static_group = "1 0 1 0 0 1 0 1 0 0011 1 0 0 1 01 0";
-        let frame = frame_bytes(&[
+        let frame = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT,
             static_group,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let mut session = Ac4DecoderSession::default();
 
@@ -2864,7 +3422,7 @@ mod tests {
 
     #[test]
     fn preflight_rejects_a_truncated_substream_after_the_selected_full_payload() {
-        let frame = frame_bytes(&[
+        let frame = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT_WITH_EMDF_2,
             FULL_AJOC_GROUP,
@@ -2893,7 +3451,7 @@ mod tests {
     #[test]
     fn payload_boundary_error_precedes_unsupported_presentation() {
         let direct_group = "1 0 1 0 0 0 010 1 0 0 0 1 01 0";
-        let frame = frame_bytes(&[
+        let frame = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT,
             direct_group,
@@ -2914,17 +3472,17 @@ mod tests {
 
     #[test]
     fn preflight_commits_waiting_but_keeps_ready_reset_transactional() {
-        let dependent = frame_bytes(&[
+        let dependent = frame_with_minimal_presentation(&[
             TOC_PREFIX_NOT_IFRAME,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
-        let random_access = frame_bytes(&[
+        let random_access = frame_with_minimal_presentation(&[
             TOC_PREFIX_SEQUENCE_1,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let mut session = Ac4DecoderSession::default();
 
@@ -3013,23 +3571,23 @@ mod tests {
 
     #[test]
     fn access_unit_discontinuity_waits_for_a_full_random_access_point() {
-        let first = frame_bytes(&[
+        let first = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
-        let dependent = frame_bytes(&[
+        let dependent = frame_with_minimal_presentation(&[
             TOC_PREFIX_SEQUENCE_1_NOT_IFRAME,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
-        let recovered = frame_bytes(&[
+        let recovered = frame_with_minimal_presentation(&[
             TOC_PREFIX_SEQUENCE_2,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let mut session = Ac4DecoderSession::default();
         let initial = expect_ready(
@@ -3069,24 +3627,24 @@ mod tests {
 
     #[test]
     fn unsupported_path_invalidates_history_without_committing_its_generation() {
-        let first = frame_bytes(&[
+        let first = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let direct_group = "1 0 1 0 0 0 010 1 0 0 0 1 01 0";
-        let direct = frame_bytes(&[
+        let direct = frame_with_minimal_presentation(&[
             TOC_PREFIX_SEQUENCE_1,
             PRESENTATION_NDOT,
             direct_group,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
-        let recovered = frame_bytes(&[
+        let recovered = frame_with_minimal_presentation(&[
             TOC_PREFIX_SEQUENCE_2,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let mut session = Ac4DecoderSession::default();
         let initial = expect_ready(
@@ -3122,11 +3680,11 @@ mod tests {
 
     #[test]
     fn internal_invariant_requires_explicit_reset() {
-        let frame = frame_bytes(&[
+        let frame = frame_with_minimal_presentation(&[
             TOC_PREFIX,
             PRESENTATION_NDOT,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let mut session = Ac4DecoderSession::default();
         session.apply_error_policy(DecodeError::new(
@@ -3180,7 +3738,7 @@ mod tests {
             TOC_PREFIX,
             PRESENTATION,
             FULL_AJOC_GROUP,
-            TWO_EMPTY_SUBSTREAMS,
+            TWO_SUBSTREAMS_WITH_PRESENTATION,
         ]);
         let info = first_ajoc_info(&topology);
         let mut contexts = [None; MAX_SUBSTREAMS];

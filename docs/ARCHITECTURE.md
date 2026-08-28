@@ -23,11 +23,11 @@ encoded access units
 | crate | 当前职责 | 是否允许平台依赖 |
 |---|---|---|
 | `macindecode-ac4-bitstream` | bit reader、sync/TOC/拓扑、OAMD，以及 ASF/A-SPX/A-JOC 音频语法 | 否 |
-| `macindecode-ac4-scene` | 容器无关的 `Ac4SceneFrame` 数据契约和流式 Rust API；自持 A-JOC engine，并发布 Core/Full 对象/LFE normalized PCM、到期 group common 与 downmix/upmix 逐对象更新的借用视图 | 否 |
+| `macindecode-ac4-scene` | 容器无关的 `Ac4SceneFrame` 数据契约和流式 Rust API；自持 A-JOC engine，并发布 Core/Full 对象/LFE normalized PCM、到期 group common、downmix/upmix 逐对象更新及所选 presentation processing metadata 侧车的借用视图 | 否 |
 | `macindecode-ac4-mp4` | `ac-4`、`dac4`、sample table、edit/priming 适配 | 否 |
 | `macindecode-ac4-cli` | MP4/raw trace、测试诊断、core/A-SPX/full 对象 PCM、合成 ADM/DAMF 探针、真实 full DAMF、full ADM BW64/RF64 与固定网格 CAF | 可以 |
 
-bitstream/CLI 路径现已贯通核心带、A-SPX 与 A-JOC full 对象标量 PCM，并提供受限子集的固定 core 网格 CAF、合成 ADM/DAMF 诊断探针、full ADM 与 full DAMF 输出；`macindecode-ac4-scene` 已建立公共数据契约，并在 `audio-decode` 下由公开 `decode_access_unit` 事务驱动同一 A-JOC engine，按配置把 Core 诊断或 Full 重建的对象/LFE normalized PCM、group OAMD common 与对应 downmix/upmix 逐对象状态放在同一份表 188 到期快照中，以 Session 自有存储的借用视图返回。`export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 已消费同一 Scene batch adapter：raw 侧剥离 sync wrapper，MP4 侧提供 bounded AU 与外部时间，再在 Scene 外应用 edit 投影；需要历史量级的 PCM 出口统一把 Scene normalized 样本乘精确的 `2^15`。`DecodedAccessUnit` 上独立的 normalized pre-A-SPX 核心带侧车服务核心带基线，不进入 `Ac4SceneFrame` renderer 契约；调用方必须显式启用，普通 renderer 默认不复制这份诊断 PCM。合成 ADM/DAMF 诊断探针只保留已完整解码并完成控制对齐的场景元数据。core/full artifact 出口还把已选择 presentation 的元素、common 与更新时间线桥接到既有 writer。Core 模式对未应用的 dialogue enhancement 继续 fail closed。Scene 组装会保留 control source AU、raw timing、ramp、完整更新后状态与 changed mask，以 `(offset, 码流顺序)` 排列帧内事件，并把越过帧尾的更新留在有界复用队列；只有 offset 0 的自足更新进入帧起点状态，逐对象绝对生效时间若相对码流顺序倒退则作为无效码流失败关闭。以下名称仍只表示规划职责边界，**不是当前已经存在的 crate**：
+bitstream/CLI 路径现已贯通核心带、A-SPX 与 A-JOC full 对象标量 PCM，并提供受限子集的固定 core 网格 CAF、合成 ADM/DAMF 诊断探针、full ADM 与 full DAMF 输出；`macindecode-ac4-scene` 已建立公共数据契约，并在 `audio-decode` 下由公开 `decode_access_unit` 事务驱动同一 A-JOC engine，按配置把 Core 诊断或 Full 重建的对象/LFE normalized PCM、group OAMD common 与对应 downmix/upmix 逐对象状态放在同一份表 188 到期快照中，以 Session 自有存储的借用视图返回。所选 presentation 的完整 processing-metadata payload 同样在成功 AU 事务中复制到 Session，通过 `DecodedAccessUnit::presentation_metadata` 发布本帧解析视图、有效 DRC 配置与 group-gain 码值；它是 AU 级只读侧车，不进入 `Ac4SceneFrame`，也不应用任何值。`export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 已消费同一 Scene batch adapter：raw 侧剥离 sync wrapper，MP4 侧提供 bounded AU 与外部时间，再在 Scene 外应用 edit 投影；需要历史量级的 PCM 出口统一把 Scene normalized 样本乘精确的 `2^15`。`DecodedAccessUnit` 上独立的 normalized pre-A-SPX 核心带侧车服务核心带基线，不进入 `Ac4SceneFrame` renderer 契约；调用方必须显式启用，普通 renderer 默认不复制这份诊断 PCM。合成 ADM/DAMF 诊断探针只保留已完整解码并完成控制对齐的场景元数据。core/full artifact 出口还把已选择 presentation 的元素、common 与更新时间线桥接到既有 writer。Core 模式对未应用的 dialogue enhancement 继续 fail closed。Scene 组装会保留 control source AU、raw timing、ramp、完整更新后状态与 changed mask，以 `(offset, 码流顺序)` 排列帧内事件，并把越过帧尾的更新留在有界复用队列；只有 offset 0 的自足更新进入帧起点状态，逐对象绝对生效时间若相对码流顺序倒退则作为无效码流失败关闭。以下名称仍只表示规划职责边界，**不是当前已经存在的 crate**：
 
 | 规划边界 | 目标职责 |
 |---|---|
@@ -51,8 +51,8 @@ bitstream/CLI 路径现已贯通核心带、A-SPX 与 A-JOC full 对象标量 PC
 | `macindecode-ac4-bitstream/src/substream/` | channel/object/group substream 声明与共享读取逻辑 |
 | `macindecode-ac4-bitstream/src/topology/` | 拓扑解析、引用验证和随机访问状态机 |
 | `macindecode-ac4-bitstream/build_support/` | 数学表、QMF、规范 C 表/Huffman 与 SHA-256；`build.rs` 只调度 |
-| `macindecode-ac4-scene/src/model.rs` | timeline、presentation、bed/object PCM、group 级 OAMD common、逐对象更新及借用输出模型 |
-| `macindecode-ac4-scene/src/session.rs` | Session 控制面、presentation/mode 选择、Core/Full A-JOC 拓扑门禁与 engine 所有权 |
+| `macindecode-ac4-scene/src/model.rs` | timeline、presentation、bed/object PCM、group 级 OAMD common、逐对象更新、presentation metadata 侧车及借用输出模型 |
+| `macindecode-ac4-scene/src/session.rs` | Session 控制面、presentation/mode 选择、processing-metadata 跨帧状态与 payload 存储、Core/Full A-JOC 拓扑门禁及 engine 所有权 |
 | `macindecode-ac4-scene/src/full_engine.rs` | 同一 AU 候选到 A-JOC engine 的事务输入及结构化错误投影 |
 | `macindecode-ac4-scene/src/error.rs` | 可重试截断、选择、unsupported、码流与不变量错误及 AU/语法上下文 |
 | `macindecode-ac4-cli/src/trace/` | MP4/raw trace、普通音频统计，以及对统一 Full engine observation 的 A-JOC census 聚合 |
@@ -120,36 +120,42 @@ macindecode-ac4-audio-core   macindecode-ac4-oamd
 
 ### 4.1 Presentation/metadata 解析状态所有权
 
-M4.5 的 presentation processing metadata 当前由 `macindecode-ac4-bitstream` 公开，只解析、
-验证和保留；`Ac4DecoderSession` 尚未把这些字段发布为 `Ac4SceneFrame` 观察面。调用方若直接
-消费 bitstream API，必须按下表持有状态，不能把数组位置或恰好相同的对象布局当作共享依据：
+M4.5 的 presentation processing metadata 由 `macindecode-ac4-bitstream` 负责严格解析；
+`Ac4DecoderSession` 现为所选 presentation 持有 DRC/group-gain 历史和已验证 payload 副本，
+并通过 `DecodedAccessUnit::presentation_metadata` 发布 AU 级借用侧车。它没有变成
+`Ac4SceneFrame` 字段，也不执行处理。audio-substream dialogue enhancement、alternative OAMD
+与 EMDF 仍由直接消费 bitstream API 的调用方持有下表所列状态；任一路径都不能把数组位置或
+恰好相同的对象布局当作共享依据：
 
 | 数据 | 当前帧只读视图 | 跨帧状态键 | 所有权与限制 |
 |---|---|---|---|
-| presentation DRC | `Ac4PresentationSubstream` 中的配置、data/gain-set envelope 与原始 bit view | 一个配置代次内的 presentation | `PresentationDrcState` 只延续解析 dependent data 所需的配置；不拥有 gain 平滑或 PCM 处理状态 |
-| substream-group gain | 当前帧的 absent/keep/new 传输形态 | 一个配置代次内的 presentation | `PresentationSubstreamGroupGainState` 保存有效六比特码值；不换算或应用 gain |
+| presentation payload | `PresentationSubstreamMetadata::payload` 与 `parsed_substream()`；当前帧所有 presentation processing 字段及原始 bit view | Session 所选 presentation 的配置代次 | Session 复制完整 bounded payload；视图借用到下一次可变调用。`syntax_payload` 与 `compatibility_tail` 明确分开已知 `0x80` 尾部，且不赋予尾部语义 |
+| presentation DRC | `Ac4PresentationSubstream` 中的本帧配置、data/gain-set envelope 与原始 bit view；侧车另给出 effective configuration | Session 所选 presentation 的配置代次 | Session 内的 `PresentationDrcState` 只延续解析 dependent data 所需的配置；不拥有 gain 平滑或 PCM 处理状态 |
+| substream-group gain | 当前帧的 absent/keep/new 传输形态；侧车另给出 effective 六比特码值 | Session 所选 presentation 的配置代次 | Session 内的 `PresentationSubstreamGroupGainState` 保存有效码值；不换算或应用 gain |
 | dialogue enhancement | 当前物理 audio substream 的 tools-metadata view | 物理 `substream_index` | 默认构建只保留配置与原始 bit view；`DialogEnhancementState` 仅在 `audio-decode` 下可用，并独立延续配置、panning、primary 与 simulcast 参数历史；不同 substream 或两类参数历史不得共用 |
 | alternative OAMD | non-A-JOC 或 A-JOC core/full 的 dataset/opaque view | `(physical substream, domain, data_set_index)` | `OamdAlternativeDataSetState` 只拥有并保存规范已定义的 gain/位置；三个 domain 和各 dataset index 相互隔离，opaque 尾部仍属于当前帧 |
 | EMDF | 当前 carrier substream 的 descriptor 与 payload bit range | 无通用跨帧 datatype 状态 | `EmdfPayloadsSubstream` 固定容量保存 envelope；opaque bytes 只在调用方传回解析时同一有界源切片期间有效，未知 ID 不建立语义状态 |
 
-associated-audio、custom downmix、loudness correction 及 alternative target/dataset map 保持
-当前帧码流形态；解析层不根据 target、设备或 presentation 顺序作选择。所有有状态更新都先在
-候选上完整验证再提交；seek、换源、配置/拓扑变化、不连续、丢帧或失去精确物理帧上下文后，
-调用方必须清除相应状态。把这些状态接入 Session 时也必须沿用相同键和事务边界，不能为了方便
-合并成一份 presentation 全局缓存。
+associated-audio、custom downmix、loudness correction 及 alternative target/dataset map 在
+presentation 侧车中保持当前帧码流形态；解析层不根据 target、设备或 presentation 顺序作选择。
+所有有状态更新都先在候选上完整验证，且只在音频 DSP 与 Scene 组装也成功后提交；seek、换源、
+配置/拓扑变化、不连续、丢帧或失去精确物理帧上下文后，Session 或直接调用方必须清除相应状态。
+未来把其他状态接入 Session 时也必须沿用相同键和事务边界，不能为了方便合并成一份
+presentation 全局缓存。
 
 ## 5. 目标 access unit 处理顺序
 
 1. 校验调用方已经定界并剥离 sync wrapper 的 `raw_ac4_frame`。
 2. 解析 TOC，生成不可变的帧描述。
 3. 解析 presentation、group 与 substream 关系。
-4. 对所需音频 substream 执行核心解码。
-5. 如果是 direct-object，关联对象音频与 OAMD。
-6. 如果是 A-JOC，执行 full reconstruction，生成空间对象组。
-7. 解码当前帧的 OAMD 更新，并与上一帧状态合并。
-8. 报告编解码器与表 188 对齐延迟，但不在此层执行 MP4 edit 裁切。
-9. 组装一个或多个 `Ac4SceneFrame`。
-10. 返回借用场景、等待状态或结构化错误。
+4. 解析所选 presentation substream，在候选状态上还原有效 DRC 配置与 group-gain 码值。
+5. 对所需音频 substream 执行核心解码。
+6. 如果是 direct-object，关联对象音频与 OAMD。
+7. 如果是 A-JOC，执行 full reconstruction，生成空间对象组。
+8. 解码当前帧的 OAMD 更新，并与上一帧状态合并。
+9. 报告编解码器与表 188 对齐延迟，但不在此层执行 MP4 edit 裁切。
+10. 组装一个或多个 `Ac4SceneFrame`。
+11. 全部成功后提交控制状态、复制 presentation payload，并返回借用场景或等待状态。
 
 ## 6. 时间模型
 

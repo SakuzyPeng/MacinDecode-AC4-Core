@@ -16,6 +16,11 @@
 //! 公开 `decode_access_unit` 返回 Session 自有存储的借用视图；等待随机访问点时返回
 //! 空帧序列，解析或 DSP 失败时不会发布半成品视图。
 //!
+//! 成功 AU 还可通过 `DecodedAccessUnit::presentation_metadata` 观察所选 presentation 的
+//! 完整 processing metadata、当前有效 DRC 配置与 group-gain 码值。原 payload 复制到 Session
+//! 可复用存储中；该侧车只解析和保留，不应用任何 presentation processing，也不进入
+//! `Ac4SceneFrame` renderer 语义。
+//!
 //! 显式启用核心带诊断时，`DecodedAccessUnit` 还提供不属于 SceneFrame 的 pre-A-SPX
 //! normalized 侧车；默认关闭，普通 renderer 不为其复制 PCM。它与 Scene PCM 共享
 //! `1.0` nominal full scale，但不经过表 188 场景对齐，也不把传输声道声明为 renderer
@@ -38,16 +43,20 @@ pub use error::{
     PresentationSelectionError, UnsupportedReason,
 };
 
+pub use macindecode_ac4_bitstream::{
+    Ac4PresentationSubstream, PresentationDrcConfiguration, PresentationSubstreamContext,
+    PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
+};
 pub use model::{
     Ac4DecoderConfig, Ac4SceneFrame, AccessUnit, AccessUnitContext, BedKind, CartesianPosition,
     CodecDelay, DecodeMode, DecodeStatus, DecodedAccessUnit, FrameDiagnostics, HeadphoneMode,
     HeadphoneState, MetadataFields, ObjectExtent, ObjectKind, PcmLayout, PcmPlane, PcmSampleFormat,
     PlanarPcm, PresentationSelection, PresentationSelectionMetadata,
     PresentationSelectionMetadataIdentity, PresentationSelectionMetadataMatch,
-    PresentationSelectionMetadataMatchBasis, RawOamdCommonState, RawOamdState, RawOamdTiming,
-    RawOamdUpdate, ResetKind, SceneBed, SceneBedComponent, SceneElementId, SceneElementSource,
-    SceneFrameIter, SceneMetadataUpdate, SceneObject, SceneObjectState, ScenePath,
-    ScenePresentation, SceneTimeline, SpeakerLabel, ZoneState,
+    PresentationSelectionMetadataMatchBasis, PresentationSubstreamMetadata, RawOamdCommonState,
+    RawOamdState, RawOamdTiming, RawOamdUpdate, ResetKind, SceneBed, SceneBedComponent,
+    SceneElementId, SceneElementSource, SceneFrameIter, SceneMetadataUpdate, SceneObject,
+    SceneObjectState, ScenePath, ScenePresentation, SceneTimeline, SpeakerLabel, ZoneState,
 };
 #[cfg(feature = "audio-decode")]
 pub use model::{CoreBandPcmChannel, CoreBandPcmFrame};
