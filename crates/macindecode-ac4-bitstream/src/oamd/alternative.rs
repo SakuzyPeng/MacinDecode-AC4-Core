@@ -3,6 +3,31 @@
 use super::*;
 use crate::reader::{BitReader, ReadError};
 
+/// 一份 alternative dataset 列表在物理 audio substream 内的语义域。
+///
+/// non-A-JOC 路径只有一份列表；A-JOC 的同一物理 substream 同时携带 core/downmix 与
+/// full/upmix 两份独立的 `oamd_dyndata_single()`，它们即使对象布局和 dataset index 相同也
+/// 不共享 `b_keep` 历史。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OamdAlternativeDataSetDomain {
+    /// non-A-JOC `metadata()` 内的 alternative OAMD。
+    NonAjoc,
+    /// A-JOC core/downmix 侧的 alternative OAMD。
+    AjocCore,
+    /// A-JOC full/upmix 侧的 alternative OAMD。
+    AjocFull,
+}
+
+impl fmt::Display for OamdAlternativeDataSetDomain {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NonAjoc => formatter.write_str("non-A-JOC"),
+            Self::AjocCore => formatter.write_str("A-JOC core/downmix"),
+            Self::AjocFull => formatter.write_str("A-JOC full/upmix"),
+        }
+    }
+}
+
 /// 一个已完整验证的 `oamd_dyndata_single()`。
 ///
 /// 逐对象 block 与 alternative dataset 保持在原 payload 中；本结构只保存对象布局、
@@ -24,7 +49,8 @@ impl OamdDyndataSingle {
     ///
     /// `objects` 必须按该物理 audio substream 中 object essence 的顺序排列。
     /// 解析会完整验证所有 block、dataset 与 additional-data envelope，但不选择或应用
-    /// 任一 alternative dataset。
+    /// 任一 alternative dataset。`alternative_domain` 为 `None` 表示 `b_alternative == 0`；
+    /// 否则其值标识 non-A-JOC、A-JOC core 或 A-JOC full 列表，供跨帧状态隔离。
     ///
     /// # Errors
     ///
@@ -35,14 +61,14 @@ impl OamdDyndataSingle {
         objects: &[ObjectDescriptor],
         num_obj_info_blocks: u8,
         b_iframe: bool,
-        b_alternative: bool,
+        alternative_domain: Option<OamdAlternativeDataSetDomain>,
     ) -> Result<Self, OamdError> {
         Self::parse_with_block_observer(
             reader,
             objects,
             num_obj_info_blocks,
             b_iframe,
-            b_alternative,
+            alternative_domain,
             |_| {},
         )
     }
@@ -56,7 +82,7 @@ impl OamdDyndataSingle {
         objects: &[ObjectDescriptor],
         num_obj_info_blocks: u8,
         b_iframe: bool,
-        b_alternative: bool,
+        alternative_domain: Option<OamdAlternativeDataSetDomain>,
         mut observe_block: impl FnMut(OamdMetadataBlock),
     ) -> Result<Self, OamdError> {
         if objects.len() > MAX_OAMD_OBJECTS {
@@ -88,7 +114,7 @@ impl OamdDyndataSingle {
         }
         let blocks_bit_len = reader.bit_position().saturating_sub(blocks_bit_offset);
 
-        let alternative = if b_alternative {
+        let alternative = if let Some(domain) = alternative_domain {
             let b_ducking_disabled = reader.read_flag()?;
             let category_base = u32::try_from(reader.read_bits(2)?).unwrap_or(u32::MAX);
             let object_sound_category = if category_base == 3 {
@@ -107,6 +133,7 @@ impl OamdDyndataSingle {
                 parse_alternative_data_set(reader, &objects, index)?;
             }
             Some(OamdAlternativeData {
+                domain,
                 b_ducking_disabled,
                 object_sound_category,
                 n_data_sets,
@@ -204,6 +231,7 @@ impl OamdDyndataSingle {
             )?,
             source: payload,
             objects: self.objects,
+            domain: alternative.domain,
             b_iframe: self.b_iframe,
             next_index: 0,
             remaining: alternative.n_data_sets,
@@ -215,6 +243,8 @@ impl OamdDyndataSingle {
 /// `oamd_dyndata_single()` 中 alternative dataset 列表的公共 header。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OamdAlternativeData {
+    /// 本列表在物理 audio substream 内的语义域。
+    pub domain: OamdAlternativeDataSetDomain,
     /// `b_ducking_disabled` 原值。
     pub b_ducking_disabled: bool,
     /// 含 `variable_bits(2)` 扩展后的 `object_sound_category` 原值。
@@ -346,6 +376,8 @@ const EMPTY_ALTERNATIVE_EXTENDED_POSITION: OamdAlternativeExtendedPosition =
 /// 本类型不猜测未来扩展是否属于 `b_keep` 的 object-property update。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OamdAlternativePropertySnapshot {
+    /// 产生本快照的 alternative dataset 语义域。
+    pub domain: OamdAlternativeDataSetDomain,
     /// dataset 在 `n_alt_data_sets` 循环内的零基下标。
     pub data_set_index: u32,
     /// 非 ISF 隐式公共分支传输的 `b_common_data`。
@@ -377,6 +409,13 @@ impl OamdAlternativePropertySnapshot {
 pub enum OamdAlternativeDataSetStateError {
     /// 回取已验证 bit range 时发生底层 OAMD 错误。
     Oamd(OamdError),
+    /// 同一状态实例收到了另一个 alternative dataset 语义域。
+    DataSetDomainChanged {
+        /// 状态已经绑定的语义域。
+        previous: OamdAlternativeDataSetDomain,
+        /// 当前更新的语义域。
+        current: OamdAlternativeDataSetDomain,
+    },
     /// 同一状态实例收到了另一个 dataset loop index。
     DataSetIndexChanged {
         /// 状态已经绑定的零基下标。
@@ -403,9 +442,13 @@ impl fmt::Display for OamdAlternativeDataSetStateError {
                 formatter,
                 "Failed to recover an alternative OAMD property update: {error}"
             ),
+            Self::DataSetDomainChanged { previous, current } => write!(
+                formatter,
+                "Alternative OAMD state is bound to {previous}, but received {current}; isolate A-JOC core/downmix and full/upmix histories"
+            ),
             Self::DataSetIndexChanged { previous, current } => write!(
                 formatter,
-                "Alternative OAMD state is bound to dataset {previous}, but received dataset {current}; isolate state by physical substream and dataset index"
+                "Alternative OAMD state is bound to dataset {previous}, but received dataset {current}; isolate state by physical substream, dataset domain, and dataset index"
             ),
             Self::ObjectLayoutChanged { data_set_index } => write!(
                 formatter,
@@ -436,16 +479,18 @@ impl From<OamdError> for OamdAlternativeDataSetStateError {
 
 /// 一个 alternative dataset loop index 的当前有效 object-property 状态。
 ///
-/// 状态实例必须按 `(physical audio substream, data_set_index)` 隔离；它不读取 presentation
-/// target，也不选择 dataset。一次成功的新更新会复制规范已定义的量化原值，后续 dependent
-/// frame 的 `b_keep` 返回同一快照。规范没有为“无历史的 keep”定义默认 object properties，
-/// 因而首次 keep、reset 后 keep 以及 I-frame keep 都失败关闭。
+/// 状态实例必须按 `(physical audio substream, domain, data_set_index)` 隔离，其中 A-JOC 的
+/// core/downmix 与 full/upmix 是两个独立 domain；它不读取 presentation target，也不选择
+/// dataset。一次成功的新更新会复制规范已定义的量化原值，后续 dependent frame 的 `b_keep`
+/// 返回同一快照。规范没有为“无历史的 keep”定义默认 object properties，因而首次 keep、reset
+/// 后 keep 以及 I-frame keep 都失败关闭。
 ///
 /// I-frame 的新更新不依赖旧对象布局；dependent frame 若改变布局则要求调用方先
 /// [`reset`](Self::reset)。seek、换源、拓扑变化、不连续或丢帧后也应 reset。所有更新均为
 /// 事务性，本类型不反量化、不选择 target，也不把属性应用到 OAMD 或 PCM。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct OamdAlternativeDataSetState {
+    domain: Option<OamdAlternativeDataSetDomain>,
     data_set_index: Option<u32>,
     objects: Option<ObjectDescriptors>,
     effective: Option<OamdAlternativePropertySnapshot>,
@@ -456,10 +501,17 @@ impl OamdAlternativeDataSetState {
     #[must_use]
     pub const fn new() -> Self {
         Self {
+            domain: None,
             data_set_index: None,
             objects: None,
             effective: None,
         }
+    }
+
+    /// 当前状态绑定的 dataset 语义域；首次成功更新前为 `None`。
+    #[must_use]
+    pub const fn domain(self) -> Option<OamdAlternativeDataSetDomain> {
+        self.domain
     }
 
     /// 当前状态绑定的 dataset 零基下标；首次成功更新前为 `None`。
@@ -487,12 +539,21 @@ impl OamdAlternativeDataSetState {
     ///
     /// # Errors
     ///
-    /// 状态被误用于另一 dataset index、dependent frame 改变对象布局、keep 没有连续历史，或
-    /// 回取已验证 bit range 失败时返回错误。任何失败都不会修改状态。
+    /// 状态被误用于另一 dataset domain/index、dependent frame 改变对象布局、keep 没有连续
+    /// 历史，或回取已验证 bit range 失败时返回错误。任何失败都不会修改状态。
     pub fn apply(
         &mut self,
         data_set: OamdAlternativeDataSet<'_>,
     ) -> Result<OamdAlternativePropertySnapshot, OamdAlternativeDataSetStateError> {
+        if let Some(previous) = self.domain
+            && previous != data_set.domain
+        {
+            return Err(OamdAlternativeDataSetStateError::DataSetDomainChanged {
+                previous,
+                current: data_set.domain,
+            });
+        }
+
         if let Some(previous) = self.data_set_index
             && previous != data_set.index
         {
@@ -526,6 +587,7 @@ impl OamdAlternativeDataSetState {
         };
 
         *self = Self {
+            domain: Some(data_set.domain),
             data_set_index: Some(data_set.index),
             objects: Some(data_set.objects),
             effective: Some(effective),
@@ -560,6 +622,8 @@ struct ParsedAlternativeDataSet {
 /// opaque additional data 分别通过只读方法取得。
 #[derive(Debug, Clone, Copy)]
 pub struct OamdAlternativeDataSet<'a> {
+    /// 本 dataset 所属的 alternative 列表语义域。
+    pub domain: OamdAlternativeDataSetDomain,
     /// dataset 在 `n_alt_data_sets` 循环内的零基下标。
     pub index: u32,
     /// `b_keep`；为真时本 dataset 沿用上一 object-property update。
@@ -648,6 +712,7 @@ pub struct OamdAlternativeDataSetIter<'a> {
     reader: BitReader<'a>,
     source: &'a [u8],
     objects: ObjectDescriptors,
+    domain: OamdAlternativeDataSetDomain,
     b_iframe: bool,
     next_index: u32,
     remaining: u32,
@@ -666,6 +731,7 @@ impl<'a> Iterator for OamdAlternativeDataSetIter<'a> {
                 self.next_index = self.next_index.saturating_add(1);
                 self.remaining = self.remaining.saturating_sub(1);
                 Some(Ok(OamdAlternativeDataSet {
+                    domain: self.domain,
                     index: parsed.index,
                     keep: parsed.keep,
                     common_data: parsed.common_data,
@@ -909,6 +975,7 @@ fn snapshot_defined_properties(
     data_set: OamdAlternativeDataSet<'_>,
 ) -> Result<OamdAlternativePropertySnapshot, OamdError> {
     let mut snapshot = OamdAlternativePropertySnapshot {
+        domain: data_set.domain,
         data_set_index: data_set.index,
         common_data: data_set.common_data,
         data_points: [EMPTY_ALTERNATIVE_DATA_POINT; MAX_OAMD_OBJECTS],
@@ -1149,6 +1216,8 @@ mod tests {
         b_lfe: false,
         b_ajoc_coded: false,
     };
+    const NON_AJOC_ALTERNATIVE: Option<OamdAlternativeDataSetDomain> =
+        Some(OamdAlternativeDataSetDomain::NonAjoc);
 
     fn data_set_at<'a>(
         bits: &'a TestBits,
@@ -1158,9 +1227,14 @@ mod tests {
         index: usize,
     ) -> OamdAlternativeDataSet<'a> {
         let mut reader = bits.reader();
-        let parsed =
-            OamdDyndataSingle::parse(&mut reader, objects, num_obj_info_blocks, b_iframe, true)
-                .unwrap();
+        let parsed = OamdDyndataSingle::parse(
+            &mut reader,
+            objects,
+            num_obj_info_blocks,
+            b_iframe,
+            NON_AJOC_ALTERNATIVE,
+        )
+        .unwrap();
         assert_eq!(reader.bit_position(), bits.bit_len as u64);
         parsed
             .alternative_data_sets(bits.as_slice())
@@ -1218,7 +1292,8 @@ mod tests {
         bits.push_bits(0x3c, 8);
 
         let mut reader = bits.reader();
-        let parsed = OamdDyndataSingle::parse(&mut reader, &objects, 1, true, true).unwrap();
+        let parsed =
+            OamdDyndataSingle::parse(&mut reader, &objects, 1, true, NON_AJOC_ALTERNATIVE).unwrap();
         assert_eq!(reader.bit_position(), bits.bit_len as u64);
         assert_eq!(parsed.metadata_block_count(), 3);
         assert_eq!(parsed.objects(), objects);
@@ -1236,6 +1311,7 @@ mod tests {
         assert!(blocks.iter().all(|block| block.info.object_not_active));
 
         let alternative = parsed.alternative().unwrap();
+        assert_eq!(alternative.domain, OamdAlternativeDataSetDomain::NonAjoc);
         assert!(alternative.b_ducking_disabled);
         assert_eq!(alternative.object_sound_category, 4);
         assert_eq!(alternative.n_data_sets, 2);
@@ -1249,6 +1325,7 @@ mod tests {
         assert_eq!(data_sets.len(), 2, "解析层不得根据 target 自动选择 dataset");
 
         let first = data_sets[0];
+        assert_eq!(first.domain, OamdAlternativeDataSetDomain::NonAjoc);
         assert!(!first.keep);
         assert_eq!(first.common_data, Some(false));
         assert_eq!(first.data_point_count, 3);
@@ -1339,7 +1416,9 @@ mod tests {
         }
 
         let mut reader = bits.reader();
-        let parsed = OamdDyndataSingle::parse(&mut reader, &objects, 0, false, true).unwrap();
+        let parsed =
+            OamdDyndataSingle::parse(&mut reader, &objects, 0, false, NON_AJOC_ALTERNATIVE)
+                .unwrap();
         let alternative = parsed.alternative().unwrap();
         assert_eq!(alternative.object_sound_category, 5);
         assert_eq!(alternative.n_data_sets, 4);
@@ -1371,7 +1450,8 @@ mod tests {
         kept.push(false); // no additional data
 
         let mut reader = kept.reader();
-        let parsed = OamdDyndataSingle::parse(&mut reader, &[], 0, false, true).unwrap();
+        let parsed =
+            OamdDyndataSingle::parse(&mut reader, &[], 0, false, NON_AJOC_ALTERNATIVE).unwrap();
         assert_eq!(reader.bit_position(), kept.bit_len as u64);
         let data_set = parsed
             .alternative_data_sets(kept.as_slice())
@@ -1389,7 +1469,7 @@ mod tests {
         replaced.push_bits(1, 2); // one dataset
         replaced.push(false); // keep=0 必须取得 obj_type[0]
         assert!(matches!(
-            OamdDyndataSingle::parse(&mut replaced.reader(), &[], 0, false, true),
+            OamdDyndataSingle::parse(&mut replaced.reader(), &[], 0, false, NON_AJOC_ALTERNATIVE,),
             Err(OamdError::AlternativeDataWithoutObjects { data_sets: 1, .. })
         ));
     }
@@ -1413,7 +1493,8 @@ mod tests {
         bits.push(false); // no additional data
 
         let parsed =
-            OamdDyndataSingle::parse(&mut bits.reader(), &objects, 0, false, true).unwrap();
+            OamdDyndataSingle::parse(&mut bits.reader(), &objects, 0, false, NON_AJOC_ALTERNATIVE)
+                .unwrap();
         let data_set = parsed
             .alternative_data_sets(bits.as_slice())
             .unwrap()
@@ -1475,9 +1556,11 @@ mod tests {
 
         let mut state = OamdAlternativeDataSetState::new();
         let effective = state.apply(first_data_set).unwrap();
+        assert_eq!(state.domain(), Some(OamdAlternativeDataSetDomain::NonAjoc));
         assert_eq!(state.data_set_index(), Some(0));
         assert_eq!(state.effective(), Some(effective));
         assert_eq!(effective.data_set_index, 0);
+        assert_eq!(effective.domain, OamdAlternativeDataSetDomain::NonAjoc);
         assert_eq!(effective.common_data, Some(false));
         assert_eq!(
             effective.data_points(),
@@ -1671,7 +1754,8 @@ mod tests {
         bits.push_bits(0xff, 8); // 后续可读数据不得被借用
 
         let error =
-            OamdDyndataSingle::parse(&mut bits.reader(), &objects, 0, false, true).unwrap_err();
+            OamdDyndataSingle::parse(&mut bits.reader(), &objects, 0, false, NON_AJOC_ALTERNATIVE)
+                .unwrap_err();
         assert_eq!(
             error,
             OamdError::AdditionalDataUnderflow {
@@ -1684,7 +1768,13 @@ mod tests {
     #[test]
     fn rejects_zero_iframe_blocks_and_dataset_count_overflow() {
         assert_eq!(
-            OamdDyndataSingle::parse(&mut BitReader::new(&[]), &[BED], 0, true, true,),
+            OamdDyndataSingle::parse(
+                &mut BitReader::new(&[]),
+                &[BED],
+                0,
+                true,
+                NON_AJOC_ALTERNATIVE,
+            ),
             Err(OamdError::ZeroBlocksInIframe)
         );
 
@@ -1699,7 +1789,7 @@ mod tests {
         bits.push_bits(0, 2);
         bits.push(false);
         assert!(matches!(
-            OamdDyndataSingle::parse(&mut bits.reader(), &[BED], 0, false, true),
+            OamdDyndataSingle::parse(&mut bits.reader(), &[BED], 0, false, NON_AJOC_ALTERNATIVE,),
             Err(OamdError::Read(ReadError::ValueOverflow { .. }))
         ));
     }

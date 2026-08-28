@@ -189,10 +189,11 @@ view 保留。结果按码流顺序暴露全部 dataset，不读取 presentation
 复用同一解析器，分别保留 core/downmix 与 full/upmix 的完整 block 和 dataset 边界。语法观察
 不选择或应用 dataset；Core/Full 对象出口在应用语义落地前以类型化
 `AlternativeObjectMetadata` 失败关闭，避免静默输出错误 PCM。`OamdAlternativeDataSetState`
-按物理 substream 与 dataset loop index 隔离，拥有化保存规范已定义的 gain、标准/扩展精度位置，
-并在 dependent `b_keep` 帧复用；无历史、I-frame keep、dependent 布局变化与 index 串用均
-事务性失败。opaque 尾部仍由当前帧原始 view 保留，状态不猜测未来扩展语义。余项只是真实向量
-验证；Channel-based 路径没有对象上下文，按既定范围继续失败关闭。
+按物理 substream、non-A-JOC/A-JOC core/full domain 与 dataset loop index 隔离，拥有化保存规范
+已定义的 gain、标准/扩展精度位置，并在 dependent `b_keep` 帧复用；无历史、I-frame keep、
+dependent 布局变化与 domain/index 串用均事务性失败。同一 A-JOC 物理 substream 内的 downmix
+与 upmix 列表不能互相覆盖。opaque 尾部仍由当前帧原始 view 保留，状态不猜测未来扩展语义。
+余项只是真实向量验证；Channel-based 路径没有对象上下文，按既定范围继续失败关闭。
 
 ## 4. 明确延后或不在范围内
 

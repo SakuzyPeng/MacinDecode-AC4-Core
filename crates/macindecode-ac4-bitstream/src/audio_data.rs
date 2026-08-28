@@ -18,7 +18,8 @@ use crate::ajoc::{Ajoc, AjocError, AjocObjectControl, AjocObjectMatrix, parse_aj
 use crate::aspx::syntax::AspxData;
 use crate::channel::{ChannelContext, ChannelElement};
 use crate::oamd::{
-    OamdDyndataSingle, OamdError, OamdMetadataBlock, OamdTimingData, ObjectDescriptor,
+    OamdAlternativeDataSetDomain, OamdDyndataSingle, OamdError, OamdMetadataBlock, OamdTimingData,
+    ObjectDescriptor,
 };
 use crate::reader::{BitReader, ReadError};
 use crate::var_element::{
@@ -408,7 +409,9 @@ pub fn parse_audio_data_ajoc(
         dmx_objects,
         dmx_num_obj_info_blocks,
         params.b_iframe,
-        params.b_alternative,
+        params
+            .b_alternative
+            .then_some(OamdAlternativeDataSetDomain::AjocCore),
         dmx_blocks,
     )?;
 
@@ -469,7 +472,9 @@ pub fn parse_audio_data_ajoc(
         umx_objects,
         umx_num_obj_info_blocks,
         params.b_iframe,
-        params.b_alternative,
+        params
+            .b_alternative
+            .then_some(OamdAlternativeDataSetDomain::AjocFull),
         umx_blocks,
     )?;
 
@@ -504,7 +509,7 @@ fn parse_dyndata_single(
     objects: &[ObjectDescriptor],
     n_blocks: u8,
     b_iframe: bool,
-    b_alternative: bool,
+    alternative_domain: Option<OamdAlternativeDataSetDomain>,
     out: &mut [OamdMetadataBlock],
 ) -> Result<(OamdDyndataSingle, usize), AudioDataError> {
     let needed = objects.len().saturating_mul(usize::from(n_blocks));
@@ -520,7 +525,7 @@ fn parse_dyndata_single(
         objects,
         n_blocks,
         b_iframe,
-        b_alternative,
+        alternative_domain,
         |block| {
             if let Some(slot) = out.get_mut(written) {
                 *slot = block;
@@ -578,7 +583,9 @@ fn ensure_objects(
 mod tests {
     use super::*;
     use crate::ajoc::MAX_AJOC_DMX_SIGNALS;
-    use crate::oamd::{InfoStatus, ObjectType};
+    use crate::oamd::{
+        InfoStatus, OamdAlternativeDataSetState, OamdAlternativeDataSetStateError, ObjectType,
+    };
     use crate::testutil::BitBuf;
 
     const CONTEXT: ChannelContext = ChannelContext {
@@ -697,7 +704,7 @@ mod tests {
 
     /// A-JOC 的 core/downmix 与 full/upmix 两处 `oamd_dyndata_single()` 都必须
     /// 完整消费并保留 alternative datasets；解析层不根据 presentation target
-    /// 选择其中任何一项。
+    /// 选择其中任何一项，两份同 index、同布局的列表也不得共享 `b_keep` 状态。
     #[test]
     fn full_element_preserves_both_alternative_oamd_lists() {
         let mut buf = BitBuf::new();
@@ -793,6 +800,7 @@ mod tests {
         assert_eq!(data.umx_blocks_written(), 2);
 
         let dmx_header = data.dmx_oamd.alternative().expect("core 应有 header");
+        assert_eq!(dmx_header.domain, OamdAlternativeDataSetDomain::AjocCore);
         assert!(dmx_header.b_ducking_disabled);
         assert_eq!(dmx_header.object_sound_category, 2);
         assert_eq!(dmx_header.n_data_sets, 1);
@@ -803,6 +811,7 @@ mod tests {
             .expect("core 应有 dataset 迭代器");
         let dmx_set = dmx_sets.next().expect("应有一个 core dataset").unwrap();
         assert!(dmx_sets.next().is_none());
+        assert_eq!(dmx_set.domain, OamdAlternativeDataSetDomain::AjocCore);
         assert!(!dmx_set.keep);
         assert_eq!(dmx_set.common_data, Some(true));
         let dmx_point = dmx_set
@@ -814,6 +823,7 @@ mod tests {
         assert_eq!(dmx_point.alternative_gain, Some(5));
 
         let umx_header = data.umx_oamd.alternative().expect("full 应有 header");
+        assert_eq!(umx_header.domain, OamdAlternativeDataSetDomain::AjocFull);
         assert!(!umx_header.b_ducking_disabled);
         assert_eq!(umx_header.object_sound_category, 1);
         assert_eq!(umx_header.n_data_sets, 2);
@@ -823,6 +833,7 @@ mod tests {
             .expect("边界应可重放")
             .expect("full 应有 dataset 迭代器");
         let umx_first = umx_sets.next().expect("应有首个 full dataset").unwrap();
+        assert_eq!(umx_first.domain, OamdAlternativeDataSetDomain::AjocFull);
         let umx_point = umx_first
             .data_points()
             .expect("数据点边界应有效")
@@ -830,6 +841,39 @@ mod tests {
             .expect("应有公共数据点")
             .unwrap();
         assert_eq!(umx_point.alternative_gain, Some(9));
+
+        let mut core_state = OamdAlternativeDataSetState::new();
+        let core_effective = core_state.apply(dmx_set).unwrap();
+        assert_eq!(
+            core_effective
+                .data_points()
+                .first()
+                .and_then(|point| point.alternative_gain),
+            Some(5)
+        );
+        assert_eq!(
+            core_state.domain(),
+            Some(OamdAlternativeDataSetDomain::AjocCore)
+        );
+        let previous = core_state;
+        assert_eq!(
+            core_state.apply(umx_first),
+            Err(OamdAlternativeDataSetStateError::DataSetDomainChanged {
+                previous: OamdAlternativeDataSetDomain::AjocCore,
+                current: OamdAlternativeDataSetDomain::AjocFull,
+            })
+        );
+        assert_eq!(core_state, previous, "跨域失败不得覆盖 core gain");
+
+        let mut full_state = OamdAlternativeDataSetState::new();
+        let full_effective = full_state.apply(umx_first).unwrap();
+        assert_eq!(
+            full_effective
+                .data_points()
+                .first()
+                .and_then(|point| point.alternative_gain),
+            Some(9)
+        );
         let umx_kept = umx_sets.next().expect("应有 keep dataset").unwrap();
         assert!(umx_kept.keep);
         assert!(umx_sets.next().is_none());
@@ -1111,7 +1155,7 @@ mod tests {
 
         let mut out = [OamdMetadataBlock::default(); 2];
         let mut reader = BitReader::new(buf.as_slice());
-        parse_dyndata_single(&mut reader, &objects, 1, true, false, &mut out).expect("应能解析");
+        parse_dyndata_single(&mut reader, &objects, 1, true, None, &mut out).expect("应能解析");
 
         assert_eq!(reader.bit_position(), 3);
         let Some(block) = out.first() else {
@@ -1125,7 +1169,7 @@ mod tests {
 
         // 同样三位、b_no_delta 为假时，中间那位被当作 reuse 标志。
         let mut reader = BitReader::new(buf.as_slice());
-        parse_dyndata_single(&mut reader, &objects, 1, false, false, &mut out).expect("应能解析");
+        parse_dyndata_single(&mut reader, &objects, 1, false, None, &mut out).expect("应能解析");
         let Some(block) = out.first() else {
             panic!("应有一个信息块");
         };
@@ -1279,8 +1323,8 @@ mod tests {
 
         let mut out = [OamdMetadataBlock::default(); 4];
         let mut reader = BitReader::new(buf.as_slice());
-        let (_, written) = parse_dyndata_single(&mut reader, &objects, 3, true, false, &mut out)
-            .expect("应能解析");
+        let (_, written) =
+            parse_dyndata_single(&mut reader, &objects, 3, true, None, &mut out).expect("应能解析");
         assert_eq!(written, 3);
         assert_eq!(
             reader.bit_position(),
@@ -1323,7 +1367,7 @@ mod tests {
             let mut out = [OamdMetadataBlock::default(); 16];
             let mut reader = BitReader::new(buf.as_slice());
             let (_, written) =
-                parse_dyndata_single(&mut reader, &objects, blocks, true, false, &mut out)
+                parse_dyndata_single(&mut reader, &objects, blocks, true, None, &mut out)
                     .expect("应能解析");
 
             assert_eq!(
@@ -1359,7 +1403,7 @@ mod tests {
         let mut out = [OamdMetadataBlock::default(); 3];
         let mut reader = BitReader::new(buf.as_slice());
         assert_eq!(
-            parse_dyndata_single(&mut reader, &objects, 2, true, false, &mut out),
+            parse_dyndata_single(&mut reader, &objects, 2, true, None, &mut out),
             Err(AudioDataError::ObjectWorkspaceTooSmall {
                 needed: 4,
                 provided: 3

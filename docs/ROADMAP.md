@@ -565,12 +565,13 @@ payload 中按需迭代，解析结果始终暴露全部候选，不结合 targe
 使用继承父边界的子读取器，即使 envelope 后仍有可读字段也不能越界借用。A-JOC
 `audio_data_ajoc()` 的 core/downmix 与 full/upmix 两处调用现已复用同一解析器，结果分别保存完整
 边界；`ObserveFull` 可继续观察语法，但 RequireCore/RequireFull 在 dataset 尚未应用时以类型化
-blocker 失败关闭。`OamdAlternativeDataSetState` 再按物理 audio substream 与 dataset loop index
-隔离有效 object-property update：新值拥有化保存 gain、标准/扩展精度位置原值，dependent
-`b_keep` 沿用前值；规范未给首次 keep 默认值，因此无历史或 I-frame keep 失败关闭。dependent
-对象布局变化、状态实例串用另一 index 同样事务性失败，seek、换源、拓扑变化、不连续或丢帧由
-调用方 reset。状态不读取 target，不应用属性；opaque additional data 仍由逐帧原始 view 保留。
-Channel-based 没有对象 metadata 上下文，继续按本轮范围失败关闭。
+blocker 失败关闭。`OamdAlternativeDataSetState` 再按物理 audio substream、non-A-JOC/A-JOC
+core/full domain 与 dataset loop index 隔离有效 object-property update：新值拥有化保存 gain、
+标准/扩展精度位置原值，dependent `b_keep` 沿用前值；规范未给首次 keep 默认值，因此无历史或
+I-frame keep 失败关闭。dependent 对象布局变化、状态实例串用另一 domain/index 同样事务性失败；
+同一 A-JOC 物理 substream 的 downmix/upmix 同 index、同布局列表也不能互相覆盖。seek、换源、
+拓扑变化、不连续或丢帧由调用方 reset。状态不读取 target，不应用属性；opaque additional data
+仍由逐帧原始 view 保留。Channel-based 没有对象 metadata 上下文，继续按本轮范围失败关闭。
 
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。

@@ -28,7 +28,9 @@
 //! 还原有效参数索引；仍不反量化或执行 dialogue enhancement。
 
 use crate::emdf::{EmdfError, EmdfPayloadsSubstream};
-use crate::oamd::{OamdDyndataSingle, OamdError, ObjectDescriptor, ObjectDescriptors};
+use crate::oamd::{
+    OamdAlternativeDataSetDomain, OamdDyndataSingle, OamdError, ObjectDescriptor, ObjectDescriptors,
+};
 use crate::reader::{BitReader, ReadError};
 use core::fmt;
 
@@ -1259,7 +1261,7 @@ impl Ac4AudioSubstream {
                 alternative.objects(),
                 alternative.num_obj_info_blocks,
                 b_iframe,
-                true,
+                Some(OamdAlternativeDataSetDomain::NonAjoc),
             )?)
         } else {
             None
@@ -1543,7 +1545,9 @@ mod tests {
         let oamd = parsed.alternative_oamd.expect("alternative OAMD 应被保留");
         assert_eq!(oamd.objects(), [object]);
         assert_eq!(oamd.metadata_block_count(), 1);
-        assert_eq!(oamd.alternative().unwrap().n_data_sets, 0);
+        let alternative = oamd.alternative().unwrap();
+        assert_eq!(alternative.domain, OamdAlternativeDataSetDomain::NonAjoc);
+        assert_eq!(alternative.n_data_sets, 0);
         let blocks = oamd
             .metadata_blocks(&bits[..len])
             .unwrap()
