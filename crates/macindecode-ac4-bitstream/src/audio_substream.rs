@@ -27,7 +27,7 @@
 //! `audio-decode` 后可显式熵解码完整帧内 data 语法，并以调用方按物理 substream 隔离的状态
 //! 还原有效参数索引；仍不反量化或执行 dialogue enhancement。
 
-use crate::emdf::EmdfPayloadsSubstream;
+use crate::emdf::{EmdfError, EmdfPayloadsSubstream};
 use crate::reader::{BitReader, ReadError};
 use core::fmt;
 
@@ -50,6 +50,8 @@ pub use dialog_enhancement::{
 pub enum AudioSubstreamError {
     /// 底层读取失败。
     Read(ReadError),
+    /// 内嵌 `emdf_payloads_substream()` 失败。
+    Emdf(EmdfError),
     /// `audio_size` 超出该 substream 的实际长度。
     AudioSizeOutOfRange {
         /// 声明的音频数据字节数。
@@ -111,6 +113,9 @@ impl fmt::Display for AudioSubstreamError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             AudioSubstreamError::Read(error) => write!(f, "Failed to read ac4_substream: {error}"),
+            AudioSubstreamError::Emdf(error) => {
+                write!(f, "Failed to parse inline EMDF payloads: {error}")
+            }
             AudioSubstreamError::AudioSizeOutOfRange {
                 audio_size,
                 substream_len,
@@ -165,6 +170,12 @@ impl core::error::Error for AudioSubstreamError {}
 impl From<ReadError> for AudioSubstreamError {
     fn from(error: ReadError) -> Self {
         AudioSubstreamError::Read(error)
+    }
+}
+
+impl From<EmdfError> for AudioSubstreamError {
+    fn from(error: EmdfError) -> Self {
+        AudioSubstreamError::Emdf(error)
     }
 }
 
@@ -1104,7 +1115,7 @@ pub struct Ac4AudioSubstream {
     pub tools_metadata: AudioToolsMetadata,
     /// `b_emdf_payloads_substream`。
     pub emdf_payloads_substream: bool,
-    /// 内嵌 EMDF payload envelope 的摘要；标志为假时不存在。
+    /// 内嵌 EMDF payload envelope；标志为假时不存在。
     pub emdf_payloads: Option<EmdfPayloadsSubstream>,
     /// metadata 区段（含末尾 `byte_align`）的字节数。
     pub metadata_bytes: u32,
@@ -1134,8 +1145,9 @@ impl Ac4AudioSubstream {
     /// 长度不足或与 presence 不一致分别返回
     /// [`AudioSubstreamError::InvalidToolsMetadataSize`] 或
     /// [`AudioSubstreamError::TrailingToolsMetadataBits`]；mono/stereo 的 DE channel configuration
-    /// 不适用时返回 [`AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration`]；解析后
-    /// 未落在 substream 末尾返回 [`AudioSubstreamError::TrailingBits`]。
+    /// 不适用时返回 [`AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration`]；内嵌
+    /// EMDF 的 envelope、容量或长度非法时返回 [`AudioSubstreamError::Emdf`]；解析后未落在
+    /// substream 末尾返回 [`AudioSubstreamError::TrailingBits`]。
     pub fn parse(payload: &[u8], context: SubstreamContext) -> Result<Self, AudioSubstreamError> {
         let mut reader = BitReader::new(payload);
 
@@ -1425,13 +1437,53 @@ mod tests {
              00000 00000",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
-        let emdf = parsed.emdf_payloads.expect("标志为真时应保留 EMDF 摘要");
+        let emdf = parsed
+            .emdf_payloads
+            .expect("标志为真时应保留 EMDF envelope");
 
         assert!(parsed.emdf_payloads_substream);
         assert_eq!(emdf.payload_count, 0);
         assert_eq!(emdf.payload_bytes, 0);
         assert_eq!(emdf.align_bits, 5);
         assert_eq!(parsed.metadata_bytes, 3);
+    }
+
+    #[test]
+    fn preserves_inline_emdf_config_and_opaque_bytes() {
+        // audio_size=0、最短 metadata；内嵌 EMDF ID 1 使用最简 discard config，
+        // payload 为两个不在字节边界上的 8 比特元素，随后 ID 0 与两位对齐。
+        let (bits, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000001 0 \
+             0 \
+             1 \
+             00001 \
+             0 0 0 0 1 \
+             00000010 0 \
+             10100101 01011010 \
+             00000 00",
+        );
+        let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
+        let emdf = parsed.emdf_payloads.unwrap();
+        let payload = *emdf.payloads().first().unwrap();
+
+        assert_eq!(emdf.payload_count, 1);
+        assert_eq!(payload.id, 1);
+        assert!(payload.config.discard_unknown_payload);
+        assert_eq!(payload.size_bytes, 2);
+        assert_eq!(payload.bit_offset(), 49);
+        assert_eq!(
+            payload
+                .bytes(&bits[..len])
+                .unwrap()
+                .iter()
+                .collect::<std::vec::Vec<_>>(),
+            [0xa5, 0x5a]
+        );
+        assert_eq!(emdf.align_bits, 2);
+        assert_eq!(parsed.metadata_bytes, 7);
     }
 
     /// 音频区段总是从字节边界开始，`b_more_bits` 展开后也是。

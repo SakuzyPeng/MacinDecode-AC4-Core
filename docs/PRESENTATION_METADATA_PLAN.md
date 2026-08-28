@@ -9,11 +9,10 @@
 > 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置；默认构建
 > 仍以原始 bit view 保留 `de_data()`/simulcast body，`audio-decode` 下已可显式解码完整帧内
 > Huffman data 与 simulcast，并按物理 substream 事务性延续配置、panning 与两份参数索引。
-> EMDF payload 与 alternative dataset 数据路径仍待实现。当前工具链可再生产普通 presentation
-> payload 与 dialog enhancement
-> 正向候选；非空 EMDF
-> payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
-> 以[实施路线图](ROADMAP.md)为准。
+> EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证；alternative
+> dataset 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog
+> enhancement 正向候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节
+> 保持外部向量待验证。当前实际进度以[实施路线图](ROADMAP.md)为准。
 
 ## 1. 目的
 
@@ -171,6 +170,11 @@ enhancement，也不修改 PCM。
   长度越界或变长字段溢出均返回结构化错误；
 - 完成 alternative audio/OAMD dataset 的选择、状态归属与解析，移除该分支的笼统 unsupported；
 - 未注册或未知 EMDF ID 不报语义错误，只按其 discard/processing 标志交给上层路由。
+
+EMDF 项已完成构造验证：固定容量保存 32 个有序 payload descriptor，单 payload 采用 Annex G
+24 比特最大帧长作为上限；原始 8 比特元素即使不在字节边界也可从原 substream 零拷贝重建。
+解析结果保留 sample offset、duration、group ID、codec data、priority、processing/discard 与
+duplicate 标志，但不解释注册表或私有 datatype。alternative audio/OAMD dataset 仍是本节余项。
 
 ## 4. 明确延后或不在范围内
 

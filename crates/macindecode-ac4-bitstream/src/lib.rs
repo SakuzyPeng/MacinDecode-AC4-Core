@@ -77,7 +77,10 @@ pub use audio_substream::{
     DialogEnhancementStateError, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
     MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
 };
-pub use emdf::{EmdfInfo, EmdfPayloadsSubstream};
+pub use emdf::{
+    EmdfError, EmdfInfo, EmdfPayload, EmdfPayloadByteIter, EmdfPayloadBytes, EmdfPayloadConfig,
+    EmdfPayloadsSubstream, MAX_EMDF_PAYLOAD_BYTES, MAX_EMDF_PAYLOADS,
+};
 #[cfg(feature = "audio-decode")]
 pub use huffman::{HuffmanError, HuffmanTable};
 pub use presentation::{Ac4PresentationV1Info, PresentationSubstreamInfo};

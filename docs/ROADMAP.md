@@ -543,6 +543,14 @@ index 后按 P1 表 78 的 `ref_val` 规则跨 band/channel 还原，dependent d
 变化不影响兼容性；primary 与 simulcast 永不共用 differential 基准。任何失败都不提交候选
 状态。本层仍不反量化或执行 DE。
 
+**EMDF opaque envelope 已落地。** P1 `4.2.4.4`/`4.2.14.14`/`4.3.15` 的 payload ID、sample
+offset、duration、group ID、codec data、priority、processing/discard/frame-aligned 与
+duplicate 标志现均按码流原值保留。默认 `no_std` 构建以固定容量保存最多 32 个有序 descriptor；
+单 payload 上限采用 Annex G 扩展 `frame_size` 的 24 比特最大值。payload 的 8 比特元素不保证
+字节对齐，因此 descriptor 记录原 substream bit offset，并在调用方传回同一源切片时提供无分配
+byte view；未知或私有 ID 不报语义错误，也不解释或应用内容。ID 0 终止符缺失、数量/大小超限、
+配置或 payload 截断和所有变长字段溢出均结构化失败；音频 substream 内嵌路径保留同一 envelope。
+
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
 构造门禁覆盖 0/32 字节名称、1/32 targets、非字节对齐分片、presence gate、截断、容量和
@@ -572,11 +580,13 @@ M/S channel reduction、I/dependent keep、新旧配置、simulcast present/abse
 dependent `de_par_prev`、inactive-frame 零基准、latest keep、primary/simulcast 隔离、max-gain
 兼容更新、method 更新延续、channel mapping 的物理声道迁移与新声道零基准、物理 substream
 隔离、I-frame absence reset 与失败事务性，并由所有默认及 `audio-decode` 固定载荷共同验证
-末尾边界。
+末尾边界。EMDF 构造门禁另覆盖空/非空 substream、完整配置两类 timing gate、私有 codec data、
+非字节对齐 opaque bytes、扩展 ID 31、32/33 payload 容量边界、超 Annex G 大小、超 `u32` 变长
+长度、payload 截断与缺失终止符；当前没有非空真实 EMDF 向量，不能把这些门禁标作真实正向验证。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续先补 EMDF envelope，再补 alternative dataset 数据路径；
+EMDF envelope 已完成；后续补 alternative dataset 数据路径；
 边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵

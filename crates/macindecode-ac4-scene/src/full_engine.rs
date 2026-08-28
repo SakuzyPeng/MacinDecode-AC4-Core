@@ -7,6 +7,7 @@ use macindecode_ac4_bitstream::{
     audio_data::AudioDataError,
     audio_substream::AudioSubstreamError,
     channel::ChannelError,
+    emdf::EmdfError,
     full_ajoc::{
         DecodedFullAjocAudioFrame, FullAjocAsfError, FullAjocAsfErrorKind, FullAjocAudioFrameError,
         FullAjocAudioFrameInput, FullAjocBlocker, FullAjocDecodeError, FullAjocDecodeErrorKind,
@@ -342,6 +343,7 @@ const fn decode_error_syntax_path(
 const fn audio_substream_bit_offset(error: AudioSubstreamError) -> Option<u64> {
     match error {
         AudioSubstreamError::Read(error) => Some(read_bit_offset(error)),
+        AudioSubstreamError::Emdf(error) => emdf_bit_offset(error),
         AudioSubstreamError::InvalidExtensionSize { bit_position, .. }
         | AudioSubstreamError::InvalidToolsMetadataSize { bit_position, .. }
         | AudioSubstreamError::TrailingToolsMetadataBits { bit_position, .. }
@@ -351,6 +353,15 @@ const fn audio_substream_bit_offset(error: AudioSubstreamError) -> Option<u64> {
         | AudioSubstreamError::Unsupported { bit_position, .. } => Some(bit_position),
         AudioSubstreamError::AudioSizeOutOfRange { .. }
         | AudioSubstreamError::TrailingBits { .. } => None,
+    }
+}
+
+const fn emdf_bit_offset(error: EmdfError) -> Option<u64> {
+    match error {
+        EmdfError::Read(error) => Some(read_bit_offset(error)),
+        EmdfError::MissingTerminator { bit_position, .. }
+        | EmdfError::TooManyPayloads { bit_position, .. }
+        | EmdfError::PayloadTooLarge { bit_position, .. } => Some(bit_position),
     }
 }
 
@@ -675,5 +686,17 @@ mod tests {
         for error in errors {
             assert_eq!(audio_data_bit_offset(error), Some(37), "{error:?}");
         }
+
+        assert_eq!(
+            audio_substream_bit_offset(AudioSubstreamError::Emdf(EmdfError::Read(read))),
+            Some(37)
+        );
+        assert_eq!(
+            audio_substream_bit_offset(AudioSubstreamError::Emdf(EmdfError::MissingTerminator {
+                bit_position: 41,
+                remaining_bits: 0,
+            })),
+            Some(41)
+        );
     }
 }

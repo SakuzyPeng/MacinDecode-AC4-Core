@@ -1800,6 +1800,34 @@ configuration/latest-transmitted data，但使下一 differential 使用零基�
 `b_de_data_present = 0`；活动路径的 config/data/state、非字节对齐 view 和失败边界由构造码流
 覆盖，不能标作真实正向验证。
 
+### 5.59 EMDF opaque payload envelope（P1 `4.2.4.4`、`4.2.14.14`、`4.3.15`）
+
+表 18 的 `emdf_payloads_substream()` 以非零 ID、配置、变长字节数和 opaque 8 比特元素反复出现，
+最后必须由 ID 0 终止并 `byte_align`。ID 31 的扩展按表中字面执行
+`31 + variable_bits(5)`；扩展值为 0 时真实 ID 仍是 31，不能被错误别名为终止符。表 174 只在
+本规范中定义 ID 0，其余 ID 交由外部 registry，因此解析层保存任意非零 `u32` ID，不以“未知”
+为语义错误，也不发明 datatype 含义。
+
+表 79 的四个 presence 字段分别控制 sample offset、duration、group ID 与 8 比特 codec data。
+`b_discard_unknown_payload = 1` 时后续 transcoding 字段不传；否则仅在 sample offset 缺席时读取
+frame-aligned，且只有 frame-aligned 为真才读取 create/remove duplicate。priority 与两比特
+`proc_allowed` 的共同 gate 是“sample offset 存在或 frame-aligned 为真”。公共模型按该 gate
+保留全部原始值：未传输的 optional 值为 `None`，可由先行字段唯一推出未传输的 Boolean 保持
+`false`。本层不执行表 175 描述的 transcoding 策略，只把 discard/processing 决策材料交给上层。
+
+默认 crate 是无分配 `no_std`，而 payload 元素起点不保证处于字节边界。实现因此固定保存最多
+32 个有序 descriptor，并记录每个 payload 相对原 substream 的 bit offset；调用方传回解析时的
+同一源切片后，可逐个读取原始 8 比特元素，恰好对齐时再取得零拷贝 `&[u8]`。这既不复制大缓冲，
+也不会把 lifetime 传播到 `Ac4AudioSubstream`。单 payload 上限取 Annex G 扩展 `frame_size` 的
+24 比特最大值 `0x00ff_ffff`；无 sync wrapper 的入口沿用同一资源边界。
+
+构造码流覆盖空/非空 envelope、sample-offset 与 frame-aligned 两种 timing gate、duration/group、
+私有 codec data、priority/proc、非字节对齐两字节 payload、扩展 ID 31/34、32 项容量端点、
+第 33 项、超 24 比特大小、超 `u32` 变长长度、payload 截断和缺失终止符。内嵌
+`b_emdf_payloads_substream` 路径另从完整 `ac4_substream()` 取回相同 bytes，证明 offset 以原物理
+substream 为坐标。当前工具链没有非空 EMDF 正向向量，以上仍是构造验证，外部向量状态不关闭；
+解析结果不会修改 PCM，也不增加 renderer、设备或额外音频处理。
+
 ## 6. 未决规范问题
 
 在实现前需要形成明确结论：
