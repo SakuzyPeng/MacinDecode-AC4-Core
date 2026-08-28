@@ -12,6 +12,7 @@ use crate::{
     audio_data::AudioDataState,
     audio_substream::AudioSubstreamError,
     channel::ChannelElement,
+    emdf::EmdfError,
     oamd::{MAX_OBJ_INFO_BLOCKS, OamdMetadataBlock},
     reader::ReadError,
     substream_audio::{
@@ -113,10 +114,11 @@ impl fmt::Display for FullAjocSyntaxError {
 impl FullAjocSyntaxError {
     /// 当前失败是否由外层 `ac4_substream()` 切片在框架完成前耗尽导致。
     ///
-    /// 这覆盖 `audio_size` 超过当前切片，以及框架或 metadata 解析返回的
-    /// [`ReadError::OutOfBounds`]。`audio_data_ajoc()` 的读取器已经限制在声明的
-    /// `audio_size` 区段内；其内部越界说明区段或语法损坏，追加切片尾部不能恢复。
-    /// 是否能把同一 AU 补全后重试，仍由掌握外层定界信息的调用方决定。
+    /// 这覆盖 `audio_size` 超过当前切片、框架或 metadata 解析返回的
+    /// [`ReadError::OutOfBounds`]，以及内嵌 EMDF 尚未读到完整终止符。
+    /// `audio_data_ajoc()` 的读取器已经限制在声明的 `audio_size` 区段内；其内部越界说明
+    /// 区段或语法损坏，追加切片尾部不能恢复。是否能把同一 AU 补全后重试，仍由掌握
+    /// 外层定界信息的调用方决定。
     #[must_use]
     pub fn is_input_exhausted(&self) -> bool {
         match self {
@@ -145,8 +147,17 @@ fn substream_input_exhausted(error: &SubstreamAudioError) -> bool {
 fn audio_substream_input_exhausted(error: &AudioSubstreamError) -> bool {
     match error {
         AudioSubstreamError::Read(error) => read_input_exhausted(error),
+        AudioSubstreamError::Emdf(error) => emdf_input_exhausted(error),
         AudioSubstreamError::AudioSizeOutOfRange { .. } => true,
         _ => false,
+    }
+}
+
+fn emdf_input_exhausted(error: &EmdfError) -> bool {
+    match error {
+        EmdfError::Read(error) => read_input_exhausted(error),
+        EmdfError::MissingTerminator { .. } => true,
+        EmdfError::TooManyPayloads { .. } | EmdfError::PayloadTooLarge { .. } => false,
     }
 }
 
@@ -1276,6 +1287,44 @@ mod tests {
             decoder.last_asf_observation().is_none(),
             "共享 PCM 工作区改变长度后不得暴露旧 ASF 快照"
         );
+    }
+
+    #[test]
+    fn classifies_inline_emdf_exhaustion_as_retryable() {
+        let wrap = |error| FullAjocSyntaxError::Decode {
+            substream_index: 0,
+            error: SubstreamAudioError::Substream(AudioSubstreamError::Emdf(error)),
+        };
+        let retryable = [
+            EmdfError::Read(ReadError::OutOfBounds {
+                requested_bits: 8,
+                bit_position: 42,
+                remaining_bits: 0,
+            }),
+            EmdfError::MissingTerminator {
+                bit_position: 42,
+                remaining_bits: 3,
+            },
+        ];
+        for error in retryable {
+            assert!(wrap(error).is_input_exhausted(), "{error:?}");
+        }
+
+        let terminal = [
+            EmdfError::Read(ReadError::ValueOverflow { bit_position: 42 }),
+            EmdfError::TooManyPayloads {
+                limit: 32,
+                bit_position: 42,
+            },
+            EmdfError::PayloadTooLarge {
+                declared: 0x0100_0000,
+                limit: 0x00ff_ffff,
+                bit_position: 42,
+            },
+        ];
+        for error in terminal {
+            assert!(!wrap(error).is_input_exhausted(), "{error:?}");
+        }
     }
 
     #[test]
