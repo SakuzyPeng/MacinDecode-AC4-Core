@@ -168,9 +168,10 @@ pub(crate) fn minimal_audio_payload() -> Vec<u8> {
         "000000000000000 0 \
          0 \
          0 0 0 \
-         0000000 0 \
+         0000001 0 \
          0 \
-         000",
+         0 \
+         00",
     );
     assert_eq!(bit_count, 32);
     payload
@@ -179,7 +180,7 @@ pub(crate) fn minimal_audio_payload() -> Vec<u8> {
 #[cfg(feature = "audio-decode")]
 const MINIMAL_FULL_AUDIO_PAYLOAD: [u8; 24] = [
     0x00, 0x28, 0x40, 0x85, 0x88, 0x40, 0x10, 0x00, 0x00, 0x0f, 0x80, 0x00, 0x00, 0x00, 0x00, 0x0e,
-    0xfe, 0x44, 0x02, 0x00, 0xc3, 0x00, 0x00, 0x00,
+    0xfe, 0x44, 0x02, 0x00, 0xc3, 0x00, 0x00, 0x20,
 ];
 
 #[cfg(feature = "audio-decode")]
@@ -303,10 +304,11 @@ fn ims_stereo_metadata_topology(version: u32) -> (Vec<u8>, Ac4Topology) {
         "000000000000000 0 \
          1 0 1 101 10 0 \
          0 0 0 \
-         0000000 0 \
+         0000001 0 \
+         0 \
          1 \
          10010 0 0 0 0 1 00000000 0 \
-         00000 000",
+         00000 00",
     );
     assert_eq!(bit_count, 64);
     assert_eq!(payload.len(), 8);

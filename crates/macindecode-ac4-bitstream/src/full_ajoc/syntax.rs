@@ -782,8 +782,9 @@ mod tests {
         bits.push(false); // b_dialog
         bits.push(false); // b_channels_classifier
         bits.push(false); // b_event_probability
-        bits.push_bits(0, 7); // tools_metadata_size_value
+        bits.push_bits(1, 7); // tools_metadata_size_value
         bits.push(false); // b_more_bits
+        bits.push(false); // b_de_data_present
         bits.push(false); // b_emdf_payloads_substream
         bits.byte_align();
     }

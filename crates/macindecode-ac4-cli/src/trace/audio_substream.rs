@@ -404,7 +404,7 @@ mod tests {
     };
 
     fn minimal(context: SubstreamContext) -> Ac4AudioSubstream {
-        Ac4AudioSubstream::parse(&[0, 0, 0, 0], context).expect("最小 metadata 应可解析")
+        Ac4AudioSubstream::parse(&[0, 0, 0, 0x20], context).expect("最小 metadata 应可解析")
     }
 
     #[test]

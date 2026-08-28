@@ -20,6 +20,10 @@
 //! 独立声明。因此「跳过 `audio_size` 字节，解析 `metadata()`，再对齐」之后的
 //! 位置必须**恰好**落在 substream 末尾。任何一个可变长字段错位都会破坏该等式，
 //! 且这次的约束是整字节级的，比 OAMD 的 `byte_align` 残余强得多。
+//!
+//! `tools_metadata_size` 另以比特数严格定界 DRC 与 dialogue enhancement。当前
+//! `sus_ver >= 1` 路径解析 `b_de_data_present`，并把活动分支尚未解释的 config/data
+//! body 保留为零拷贝 bit view；它不执行 dialogue enhancement。
 
 use crate::emdf::EmdfPayloadsSubstream;
 use crate::reader::{BitReader, ReadError};
@@ -45,6 +49,22 @@ pub enum AudioSubstreamError {
         required: u32,
         /// 检测到不一致时的比特偏移。
         bit_position: u64,
+    },
+    /// `tools_metadata_size` 不足以容纳必需的 dialogue-enhancement presence 或 body 前缀。
+    InvalidToolsMetadataSize {
+        /// 码流声明的 tools metadata 长度。
+        declared: u32,
+        /// 当前已知语法要求的最小长度。
+        minimum: u32,
+        /// `tools_metadata_size_value` 的比特偏移。
+        bit_position: u64,
+    },
+    /// dialogue enhancement 明确缺席，但有界 tools metadata 内仍有尾随比特。
+    TrailingToolsMetadataBits {
+        /// 首个尾随比特在 substream payload 内的偏移。
+        bit_position: u64,
+        /// 尚未消费的 tools metadata 比特数。
+        remaining_bits: u32,
     },
     /// 解析结束后未落在 substream 末尾。
     ///
@@ -81,6 +101,21 @@ impl fmt::Display for AudioSubstreamError {
                 f,
                 "e_bits_size is {declared} at bit offset {bit_position}; at least {required} bits are required"
             ),
+            AudioSubstreamError::InvalidToolsMetadataSize {
+                declared,
+                minimum,
+                bit_position,
+            } => write!(
+                f,
+                "Audio tools metadata size is {declared} bits at offset {bit_position}; at least {minimum} bits are required"
+            ),
+            AudioSubstreamError::TrailingToolsMetadataBits {
+                bit_position,
+                remaining_bits,
+            } => write!(
+                f,
+                "Audio tools metadata has {remaining_bits} trailing bits after absent dialogue enhancement at bit offset {bit_position}"
+            ),
             AudioSubstreamError::TrailingBits { remaining_bits } => write!(
                 f,
                 "{remaining_bits} bits remain after parsing metadata; parser did not end at the substream boundary"
@@ -115,6 +150,211 @@ pub struct SubstreamContext {
     pub ajoc: bool,
     /// `channel_mode`；未设定时为 `None`。
     pub channel_mode: Option<u32>,
+}
+
+/// `tools_metadata_size` 严格定界的原始 bit view。
+///
+/// 视图借用调用 [`AudioToolsMetadata::bits`] 或
+/// [`DialogEnhancementMetadata::unparsed_body`] 时传入的原 substream payload，不分配或复制。
+#[derive(Debug, Clone, Copy)]
+pub struct AudioToolsMetadataBits<'a> {
+    source: &'a [u8],
+    bit_offset: u64,
+    bit_len: u32,
+}
+
+impl<'a, 'b> PartialEq<AudioToolsMetadataBits<'b>> for AudioToolsMetadataBits<'a> {
+    fn eq(&self, other: &AudioToolsMetadataBits<'b>) -> bool {
+        self.bit_len == other.bit_len && (*self).iter().eq((*other).iter())
+    }
+}
+
+impl Eq for AudioToolsMetadataBits<'_> {}
+
+impl<'a> AudioToolsMetadataBits<'a> {
+    fn new(source: &'a [u8], bit_offset: u64, bit_len: u32) -> Option<Self> {
+        let end = bit_offset.checked_add(u64::from(bit_len))?;
+        if end > (source.len() as u64).saturating_mul(8) {
+            return None;
+        }
+        Some(Self {
+            source,
+            bit_offset,
+            bit_len,
+        })
+    }
+
+    /// 视图起点相对原 substream payload 的比特偏移。
+    #[must_use]
+    pub const fn bit_offset(self) -> u64 {
+        self.bit_offset
+    }
+
+    /// 视图末尾相对原 substream payload 的比特偏移。
+    #[must_use]
+    pub const fn end_bit_offset(self) -> u64 {
+        self.bit_offset.saturating_add(self.bit_len as u64)
+    }
+
+    /// 视图包含的比特数。
+    #[must_use]
+    pub const fn len_bits(self) -> u32 {
+        self.bit_len
+    }
+
+    /// 视图是否为空。
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.bit_len == 0
+    }
+
+    /// 读取一个原始 bit。
+    #[must_use]
+    pub fn get(self, index: u32) -> Option<bool> {
+        if index >= self.bit_len {
+            return None;
+        }
+        let mut reader = BitReader::new(self.source);
+        reader
+            .skip_bits(self.bit_offset.checked_add(u64::from(index))?)
+            .ok()?;
+        reader.read_flag().ok()
+    }
+
+    /// 若起点和长度都位于字节边界，返回零拷贝字节切片。
+    #[must_use]
+    pub fn as_aligned_slice(self) -> Option<&'a [u8]> {
+        if !self.bit_offset.is_multiple_of(8) || !self.bit_len.is_multiple_of(8) {
+            return None;
+        }
+        let start = usize::try_from(self.bit_offset / 8).ok()?;
+        let len = usize::try_from(self.bit_len / 8).ok()?;
+        self.source.get(start..start.checked_add(len)?)
+    }
+
+    /// 按码流顺序遍历原始 bit。
+    #[must_use]
+    pub fn iter(self) -> AudioToolsMetadataBitIter<'a> {
+        AudioToolsMetadataBitIter::new(self)
+    }
+}
+
+impl<'a> IntoIterator for AudioToolsMetadataBits<'a> {
+    type Item = bool;
+    type IntoIter = AudioToolsMetadataBitIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// [`AudioToolsMetadataBits`] 的无分配迭代器。
+#[derive(Debug, Clone)]
+pub struct AudioToolsMetadataBitIter<'a> {
+    reader: BitReader<'a>,
+    remaining: u32,
+}
+
+impl<'a> AudioToolsMetadataBitIter<'a> {
+    fn new(bits: AudioToolsMetadataBits<'a>) -> Self {
+        let mut reader = BitReader::new(bits.source);
+        let remaining = if reader.skip_bits(bits.bit_offset).is_ok() {
+            bits.bit_len
+        } else {
+            0
+        };
+        Self { reader, remaining }
+    }
+}
+
+impl Iterator for AudioToolsMetadataBitIter<'_> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+        let value = self.reader.read_flag().ok();
+        if value.is_some() {
+            self.remaining = self.remaining.saturating_sub(1);
+        } else {
+            self.remaining = 0;
+        }
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match usize::try_from(self.remaining) {
+            Ok(remaining) => (remaining, Some(remaining)),
+            Err(_) => (usize::MAX, None),
+        }
+    }
+}
+
+/// `dialog_enhancement()` 的 presence 与尚未解释的活动 body。
+///
+/// 当前增量只解析 `b_de_data_present`。为真时，body 包含后续 configuration/data 语法，后续
+/// 提交会继续解释；本类型始终保留原始比特，不执行 dialogue enhancement。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DialogEnhancementMetadata {
+    /// `b_de_data_present`。
+    pub data_present: bool,
+    unparsed_body_bit_offset: u64,
+    unparsed_body_bits: u32,
+}
+
+impl DialogEnhancementMetadata {
+    /// presence 之后尚未解释的 config/data body 比特数。
+    #[must_use]
+    pub const fn unparsed_body_len_bits(self) -> u32 {
+        self.unparsed_body_bits
+    }
+
+    /// 从解析时使用的同一 substream payload 取得尚未解释的 body。
+    #[must_use]
+    pub fn unparsed_body<'a>(self, payload: &'a [u8]) -> Option<AudioToolsMetadataBits<'a>> {
+        AudioToolsMetadataBits::new(
+            payload,
+            self.unparsed_body_bit_offset,
+            self.unparsed_body_bits,
+        )
+    }
+}
+
+/// `tools_metadata_size` 定界并完成 presence 校验的 audio tools metadata。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AudioToolsMetadata {
+    size_value_bit_offset: u64,
+    bit_offset: u64,
+    bit_len: u32,
+    /// `sus_ver >= 1` 路径中的 `dialog_enhancement()`。
+    pub dialog_enhancement: DialogEnhancementMetadata,
+}
+
+impl AudioToolsMetadata {
+    /// `tools_metadata_size_value` 在 substream payload 内的比特偏移。
+    #[must_use]
+    pub const fn size_value_bit_offset(self) -> u64 {
+        self.size_value_bit_offset
+    }
+
+    /// tools metadata body 在 substream payload 内的比特偏移。
+    #[must_use]
+    pub const fn bit_offset(self) -> u64 {
+        self.bit_offset
+    }
+
+    /// `tools_metadata_size` 声明的比特数。
+    #[must_use]
+    pub const fn len_bits(self) -> u32 {
+        self.bit_len
+    }
+
+    /// 从解析时使用的同一 substream payload 取得完整 tools metadata 原始视图。
+    #[must_use]
+    pub fn bits<'a>(self, payload: &'a [u8]) -> Option<AudioToolsMetadataBits<'a>> {
+        AudioToolsMetadataBits::new(payload, self.bit_offset, self.bit_len)
+    }
 }
 
 // TS103190-2:v1.3.1:6.3.8.4（Pseudocode 30–36）。这些判据使用表 56 的
@@ -775,6 +1015,8 @@ pub struct Ac4AudioSubstream {
     pub extended: ExtendedMetadata,
     /// `tools_metadata_size`，单位为**比特**，覆盖 DRC 与对话增强（`4.3.12.1.1`）。
     pub tools_metadata_bits: u32,
+    /// 严格按声明长度定界并解析 presence 的 tools metadata。
+    pub tools_metadata: AudioToolsMetadata,
     /// `b_emdf_payloads_substream`。
     pub emdf_payloads_substream: bool,
     /// 内嵌 EMDF payload envelope 的摘要；标志为假时不存在。
@@ -803,8 +1045,11 @@ impl Ac4AudioSubstream {
     ///
     /// # Errors
     ///
-    /// `audio_size` 越界返回 [`AudioSubstreamError::AudioSizeOutOfRange`]；解析后
-    /// 未落在 substream 末尾返回 [`AudioSubstreamError::TrailingBits`]。
+    /// `audio_size` 越界返回 [`AudioSubstreamError::AudioSizeOutOfRange`]；tools metadata
+    /// 长度不足或与 presence 不一致分别返回
+    /// [`AudioSubstreamError::InvalidToolsMetadataSize`] 或
+    /// [`AudioSubstreamError::TrailingToolsMetadataBits`]；解析后未落在 substream 末尾返回
+    /// [`AudioSubstreamError::TrailingBits`]。
     pub fn parse(payload: &[u8], context: SubstreamContext) -> Result<Self, AudioSubstreamError> {
         let mut reader = BitReader::new(payload);
 
@@ -837,11 +1082,18 @@ impl Ac4AudioSubstream {
             });
         }
 
+        let tools_metadata_size_value_offset = reader.bit_position();
         let mut tools_metadata_bits = u32::try_from(reader.read_bits(7)?).unwrap_or(u32::MAX);
         if reader.read_flag()? {
             tools_metadata_bits = reader.variable_bits_scaled_u32(3, tools_metadata_bits, 7)?;
         }
-        // tools_metadata_size 以比特计，覆盖 drc_frame 与 dialog_enhancement。
+        let tools_metadata_bit_offset = reader.bit_position();
+        let tools_metadata = parse_tools_metadata(
+            payload,
+            tools_metadata_size_value_offset,
+            tools_metadata_bit_offset,
+            tools_metadata_bits,
+        )?;
         reader.skip_bits(u64::from(tools_metadata_bits))?;
 
         let emdf_payloads_substream = reader.read_flag()?;
@@ -864,11 +1116,56 @@ impl Ac4AudioSubstream {
             basic,
             extended,
             tools_metadata_bits,
+            tools_metadata,
             emdf_payloads_substream,
             emdf_payloads,
             metadata_bytes: u32::try_from(metadata_bits.div_ceil(8)).unwrap_or(u32::MAX),
         })
     }
+}
+
+fn parse_tools_metadata(
+    payload: &[u8],
+    size_value_bit_offset: u64,
+    bit_offset: u64,
+    bit_len: u32,
+) -> Result<AudioToolsMetadata, AudioSubstreamError> {
+    if bit_len == 0 {
+        return Err(AudioSubstreamError::InvalidToolsMetadataSize {
+            declared: bit_len,
+            minimum: 1,
+            bit_position: size_value_bit_offset,
+        });
+    }
+
+    let mut reader = BitReader::new_bounded(payload, bit_offset, u64::from(bit_len))?;
+    let data_present = reader.read_flag()?;
+    let unparsed_body_bit_offset = reader.bit_position();
+    let unparsed_body_bits = u32::try_from(reader.remaining_bits()).unwrap_or(u32::MAX);
+    if data_present && unparsed_body_bits == 0 {
+        return Err(AudioSubstreamError::InvalidToolsMetadataSize {
+            declared: bit_len,
+            minimum: 2,
+            bit_position: size_value_bit_offset,
+        });
+    }
+    if !data_present && unparsed_body_bits != 0 {
+        return Err(AudioSubstreamError::TrailingToolsMetadataBits {
+            bit_position: unparsed_body_bit_offset,
+            remaining_bits: unparsed_body_bits,
+        });
+    }
+
+    Ok(AudioToolsMetadata {
+        size_value_bit_offset,
+        bit_offset,
+        bit_len,
+        dialog_enhancement: DialogEnhancementMetadata {
+            data_present,
+            unparsed_body_bit_offset,
+            unparsed_body_bits,
+        },
+    })
 }
 
 #[cfg(test)]
@@ -877,6 +1174,8 @@ impl Ac4AudioSubstream {
     reason = "测试内的位串切片，长度由 pack 的返回值决定"
 )]
 mod tests {
+    extern crate std;
+
     use super::*;
 
     #[expect(
@@ -909,8 +1208,8 @@ mod tests {
     /// 组成：audio_size(15)=1、b_more_bits=0、音频 8 比特、
     /// basic_metadata: b_more_basic_metadata=0、
     /// extended_metadata: b_dialog=0、b_channels_classifier=0、b_event_probability=0、
-    /// tools_metadata_size_value(7)=0、b_more_bits=0、b_emdf_payloads_substream=0、
-    /// byte_align。
+    /// tools_metadata_size_value(7)=1、b_more_bits=0、b_de_data_present=0、
+    /// b_emdf_payloads_substream=0、byte_align。
     #[test]
     fn parses_minimal_substream() {
         let (bits, len) = pack(
@@ -918,13 +1217,33 @@ mod tests {
              10101010 \
              0 \
              0 0 0 \
-             0000000 0 \
+             0000001 0 \
              0 \
-             000",
+             0 \
+             00",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         assert_eq!(parsed.audio_size, 1);
-        assert_eq!(parsed.tools_metadata_bits, 0);
+        assert_eq!(parsed.tools_metadata_bits, 1);
+        assert_eq!(parsed.tools_metadata.size_value_bit_offset(), 28);
+        assert_eq!(parsed.tools_metadata.bit_offset(), 36);
+        let tools = parsed.tools_metadata.bits(&bits[..len]).unwrap();
+        assert_eq!(tools.bit_offset(), 36);
+        assert_eq!(tools.end_bit_offset(), 37);
+        assert_eq!(tools.len_bits(), 1);
+        assert!(!tools.is_empty());
+        assert_eq!(tools.get(0), Some(false));
+        assert_eq!(tools.get(1), None);
+        assert_eq!(tools.as_aligned_slice(), None);
+        assert_eq!(tools.iter().collect::<std::vec::Vec<_>>(), [false]);
+        assert!(!parsed.tools_metadata.dialog_enhancement.data_present);
+        let body = parsed
+            .tools_metadata
+            .dialog_enhancement
+            .unparsed_body(&bits[..len])
+            .unwrap();
+        assert!(body.is_empty());
+        assert_eq!(body.bit_offset(), 37);
         assert!(!parsed.emdf_payloads_substream);
         assert_eq!(
             parsed.basic.dialnorm_bits, None,
@@ -938,9 +1257,10 @@ mod tests {
             "000000000000000 0 \
              0 \
              0 0 0 \
-             0000000 0 \
+             0000001 0 \
+             0 \
              1 \
-             00000 000000",
+             00000 00000",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         let emdf = parsed.emdf_payloads.expect("标志为真时应保留 EMDF 摘要");
@@ -948,7 +1268,7 @@ mod tests {
         assert!(parsed.emdf_payloads_substream);
         assert_eq!(emdf.payload_count, 0);
         assert_eq!(emdf.payload_bytes, 0);
-        assert_eq!(emdf.align_bits, 6);
+        assert_eq!(emdf.align_bits, 5);
         assert_eq!(parsed.metadata_bytes, 3);
     }
 
@@ -962,7 +1282,7 @@ mod tests {
         let (bits, len) = pack(
             "000000000000010 0 \
              10100101 01011010 \
-             0 0 0 0 0000000 0 0 000",
+             0 0 0 0 0000001 0 0 0 00",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         assert_eq!(parsed.audio_offset, 2);
@@ -972,7 +1292,7 @@ mod tests {
         let (bits, len) = pack(
             "000000000000010 1 0000000 0 \
              11110000 00001111 \
-             0 0 0 0 0000000 0 0 000",
+             0 0 0 0 0000001 0 0 0 00",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         assert_eq!(parsed.audio_size, 2, "扩展分片为零时不改变 audio_size");
@@ -984,7 +1304,7 @@ mod tests {
     #[test]
     fn detects_trailing_bytes() {
         let (bits, len) = pack(
-            "000000000000001 0 10101010 0 0 0 0 0000000 0 0 000 \
+            "000000000000001 0 10101010 0 0 0 0 0000001 0 0 0 00 \
              00000000",
         );
         let error = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap_err();
@@ -1014,7 +1334,7 @@ mod tests {
         let (bits, len) = pack(
             "000000000000000 1 \
              0000110 1 1111111 1 0000000 0 \
-             0 0 0 0 0000000 0 0 000",
+             0 0 0 0 0000001 0 0 0 00",
         );
 
         assert!(matches!(
@@ -1023,10 +1343,10 @@ mod tests {
         ));
     }
 
-    /// tools_metadata_size 以比特计，覆盖 DRC 与对话增强。
+    /// tools_metadata_size 以比特计，活动分支的其余 body 保持在独立边界内。
     #[test]
-    fn skips_tools_metadata_by_bit_count() {
-        // tools_metadata_size = 5，其后 5 比特被跳过。
+    fn preserves_active_tools_metadata_body_by_bit_count() {
+        // tools_metadata_size = 5：presence 为真，后四个 body bit 尚未解释。
         let (bits, len) = pack(
             "000000000000000 0 \
              0 \
@@ -1039,6 +1359,92 @@ mod tests {
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         assert_eq!(parsed.audio_size, 0);
         assert_eq!(parsed.tools_metadata_bits, 5);
+        assert!(parsed.tools_metadata.dialog_enhancement.data_present);
+        let tools = parsed.tools_metadata.bits(&bits[..len]).unwrap();
+        assert_eq!(tools.iter().collect::<std::vec::Vec<_>>(), [true; 5]);
+        let body = parsed
+            .tools_metadata
+            .dialog_enhancement
+            .unparsed_body(&bits[..len])
+            .unwrap();
+        assert_eq!(body.len_bits(), 4);
+        assert_eq!(body.iter().collect::<std::vec::Vec<_>>(), [true; 4]);
+        assert_eq!(
+            body.end_bit_offset(),
+            parsed
+                .tools_metadata
+                .bits(&bits[..len])
+                .unwrap()
+                .end_bit_offset()
+        );
+    }
+
+    #[test]
+    fn rejects_zero_short_and_trailing_tools_metadata_without_borrowing_following_bits() {
+        let (zero, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000000 0 \
+             1 00000 000000",
+        );
+        assert_eq!(
+            Ac4AudioSubstream::parse(&zero[..len], AJOC).unwrap_err(),
+            AudioSubstreamError::InvalidToolsMetadataSize {
+                declared: 0,
+                minimum: 1,
+                bit_position: 20,
+            }
+        );
+
+        let (short_active, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000001 0 \
+             1 \
+             0 00",
+        );
+        assert_eq!(
+            Ac4AudioSubstream::parse(&short_active[..len], AJOC).unwrap_err(),
+            AudioSubstreamError::InvalidToolsMetadataSize {
+                declared: 1,
+                minimum: 2,
+                bit_position: 20,
+            }
+        );
+
+        let (inactive_tail, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000010 0 \
+             0 1 \
+             0 0",
+        );
+        assert_eq!(
+            Ac4AudioSubstream::parse(&inactive_tail[..len], AJOC).unwrap_err(),
+            AudioSubstreamError::TrailingToolsMetadataBits {
+                bit_position: 29,
+                remaining_bits: 1,
+            }
+        );
+
+        let (truncated, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000101 0 \
+             0000",
+        );
+        assert_eq!(
+            Ac4AudioSubstream::parse(&truncated[..len], AJOC).unwrap_err(),
+            AudioSubstreamError::Read(ReadError::OutOfBounds {
+                requested_bits: 5,
+                bit_position: 28,
+                remaining_bits: 4,
+            })
+        );
     }
 
     /// sus_ver = 1 走 substream_loudness 分支，并保留原始码值。
@@ -1051,9 +1457,10 @@ mod tests {
             "000000000000000 0 \
              1 1 10110011 0 1 1 \
              0 0 0 \
-             0000000 0 \
+             0000001 0 \
              0 \
-             0000",
+             0 \
+             000",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         assert_eq!(parsed.basic.substream_loudness_bits, Some(0b1011_0011));
@@ -1170,9 +1577,10 @@ mod tests {
              0 1 \
              1 0 1 1 0 1 0 0 1 1 \
              1 1010 \
-             0000000 0 \
+             0000001 0 \
              0 \
-             000",
+             0 \
+             00",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], context).unwrap();
 
@@ -1196,7 +1604,7 @@ mod tests {
              1 0 1 101 10 0 \
              1 1 10 1 10100101 01011010 11 \
              1 1 0 1 1 0 \
-             0000000 0 \
+             0000001 0 \
              0 \
              0",
         );
@@ -1218,9 +1626,10 @@ mod tests {
              0 \
              1 0 1 10100101 \
              1 1 1 0 \
-             0000000 0 \
+             0000001 0 \
              0 \
-             0000000",
+             0 \
+             000000",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], mono).unwrap();
         assert_eq!(parsed.extended.pan_dialog_mono, Some(0b1010_0101));

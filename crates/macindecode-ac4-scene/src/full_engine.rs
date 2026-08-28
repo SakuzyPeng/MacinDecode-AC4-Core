@@ -343,6 +343,8 @@ const fn audio_substream_bit_offset(error: AudioSubstreamError) -> Option<u64> {
     match error {
         AudioSubstreamError::Read(error) => Some(read_bit_offset(error)),
         AudioSubstreamError::InvalidExtensionSize { bit_position, .. }
+        | AudioSubstreamError::InvalidToolsMetadataSize { bit_position, .. }
+        | AudioSubstreamError::TrailingToolsMetadataBits { bit_position, .. }
         | AudioSubstreamError::Unsupported { bit_position, .. } => Some(bit_position),
         AudioSubstreamError::AudioSizeOutOfRange { .. }
         | AudioSubstreamError::TrailingBits { .. } => None,

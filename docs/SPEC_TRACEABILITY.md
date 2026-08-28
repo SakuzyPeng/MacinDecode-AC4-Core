@@ -1740,6 +1740,29 @@ alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
+### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement presence
+
+P2 `6.2.7.1` 先用 7 比特 `tools_metadata_size_value` 和可选的
+`variable_bits(3) << 7` 给出完整 tools metadata 的**精确比特数**；P1 `4.3.12.1.1` 明确该
+区段覆盖 audio-substream DRC 与 dialogue enhancement。当前拓扑只支持
+`bitstream_version = 2`，P2 `6.3.2.5.4` 令其 `sus_ver = 1`，所以 `6.2.7.1` 的
+`drc_frame()` gate 不成立，区段从 `6.2.7.5` 的 `b_de_data_present` 开始。
+
+解析器现在以声明长度和原 substream bit offset 建立 bounded reader；完整 tools 区段以及
+presence 后尚未解释的 config/data body 都可从原 payload 重建零拷贝 bit view，不把 lifetime
+传播到 `Ac4AudioSubstream`。presence 为假时，规范语法没有任何后续字段，故有界区段必须恰好
+为 1 比特；presence 为真时，即使 dependent frame 不更新配置也至少要传
+`b_de_config_flag`，所以当前增量要求仍有一个 body bit。零长度、活动但只有 presence、缺席后
+仍有尾随位、声明范围越过 payload 均在 bounded reader 内结构化失败，不借用随后的
+`b_emdf_payloads_substream`；Scene 错误映射继续保留这些错误的原始 bit offset。
+
+这里的“活动 body 已保留”不等于 DE 已解析。P2 `6.2.7.5`–`6.2.7.6` 与共享的 P1
+`4.2.14.12`–`4.2.14.13` 所定义的 `de_config()`、逐帧 `de_data()`、Huffman 参数以及按物理
+substream 隔离的配置/参数历史仍待后续；解析入口也尚未接入对应 `b_iframe`。因此本层不执行
+dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC `ajoc_dmx_de_data()` 共用状态。
+现有真实向量均只观察到 `tools_metadata_size = 1`、`b_de_data_present = 0`；活动路径的
+非字节对齐 view 和失败边界由构造码流覆盖，不能标作真实正向验证。
+
 ## 6. 未决规范问题
 
 在实现前需要形成明确结论：

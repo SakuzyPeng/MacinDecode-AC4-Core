@@ -517,6 +517,16 @@ gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关�
 码值 `31` 合法保留。解析最后消费 `byte_align` 并要求恰好落在 presentation payload 末尾，
 不执行响度归一化、DRC、group/associated gain、pan、advanced DE、custom downmix 或任何 gain。
 
+**首个 audio-substream tools metadata 增量也已落地。** `ac4_substream()` 不再把
+`tools_metadata_size` 只作为跳过量：P2 `6.2.7.1` 与 P1 `4.3.12.1.1` 声明的精确比特长度会
+建立独立 bounded reader，并保留完整区段的零拷贝 bit view。当前支持的
+`bitstream_version = 2` 对应 `sus_ver = 1`，tools 区段只含 P2 `6.2.7.5` 的
+`dialog_enhancement()`；解析器已读取 `b_de_data_present`。缺席分支必须恰好用完这一位，活动
+分支则要求 presence 后至少还有 body，并把尚未解释的 config/data 原样保留。零长度、活动但
+只有 presence、缺席后尾随以及区段越过 substream 均失败关闭，错误保留原 payload 的 bit
+offset。现有真实向量仍是 `tools_metadata_size = 1`、`b_de_data_present = 0`；活动分支只有
+构造验证。本增量不解析 DE configuration/Huffman data，不维护跨帧状态，也不执行 DE。
+
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
 构造门禁覆盖 0/32 字节名称、1/32 targets、非字节对齐分片、presence gate、截断、容量和
@@ -538,10 +548,13 @@ output 位宽、全部 tool 分支、stereo/LtRt/LFE gate、合法静音端点�
 逐可选字段截断；loudness correction 再覆盖 mode/core 阈值、完整 full/object 分支、9.X.4、
 合法码值 `31`、单值/core pair 截断、非零对齐和尾随字节拒绝。alternative 与
 direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造覆盖，外部向量状态保持待验证。
+audio-substream tools metadata 另覆盖 1 比特 absence、活动 body 的非字节对齐 bit view、零长度、
+活动短体与 absence 尾随，并由所有默认及 `audio-decode` 固定载荷共同验证末尾边界。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续依次补 audio-substream tools metadata、EMDF envelope 与 alternative dataset 数据路径；
+后续先补 audio-substream DE configuration、Huffman data 与跨帧状态，再补 EMDF envelope 与
+alternative dataset 数据路径；
 边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵
