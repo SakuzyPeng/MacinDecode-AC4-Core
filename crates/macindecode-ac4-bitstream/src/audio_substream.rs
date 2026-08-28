@@ -23,12 +23,24 @@
 //!
 //! `tools_metadata_size` 另以比特数严格定界 DRC 与 dialogue enhancement。当前
 //! `sus_ver >= 1` 路径解析 `b_de_data_present`、I/dependent configuration gate 与
-//! `de_config()`，并把尚未解释的 `de_data()`/simulcast body 保留为零拷贝 bit view；它不执行
-//! dialogue enhancement。
+//! `de_config()`，并把 `de_data()`/simulcast body 保留为零拷贝 bit view；启用
+//! `audio-decode` 后可显式熵解码完整帧内 data 语法，但不延续有效参数或执行 dialogue
+//! enhancement。
 
 use crate::emdf::EmdfPayloadsSubstream;
 use crate::reader::{BitReader, ReadError};
 use core::fmt;
+
+#[cfg(feature = "audio-decode")]
+mod dialog_enhancement;
+#[cfg(feature = "audio-decode")]
+pub use dialog_enhancement::{
+    DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
+    DialogEnhancementDecodedData, DialogEnhancementMixCoefficients, DialogEnhancementParameterData,
+    DialogEnhancementParameterUpdate, DialogEnhancementPositionUpdate,
+    DialogEnhancementSimulcastData, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
+    MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
+};
 
 /// 解析 `ac4_substream()` 失败的原因。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -347,10 +359,10 @@ pub enum DialogEnhancementConfigurationUpdate {
     New(DialogEnhancementConfiguration),
 }
 
-/// `dialog_enhancement()` 的 presence 与尚未解释的活动 body。
+/// `dialog_enhancement()` 的 presence、configuration 与活动 data body。
 ///
-/// 当前增量解析 `b_de_data_present`、I/dependent configuration gate 与 `de_config()`；
-/// `de_data()` 仍以原始 bit view 保留，后续提交再解释。本类型不执行 dialogue enhancement。
+/// 默认构建以原始 bit view 保留 `de_data()`；启用 `audio-decode` 后可显式解码帧内语法。
+/// 本类型不执行 dialogue enhancement。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DialogEnhancementMetadata {
     /// `b_de_data_present`。
@@ -359,6 +371,8 @@ pub struct DialogEnhancementMetadata {
     pub configuration: DialogEnhancementConfigurationUpdate,
     unparsed_body_bit_offset: u64,
     unparsed_body_bits: u32,
+    data_iframe: Option<bool>,
+    simulcast_gate: bool,
 }
 
 impl DialogEnhancementMetadata {
@@ -1248,6 +1262,8 @@ fn parse_tools_metadata(
             configuration,
             unparsed_body_bit_offset,
             unparsed_body_bits,
+            data_iframe: if data_present { context.b_iframe } else { None },
+            simulcast_gate: data_present && matches!(context.channel_mode, Some(13 | 14)),
         },
     })
 }

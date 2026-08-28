@@ -6,9 +6,9 @@
 > associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC
 > I-frame 配置与逐帧 data envelope 也已解析，跨帧状态可用前一有效配置解析 dependent data，
 > `audio-decode` 下可显式解码 Huffman gains；音频 substream 的 tools metadata 已严格定界并
-> 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置，尚未解释的
-> `de_data()`/simulcast body 暂以原始 bit view 保留；DE Huffman data、物理 substream
-> 配置/参数状态、EMDF payload 与 alternative dataset
+> 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置；默认构建
+> 仍以原始 bit view 保留 `de_data()`/simulcast body，`audio-decode` 下已可显式解码完整帧内
+> Huffman data 与 simulcast。物理 substream 配置/参数状态、EMDF payload 与 alternative dataset
 > 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
 > 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
@@ -132,11 +132,19 @@ payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角�
 一个 info 覆盖多个物理 substream 且 ndot 合取为假时，现有拓扑不能恢复每条 substream 的精确
 `b_iframe`；DE 缺席仍可解析，活动分支则失败关闭。
 
-完整 tools 区段与配置后尚未解释的 `de_data()`/simulcast body 都可从原 payload 重建零拷贝
-bit view。本增量还不解释 `de_data()` Huffman 码字、不判定 simulcast 的精确分界，也不维护按
-物理 substream 隔离的配置/参数历史；因此配置非零时的 data 完整性将在后续解析中关闭。现有
-真实向量的 `tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实
-验证；活动分支仍只有构造验证。解析结果不执行 dialogue enhancement，也不修改 PCM。
+完整 tools 区段与配置后的 `de_data()`/simulcast body 都可从原 payload 重建零拷贝 bit view。
+第三个增量在 `audio-decode` 下提供显式无状态解码：本帧有新配置时直接使用，dependent
+`KeepPrevious` 则要求调用方提供前一有效配置；随后解析 position/data keep、1–2 个 5 比特
+panning index、双声道 M/S gate、5 比特 hybrid contribution，以及 channel mode 13/14 的
+`b_de_simulcast` 与第二份 data。P1 附录 A.4 的 `DE_HCB_ABS_0`、`DE_HCB_DIFF_0`、
+`DE_HCB_ABS_1`、`DE_HCB_DIFF_1` 四张码本分别按 `cb_off = 0/31/30/60` 映射，固定容量最多
+保留 3 channel × 8 band 的 24 个 absolute/differential 整数码值；成功必须恰好耗尽 tools
+body。默认构建不依赖本地规范码本，继续保留相同原始 bit view。
+
+当前还不按 `de_par_prev` 还原跨 band/channel 或跨帧的有效参数，也不维护按物理 substream
+隔离的配置、panning、parameter 与 simulcast 历史；这些是本节下一增量。现有真实向量的
+`tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实验证；活动
+分支仍只有构造验证。解析结果不反量化或执行 dialogue enhancement，也不修改 PCM。
 
 ### 3.3 EMDF 与 alternative 数据路径
 

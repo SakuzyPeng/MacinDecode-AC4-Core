@@ -54,7 +54,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
-| 音频 substream 框架、metadata 与 DE 配置 | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.3`、表 170–171；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置 gate、表 171、截断/尾随与 bit offset 构造测试；活动真实向量待验证 |
+| 音频 substream 框架、metadata 与 DE config/data | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、逐 bit 截断/尾随与 offset 构造测试；活动真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
 | ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
@@ -1740,7 +1740,7 @@ alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
-### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement 配置
+### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement config/data
 
 P2 `6.2.7.1` 先用 7 比特 `tools_metadata_size_value` 和可选的
 `variable_bits(3) << 7` 给出完整 tools metadata 的**精确比特数**；P1 `4.3.12.1.1` 明确该
@@ -1764,13 +1764,25 @@ substream 时，TOC 当前只保留各 `b_audio_ndot` 的合取；合取为真�
 为假则无法知道当前物理 substream 的逐一取值。后者在 DE 缺席时无关，活动时失败关闭，而不猜测
 dependent frame。
 
-这里的“配置已解析、其余 body 已保留”仍不等于 DE 已完整解析。P2 `6.2.7.6` 与 P1
-`4.2.14.13` 所定义的逐帧 `de_data()`、Huffman 参数、P2 channel mode 13/14 的 simulcast 精确
-落点，以及按物理 substream 隔离的配置/参数历史仍待后续；因此当前增量不会依据非零 channel
-count 验证 data 完整性。解析层不执行 dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC
-`ajoc_dmx_de_data()` 共用状态。现有真实向量均只观察到 `tools_metadata_size = 1`、
-`b_de_data_present = 0`；活动路径的 configuration gate、表 171、非字节对齐 view 和失败边界由
-构造码流覆盖，不能标作真实正向验证。
+默认构建继续把配置后的 body 作为零拷贝 bit view 保留，因为四张 DE 码本来自不随 crate 分发的
+规范附件。启用 `audio-decode` 后，`DialogEnhancementMetadata::decode_data` 可显式解码 P2
+`6.2.7.6` 与 P1 `4.2.14.13` 的完整帧内语法：cross-channel primary data 解析 position keep 与
+1–2 个 5 比特 mixing index，有参数声道的 dependent data 解析 parameter keep，method 0/2
+双声道分支保留 M/S flag，method 2/3 新参数保留 5 比特 signal contribution。P2 channel mode
+13/14 再精确消费 `b_de_simulcast`，第二份 data 按规范不重复 panning 字段。
+
+P1 附录 A.4 表 A.58–A.61 的 `DE_HCB_ABS_0`、`DE_HCB_DIFF_0`、`DE_HCB_ABS_1` 与
+`DE_HCB_DIFF_1` 分别使用 `cb_off = 0/31/30/60`。method 的低位选择 0/1 表族；固定容量按表 171
+与 `4.3.14.5.1` 保存最多 `3 × 8 = 24` 个 channel-major 码值。I-frame 首值来自 absolute 表，
+其余值来自 differential 表；dependent frame 全部来自 differential 表。当前 API 有意只返回这些
+Huffman 映射后的整数码值，不把它们冒充已经按 `ref_val`/`de_par_prev` 还原的有效参数。成功解析
+要求恰好耗尽 tools body；固定字段、任一码字或 simulcast 截断，以及已知语法后的尾随位均失败。
+
+尚待后续的是按物理 substream 隔离并事务提交的 configuration、panning、primary/simulcast
+parameter 历史，以及跨 band/channel/帧的 `de_par` 差分还原。解析层不反量化或执行 dialogue
+enhancement，不生成处理后的 PCM，也不与 A-JOC `ajoc_dmx_de_data()` 共用状态。现有真实向量
+均只观察到 `tools_metadata_size = 1`、`b_de_data_present = 0`；活动路径的 config/data、
+非字节对齐 view 和失败边界由构造码流覆盖，不能标作真实正向验证。
 
 ## 6. 未决规范问题
 

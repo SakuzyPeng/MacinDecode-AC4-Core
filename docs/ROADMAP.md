@@ -517,7 +517,7 @@ gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关�
 码值 `31` 合法保留。解析最后消费 `byte_align` 并要求恰好落在 presentation payload 末尾，
 不执行响度归一化、DRC、group/associated gain、pan、advanced DE、custom downmix 或任何 gain。
 
-**前两个 audio-substream tools metadata 增量也已落地。** `ac4_substream()` 不再把
+**前三个 audio-substream tools metadata 增量也已落地。** `ac4_substream()` 不再把
 `tools_metadata_size` 只作为跳过量：P2 `6.2.7.1` 与 P1 `4.3.12.1.1` 声明的精确比特长度会
 建立独立 bounded reader，并保留完整区段的零拷贝 bit view。当前支持的
 `bitstream_version = 2` 对应 `sus_ver = 1`，tools 区段只含 P2 `6.2.7.5` 的
@@ -525,11 +525,16 @@ gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关�
 精确传给 `b_iframe`。I-frame 强制解析 7 比特 `de_config()`；dependent frame 解析
 `b_de_config_flag`，区分沿用与显式更新。配置保留 `de_method`、`de_max_gain`、
 `de_channel_config` 原值和表 171 派生的 channel count，并按同表拒绝 mono/stereo 的非法码值。
-配置后尚未解释的 `de_data()`/simulcast body 继续以零拷贝 bit view 保留。零长度、配置前缀过短、
-absence 尾随、非法 channel configuration 以及区段越过 substream 均失败关闭，错误保留原
-payload 的 bit offset；多倍 frame-rate info 无法确定逐 substream `b_iframe` 时，活动 DE 也
-失败关闭。现有真实向量仍是 `tools_metadata_size = 1`、`b_de_data_present = 0`；活动分支只有
-构造验证。本增量不解析 DE Huffman data、不判定 simulcast 分界、不维护跨帧状态，也不执行 DE。
+配置后的 `de_data()`/simulcast body 继续以零拷贝 bit view 保留。`audio-decode` 下的显式 API
+再用 P1 附录 A.4 四张 DE 码本解析 position/data keep、panning index、M/S、hybrid
+contribution、最多 24 个 absolute/differential 参数码值，以及 P2 channel mode 13/14 的
+simulcast gate 和第二份 data；四张表的 `cb_off` 固定为 `0/31/30/60`，成功必须恰好耗尽 tools
+body。dependent `KeepPrevious` 缺少调用方提供的前一配置时失败，默认构建则继续原样保留 body。
+零长度、配置前缀过短、absence 尾随、非法 channel configuration、data/Huffman 截断、已知
+语法尾随以及区段越过 substream 均失败关闭，错误保留原 payload 的 bit offset；多倍 frame-rate
+info 无法确定逐 substream `b_iframe` 时，活动 DE 也失败关闭。现有真实向量仍是
+`tools_metadata_size = 1`、`b_de_data_present = 0`；活动分支只有构造验证。当前不还原
+`de_par_prev` 或维护跨帧有效状态，也不反量化或执行 DE。
 
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
@@ -554,11 +559,13 @@ output 位宽、全部 tool 分支、stereo/LtRt/LFE gate、合法静音端点�
 direct-object 仍没有真实编码样本，因此相应分支仍只关闭构造覆盖，外部向量状态保持待验证。
 audio-substream tools metadata 另覆盖 1 比特 absence、I-frame 必传配置、dependent 沿用/更新、
 mono/stereo 全部 3 比特码值、配置后的非字节对齐 bit view、未知逐 substream `b_iframe`、零长度、
-配置前缀截断与 absence 尾随，并由所有默认及 `audio-decode` 固定载荷共同验证末尾边界。
+配置前缀截断与 absence 尾随；feature-gated data 再覆盖四张码本选择/offset、三声道 panning、
+M/S channel reduction、I/dependent keep、新旧配置、simulcast present/absent、零 channel、每个
+代表性 data bit 的截断及尾随，并由所有默认及 `audio-decode` 固定载荷共同验证末尾边界。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-后续先补 audio-substream DE Huffman data、simulcast 落点与物理 substream 配置/参数状态，再补
+后续先补 audio-substream DE 的物理 substream 配置/panning/parameter/simulcast 状态，再补
 EMDF envelope 与 alternative dataset 数据路径；
 边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 

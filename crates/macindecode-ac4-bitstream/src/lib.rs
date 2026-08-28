@@ -66,6 +66,14 @@ pub use audio_substream::{
     DialogEnhancementMetadata, ExtendedMetadata, FurtherLoudnessInfo, LoudnessExtensionBits,
     LoudnessProgrammeBoundary, SubstreamContext,
 };
+#[cfg(feature = "audio-decode")]
+pub use audio_substream::{
+    DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
+    DialogEnhancementDecodedData, DialogEnhancementMixCoefficients, DialogEnhancementParameterData,
+    DialogEnhancementParameterUpdate, DialogEnhancementPositionUpdate,
+    DialogEnhancementSimulcastData, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
+    MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
+};
 pub use emdf::{EmdfInfo, EmdfPayloadsSubstream};
 #[cfg(feature = "audio-decode")]
 pub use huffman::{HuffmanError, HuffmanTable};
