@@ -22,8 +22,9 @@
 //! 且这次的约束是整字节级的，比 OAMD 的 `byte_align` 残余强得多。
 //!
 //! `tools_metadata_size` 另以比特数严格定界 DRC 与 dialogue enhancement。当前
-//! `sus_ver >= 1` 路径解析 `b_de_data_present`，并把活动分支尚未解释的 config/data
-//! body 保留为零拷贝 bit view；它不执行 dialogue enhancement。
+//! `sus_ver >= 1` 路径解析 `b_de_data_present`、I/dependent configuration gate 与
+//! `de_config()`，并把尚未解释的 `de_data()`/simulcast body 保留为零拷贝 bit view；它不执行
+//! dialogue enhancement。
 
 use crate::emdf::EmdfPayloadsSubstream;
 use crate::reader::{BitReader, ReadError};
@@ -65,6 +66,15 @@ pub enum AudioSubstreamError {
         bit_position: u64,
         /// 尚未消费的 tools metadata 比特数。
         remaining_bits: u32,
+    },
+    /// `de_channel_config` 不适用于 metadata 上下文声明的 mono/stereo 模式。
+    InvalidDialogEnhancementChannelConfiguration {
+        /// 3 比特 `de_channel_config` 原值。
+        declared: u8,
+        /// `ac4_substream_info_chan()` 声明的 `ch_mode`。
+        channel_mode: u32,
+        /// `de_channel_config` 的比特偏移。
+        bit_position: u64,
     },
     /// 解析结束后未落在 substream 末尾。
     ///
@@ -116,6 +126,14 @@ impl fmt::Display for AudioSubstreamError {
                 f,
                 "Audio tools metadata has {remaining_bits} trailing bits after absent dialogue enhancement at bit offset {bit_position}"
             ),
+            AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration {
+                declared,
+                channel_mode,
+                bit_position,
+            } => write!(
+                f,
+                "Dialogue-enhancement channel configuration {declared} is invalid for channel mode {channel_mode} at bit offset {bit_position}"
+            ),
             AudioSubstreamError::TrailingBits { remaining_bits } => write!(
                 f,
                 "{remaining_bits} bits remain after parsing metadata; parser did not end at the substream boundary"
@@ -150,6 +168,12 @@ pub struct SubstreamContext {
     pub ajoc: bool,
     /// `channel_mode`；未设定时为 `None`。
     pub channel_mode: Option<u32>,
+    /// 传给 `metadata()` 的 `b_iframe`，即前置 info 元素的 `b_audio_ndot`。
+    ///
+    /// `None` 表示一个 info 元素覆盖多个 substream，而拓扑层只保留了这些 ndot 位的合取，
+    /// 无法确定当前物理 substream 的逐一取值。dialogue enhancement 缺席时不需要该上下文；
+    /// 活动分支会失败关闭。
+    pub b_iframe: Option<bool>,
 }
 
 /// `tools_metadata_size` 严格定界的原始 bit view。
@@ -291,26 +315,60 @@ impl Iterator for AudioToolsMetadataBitIter<'_> {
     }
 }
 
+/// `de_config()` 的三个原始码值。
+///
+/// 配置只用于继续定界 `de_data()`；本类型不换算最大增益，也不执行 dialogue enhancement。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DialogEnhancementConfiguration {
+    /// 2 比特 `de_method`。
+    pub method: u8,
+    /// 2 比特 `de_max_gain`。
+    pub max_gain: u8,
+    /// 3 比特 `de_channel_config`。
+    pub channel_config: u8,
+}
+
+impl DialogEnhancementConfiguration {
+    /// 表 171 由 `de_channel_config` 派生的 `de_nr_channels`。
+    #[must_use]
+    pub const fn channel_count(self) -> u8 {
+        self.channel_config.count_ones() as u8
+    }
+}
+
+/// 当前帧传输的 dialogue-enhancement 配置形态。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DialogEnhancementConfigurationUpdate {
+    /// `b_de_data_present` 为假，语法中不传输 configuration 或 data。
+    NotPresent,
+    /// dependent frame 的 `b_de_config_flag` 为假，应使用前一有效配置。
+    KeepPrevious,
+    /// I-frame 的必传配置，或 dependent frame 显式更新的配置。
+    New(DialogEnhancementConfiguration),
+}
+
 /// `dialog_enhancement()` 的 presence 与尚未解释的活动 body。
 ///
-/// 当前增量只解析 `b_de_data_present`。为真时，body 包含后续 configuration/data 语法，后续
-/// 提交会继续解释；本类型始终保留原始比特，不执行 dialogue enhancement。
+/// 当前增量解析 `b_de_data_present`、I/dependent configuration gate 与 `de_config()`；
+/// `de_data()` 仍以原始 bit view 保留，后续提交再解释。本类型不执行 dialogue enhancement。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DialogEnhancementMetadata {
     /// `b_de_data_present`。
     pub data_present: bool,
+    /// 当前帧的 configuration 更新形态。
+    pub configuration: DialogEnhancementConfigurationUpdate,
     unparsed_body_bit_offset: u64,
     unparsed_body_bits: u32,
 }
 
 impl DialogEnhancementMetadata {
-    /// presence 之后尚未解释的 config/data body 比特数。
+    /// 已解析 configuration 之后尚未解释的 `de_data()`/simulcast body 比特数。
     #[must_use]
     pub const fn unparsed_body_len_bits(self) -> u32 {
         self.unparsed_body_bits
     }
 
-    /// 从解析时使用的同一 substream payload 取得尚未解释的 body。
+    /// 从解析时使用的同一 substream payload 取得尚未解释的 `de_data()`/simulcast body。
     #[must_use]
     pub fn unparsed_body<'a>(self, payload: &'a [u8]) -> Option<AudioToolsMetadataBits<'a>> {
         AudioToolsMetadataBits::new(
@@ -321,7 +379,7 @@ impl DialogEnhancementMetadata {
     }
 }
 
-/// `tools_metadata_size` 定界并完成 presence 校验的 audio tools metadata。
+/// `tools_metadata_size` 定界并完成 dialogue-enhancement 配置前缀解析的 audio tools metadata。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AudioToolsMetadata {
     size_value_bit_offset: u64,
@@ -1015,7 +1073,7 @@ pub struct Ac4AudioSubstream {
     pub extended: ExtendedMetadata,
     /// `tools_metadata_size`，单位为**比特**，覆盖 DRC 与对话增强（`4.3.12.1.1`）。
     pub tools_metadata_bits: u32,
-    /// 严格按声明长度定界并解析 presence 的 tools metadata。
+    /// 严格按声明长度定界并解析 dialogue-enhancement 配置前缀的 tools metadata。
     pub tools_metadata: AudioToolsMetadata,
     /// `b_emdf_payloads_substream`。
     pub emdf_payloads_substream: bool,
@@ -1048,8 +1106,9 @@ impl Ac4AudioSubstream {
     /// `audio_size` 越界返回 [`AudioSubstreamError::AudioSizeOutOfRange`]；tools metadata
     /// 长度不足或与 presence 不一致分别返回
     /// [`AudioSubstreamError::InvalidToolsMetadataSize`] 或
-    /// [`AudioSubstreamError::TrailingToolsMetadataBits`]；解析后未落在 substream 末尾返回
-    /// [`AudioSubstreamError::TrailingBits`]。
+    /// [`AudioSubstreamError::TrailingToolsMetadataBits`]；mono/stereo 的 DE channel configuration
+    /// 不适用时返回 [`AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration`]；解析后
+    /// 未落在 substream 末尾返回 [`AudioSubstreamError::TrailingBits`]。
     pub fn parse(payload: &[u8], context: SubstreamContext) -> Result<Self, AudioSubstreamError> {
         let mut reader = BitReader::new(payload);
 
@@ -1093,6 +1152,7 @@ impl Ac4AudioSubstream {
             tools_metadata_size_value_offset,
             tools_metadata_bit_offset,
             tools_metadata_bits,
+            context,
         )?;
         reader.skip_bits(u64::from(tools_metadata_bits))?;
 
@@ -1129,6 +1189,7 @@ fn parse_tools_metadata(
     size_value_bit_offset: u64,
     bit_offset: u64,
     bit_len: u32,
+    context: SubstreamContext,
 ) -> Result<AudioToolsMetadata, AudioSubstreamError> {
     if bit_len == 0 {
         return Err(AudioSubstreamError::InvalidToolsMetadataSize {
@@ -1140,21 +1201,43 @@ fn parse_tools_metadata(
 
     let mut reader = BitReader::new_bounded(payload, bit_offset, u64::from(bit_len))?;
     let data_present = reader.read_flag()?;
+    let configuration = if data_present {
+        require_tools_metadata_bits(bit_len, 2, size_value_bit_offset)?;
+        let Some(b_iframe) = context.b_iframe else {
+            return Err(AudioSubstreamError::Unsupported {
+                what: "active dialog_enhancement without an exact b_iframe context",
+                bit_position: reader.bit_position(),
+            });
+        };
+        if b_iframe {
+            require_tools_metadata_bits(bit_len, 8, size_value_bit_offset)?;
+            DialogEnhancementConfigurationUpdate::New(parse_dialog_enhancement_configuration(
+                &mut reader,
+                context.channel_mode,
+            )?)
+        } else {
+            if reader.read_flag()? {
+                require_tools_metadata_bits(bit_len, 9, size_value_bit_offset)?;
+                DialogEnhancementConfigurationUpdate::New(parse_dialog_enhancement_configuration(
+                    &mut reader,
+                    context.channel_mode,
+                )?)
+            } else {
+                DialogEnhancementConfigurationUpdate::KeepPrevious
+            }
+        }
+    } else {
+        let remaining_bits = u32::try_from(reader.remaining_bits()).unwrap_or(u32::MAX);
+        if remaining_bits != 0 {
+            return Err(AudioSubstreamError::TrailingToolsMetadataBits {
+                bit_position: reader.bit_position(),
+                remaining_bits,
+            });
+        }
+        DialogEnhancementConfigurationUpdate::NotPresent
+    };
     let unparsed_body_bit_offset = reader.bit_position();
     let unparsed_body_bits = u32::try_from(reader.remaining_bits()).unwrap_or(u32::MAX);
-    if data_present && unparsed_body_bits == 0 {
-        return Err(AudioSubstreamError::InvalidToolsMetadataSize {
-            declared: bit_len,
-            minimum: 2,
-            bit_position: size_value_bit_offset,
-        });
-    }
-    if !data_present && unparsed_body_bits != 0 {
-        return Err(AudioSubstreamError::TrailingToolsMetadataBits {
-            bit_position: unparsed_body_bit_offset,
-            remaining_bits: unparsed_body_bits,
-        });
-    }
 
     Ok(AudioToolsMetadata {
         size_value_bit_offset,
@@ -1162,9 +1245,54 @@ fn parse_tools_metadata(
         bit_len,
         dialog_enhancement: DialogEnhancementMetadata {
             data_present,
+            configuration,
             unparsed_body_bit_offset,
             unparsed_body_bits,
         },
+    })
+}
+
+fn require_tools_metadata_bits(
+    declared: u32,
+    minimum: u32,
+    bit_position: u64,
+) -> Result<(), AudioSubstreamError> {
+    if declared < minimum {
+        return Err(AudioSubstreamError::InvalidToolsMetadataSize {
+            declared,
+            minimum,
+            bit_position,
+        });
+    }
+    Ok(())
+}
+
+fn parse_dialog_enhancement_configuration(
+    reader: &mut BitReader<'_>,
+    channel_mode: Option<u32>,
+) -> Result<DialogEnhancementConfiguration, AudioSubstreamError> {
+    let method = u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX);
+    let max_gain = u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX);
+    let bit_position = reader.bit_position();
+    let channel_config = u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX);
+    let valid = match channel_mode {
+        Some(0) => matches!(channel_config, 0 | 1),
+        Some(1) => matches!(channel_config, 0 | 2 | 4 | 6),
+        _ => true,
+    };
+    if !valid {
+        return Err(
+            AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration {
+                declared: channel_config,
+                channel_mode: channel_mode.unwrap_or(u32::MAX),
+                bit_position,
+            },
+        );
+    }
+    Ok(DialogEnhancementConfiguration {
+        method,
+        max_gain,
+        channel_config,
     })
 }
 
@@ -1201,6 +1329,7 @@ mod tests {
         alternative: false,
         ajoc: true,
         channel_mode: None,
+        b_iframe: Some(false),
     };
 
     /// 最简帧：audio_size = 1 字节，metadata 全部取最短分支。
@@ -1237,6 +1366,10 @@ mod tests {
         assert_eq!(tools.as_aligned_slice(), None);
         assert_eq!(tools.iter().collect::<std::vec::Vec<_>>(), [false]);
         assert!(!parsed.tools_metadata.dialog_enhancement.data_present);
+        assert_eq!(
+            parsed.tools_metadata.dialog_enhancement.configuration,
+            DialogEnhancementConfigurationUpdate::NotPresent
+        );
         let body = parsed
             .tools_metadata
             .dialog_enhancement
@@ -1343,32 +1476,50 @@ mod tests {
         ));
     }
 
-    /// tools_metadata_size 以比特计，活动分支的其余 body 保持在独立边界内。
+    /// dependent frame 可更新配置，后续 de_data body 仍保持在独立边界内。
     #[test]
-    fn preserves_active_tools_metadata_body_by_bit_count() {
-        // tools_metadata_size = 5：presence 为真，后四个 body bit 尚未解释。
+    fn parses_dependent_dialogue_enhancement_configuration_and_preserves_data_body() {
+        // tools_metadata_size = 13：presence、config flag、7-bit config 与四个 data bit。
         let (bits, len) = pack(
             "000000000000000 0 \
              0 \
              0 0 0 \
-             0000101 0 \
-             11111 \
+             0001101 0 \
+             1 1 10 11 110 1011 \
              0 \
-             0000",
+             000000",
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
         assert_eq!(parsed.audio_size, 0);
-        assert_eq!(parsed.tools_metadata_bits, 5);
+        assert_eq!(parsed.tools_metadata_bits, 13);
         assert!(parsed.tools_metadata.dialog_enhancement.data_present);
+        assert_eq!(
+            parsed.tools_metadata.dialog_enhancement.configuration,
+            DialogEnhancementConfigurationUpdate::New(DialogEnhancementConfiguration {
+                method: 2,
+                max_gain: 3,
+                channel_config: 6,
+            })
+        );
+        let DialogEnhancementConfigurationUpdate::New(configuration) =
+            parsed.tools_metadata.dialog_enhancement.configuration
+        else {
+            panic!("应得到新配置")
+        };
+        assert_eq!(configuration.channel_count(), 2);
         let tools = parsed.tools_metadata.bits(&bits[..len]).unwrap();
-        assert_eq!(tools.iter().collect::<std::vec::Vec<_>>(), [true; 5]);
+        assert_eq!(tools.len_bits(), 13);
         let body = parsed
             .tools_metadata
             .dialog_enhancement
             .unparsed_body(&bits[..len])
             .unwrap();
         assert_eq!(body.len_bits(), 4);
-        assert_eq!(body.iter().collect::<std::vec::Vec<_>>(), [true; 4]);
+        assert_eq!(body.bit_offset(), 37);
+        assert_eq!(
+            body.iter().collect::<std::vec::Vec<_>>(),
+            [true, false, true, true]
+        );
         assert_eq!(
             body.end_bit_offset(),
             parsed
@@ -1376,6 +1527,103 @@ mod tests {
                 .bits(&bits[..len])
                 .unwrap()
                 .end_bit_offset()
+        );
+    }
+
+    #[test]
+    fn iframe_configuration_is_mandatory_while_dependent_frames_can_keep_it() {
+        let iframe = SubstreamContext {
+            b_iframe: Some(true),
+            ..AJOC
+        };
+        let (bits, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0001000 0 \
+             1 01 10 000 \
+             0 \
+             000",
+        );
+        let parsed = Ac4AudioSubstream::parse(&bits[..len], iframe).unwrap();
+        assert_eq!(
+            parsed.tools_metadata.dialog_enhancement.configuration,
+            DialogEnhancementConfigurationUpdate::New(DialogEnhancementConfiguration {
+                method: 1,
+                max_gain: 2,
+                channel_config: 0,
+            })
+        );
+        assert!(
+            parsed
+                .tools_metadata
+                .dialog_enhancement
+                .unparsed_body(&bits[..len])
+                .unwrap()
+                .is_empty()
+        );
+
+        let (bits, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000010 0 \
+             1 0 \
+             0 \
+             0",
+        );
+        let parsed = Ac4AudioSubstream::parse(&bits[..len], AJOC).unwrap();
+        assert_eq!(
+            parsed.tools_metadata.dialog_enhancement.configuration,
+            DialogEnhancementConfigurationUpdate::KeepPrevious
+        );
+        assert!(
+            parsed
+                .tools_metadata
+                .dialog_enhancement
+                .unparsed_body(&bits[..len])
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn validates_de_channel_configuration_against_mono_and_stereo() {
+        for code in 0u8..=7 {
+            let source = [code << 1];
+            let mono =
+                parse_dialog_enhancement_configuration(&mut BitReader::new(&source), Some(0));
+            assert_eq!(mono.is_ok(), matches!(code, 0 | 1), "mono code {code}");
+
+            let stereo =
+                parse_dialog_enhancement_configuration(&mut BitReader::new(&source), Some(1));
+            assert_eq!(
+                stereo.is_ok(),
+                matches!(code, 0 | 2 | 4 | 6),
+                "stereo code {code}"
+            );
+
+            assert!(
+                parse_dialog_enhancement_configuration(&mut BitReader::new(&source), Some(2),)
+                    .is_ok(),
+                "multichannel code {code}"
+            );
+            assert!(
+                parse_dialog_enhancement_configuration(&mut BitReader::new(&source), None).is_ok(),
+                "undefined channel mode code {code}"
+            );
+        }
+
+        let error =
+            parse_dialog_enhancement_configuration(&mut BitReader::new(&[0b0000_0100]), Some(0))
+                .unwrap_err();
+        assert_eq!(
+            error,
+            AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration {
+                declared: 2,
+                channel_mode: 0,
+                bit_position: 4,
+            }
         );
     }
 
@@ -1413,6 +1661,71 @@ mod tests {
                 bit_position: 20,
             }
         );
+
+        let iframe = SubstreamContext {
+            b_iframe: Some(true),
+            ..AJOC
+        };
+        let (short_iframe, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000111 0 \
+             1 000000 \
+             0 \
+             0000",
+        );
+        assert_eq!(
+            Ac4AudioSubstream::parse(&short_iframe[..len], iframe).unwrap_err(),
+            AudioSubstreamError::InvalidToolsMetadataSize {
+                declared: 7,
+                minimum: 8,
+                bit_position: 20,
+            }
+        );
+
+        let (short_dependent_update, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0001000 0 \
+             1 1 000000 \
+             0 \
+             000",
+        );
+        assert_eq!(
+            Ac4AudioSubstream::parse(&short_dependent_update[..len], AJOC).unwrap_err(),
+            AudioSubstreamError::InvalidToolsMetadataSize {
+                declared: 8,
+                minimum: 9,
+                bit_position: 20,
+            }
+        );
+
+        let unknown_iframe = SubstreamContext {
+            b_iframe: None,
+            ..AJOC
+        };
+        assert!(
+            Ac4AudioSubstream::parse(&[0, 0, 0, 0x20], unknown_iframe).is_ok(),
+            "DE 缺席时不得无谓要求逐 substream b_iframe"
+        );
+        let (active_without_context, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             0000010 0 \
+             1 0 \
+             0 \
+             0",
+        );
+        assert!(matches!(
+            Ac4AudioSubstream::parse(&active_without_context[..len], unknown_iframe),
+            Err(AudioSubstreamError::Unsupported {
+                what: "active dialog_enhancement without an exact b_iframe context",
+                bit_position: 29,
+            })
+        ));
 
         let (inactive_tail, len) = pack(
             "000000000000000 0 \

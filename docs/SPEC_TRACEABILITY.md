@@ -54,7 +54,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
-| 音频 substream 框架与 metadata | P2 `6.2.2.2`；P1 `4.2.14.1`–`4.2.14.4`、`4.3.4.1`；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾 |
+| 音频 substream 框架、metadata 与 DE 配置 | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.3`、表 170–171；`sus_ver` 语义 P2 `6.3.2.5.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置 gate、表 171、截断/尾随与 bit offset 构造测试；活动真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
 | ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
@@ -1740,7 +1740,7 @@ alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
 
-### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement presence
+### 5.58 `ac4_substream()` 的 tools metadata 比特边界与 dialogue-enhancement 配置
 
 P2 `6.2.7.1` 先用 7 比特 `tools_metadata_size_value` 和可选的
 `variable_bits(3) << 7` 给出完整 tools metadata 的**精确比特数**；P1 `4.3.12.1.1` 明确该
@@ -1748,20 +1748,29 @@ P2 `6.2.7.1` 先用 7 比特 `tools_metadata_size_value` 和可选的
 `bitstream_version = 2`，P2 `6.3.2.5.4` 令其 `sus_ver = 1`，所以 `6.2.7.1` 的
 `drc_frame()` gate 不成立，区段从 `6.2.7.5` 的 `b_de_data_present` 开始。
 
-解析器现在以声明长度和原 substream bit offset 建立 bounded reader；完整 tools 区段以及
-presence 后尚未解释的 config/data body 都可从原 payload 重建零拷贝 bit view，不把 lifetime
-传播到 `Ac4AudioSubstream`。presence 为假时，规范语法没有任何后续字段，故有界区段必须恰好
-为 1 比特；presence 为真时，即使 dependent frame 不更新配置也至少要传
-`b_de_config_flag`，所以当前增量要求仍有一个 body bit。零长度、活动但只有 presence、缺席后
-仍有尾随位、声明范围越过 payload 均在 bounded reader 内结构化失败，不借用随后的
-`b_emdf_payloads_substream`；Scene 错误映射继续保留这些错误的原始 bit offset。
+解析器现在以声明长度和原 substream bit offset 建立 bounded reader；完整 tools 区段以及已解析
+配置后尚未解释的 `de_data()`/simulcast body 都可从原 payload 重建零拷贝 bit view，不把
+lifetime 传播到 `Ac4AudioSubstream`。presence 为假时，规范语法没有任何后续字段，故有界区段
+必须恰好为 1 比特。presence 为真时，P2 `6.2.2.2` 传给 `metadata()` 的 `b_iframe` 精确来自
+前置 info 的 `b_audio_ndot`：I-frame 按 P1 `4.2.14.11`–`4.2.14.12` 强制读取 7 比特
+`de_config()`；dependent frame 先读 `b_de_config_flag`，再区分 `KeepPrevious` 与显式新配置。
+三类最短 tools 长度分别是 8、2 和 9 比特。
 
-这里的“活动 body 已保留”不等于 DE 已解析。P2 `6.2.7.5`–`6.2.7.6` 与共享的 P1
-`4.2.14.12`–`4.2.14.13` 所定义的 `de_config()`、逐帧 `de_data()`、Huffman 参数以及按物理
-substream 隔离的配置/参数历史仍待后续；解析入口也尚未接入对应 `b_iframe`。因此本层不执行
-dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC `ajoc_dmx_de_data()` 共用状态。
-现有真实向量均只观察到 `tools_metadata_size = 1`、`b_de_data_present = 0`；活动路径的
-非字节对齐 view 和失败边界由构造码流覆盖，不能标作真实正向验证。
+配置公开 2 比特 `de_method`、2 比特 `de_max_gain` 与 3 比特 `de_channel_config` 原值；
+`de_nr_channels` 由后者置位数派生。P1 表 171 只允许 mono 使用 `000/001`、stereo 使用
+`000/010/100/110`，其余 channel mode 或未定义 mode 接受全部 3 比特码值。非法组合返回带
+`de_channel_config` 起始 offset 的结构化错误，Scene 映射保留该位置。一个 info 覆盖多个物理
+substream 时，TOC 当前只保留各 `b_audio_ndot` 的合取；合取为真可证明每条都是 I-frame，合取
+为假则无法知道当前物理 substream 的逐一取值。后者在 DE 缺席时无关，活动时失败关闭，而不猜测
+dependent frame。
+
+这里的“配置已解析、其余 body 已保留”仍不等于 DE 已完整解析。P2 `6.2.7.6` 与 P1
+`4.2.14.13` 所定义的逐帧 `de_data()`、Huffman 参数、P2 channel mode 13/14 的 simulcast 精确
+落点，以及按物理 substream 隔离的配置/参数历史仍待后续；因此当前增量不会依据非零 channel
+count 验证 data 完整性。解析层不执行 dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC
+`ajoc_dmx_de_data()` 共用状态。现有真实向量均只观察到 `tools_metadata_size = 1`、
+`b_de_data_present = 0`；活动路径的 configuration gate、表 171、非字节对齐 view 和失败边界由
+构造码流覆盖，不能标作真实正向验证。
 
 ## 6. 未决规范问题
 

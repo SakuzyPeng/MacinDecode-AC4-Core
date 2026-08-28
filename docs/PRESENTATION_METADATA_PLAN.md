@@ -6,8 +6,9 @@
 > associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC
 > I-frame 配置与逐帧 data envelope 也已解析，跨帧状态可用前一有效配置解析 dependent data，
 > `audio-decode` 下可显式解码 Huffman gains；音频 substream 的 tools metadata 已严格定界并
-> 解析 dialogue-enhancement presence，活动分支的 config/data body 暂以原始 bit view 保留；
-> DE configuration/Huffman data/跨帧状态、EMDF payload 与 alternative dataset
+> 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置，尚未解释的
+> `de_data()`/simulcast body 暂以原始 bit view 保留；DE Huffman data、物理 substream
+> 配置/参数状态、EMDF payload 与 alternative dataset
 > 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog enhancement
 > 正向候选；非空 EMDF
 > payload 和 alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度
@@ -118,17 +119,24 @@ payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角�
   清空相应历史；
 - 区分 `dialog_enhancement()` 与已经实现的 A-JOC `ajoc_dmx_de_data()`，两套状态不得共用。
 
-首个增量已按 P2 `6.2.7.1`/`6.2.7.5` 与 P1 `4.3.12.1.1` 把
+前两个增量已按 P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6` 与 P1
+`4.2.14.11`–`4.2.14.13`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.3` 把
 `tools_metadata_size` 作为精确比特长度建立独立 bounded reader。当前支持的
 `bitstream_version = 2` 对应 `sus_ver = 1`，因此 tools 区段不含 audio-substream DRC；解析器
-读取 `b_de_data_present`，缺席时要求声明区段恰好只有这一位，活动时以零拷贝 bit view 保留
-完整 tools 区段和 presence 后尚未解释的 body。零长度、活动但没有 body、缺席后仍有尾随位
-均结构化失败，且不得借用随后的 `b_emdf_payloads_substream` 或对齐位。
+读取 `b_de_data_present`，缺席时要求声明区段恰好只有这一位。活动分支直接使用前置 info 的
+`b_audio_ndot` 作为 `b_iframe`：I-frame 强制读取 7 比特 `de_config()`，dependent frame 先读取
+`b_de_config_flag`，再区分沿用或显式更新配置。2 比特 `de_method`、2 比特 `de_max_gain` 与
+3 比特 `de_channel_config` 均按原值保留；由表 171 派生 channel count，并拒绝 mono/stereo
+不允许的 channel configuration。I-frame、dependent 沿用和 dependent 更新的配置前缀最短分别
+为 8、2 和 9 比特，均不得越过 tools 边界借用随后的 `b_emdf_payloads_substream` 或对齐位。
+一个 info 覆盖多个物理 substream 且 ndot 合取为假时，现有拓扑不能恢复每条 substream 的精确
+`b_iframe`；DE 缺席仍可解析，活动分支则失败关闭。
 
-本增量还不解释 `de_config()`、`de_data()` Huffman 码字，不接入 `b_iframe`，也不维护按物理
-substream 隔离的配置/参数历史；这些仍是本节后续工作。现有真实向量的
-`tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实验证；活动
-分支仍只有构造验证。解析结果不执行 dialogue enhancement，也不修改 PCM。
+完整 tools 区段与配置后尚未解释的 `de_data()`/simulcast body 都可从原 payload 重建零拷贝
+bit view。本增量还不解释 `de_data()` Huffman 码字、不判定 simulcast 的精确分界，也不维护按
+物理 substream 隔离的配置/参数历史；因此配置非零时的 data 完整性将在后续解析中关闭。现有
+真实向量的 `tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实
+验证；活动分支仍只有构造验证。解析结果不执行 dialogue enhancement，也不修改 PCM。
 
 ### 3.3 EMDF 与 alternative 数据路径
 

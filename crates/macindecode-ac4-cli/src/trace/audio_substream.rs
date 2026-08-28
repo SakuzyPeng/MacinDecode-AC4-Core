@@ -75,6 +75,7 @@ fn group_needs_dee_ims_stereo_candidate(
 
 fn is_known_dee_ims_pair(current: SubstreamContext, candidate: SubstreamContext) -> bool {
     current.sus_ver == candidate.sus_ver
+        && current.b_iframe == candidate.b_iframe
         && !current.ajoc
         && !candidate.ajoc
         && matches!(
@@ -89,6 +90,7 @@ fn push_context(
 ) -> Result<(), &'static str> {
     if let Some(current) = slot.iter_mut().find(|current| {
         current.sus_ver == candidate.sus_ver
+            && current.b_iframe == candidate.b_iframe
             && current.ajoc == candidate.ajoc
             && current.channel_mode == candidate.channel_mode
     }) {
@@ -110,6 +112,13 @@ fn push_context(
     }
 }
 
+fn same_locked_context(current: SubstreamContext, expected: SubstreamContext) -> bool {
+    current.sus_ver == expected.sus_ver
+        && current.alternative == expected.alternative
+        && current.ajoc == expected.ajoc
+        && current.channel_mode == expected.channel_mode
+}
+
 fn select_parsed_candidate(
     selected: &mut Option<SubstreamContext>,
     successful: &[(SubstreamContext, Ac4AudioSubstream)],
@@ -121,7 +130,9 @@ fn select_parsed_candidate(
     if let Some(expected) = *selected {
         return successful
             .iter()
-            .find_map(|(context, parsed)| (*context == expected).then_some(*parsed))
+            .find_map(|(context, parsed)| {
+                same_locked_context(*context, expected).then_some(*parsed)
+            })
             .map(Some)
             .ok_or("Audio-substream parse context changed between frames");
     }
@@ -187,6 +198,13 @@ impl AudioTrace {
                         alternative,
                         ajoc,
                         channel_mode,
+                        // 一个 info 可覆盖多条物理 substream；拓扑层只保留 ndot 合取。
+                        // 因子为 1 时取值精确；多倍因子全真时同样可证明每条均为 I-frame。
+                        b_iframe: if group.frame_rate_factor == 1 || info.audio_ndot() {
+                            Some(info.audio_ndot())
+                        } else {
+                            None
+                        },
                     };
                     if let Err(error) = push_context(slot, candidate) {
                         frame_failed = true;
@@ -397,6 +415,7 @@ mod tests {
         alternative: false,
         ajoc: false,
         channel_mode: Some(6),
+        b_iframe: Some(false),
     };
     const STEREO: SubstreamContext = SubstreamContext {
         channel_mode: Some(1),
@@ -454,6 +473,17 @@ mod tests {
                 .is_some()
         );
         assert_eq!(selected, Some(STEREO));
+
+        let stereo_iframe = SubstreamContext {
+            b_iframe: Some(true),
+            ..STEREO
+        };
+        assert!(
+            select_parsed_candidate(&mut selected, &[(stereo_iframe, minimal(stereo_iframe))])
+                .unwrap()
+                .is_some(),
+            "b_iframe 是逐帧语法上下文，不得被当成配置代次内的锁定身份"
+        );
         assert!(select_parsed_candidate(&mut selected, &[(SURROUND, surround)]).is_err());
     }
 

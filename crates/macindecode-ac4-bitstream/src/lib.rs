@@ -62,8 +62,9 @@ pub mod var_element;
 
 pub use audio_substream::{
     Ac4AudioSubstream, AudioSubstreamError, AudioToolsMetadata, AudioToolsMetadataBits,
-    BasicMetadata, DialogEnhancementMetadata, ExtendedMetadata, FurtherLoudnessInfo,
-    LoudnessExtensionBits, LoudnessProgrammeBoundary, SubstreamContext,
+    BasicMetadata, DialogEnhancementConfiguration, DialogEnhancementConfigurationUpdate,
+    DialogEnhancementMetadata, ExtendedMetadata, FurtherLoudnessInfo, LoudnessExtensionBits,
+    LoudnessProgrammeBoundary, SubstreamContext,
 };
 pub use emdf::{EmdfInfo, EmdfPayloadsSubstream};
 #[cfg(feature = "audio-decode")]

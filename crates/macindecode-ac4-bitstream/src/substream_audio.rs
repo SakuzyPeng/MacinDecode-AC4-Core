@@ -266,6 +266,8 @@ impl AjocSubstreamContext {
                 ajoc: true,
                 // 6.2.2.2 NOTE 2：A-JOC 的 info 元素不设 channel_mode。
                 channel_mode: None,
+                // 6.2.2.2 同样把 b_audio_ndot 传给 metadata() 的 b_iframe。
+                b_iframe: Some(info.audio_ndot()),
             },
             params: AudioDataParams {
                 context: ChannelContext {
