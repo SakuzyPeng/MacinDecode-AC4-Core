@@ -128,8 +128,8 @@ M4.5 的 presentation processing metadata 当前由 `macindecode-ac4-bitstream` 
 |---|---|---|---|
 | presentation DRC | `Ac4PresentationSubstream` 中的配置、data/gain-set envelope 与原始 bit view | 一个配置代次内的 presentation | `PresentationDrcState` 只延续解析 dependent data 所需的配置；不拥有 gain 平滑或 PCM 处理状态 |
 | substream-group gain | 当前帧的 absent/keep/new 传输形态 | 一个配置代次内的 presentation | `PresentationSubstreamGroupGainState` 保存有效六比特码值；不换算或应用 gain |
-| dialogue enhancement | 当前物理 audio substream 的 tools-metadata view | 物理 `substream_index` | `DialogEnhancementState` 独立延续配置、panning、primary 与 simulcast 参数历史；不同 substream 或两类参数历史不得共用 |
-| alternative OAMD | non-A-JOC 或 A-JOC core/full 的 dataset/opaque view | `(physical substream, domain, data_set_index)` | `OamdAlternativeDataSetState` 只拥有化保存规范已定义的 gain/位置；三个 domain 和各 dataset index 相互隔离，opaque 尾部仍属于当前帧 |
+| dialogue enhancement | 当前物理 audio substream 的 tools-metadata view | 物理 `substream_index` | 默认构建只保留配置与原始 bit view；`DialogEnhancementState` 仅在 `audio-decode` 下可用，并独立延续配置、panning、primary 与 simulcast 参数历史；不同 substream 或两类参数历史不得共用 |
+| alternative OAMD | non-A-JOC 或 A-JOC core/full 的 dataset/opaque view | `(physical substream, domain, data_set_index)` | `OamdAlternativeDataSetState` 只拥有并保存规范已定义的 gain/位置；三个 domain 和各 dataset index 相互隔离，opaque 尾部仍属于当前帧 |
 | EMDF | 当前 carrier substream 的 descriptor 与 payload bit range | 无通用跨帧 datatype 状态 | `EmdfPayloadsSubstream` 固定容量保存 envelope；opaque bytes 只在调用方传回解析时同一有界源切片期间有效，未知 ID 不建立语义状态 |
 
 associated-audio、custom downmix、loudness correction 及 alternative target/dataset map 保持

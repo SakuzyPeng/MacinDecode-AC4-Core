@@ -129,9 +129,11 @@ distance、divergence 等尚无可靠通用映射的字段只保留 raw。如果
 - EMDF descriptor 保留 payload ID、时序、路由、processing/discard/duplicate 等配置及声明长度；
   未注册或私有 datatype 的 payload 以原始 8 比特元素无损保留，不因未知 ID 失败，也不发明
   Scene 语义。终止符、容量和边界仍必须在发布 view 前完整验证。
-- 原 payload 中的 DRC/DE/EMDF/alternative opaque view 只在其有界输入切片的生命周期内有效。
-  若未来由 Session 发布，必须改为借用 Session 拥有且已验证的存储，并沿用下一次可变调用即
-  失效的 Rust 生命周期；不得只暴露无法安全回取数据的裸 offset 或长期裸指针。
+- 所有依赖原 payload 的 view——包括 presentation name/target selection、additional-data 与
+  loudness extension、DRC/DE、EMDF 及 alternative OAMD opaque data——只在其有界输入切片的
+  生命周期内有效。若未来由 Session 以借用 view 发布，必须借用 Session 拥有且已验证的存储，
+  并沿用下一次可变调用即失效的 Rust 生命周期；也可显式复制为 Session 自有值，但不得只暴露
+  无法安全回取数据的裸 offset 或长期裸指针。
 - 任何这些字段的解析、状态还原或 opaque 保留都不得原地修改 `Ac4SceneFrame` PCM、对象 identity、
   OAMD 事件顺序或时间线。DRC、DE、gain、downmix 与 loudness processing 需要独立、显式请求的
   后续处理接口。
@@ -142,7 +144,9 @@ distance、divergence 等尚无可靠通用映射的字段只保留 raw。如果
 
 ## 3. 状态语义
 
-- 未在当前帧更新的元数据继承上一有效状态。
+- Scene-owned OAMD/metadata update 未在当前帧更新的字段继承上一有效状态；presentation
+  processing metadata 不套用这条通则。特别是 group gain 只有 `KeepPrevious` 才继承，
+  `NotPresent` 与 `NotSignaled` 都使当前有效数组归零。
 - random access 或 reset 后，不允许继承 reset 前状态。
 - 同一帧内多个更新按 `offset_samples` 排序；相同位置的规范顺序必须稳定。
 - 只有在帧起点已经生效的自足更新才能进入对象的初始完整状态；控制尚未到期时必须报告
