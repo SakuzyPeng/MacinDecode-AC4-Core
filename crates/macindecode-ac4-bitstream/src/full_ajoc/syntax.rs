@@ -13,7 +13,7 @@ use crate::{
     audio_substream::AudioSubstreamError,
     channel::ChannelElement,
     emdf::EmdfError,
-    oamd::{MAX_OBJ_INFO_BLOCKS, OamdMetadataBlock},
+    oamd::{MAX_OBJ_INFO_BLOCKS, OamdError, OamdMetadataBlock},
     reader::ReadError,
     substream_audio::{
         Ac4SubstreamAjoc, AjocAudioWorkspace, AjocSubstreamContext, SubstreamAudioError,
@@ -148,9 +148,14 @@ fn audio_substream_input_exhausted(error: &AudioSubstreamError) -> bool {
     match error {
         AudioSubstreamError::Read(error) => read_input_exhausted(error),
         AudioSubstreamError::Emdf(error) => emdf_input_exhausted(error),
+        AudioSubstreamError::Oamd(error) => oamd_input_exhausted(error),
         AudioSubstreamError::AudioSizeOutOfRange { .. } => true,
         _ => false,
     }
+}
+
+fn oamd_input_exhausted(error: &OamdError) -> bool {
+    matches!(error, OamdError::Read(error) if read_input_exhausted(error))
 }
 
 fn emdf_input_exhausted(error: &EmdfError) -> bool {
@@ -1325,6 +1330,29 @@ mod tests {
         for error in terminal {
             assert!(!wrap(error).is_input_exhausted(), "{error:?}");
         }
+    }
+
+    #[test]
+    fn classifies_nested_oamd_read_exhaustion_as_retryable() {
+        let wrap = |error| FullAjocSyntaxError::Decode {
+            substream_index: 0,
+            error: SubstreamAudioError::Substream(AudioSubstreamError::Oamd(error)),
+        };
+        assert!(
+            wrap(OamdError::Read(ReadError::OutOfBounds {
+                requested_bits: 1,
+                bit_position: 42,
+                remaining_bits: 0,
+            }))
+            .is_input_exhausted()
+        );
+        assert!(
+            !wrap(OamdError::AdditionalDataUnderflow {
+                declared_bytes: 1,
+                used_bits: 10,
+            })
+            .is_input_exhausted()
+        );
     }
 
     #[test]

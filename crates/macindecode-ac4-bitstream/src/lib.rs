@@ -61,10 +61,10 @@ pub mod topology;
 pub mod var_element;
 
 pub use audio_substream::{
-    Ac4AudioSubstream, AudioSubstreamError, AudioToolsMetadata, AudioToolsMetadataBits,
-    BasicMetadata, DialogEnhancementConfiguration, DialogEnhancementConfigurationUpdate,
-    DialogEnhancementMetadata, ExtendedMetadata, FurtherLoudnessInfo, LoudnessExtensionBits,
-    LoudnessProgrammeBoundary, SubstreamContext,
+    Ac4AudioSubstream, AlternativeOamdContext, AudioSubstreamError, AudioToolsMetadata,
+    AudioToolsMetadataBits, BasicMetadata, DialogEnhancementConfiguration,
+    DialogEnhancementConfigurationUpdate, DialogEnhancementMetadata, ExtendedMetadata,
+    FurtherLoudnessInfo, LoudnessExtensionBits, LoudnessProgrammeBoundary, SubstreamContext,
 };
 #[cfg(feature = "audio-decode")]
 pub use audio_substream::{

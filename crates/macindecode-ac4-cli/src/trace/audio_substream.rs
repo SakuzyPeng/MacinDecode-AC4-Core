@@ -1,6 +1,9 @@
 //! 普通音频子流框架与 metadata trace。
 //!
-use super::{Ac4AudioSubstream, Ac4Topology, MAX_SUBSTREAMS, SubstreamContext, SubstreamInfo};
+use super::{
+    Ac4AudioSubstream, Ac4Topology, GroupOamdState, MAX_SUBSTREAMS, SubstreamContext, SubstreamInfo,
+};
+use macindecode_ac4_bitstream::AlternativeOamdContext;
 
 /// `ac4_substream()` 框架与 metadata 的统计。
 ///
@@ -78,6 +81,8 @@ fn is_known_dee_ims_pair(current: SubstreamContext, candidate: SubstreamContext)
         && current.b_iframe == candidate.b_iframe
         && !current.ajoc
         && !candidate.ajoc
+        && current.alternative_oamd.is_none()
+        && candidate.alternative_oamd.is_none()
         && matches!(
             (current.channel_mode, candidate.channel_mode),
             (Some(1), Some(6)) | (Some(6), Some(1))
@@ -94,6 +99,13 @@ fn push_context(
             && current.ajoc == candidate.ajoc
             && current.channel_mode == candidate.channel_mode
     }) {
+        match (current.alternative_oamd, candidate.alternative_oamd) {
+            (Some(current_oamd), Some(candidate_oamd)) if current_oamd != candidate_oamd => {
+                return Err("Conflicting alternative OAMD contexts for the same audio substream");
+            }
+            (None, Some(candidate_oamd)) => current.alternative_oamd = Some(candidate_oamd),
+            _ => {}
+        }
         // 只要任一实际引用它的 presentation 是 alternative，该语法上下文就
         // 携带 alternative metadata。
         current.alternative |= candidate.alternative;
@@ -112,11 +124,20 @@ fn push_context(
     }
 }
 
+fn same_alternative_layout(current: SubstreamContext, expected: SubstreamContext) -> bool {
+    match (current.alternative_oamd, expected.alternative_oamd) {
+        (None, None) => true,
+        (Some(current), Some(expected)) => current.objects() == expected.objects(),
+        _ => false,
+    }
+}
+
 fn same_locked_context(current: SubstreamContext, expected: SubstreamContext) -> bool {
     current.sus_ver == expected.sus_ver
         && current.alternative == expected.alternative
         && current.ajoc == expected.ajoc
         && current.channel_mode == expected.channel_mode
+        && same_alternative_layout(current, expected)
 }
 
 fn select_parsed_candidate(
@@ -148,7 +169,13 @@ fn select_parsed_candidate(
 }
 
 impl AudioTrace {
-    pub(super) fn observe(&mut self, frame: &[u8], topology: &Ac4Topology, index: u32) {
+    pub(super) fn observe(
+        &mut self,
+        frame: &[u8],
+        topology: &Ac4Topology,
+        index: u32,
+        group_oamd: &[GroupOamdState],
+    ) {
         let mut contexts: [Vec<SubstreamContext>; MAX_SUBSTREAMS] =
             core::array::from_fn(|_| Vec::new());
         let mut frame_failed = false;
@@ -160,17 +187,53 @@ impl AudioTrace {
             let alternative = group_is_alternative(topology, group_index);
 
             for info in group.substreams() {
-                let (Some(first_substream_index), ajoc, channel_mode) = (match *info {
-                    SubstreamInfo::Ajoc(ref ajoc) => (ajoc.substream_index(), true, None),
-                    SubstreamInfo::Obj(ref obj) => (obj.substream_index(), false, None),
+                let (Some(first_substream_index), ajoc, channel_mode, object_info) = (match *info {
+                    SubstreamInfo::Ajoc(ref ajoc) => (ajoc.substream_index(), true, None, None),
+                    SubstreamInfo::Obj(ref obj) => (obj.substream_index(), false, None, Some(*obj)),
                     // 声道编码的 substream 由 channel_mode 决定 metadata 分支。
                     SubstreamInfo::Chan(ref chan) => (
                         chan.substream_index(),
                         false,
                         Some(chan.channel_mode.ch_mode),
+                        None,
                     ),
                 }) else {
                     continue;
+                };
+
+                let alternative_oamd = if alternative {
+                    if let Some(object_info) = object_info {
+                        let Some(num_obj_info_blocks) = group_oamd
+                            .get(group_index)
+                            .and_then(|state| state.timing)
+                            .map(|timing| timing.num_obj_info_blocks)
+                        else {
+                            frame_failed = true;
+                            self.remember_failure(
+                                index,
+                                "Alternative direct-object metadata has no effective OAMD timing",
+                            );
+                            continue;
+                        };
+                        match AlternativeOamdContext::from_object_substream(
+                            &object_info,
+                            num_obj_info_blocks,
+                        ) {
+                            Ok(context) => Some(context),
+                            Err(error) => {
+                                frame_failed = true;
+                                self.remember_failure(
+                                    index,
+                                    &format!("Alternative OAMD context failed: {error}"),
+                                );
+                                continue;
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 };
 
                 for offset in 0..group.frame_rate_factor {
@@ -205,6 +268,7 @@ impl AudioTrace {
                         } else {
                             None
                         },
+                        alternative_oamd,
                     };
                     if let Err(error) = push_context(slot, candidate) {
                         frame_failed = true;
@@ -416,6 +480,7 @@ mod tests {
         ajoc: false,
         channel_mode: Some(6),
         b_iframe: Some(false),
+        alternative_oamd: None,
     };
     const STEREO: SubstreamContext = SubstreamContext {
         channel_mode: Some(1),
@@ -487,6 +552,36 @@ mod tests {
         assert!(select_parsed_candidate(&mut selected, &[(SURROUND, surround)]).is_err());
     }
 
+    #[test]
+    fn alternative_layout_is_locked_but_the_frame_block_count_can_change() {
+        let object = macindecode_ac4_bitstream::oamd::ObjectDescriptor {
+            obj_type: macindecode_ac4_bitstream::oamd::ObjectType::Dynamic,
+            b_lfe: false,
+            b_ajoc_coded: false,
+        };
+        let first = SubstreamContext {
+            alternative: true,
+            channel_mode: None,
+            alternative_oamd: Some(AlternativeOamdContext::new(&[object], 1).unwrap()),
+            ..SURROUND
+        };
+        let next_frame = SubstreamContext {
+            alternative_oamd: Some(AlternativeOamdContext::new(&[object], 2).unwrap()),
+            ..first
+        };
+        assert!(
+            same_locked_context(next_frame, first),
+            "timing 块数是逐帧值，不是配置身份"
+        );
+
+        let mut same_frame = Vec::new();
+        push_context(&mut same_frame, first).unwrap();
+        assert!(
+            push_context(&mut same_frame, next_frame).is_err(),
+            "同一物理 payload 在一帧内不能同时采用两个循环次数"
+        );
+    }
+
     /// 兼容候选的适用范围由 presentation v2 界定，不是对所有 7.1 group 生效。
     ///
     /// 放宽这个条件不会让任何既有判据变红——两个夹具的 group 0 都是 ch_mode
@@ -525,7 +620,7 @@ mod tests {
 
         // 后果要可观察：该载荷只有 stereo 读法成立，没有候选就必须失败关闭。
         let mut trace = AudioTrace::new();
-        trace.observe(&v1_frame, &ims_v1, 0);
+        trace.observe(&v1_frame, &ims_v1, 0, &[]);
         assert_eq!(trace.parsed, 0);
         assert_eq!(trace.failures, 1, "{:?}", trace.first_error);
 

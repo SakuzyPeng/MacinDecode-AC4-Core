@@ -9,8 +9,9 @@
 > 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置；默认构建
 > 仍以原始 bit view 保留 `de_data()`/simulcast body，`audio-decode` 下已可显式解码完整帧内
 > Huffman data 与 simulcast，并按物理 substream 事务性延续配置、panning 与两份参数索引。
-> EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证；alternative
-> dataset 数据路径仍待实现。当前工具链可再生产普通 presentation payload 与 dialog
+> EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证；non-A-JOC
+> `metadata()` 中的 alternative OAMD 原始 dataset 已完成构造验证，A-JOC 音频数据内的同类
+> 路径与 `b_keep` 有效状态仍待实现。当前工具链可再生产普通 presentation payload 与 dialog
 > enhancement 正向候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节
 > 保持外部向量待验证。当前实际进度以[实施路线图](ROADMAP.md)为准。
 
@@ -168,13 +169,25 @@ enhancement，也不修改 PCM。
 - 解析 payload ID、sample offset、duration、group ID、priority、processing/discard/duplicate 标志；
 - 以有界容器保留 payload bytes，并设置 payload 数量与单 payload 大小上限；超过上限、终止符缺失、
   长度越界或变长字段溢出均返回结构化错误；
-- 完成 alternative audio/OAMD dataset 的选择、状态归属与解析，移除该分支的笼统 unsupported；
+- 完成 alternative audio/OAMD dataset 的原始解析与状态归属，移除该分支的笼统 unsupported；
+  dataset 选择仍由上层显式执行；
 - 未注册或未知 EMDF ID 不报语义错误，只按其 discard/processing 标志交给上层路由。
 
 EMDF 项已完成构造验证：固定容量保存 32 个有序 payload descriptor，单 payload 采用 Annex G
 24 比特最大帧长作为上限；原始 8 比特元素即使不在字节边界也可从原 substream 零拷贝重建。
 解析结果保留 sample offset、duration、group ID、codec data、priority、processing/discard 与
-duplicate 标志，但不解释注册表或私有 datatype。alternative audio/OAMD dataset 仍是本节余项。
+duplicate 标志，但不解释注册表或私有 datatype。
+
+alternative OAMD 的首个增量已实现 P2 `6.2.7.1`/`6.2.8.3`/`6.2.8.12` 中 non-A-JOC
+`metadata()` 路径：上下文显式携带当前物理 direct-object substream 的对象描述、group timing
+合并后的 `num_obj_info_blocks` 与精确 `b_audio_ndot`。解析器验证全部 `object_info_block()`、
+ducking/category、扩展 dataset 数、BED/ISF/DYN/LFE 的 gain/position gate、common/per-object
+数据点，以及每个有界 additional-data 区域内的 `ext_prec_alt_pos()`；未定义尾部以零拷贝 bit
+view 保留。结果按码流顺序暴露全部 dataset，不读取 presentation target，也不应用 gain/位置。
+为避免每个普通 substream 固定携带最坏 256 个 block 与所有 dataset，大集合保留在原 payload，
+公共结构只保存已验证边界并按需迭代。`b_keep` 原值已保留，但跨帧有效 dataset 状态、A-JOC
+`audio_data_ajoc()` 内的两处 alternative 数据以及真实向量验证仍是本节余项；Channel-based
+路径没有对象上下文，按既定范围继续失败关闭。
 
 ## 4. 明确延后或不在范围内
 

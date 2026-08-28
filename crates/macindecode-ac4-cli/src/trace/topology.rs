@@ -307,7 +307,7 @@ impl TopologyTrace {
         }
 
         let group_oamd = self.oamd.observe(frame, &topology, index, is_sync);
-        self.audio.observe(frame, &topology, index);
+        self.audio.observe(frame, &topology, index, &group_oamd);
         self.ajoc_audio
             .observe_at(frame, &topology, index, &group_oamd, frame_start_samples);
 

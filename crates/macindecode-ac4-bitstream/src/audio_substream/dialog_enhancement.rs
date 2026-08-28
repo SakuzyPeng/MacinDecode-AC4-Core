@@ -917,6 +917,7 @@ mod tests {
             ajoc: true,
             channel_mode: None,
             b_iframe: Some(true),
+            alternative_oamd: None,
         };
         let parsed = Ac4AudioSubstream::parse(payload.as_slice(), context).unwrap();
         assert_eq!(

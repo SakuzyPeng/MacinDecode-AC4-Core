@@ -268,6 +268,8 @@ impl AjocSubstreamContext {
                 channel_mode: None,
                 // 6.2.2.2 同样把 b_audio_ndot 传给 metadata() 的 b_iframe。
                 b_iframe: Some(info.audio_ndot()),
+                // A-JOC 的 alternative datasets 位于 audio_data_ajoc()，不在 metadata()。
+                alternative_oamd: None,
             },
             params: AudioDataParams {
                 context: ChannelContext {

@@ -122,6 +122,31 @@ impl<'a> BitReader<'a> {
         })
     }
 
+    /// 从当前位置创建不越过当前 reader 边界的子读取器。
+    ///
+    /// 与 [`Self::new_bounded`] 不同，这里同时继承父读取器的 `bit_end`。它用于长度
+    /// envelope 内继续解析子语法，防止损坏的子元素借用 envelope 后方本来仍可读取的比特。
+    pub(crate) fn bounded_at_current(&self, bit_len: u64) -> Result<Self> {
+        if bit_len > self.remaining_bits() {
+            return Err(ReadError::OutOfBounds {
+                requested_bits: u32::try_from(bit_len).unwrap_or(u32::MAX),
+                bit_position: self.bit_position,
+                remaining_bits: self.remaining_bits(),
+            });
+        }
+        let bit_end = self
+            .bit_position
+            .checked_add(bit_len)
+            .ok_or(ReadError::ValueOverflow {
+                bit_position: self.bit_position,
+            })?;
+        Ok(Self {
+            data: self.data,
+            bit_position: self.bit_position,
+            bit_end,
+        })
+    }
+
     /// 当前比特偏移。
     #[must_use]
     pub const fn bit_position(&self) -> u64 {
@@ -383,6 +408,23 @@ mod tests {
                 requested_bits: 0,
                 bit_position: 9,
                 remaining_bits: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn child_reader_cannot_cross_the_parent_boundary() {
+        let source = [0xff; 2];
+        let parent = BitReader::new_bounded(&source, 3, 5).unwrap();
+        let child = parent.bounded_at_current(5).unwrap();
+        assert_eq!(child.bit_position(), 3);
+        assert_eq!(child.remaining_bits(), 5);
+        assert_eq!(
+            parent.bounded_at_current(6).unwrap_err(),
+            ReadError::OutOfBounds {
+                requested_bits: 6,
+                bit_position: 3,
+                remaining_bits: 5,
             }
         );
     }

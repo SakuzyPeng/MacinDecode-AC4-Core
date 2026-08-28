@@ -55,6 +55,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
 | 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；活动真实向量待验证 |
+| non-A-JOC alternative OAMD datasets | P2 `6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream` | per-substream 对象/块上下文；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view 构造测试；有效 keep 状态与真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
 | ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
@@ -1827,6 +1828,39 @@ frame-aligned，且只有 frame-aligned 为真才读取 create/remove duplicate�
 `b_emdf_payloads_substream` 路径另从完整 `ac4_substream()` 取回相同 bytes，证明 offset 以原物理
 substream 为坐标。当前工具链没有非空 EMDF 正向向量，以上仍是构造验证，外部向量状态不关闭；
 解析结果不会修改 PCM，也不增加 renderer、设备或额外音频处理。
+
+### 5.60 non-A-JOC alternative OAMD datasets（P2 `6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4`）
+
+`metadata()` 只在 `b_alternative && !b_ajoc` 时携带 `oamd_dyndata_single()`；其中 `n_objs`、
+`obj_type[]`、`b_lfe[]` 和 `num_obj_info_blocks` 均不是本元素内传输的字段。它们必须来自当前物理
+audio substream 的 info 元素及所属 group 的有效 OAMD timing。实现因此新增显式上下文：
+direct-object 描述符只覆盖该 substream，不复用 `ObjectDescriptors::from_group()` 的整组数组；
+块数由调用方先合并本帧 timing 与历史。`b_iframe` 仍精确取该 info 的 `b_audio_ndot`，无法恢复
+逐 substream ndot 的多倍 frame-rate 分支失败关闭。CLI trace 在 OAMD observation 之后把同一份
+group effective timing 交给 audio metadata parser；同一物理 substream 的两条引用若给出不同
+对象布局或块数，作为语法上下文冲突拒绝。
+
+共享 `OamdDyndataSingle` 解析器先按对象在外、块在内读取所有 `object_info_block()`，随后保留
+`b_ducking_disabled`、含 `variable_bits(2)` 扩展的 sound category 与 dataset 数。每个 dataset
+区分 `b_keep`、ISF 隐式单公共点、显式 `b_common_data` 和逐对象点；BED/ISF 只读取 gain，DYN
+读取 gain，且仅非 LFE DYN 可读取标准精度位置。additional-data 字节数按
+`(variable_bits(2) + 1) × 8` 建立继承父 reader 末端的子边界；`ext_prec_alt_pos()` 只遍历非
+LFE DYN，余下未定义 bit 原样暴露。过短 envelope 即使后方还有足够比特也返回 underflow，不能
+把后续 tools metadata 当成扩展位置。扩展计数溢出、I-frame 零 block、空对象却声明 dataset、
+源切片截断和对象容量同样失败关闭。
+
+为保持默认 `no_std` 入口轻量，解析时会完整验证所有内容，但不把最多 256 个 metadata block
+和无固定小上限的 datasets 复制进每个 `Ac4AudioSubstream`。结果只保存对象布局与精确 bit range；
+调用方传回同一 payload 后，可按码流顺序迭代全部 block、dataset、数据点和扩展位置，并取得
+opaque bit view。presentation 的 `alt_data_set_index` 不进入本解析器，因而不存在默认 target、
+设备探测或自动 dataset 选择；gain/位置也不应用到 OAMD 或 PCM。
+
+构造门禁覆盖 BED/ISF/DYN/LFE、逐对象与公共点、gain/position presence、category/dataset
+扩展、零 dataset、`b_keep`、一/两字节 additional data、扩展精度三轴 presence、opaque tail、
+envelope 后可读反例、变长溢出、I-frame 零块及完整 `ac4_substream()` 接线。当前提交只保留
+`b_keep` 原始更新；按物理 substream 事务性延续有效 dataset、把同一共享解析器接入 A-JOC
+`audio_data_ajoc()` 的两处调用，以及真实 alternative/direct-object 向量仍待后续。Channel-based
+没有对象 metadata 上下文，按既定范围继续失败关闭。
 
 ## 6. 未决规范问题
 

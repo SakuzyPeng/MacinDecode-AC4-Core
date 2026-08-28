@@ -28,6 +28,7 @@
 //! 还原有效参数索引；仍不反量化或执行 dialogue enhancement。
 
 use crate::emdf::{EmdfError, EmdfPayloadsSubstream};
+use crate::oamd::{OamdDyndataSingle, OamdError, ObjectDescriptor, ObjectDescriptors};
 use crate::reader::{BitReader, ReadError};
 use core::fmt;
 
@@ -52,6 +53,8 @@ pub enum AudioSubstreamError {
     Read(ReadError),
     /// 内嵌 `emdf_payloads_substream()` 失败。
     Emdf(EmdfError),
+    /// metadata 内的 `oamd_dyndata_single()` 失败。
+    Oamd(OamdError),
     /// `audio_size` 超出该 substream 的实际长度。
     AudioSizeOutOfRange {
         /// 声明的音频数据字节数。
@@ -116,6 +119,9 @@ impl fmt::Display for AudioSubstreamError {
             AudioSubstreamError::Emdf(error) => {
                 write!(f, "Failed to parse inline EMDF payloads: {error}")
             }
+            AudioSubstreamError::Oamd(error) => {
+                write!(f, "Failed to parse alternative OAMD metadata: {error}")
+            }
             AudioSubstreamError::AudioSizeOutOfRange {
                 audio_size,
                 substream_len,
@@ -179,6 +185,59 @@ impl From<EmdfError> for AudioSubstreamError {
     }
 }
 
+impl From<OamdError> for AudioSubstreamError {
+    fn from(error: OamdError) -> Self {
+        AudioSubstreamError::Oamd(error)
+    }
+}
+
+/// non-A-JOC alternative audio substream 的逐对象 metadata 上下文。
+///
+/// 对象描述只覆盖当前物理 audio substream；`num_obj_info_blocks` 是调用方已将 group
+/// `oamd_timing_data()` 与跨帧历史合并后的当前有效值。该上下文只供语法解析使用，
+/// 不携带 target 选择或 `alt_data_set_index`，解析器也不会自动应用任何 dataset。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlternativeOamdContext {
+    objects: ObjectDescriptors,
+    /// 当前帧每个对象的 `object_info_block()` 数量。
+    pub num_obj_info_blocks: u8,
+}
+
+impl AlternativeOamdContext {
+    /// 从一组按当前 audio substream 码流顺序排列的对象描述构造上下文。
+    ///
+    /// # Errors
+    ///
+    /// 对象数超过 [`crate::oamd::MAX_OAMD_OBJECTS`] 时返回 [`OamdError::TooManyObjects`]。
+    pub fn new(objects: &[ObjectDescriptor], num_obj_info_blocks: u8) -> Result<Self, OamdError> {
+        Ok(Self {
+            objects: ObjectDescriptors::try_from_slice(objects)?,
+            num_obj_info_blocks,
+        })
+    }
+
+    /// 从 direct-object substream info 与当前有效块数构造局部上下文。
+    ///
+    /// # Errors
+    ///
+    /// 对象数超过 [`crate::oamd::MAX_OAMD_OBJECTS`] 时返回 [`OamdError::TooManyObjects`]。
+    pub fn from_object_substream(
+        info: &crate::substream::SubstreamInfoObj,
+        num_obj_info_blocks: u8,
+    ) -> Result<Self, OamdError> {
+        Ok(Self {
+            objects: ObjectDescriptors::from_object_substream(info)?,
+            num_obj_info_blocks,
+        })
+    }
+
+    /// 当前物理 audio substream 内的对象描述。
+    #[must_use]
+    pub fn objects(&self) -> &[ObjectDescriptor] {
+        self.objects.as_slice()
+    }
+}
+
 /// 解析 `metadata()` 所需的上下文。
 ///
 /// `channel_mode` 为 `None` 表示未由前置 info 元素设定。按 `6.2.2.2` 的 NOTE 2，
@@ -200,6 +259,10 @@ pub struct SubstreamContext {
     /// 无法确定当前物理 substream 的逐一取值。dialogue enhancement 缺席时不需要该上下文；
     /// 活动分支会失败关闭。
     pub b_iframe: Option<bool>,
+    /// non-A-JOC alternative 路径的对象布局与当前有效 OAMD 块数。
+    ///
+    /// `alternative && !ajoc` 时必须提供；其他路径应为 `None`。
+    pub alternative_oamd: Option<AlternativeOamdContext>,
 }
 
 /// `tools_metadata_size` 严格定界的原始 bit view。
@@ -1109,6 +1172,11 @@ pub struct Ac4AudioSubstream {
     pub basic: BasicMetadata,
     /// `extended_metadata()`。
     pub extended: ExtendedMetadata,
+    /// `b_alternative && !b_ajoc` 时位于 metadata 内的完整逐对象动态数据。
+    ///
+    /// 所有 candidate dataset 都已验证并保持码流顺序，但没有根据 presentation
+    /// `alt_data_set_index` 做选择或应用。
+    pub alternative_oamd: Option<OamdDyndataSingle>,
     /// `tools_metadata_size`，单位为**比特**，覆盖 DRC 与对话增强（`4.3.12.1.1`）。
     pub tools_metadata_bits: u32,
     /// 严格按声明长度定界并解析 dialogue-enhancement 配置前缀的 tools metadata。
@@ -1146,8 +1214,10 @@ impl Ac4AudioSubstream {
     /// [`AudioSubstreamError::InvalidToolsMetadataSize`] 或
     /// [`AudioSubstreamError::TrailingToolsMetadataBits`]；mono/stereo 的 DE channel configuration
     /// 不适用时返回 [`AudioSubstreamError::InvalidDialogEnhancementChannelConfiguration`]；内嵌
-    /// EMDF 的 envelope、容量或长度非法时返回 [`AudioSubstreamError::Emdf`]；解析后未落在
-    /// substream 末尾返回 [`AudioSubstreamError::TrailingBits`]。
+    /// EMDF 的 envelope、容量或长度非法时返回 [`AudioSubstreamError::Emdf`]；alternative
+    /// OAMD 语法非法时返回 [`AudioSubstreamError::Oamd`]，缺少其逐 substream 对象/timing 或
+    /// 精确 I-frame 上下文时返回 [`AudioSubstreamError::Unsupported`]；解析后未落在 substream
+    /// 末尾返回 [`AudioSubstreamError::TrailingBits`]。
     pub fn parse(payload: &[u8], context: SubstreamContext) -> Result<Self, AudioSubstreamError> {
         let mut reader = BitReader::new(payload);
 
@@ -1173,12 +1243,27 @@ impl Ac4AudioSubstream {
         let basic = BasicMetadata::parse(&mut reader, context)?;
         let extended = ExtendedMetadata::parse(&mut reader, context)?;
 
-        if context.alternative && !context.ajoc {
-            return Err(AudioSubstreamError::Unsupported {
-                what: "oamd_dyndata_single in metadata (b_alternative and non-A-JOC)",
+        let alternative_oamd = if context.alternative && !context.ajoc {
+            let alternative = context
+                .alternative_oamd
+                .ok_or(AudioSubstreamError::Unsupported {
+                    what: "alternative OAMD without per-substream object/timing context",
+                    bit_position: reader.bit_position(),
+                })?;
+            let b_iframe = context.b_iframe.ok_or(AudioSubstreamError::Unsupported {
+                what: "alternative OAMD without an exact b_iframe context",
                 bit_position: reader.bit_position(),
-            });
-        }
+            })?;
+            Some(OamdDyndataSingle::parse(
+                &mut reader,
+                alternative.objects(),
+                alternative.num_obj_info_blocks,
+                b_iframe,
+                true,
+            )?)
+        } else {
+            None
+        };
 
         let tools_metadata_size_value_offset = reader.bit_position();
         let mut tools_metadata_bits = u32::try_from(reader.read_bits(7)?).unwrap_or(u32::MAX);
@@ -1214,6 +1299,7 @@ impl Ac4AudioSubstream {
             audio_offset: u32::try_from(header_bits.div_ceil(8)).unwrap_or(u32::MAX),
             basic,
             extended,
+            alternative_oamd,
             tools_metadata_bits,
             tools_metadata,
             emdf_payloads_substream,
@@ -1371,6 +1457,7 @@ mod tests {
         ajoc: true,
         channel_mode: None,
         b_iframe: Some(false),
+        alternative_oamd: None,
     };
 
     /// 最简帧：audio_size = 1 字节，metadata 全部取最短分支。
@@ -1423,6 +1510,66 @@ mod tests {
             parsed.basic.dialnorm_bits, None,
             "sus_ver = 1 不传 dialnorm"
         );
+    }
+
+    #[test]
+    fn parses_alternative_oamd_inside_metadata() {
+        let object = ObjectDescriptor {
+            obj_type: crate::oamd::ObjectType::Dynamic,
+            b_lfe: false,
+            b_ajoc_coded: false,
+        };
+        let context = SubstreamContext {
+            sus_ver: 1,
+            alternative: true,
+            ajoc: false,
+            channel_mode: None,
+            b_iframe: Some(true),
+            alternative_oamd: Some(AlternativeOamdContext::new(&[object], 1).unwrap()),
+        };
+        let (bits, len) = pack(
+            "000000000000000 0 \
+             0 \
+             0 0 0 \
+             1 0 \
+             0 00 00 \
+             0000001 0 \
+             0 \
+             0 \
+             000",
+        );
+
+        let parsed = Ac4AudioSubstream::parse(&bits[..len], context).unwrap();
+        let oamd = parsed.alternative_oamd.expect("alternative OAMD 应被保留");
+        assert_eq!(oamd.objects(), [object]);
+        assert_eq!(oamd.metadata_block_count(), 1);
+        assert_eq!(oamd.alternative().unwrap().n_data_sets, 0);
+        let blocks = oamd
+            .metadata_blocks(&bits[..len])
+            .unwrap()
+            .collect::<Result<std::vec::Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].info.object_not_active);
+        assert!(
+            oamd.alternative_data_sets(&bits[..len])
+                .unwrap()
+                .unwrap()
+                .next()
+                .is_none()
+        );
+
+        let missing_context = SubstreamContext {
+            alternative_oamd: None,
+            ..context
+        };
+        assert!(matches!(
+            Ac4AudioSubstream::parse(&bits[..len], missing_context),
+            Err(AudioSubstreamError::Unsupported {
+                what: "alternative OAMD without per-substream object/timing context",
+                ..
+            })
+        ));
     }
 
     #[test]

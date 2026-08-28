@@ -551,6 +551,18 @@ duplicate 标志现均按码流原值保留。默认 `no_std` 构建以固定容
 byte view；未知或私有 ID 不报语义错误，也不解释或应用内容。ID 0 终止符缺失、数量/大小超限、
 配置或 payload 截断和所有变长字段溢出均结构化失败；音频 substream 内嵌路径保留同一 envelope。
 
+**non-A-JOC alternative OAMD 原始语法已落地。** P2 `6.2.7.1` 在
+`b_alternative && !b_ajoc` 时插入的 `oamd_dyndata_single()` 现在由标准
+`Ac4AudioSubstream::parse()` 路径解析。调用上下文按物理 direct-object substream 提供局部对象
+顺序、group OAMD 跨帧合并后的有效 `num_obj_info_blocks` 和精确 `b_audio_ndot`；CLI trace 也按
+同一关系接线，不把整个 group 的对象误传给单个 substream。逐对象 block、ducking/category、
+完整变长 dataset 数、BED/ISF/DYN/LFE gate、common/per-object gain/position、`b_keep` 与
+additional-data 内的扩展精度位置全部验证并保留，未定义尾部为零拷贝 bit view。大集合留在原
+payload 中按需迭代，解析结果始终暴露全部候选，不结合 target 或设备自动选择。additional-data
+使用继承父边界的子读取器，即使 envelope 后仍有可读字段也不能越界借用。当前尚未把 `b_keep`
+解析成跨帧有效 dataset，也未移除 A-JOC `audio_data_ajoc()` 的 alternative 拒绝；Channel-based
+没有对象 metadata 上下文，继续按本轮范围失败关闭。
+
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
 构造门禁覆盖 0/32 字节名称、1/32 targets、非字节对齐分片、presence gate、截断、容量和
@@ -586,7 +598,8 @@ dependent `de_par_prev`、inactive-frame 零基准、latest keep、primary/simul
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-EMDF envelope 已完成；后续补 alternative dataset 数据路径；
+EMDF envelope 与 non-A-JOC alternative dataset 原始解析已完成；后续补 dataset 状态延续与
+A-JOC alternative 数据路径；
 边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵

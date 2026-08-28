@@ -11,11 +11,11 @@
 //! | 配置数据 | `ac4_substream_info_obj` | `ac4_substream_info_ajoc` |
 //! | 公共数据 | `oamd_substream` | `oamd_substream` 或 `ac4_substream_info_ajoc` |
 //! | 时间数据 | `oamd_substream` | `oamd_substream` 或 `audio_data_ajoc` |
-//! | 动态数据 | `oamd_dyndata_multi`，在 `oamd_substream` | `oamd_dyndata_single`，在 `audio_data_ajoc` |
+//! | 动态数据 | 通常为 `oamd_dyndata_multi`，alternative 时为 `metadata()` 内的 `oamd_dyndata_single` | `oamd_dyndata_single`，在 `audio_data_ajoc` |
 //!
-//! 本模块解析的是**载荷侧**的 `oamd_substream`。A-JOC 路径下逐对象的动态数据
-//! 位于 `audio_data_ajoc`，在 `var_channel_element()` 与 `ajoc()` 之后，取到它
-//! 需要音频核心的比特解析能力，不属于本阶段。
+//! 本模块同时提供 `oamd_substream` 载荷解析和共享的 `oamd_dyndata_single` 语法模型。
+//! non-A-JOC alternative 路径由 `audio_substream::metadata()` 调用后者；A-JOC 路径的
+//! 同类数据位于 `audio_data_ajoc`，在 `var_channel_element()` 与 `ajoc()` 之后。
 //!
 //! # 原始量化值
 //!
@@ -80,6 +80,15 @@ pub enum OamdError {
     /// `b_oamd_timing_present` 为假时 `num_obj_info_blocks` 不在本帧传输，
     /// 只能取自前一帧。随机访问点之后若仍缺失，说明码流不自洽。
     TimingUnavailable,
+    /// I-frame 的 `oamd_dyndata_single()` 没有任何对象信息块。
+    ZeroBlocksInIframe,
+    /// alternative dataset 存在，但该 substream 的对象描述为空。
+    AlternativeDataWithoutObjects {
+        /// 声明的 alternative dataset 数。
+        data_sets: u32,
+        /// 检测到矛盾时的比特偏移。
+        bit_position: u64,
+    },
 }
 
 impl fmt::Display for OamdError {
@@ -119,6 +128,19 @@ impl fmt::Display for OamdError {
                     "Frame carries no oamd_timing_data and has no prior state to continue"
                 )
             }
+            OamdError::ZeroBlocksInIframe => {
+                write!(
+                    f,
+                    "I-frame oamd_dyndata_single contains zero object-info blocks"
+                )
+            }
+            OamdError::AlternativeDataWithoutObjects {
+                data_sets,
+                bit_position,
+            } => write!(
+                f,
+                "Alternative OAMD declares {data_sets} datasets for an empty object list at bit offset {bit_position}"
+            ),
         }
     }
 }
@@ -131,12 +153,14 @@ impl From<ReadError> for OamdError {
     }
 }
 
+mod alternative;
 mod common;
 mod descriptors;
 mod object;
 mod payload;
 mod state;
 
+pub use alternative::*;
 pub use common::*;
 pub use descriptors::*;
 pub use object::*;
