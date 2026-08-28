@@ -4,7 +4,8 @@ use core::fmt;
 #[cfg(feature = "audio-decode")]
 use macindecode_ac4_bitstream::full_ajoc::FullAjocUnsupported;
 use macindecode_ac4_bitstream::{
-    PresentationSubstreamError, PresentationSubstreamGroupGainStateError,
+    PresentationSubstreamCapacity, PresentationSubstreamError,
+    PresentationSubstreamGroupGainStateError,
     oamd::{OamdError, OamdStateError},
     reader::ReadError,
     topology::{Capacity, TopologyError, Unsupported as TopologyUnsupported},
@@ -159,6 +160,11 @@ pub enum UnsupportedReason {
         declared: u32,
         limit: usize,
     },
+    PresentationSubstreamCapacityExceeded {
+        what: PresentationSubstreamCapacity,
+        declared: u32,
+        limit: usize,
+    },
     ChannelBased,
     DirectObject,
     Mixed,
@@ -230,6 +236,14 @@ impl fmt::Display for UnsupportedReason {
             } => write!(
                 formatter,
                 "{what} count {declared} exceeds the current scene implementation limit {limit}"
+            ),
+            Self::PresentationSubstreamCapacityExceeded {
+                what,
+                declared,
+                limit,
+            } => write!(
+                formatter,
+                "Presentation {what} count {declared} exceeds the current scene implementation limit {limit}"
             ),
             Self::ChannelBased => formatter.write_str("Channel-based scenes are not yet supported by this API"),
             Self::DirectObject => {
@@ -604,10 +618,23 @@ impl DecodeError {
         if let Some(bit_offset) = presentation_substream_bit_offset(error) {
             context = context.with_bit_offset(bit_offset);
         }
-        Self::new(
-            DecodeErrorKind::InvalidBitstream(BitstreamFailure::PresentationSubstream(error)),
-            context,
-        )
+        let kind = match error {
+            PresentationSubstreamError::CapacityExceeded {
+                what,
+                declared,
+                limit,
+            } => DecodeErrorKind::Unsupported(
+                UnsupportedReason::PresentationSubstreamCapacityExceeded {
+                    what,
+                    declared,
+                    limit,
+                },
+            ),
+            other => {
+                DecodeErrorKind::InvalidBitstream(BitstreamFailure::PresentationSubstream(other))
+            }
+        };
+        Self::new(kind, context)
     }
 
     pub(crate) fn from_presentation_group_gain(
@@ -773,7 +800,7 @@ const fn need_more_from_read(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use macindecode_ac4_bitstream::topology::Capacity;
+    use macindecode_ac4_bitstream::{PresentationSubstreamCapacity, topology::Capacity};
 
     #[test]
     fn truncated_topology_maps_to_retryable_need_more_data() {
@@ -832,6 +859,36 @@ mod tests {
                 limit: 8,
             })
         );
+    }
+
+    #[test]
+    fn presentation_substream_capacity_is_unsupported_instead_of_invalid() {
+        let error = DecodeError::from_presentation_substream(
+            PresentationSubstreamError::CapacityExceeded {
+                what: PresentationSubstreamCapacity::Targets,
+                declared: 33,
+                limit: 32,
+            },
+            7,
+            1,
+            Some(11),
+            3,
+        );
+
+        assert_eq!(
+            error.kind(),
+            DecodeErrorKind::Unsupported(
+                UnsupportedReason::PresentationSubstreamCapacityExceeded {
+                    what: PresentationSubstreamCapacity::Targets,
+                    declared: 33,
+                    limit: 32,
+                }
+            )
+        );
+        assert_eq!(error.context().access_unit_index(), 7);
+        assert_eq!(error.context().presentation_index(), Some(1));
+        assert_eq!(error.context().presentation_id(), Some(11));
+        assert_eq!(error.context().substream_index(), Some(3));
     }
 
     #[test]

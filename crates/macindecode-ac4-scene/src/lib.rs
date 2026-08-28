@@ -44,8 +44,8 @@ pub use error::{
 };
 
 pub use macindecode_ac4_bitstream::{
-    Ac4PresentationSubstream, PresentationDrcConfiguration, PresentationSubstreamContext,
-    PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
+    Ac4PresentationSubstream, PresentationDrcConfiguration, PresentationSubstreamCapacity,
+    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
 };
 pub use model::{
     Ac4DecoderConfig, Ac4SceneFrame, AccessUnit, AccessUnitContext, BedKind, CartesianPosition,

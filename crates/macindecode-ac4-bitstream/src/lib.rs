@@ -96,11 +96,11 @@ pub use presentation_substream::{
     PresentationDrcProfile, PresentationDrcState, PresentationDrcTimeConstants,
     PresentationLoudnessCorrectionCode, PresentationLoudnessCorrectionData,
     PresentationScreenDownmix, PresentationStereoDownmixCoefficients,
-    PresentationStereoDownmixKind, PresentationSubstreamContext, PresentationSubstreamError,
-    PresentationSubstreamGroupGainCodes, PresentationSubstreamGroupGainState,
-    PresentationSubstreamGroupGainStateError, PresentationSubstreamGroupGainUpdate,
-    PresentationSubstreamSelectionContext, PresentationTopDownmix, PresentationTopPairDestination,
-    PresentationTopPairDownmix,
+    PresentationStereoDownmixKind, PresentationSubstreamCapacity, PresentationSubstreamContext,
+    PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
+    PresentationSubstreamGroupGainState, PresentationSubstreamGroupGainStateError,
+    PresentationSubstreamGroupGainUpdate, PresentationSubstreamSelectionContext,
+    PresentationTopDownmix, PresentationTopPairDestination, PresentationTopPairDownmix,
 };
 #[cfg(feature = "audio-decode")]
 pub use presentation_substream::{

@@ -92,6 +92,7 @@ impl SceneBatchPath {
             | UnsupportedReason::FullbandObjectAssignment { .. }
             | UnsupportedReason::CoreObjectAssignment { .. }
             | UnsupportedReason::CoreDialogueEnhancement { .. }
+            | UnsupportedReason::PresentationSubstreamCapacityExceeded { .. }
             | UnsupportedReason::AudioMetadataBranch
             | UnsupportedReason::AlternativeObjectMetadata
             | UnsupportedReason::FullAjocBranch
@@ -1468,6 +1469,7 @@ fn append_restored_samples(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use macindecode_ac4_scene::PresentationSubstreamCapacity;
 
     const FULL_AUDIO_TOC_SUFFIX: &str = "0 1 0001 1 1 0 0";
     const FULL_AUDIO_TOC_SUFFIX_NOT_IFRAME: &str = "0 1 0001 0 1 0 0";
@@ -1587,6 +1589,14 @@ mod tests {
             (
                 UnsupportedReason::CoreDialogueEnhancement {
                     dialogue_objects: 1,
+                },
+                SceneBatchPath::Ajoc,
+            ),
+            (
+                UnsupportedReason::PresentationSubstreamCapacityExceeded {
+                    what: PresentationSubstreamCapacity::Targets,
+                    declared: 33,
+                    limit: 32,
                 },
                 SceneBatchPath::Ajoc,
             ),
