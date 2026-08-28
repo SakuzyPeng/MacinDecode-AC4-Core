@@ -10,9 +10,9 @@
 > 仍以原始 bit view 保留 `de_data()`/simulcast body，`audio-decode` 下已可显式解码完整帧内
 > Huffman data 与 simulcast，并按物理 substream 事务性延续配置、panning 与两份参数索引。
 > EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证；non-A-JOC
-> `metadata()` 中的 alternative OAMD 原始 dataset 已完成构造验证，A-JOC 音频数据内的同类
-> 路径与 `b_keep` 有效状态仍待实现。当前工具链可再生产普通 presentation payload 与 dialog
-> enhancement 正向候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节
+> `metadata()` 与 A-JOC `audio_data_ajoc()` 两处动态数据中的 alternative OAMD 原始 dataset
+> 已完成构造验证，`b_keep` 有效状态仍待实现。当前工具链可再生产普通 presentation payload
+> 与 dialog enhancement 正向候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节
 > 保持外部向量待验证。当前实际进度以[实施路线图](ROADMAP.md)为准。
 
 ## 1. 目的
@@ -185,9 +185,11 @@ ducking/category、扩展 dataset 数、BED/ISF/DYN/LFE 的 gain/position gate�
 数据点，以及每个有界 additional-data 区域内的 `ext_prec_alt_pos()`；未定义尾部以零拷贝 bit
 view 保留。结果按码流顺序暴露全部 dataset，不读取 presentation target，也不应用 gain/位置。
 为避免每个普通 substream 固定携带最坏 256 个 block 与所有 dataset，大集合保留在原 payload，
-公共结构只保存已验证边界并按需迭代。`b_keep` 原值已保留，但跨帧有效 dataset 状态、A-JOC
-`audio_data_ajoc()` 内的两处 alternative 数据以及真实向量验证仍是本节余项；Channel-based
-路径没有对象上下文，按既定范围继续失败关闭。
+公共结构只保存已验证边界并按需迭代。`b_keep` 原值已保留。A-JOC `audio_data_ajoc()` 现在也
+复用同一解析器，分别保留 core/downmix 与 full/upmix 的完整 block 和 dataset 边界。语法观察
+不选择或应用 dataset；Core/Full 对象出口在应用语义落地前以类型化
+`AlternativeObjectMetadata` 失败关闭，避免静默输出错误 PCM。余项是跨帧有效 dataset 状态与
+真实向量验证；Channel-based 路径没有对象上下文，按既定范围继续失败关闭。
 
 ## 4. 明确延后或不在范围内
 

@@ -208,6 +208,8 @@ pub enum FullAjocBlocker {
     ReservedDataPointCount,
     /// 数据点数量超出 2 位字段的可表示范围。
     DataPointCountOutOfRange { data_points: u8 },
+    /// alternative OAMD 已解析保留，但当前对象出口尚未应用被选 dataset。
+    AlternativeObjectMetadata,
     /// Pseudocode 18 的活动 dialogue enhancement 分支尚未覆盖。
     ActiveDialogueEnhancement { dialogue_objects: u8 },
 }
@@ -254,6 +256,9 @@ impl fmt::Display for FullAjocBlocker {
                 formatter,
                 "ajoc_num_dpoints is {data_points}, exceeding the two-bit field limit {MAX_DATA_POINTS}"
             ),
+            Self::AlternativeObjectMetadata => formatter.write_str(
+                "A-JOC alternative object metadata is preserved but not applied to object output",
+            ),
             Self::ActiveDialogueEnhancement { dialogue_objects } => write!(
                 formatter,
                 "A-JOC full enables {dialogue_objects} dialogue-enhancement objects"
@@ -297,6 +302,9 @@ impl SupportedAjocFullFrame {
         context: &AjocSubstreamContext,
         physical_substreams: usize,
     ) -> Result<Self, FullAjocBlocker> {
+        if context.params.b_alternative {
+            return Err(FullAjocBlocker::AlternativeObjectMetadata);
+        }
         let element = &parsed.audio.var_element;
         let ajoc = &parsed.audio.ajoc;
         let channel_context = context.params.context;

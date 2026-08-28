@@ -18,7 +18,7 @@ use crate::ajoc::{Ajoc, AjocError, AjocObjectControl, AjocObjectMatrix, parse_aj
 use crate::aspx::syntax::AspxData;
 use crate::channel::{ChannelContext, ChannelElement};
 use crate::oamd::{
-    OamdError, OamdMetadataBlock, OamdTimingData, ObjectDescriptor, ObjectInfoBlock,
+    OamdDyndataSingle, OamdError, OamdMetadataBlock, OamdTimingData, ObjectDescriptor,
 };
 use crate::reader::{BitReader, ReadError};
 use crate::var_element::{
@@ -63,10 +63,6 @@ pub enum AudioDataError {
     /// 该分支走声道编码的下混，与 A-JOC 的可变声道元素是两条完全不同的路径；
     /// M2 的探针判定本编码链恒为 `b_static_dmx == 0`，故显式拒绝而非猜测。
     StaticDownmixUnsupported,
-    /// `b_alternative` 为真，`oamd_dyndata_single()` 带备选数据集。
-    ///
-    /// M2 的探针判定本编码链不产生该分支，故显式拒绝。
-    AlternativeDataUnsupported,
     /// 指定解码模式没有可用的 `num_obj_info_blocks`。
     TimingUnavailable {
         /// 缺少时间数据的解码模式。
@@ -119,12 +115,6 @@ impl fmt::Display for AudioDataError {
                 write!(
                     f,
                     "b_static_dmx is true and requires unsupported audio_data_chan"
-                )
-            }
-            AudioDataError::AlternativeDataUnsupported => {
-                write!(
-                    f,
-                    "b_alternative is true; alternative object datasets are unsupported"
                 )
             }
             AudioDataError::TimingUnavailable { mode } => write!(
@@ -207,7 +197,7 @@ pub struct AudioDataParams {
     pub b_iframe: bool,
     /// `b_static_dmx`；为真时本实现拒绝。
     pub b_static_dmx: bool,
-    /// `b_alternative`；为真时本实现拒绝。
+    /// `b_alternative`；为真时两处 `oamd_dyndata_single()` 都携带候选 dataset。
     pub b_alternative: bool,
     /// 当前帧对 substream group 生效的 `num_obj_info_blocks`。
     ///
@@ -288,6 +278,13 @@ pub struct AudioDataAjoc {
     pub dmx_num_obj_info_blocks: u8,
     /// 本帧 full 模式生效的 `num_obj_info_blocks`。
     pub umx_num_obj_info_blocks: u8,
+    /// core/downmix 侧完整 `oamd_dyndata_single()` 的已验证边界。
+    ///
+    /// alternative dataset 的 bit offset 相对构造 `reader` 时传入的源切片；调用方须把
+    /// 同一切片传给 [`OamdDyndataSingle::alternative_data_sets`]。
+    pub dmx_oamd: OamdDyndataSingle,
+    /// full/upmix 侧完整 `oamd_dyndata_single()` 的已验证边界，约定同 [`Self::dmx_oamd`]。
+    pub umx_oamd: OamdDyndataSingle,
     dmx_active_mask: [bool; MAX_FULLBAND_DMX_SIGNALS as usize],
     dmx_blocks_written: usize,
     umx_blocks_written: usize,
@@ -335,9 +332,6 @@ pub fn parse_audio_data_ajoc(
 ) -> Result<AudioDataAjoc, AudioDataError> {
     if params.b_static_dmx {
         return Err(AudioDataError::StaticDownmixUnsupported);
-    }
-    if params.b_alternative {
-        return Err(AudioDataError::AlternativeDataUnsupported);
     }
 
     let AudioDataWorkspace {
@@ -409,11 +403,12 @@ pub fn parse_audio_data_ajoc(
     )?;
     next_state.dmx_num_obj_info_blocks = Some(dmx_num_obj_info_blocks);
 
-    let dmx_blocks_written = parse_dyndata_single(
+    let (dmx_oamd, dmx_blocks_written) = parse_dyndata_single(
         reader,
         dmx_objects,
         dmx_num_obj_info_blocks,
         params.b_iframe,
+        params.b_alternative,
         dmx_blocks,
     )?;
 
@@ -469,11 +464,12 @@ pub fn parse_audio_data_ajoc(
     )?;
     next_state.umx_num_obj_info_blocks = Some(umx_num_obj_info_blocks);
 
-    let umx_blocks_written = parse_dyndata_single(
+    let (umx_oamd, umx_blocks_written) = parse_dyndata_single(
         reader,
         umx_objects,
         umx_num_obj_info_blocks,
         params.b_iframe,
+        params.b_alternative,
         umx_blocks,
     )?;
 
@@ -489,6 +485,8 @@ pub fn parse_audio_data_ajoc(
         derive_timing_from_dmx,
         dmx_num_obj_info_blocks,
         umx_num_obj_info_blocks,
+        dmx_oamd,
+        umx_oamd,
         dmx_active_mask,
         dmx_blocks_written,
         umx_blocks_written,
@@ -498,16 +496,17 @@ pub fn parse_audio_data_ajoc(
 /// `oamd_dyndata_single()`，见 P2 `6.2.8.3`。
 ///
 /// 每个对象连续 `n_blocks` 个 `object_info_block()`；首块在 I 帧时不得引用
-/// 前序状态。`b_alternative` 分支由调用方在入口处拒绝，故此处不再出现。
+/// 前序状态。共享解析器同时验证并保留随后的全部 alternative datasets。
 ///
-/// 返回写入 `out` 的信息块数。
+/// 返回完整元素边界与写入 `out` 的信息块数。
 fn parse_dyndata_single(
     reader: &mut BitReader<'_>,
     objects: &[ObjectDescriptor],
     n_blocks: u8,
     b_iframe: bool,
+    b_alternative: bool,
     out: &mut [OamdMetadataBlock],
-) -> Result<usize, AudioDataError> {
+) -> Result<(OamdDyndataSingle, usize), AudioDataError> {
     let needed = objects.len().saturating_mul(usize::from(n_blocks));
     if out.len() < needed {
         return Err(AudioDataError::ObjectWorkspaceTooSmall {
@@ -516,22 +515,20 @@ fn parse_dyndata_single(
         });
     }
     let mut written = 0usize;
-    for (object_index, object) in objects.iter().enumerate() {
-        let dynamic = object.is_dynamic_object();
-        for block in 0..usize::from(n_blocks) {
-            let no_delta = b_iframe && block == 0;
-            let parsed = ObjectInfoBlock::parse(reader, no_delta, dynamic)?;
+    let parsed = OamdDyndataSingle::parse_with_block_observer(
+        reader,
+        objects,
+        n_blocks,
+        b_iframe,
+        b_alternative,
+        |block| {
             if let Some(slot) = out.get_mut(written) {
-                *slot = OamdMetadataBlock {
-                    object_index: u8::try_from(object_index).unwrap_or(u8::MAX),
-                    block_index: u8::try_from(block).unwrap_or(u8::MAX),
-                    info: parsed,
-                };
+                *slot = block;
             }
             written = written.saturating_add(1);
-        }
-    }
-    Ok(written)
+        },
+    )?;
+    Ok((parsed, written))
 }
 
 fn effective_block_count(
@@ -696,6 +693,146 @@ mod tests {
         assert_eq!(data.dmx_signal_active(1), None, "掩码按不含 LFE 的信号数");
         assert_eq!(state.dmx_num_obj_info_blocks, Some(1));
         assert_eq!(state.umx_num_obj_info_blocks, Some(2));
+    }
+
+    /// A-JOC 的 core/downmix 与 full/upmix 两处 `oamd_dyndata_single()` 都必须
+    /// 完整消费并保留 alternative datasets；解析层不根据 presentation target
+    /// 选择其中任何一项。
+    #[test]
+    fn full_element_preserves_both_alternative_oamd_lists() {
+        let mut buf = BitBuf::new();
+        buf.push(false); // b_some_signals_inactive = 0
+
+        // var_channel_element：A-SPX、一个全频带信号、带 LFE。
+        buf.push(true);
+        buf.push_aspx_config();
+        buf.push(true);
+        buf.push_bits(2, 3);
+        buf.push_empty_sf_data(2);
+        buf.push_mono_data(2);
+        buf.push_aspx_data_1ch();
+
+        buf.push(true); // b_dmx_timing
+        buf.push_timing(1);
+        for _ in 0..2 {
+            buf.push_inactive_object_block();
+        }
+        // core/downmix alternative：一个公共 gain dataset。
+        buf.push(true); // b_ducking_disabled
+        buf.push_bits(2, 2); // object_sound_category
+        buf.push_bits(1, 2); // n_alt_data_sets
+        buf.push(false); // b_keep
+        buf.push(true); // b_common_data
+        buf.push(true); // b_alt_gain
+        buf.push_bits(5, 6);
+        buf.push(false); // b_additional_data
+        let dmx_oamd_end = buf.bit_len();
+
+        buf.push(false); // b_oamd_extension_present
+        buf.push_minimal_ajoc(1);
+        buf.push_minimal_dmx_de(1);
+        buf.push(false); // b_umx_timing
+        buf.push(true); // b_derive_timing_from_dmx
+        for _ in 0..2 {
+            buf.push_inactive_object_block();
+        }
+        // full/upmix alternative：一个新公共 gain dataset 加一个 keep dataset。
+        buf.push(false); // b_ducking_disabled
+        buf.push_bits(1, 2); // object_sound_category
+        buf.push_bits(2, 2); // n_alt_data_sets
+        buf.push(false); // dataset 0: b_keep
+        buf.push(true); // b_common_data
+        buf.push(true); // b_alt_gain
+        buf.push_bits(9, 6);
+        buf.push(false); // b_additional_data
+        buf.push(true); // dataset 1: b_keep
+        buf.push(false); // b_additional_data
+        let expected = buf.bit_len();
+
+        let mut elements = [ChannelElement::new(), ChannelElement::new()];
+        let mut aspx = [AspxData::empty()];
+        let mut controls = [AjocObjectControl::default()];
+        let mut matrices = [AjocObjectMatrix::new()];
+        let dmx_objects = [bed(true), dynamic()];
+        let umx_objects = [bed(true), dynamic()];
+        let mut dmx_blocks = [OamdMetadataBlock::default(); 2];
+        let mut umx_blocks = [OamdMetadataBlock::default(); 2];
+        let mut state = AudioDataState::new();
+
+        let mut reader = BitReader::new(buf.as_slice());
+        let data = parse_audio_data_ajoc(
+            &mut reader,
+            AudioDataParams {
+                context: CONTEXT,
+                n_fb_dmx_signals: 1,
+                n_fb_upmix_signals: 1,
+                b_lfe: true,
+                b_iframe: true,
+                b_static_dmx: false,
+                b_alternative: true,
+                group_num_obj_info_blocks: None,
+            },
+            &mut state,
+            AudioDataWorkspace {
+                elements: &mut elements,
+                aspx: &mut aspx,
+                controls: &mut controls,
+                matrices: &mut matrices,
+                dmx_objects: &dmx_objects,
+                umx_objects: &umx_objects,
+                dmx_blocks: &mut dmx_blocks,
+                umx_blocks: &mut umx_blocks,
+            },
+        )
+        .expect("两处 alternative OAMD 都应能解析");
+
+        assert_eq!(reader.bit_position(), expected as u64);
+        assert_eq!(data.dmx_oamd.end_bit_offset(), dmx_oamd_end as u64);
+        assert_eq!(data.umx_oamd.end_bit_offset(), expected as u64);
+        assert_eq!(data.dmx_blocks_written(), 2);
+        assert_eq!(data.umx_blocks_written(), 2);
+
+        let dmx_header = data.dmx_oamd.alternative().expect("core 应有 header");
+        assert!(dmx_header.b_ducking_disabled);
+        assert_eq!(dmx_header.object_sound_category, 2);
+        assert_eq!(dmx_header.n_data_sets, 1);
+        let mut dmx_sets = data
+            .dmx_oamd
+            .alternative_data_sets(buf.as_slice())
+            .expect("边界应可重放")
+            .expect("core 应有 dataset 迭代器");
+        let dmx_set = dmx_sets.next().expect("应有一个 core dataset").unwrap();
+        assert!(dmx_sets.next().is_none());
+        assert!(!dmx_set.keep);
+        assert_eq!(dmx_set.common_data, Some(true));
+        let dmx_point = dmx_set
+            .data_points()
+            .expect("数据点边界应有效")
+            .next()
+            .expect("应有公共数据点")
+            .unwrap();
+        assert_eq!(dmx_point.alternative_gain, Some(5));
+
+        let umx_header = data.umx_oamd.alternative().expect("full 应有 header");
+        assert!(!umx_header.b_ducking_disabled);
+        assert_eq!(umx_header.object_sound_category, 1);
+        assert_eq!(umx_header.n_data_sets, 2);
+        let mut umx_sets = data
+            .umx_oamd
+            .alternative_data_sets(buf.as_slice())
+            .expect("边界应可重放")
+            .expect("full 应有 dataset 迭代器");
+        let umx_first = umx_sets.next().expect("应有首个 full dataset").unwrap();
+        let umx_point = umx_first
+            .data_points()
+            .expect("数据点边界应有效")
+            .next()
+            .expect("应有公共数据点")
+            .unwrap();
+        assert_eq!(umx_point.alternative_gain, Some(9));
+        let umx_kept = umx_sets.next().expect("应有 keep dataset").unwrap();
+        assert!(umx_kept.keep);
+        assert!(umx_sets.next().is_none());
     }
 
     /// `b_some_signals_inactive` 的掩码按 `n_fullband_dmx_signals` 传输。
@@ -974,7 +1111,7 @@ mod tests {
 
         let mut out = [OamdMetadataBlock::default(); 2];
         let mut reader = BitReader::new(buf.as_slice());
-        parse_dyndata_single(&mut reader, &objects, 1, true, &mut out).expect("应能解析");
+        parse_dyndata_single(&mut reader, &objects, 1, true, false, &mut out).expect("应能解析");
 
         assert_eq!(reader.bit_position(), 3);
         let Some(block) = out.first() else {
@@ -988,61 +1125,56 @@ mod tests {
 
         // 同样三位、b_no_delta 为假时，中间那位被当作 reuse 标志。
         let mut reader = BitReader::new(buf.as_slice());
-        parse_dyndata_single(&mut reader, &objects, 1, false, &mut out).expect("应能解析");
+        parse_dyndata_single(&mut reader, &objects, 1, false, false, &mut out).expect("应能解析");
         let Some(block) = out.first() else {
             panic!("应有一个信息块");
         };
         assert_eq!(block.info.basic_info_status, InfoStatus::Reuse);
     }
 
-    /// 两条不可达分支必须显式拒绝，且不消耗任何比特。
+    /// 静态下混分支必须显式拒绝，且不消耗任何比特。
     #[test]
-    fn rejects_unsupported_branches_before_reading() {
+    fn rejects_static_downmix_before_reading() {
         let buf = BitBuf::new();
         let dmx_objects = [bed(true)];
         let umx_objects = [bed(true)];
 
-        for (static_dmx, alternative, expected) in [
-            (true, false, AudioDataError::StaticDownmixUnsupported),
-            (false, true, AudioDataError::AlternativeDataUnsupported),
-        ] {
-            let mut elements = [ChannelElement::new()];
-            let mut aspx = [AspxData::empty()];
-            let mut controls = [AjocObjectControl::default()];
-            let mut matrices = [AjocObjectMatrix::new()];
-            let mut dmx_blocks = [OamdMetadataBlock::default(); 2];
-            let mut umx_blocks = [OamdMetadataBlock::default(); 2];
-            let mut state = AudioDataState::new();
-            let mut reader = BitReader::new(buf.as_slice());
-            assert_eq!(
-                parse_audio_data_ajoc(
-                    &mut reader,
-                    AudioDataParams {
-                        context: CONTEXT,
-                        n_fb_dmx_signals: 0,
-                        n_fb_upmix_signals: 0,
-                        b_lfe: true,
-                        b_iframe: true,
-                        b_static_dmx: static_dmx,
-                        b_alternative: alternative,
-                        group_num_obj_info_blocks: None,
-                    },
-                    &mut state,
-                    AudioDataWorkspace {
-                        elements: &mut elements,
-                        aspx: &mut aspx,
-                        controls: &mut controls,
-                        matrices: &mut matrices,
-                        dmx_objects: &dmx_objects,
-                        umx_objects: &umx_objects,
-                        dmx_blocks: &mut dmx_blocks,
-                        umx_blocks: &mut umx_blocks,
-                    },
-                ),
-                Err(expected)
-            );
-            assert_eq!(reader.bit_position(), 0);
-        }
+        let mut elements = [ChannelElement::new()];
+        let mut aspx = [AspxData::empty()];
+        let mut controls = [AjocObjectControl::default()];
+        let mut matrices = [AjocObjectMatrix::new()];
+        let mut dmx_blocks = [OamdMetadataBlock::default(); 2];
+        let mut umx_blocks = [OamdMetadataBlock::default(); 2];
+        let mut state = AudioDataState::new();
+        let mut reader = BitReader::new(buf.as_slice());
+        assert_eq!(
+            parse_audio_data_ajoc(
+                &mut reader,
+                AudioDataParams {
+                    context: CONTEXT,
+                    n_fb_dmx_signals: 0,
+                    n_fb_upmix_signals: 0,
+                    b_lfe: true,
+                    b_iframe: true,
+                    b_static_dmx: true,
+                    b_alternative: false,
+                    group_num_obj_info_blocks: None,
+                },
+                &mut state,
+                AudioDataWorkspace {
+                    elements: &mut elements,
+                    aspx: &mut aspx,
+                    controls: &mut controls,
+                    matrices: &mut matrices,
+                    dmx_objects: &dmx_objects,
+                    umx_objects: &umx_objects,
+                    dmx_blocks: &mut dmx_blocks,
+                    umx_blocks: &mut umx_blocks,
+                },
+            ),
+            Err(AudioDataError::StaticDownmixUnsupported)
+        );
+        assert_eq!(reader.bit_position(), 0);
     }
 
     /// 对象描述的长度必须恰好等于含 LFE 的对象数。
@@ -1147,8 +1279,8 @@ mod tests {
 
         let mut out = [OamdMetadataBlock::default(); 4];
         let mut reader = BitReader::new(buf.as_slice());
-        let written =
-            parse_dyndata_single(&mut reader, &objects, 3, true, &mut out).expect("应能解析");
+        let (_, written) = parse_dyndata_single(&mut reader, &objects, 3, true, false, &mut out)
+            .expect("应能解析");
         assert_eq!(written, 3);
         assert_eq!(
             reader.bit_position(),
@@ -1190,8 +1322,9 @@ mod tests {
 
             let mut out = [OamdMetadataBlock::default(); 16];
             let mut reader = BitReader::new(buf.as_slice());
-            let written = parse_dyndata_single(&mut reader, &objects, blocks, true, &mut out)
-                .expect("应能解析");
+            let (_, written) =
+                parse_dyndata_single(&mut reader, &objects, blocks, true, false, &mut out)
+                    .expect("应能解析");
 
             assert_eq!(
                 reader.bit_position(),
@@ -1226,7 +1359,7 @@ mod tests {
         let mut out = [OamdMetadataBlock::default(); 3];
         let mut reader = BitReader::new(buf.as_slice());
         assert_eq!(
-            parse_dyndata_single(&mut reader, &objects, 2, true, &mut out),
+            parse_dyndata_single(&mut reader, &objects, 2, true, false, &mut out),
             Err(AudioDataError::ObjectWorkspaceTooSmall {
                 needed: 4,
                 provided: 3

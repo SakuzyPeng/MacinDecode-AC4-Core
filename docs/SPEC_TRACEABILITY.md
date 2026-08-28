@@ -55,7 +55,7 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
 | 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；活动真实向量待验证 |
-| non-A-JOC alternative OAMD datasets | P2 `6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream` | per-substream 对象/块上下文；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view 构造测试；有效 keep 状态与真实向量待验证 |
+| alternative OAMD datasets | P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream`、`audio_data`、`full_ajoc` | per-substream 对象/块上下文；non-A-JOC 及 A-JOC core/full 接线；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view 构造测试；未应用时对象出口失败关闭；有效 keep 状态与真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
 | ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
@@ -1829,7 +1829,7 @@ frame-aligned，且只有 frame-aligned 为真才读取 create/remove duplicate�
 substream 为坐标。当前工具链没有非空 EMDF 正向向量，以上仍是构造验证，外部向量状态不关闭；
 解析结果不会修改 PCM，也不增加 renderer、设备或额外音频处理。
 
-### 5.60 non-A-JOC alternative OAMD datasets（P2 `6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4`）
+### 5.60 alternative OAMD datasets（P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4`）
 
 `metadata()` 只在 `b_alternative && !b_ajoc` 时携带 `oamd_dyndata_single()`；其中 `n_objs`、
 `obj_type[]`、`b_lfe[]` 和 `num_obj_info_blocks` 均不是本元素内传输的字段。它们必须来自当前物理
@@ -1855,13 +1855,21 @@ LFE DYN，余下未定义 bit 原样暴露。过短 envelope 即使后方还有�
 opaque bit view。presentation 的 `alt_data_set_index` 不进入本解析器，因而不存在默认 target、
 设备探测或自动 dataset 选择；gain/位置也不应用到 OAMD 或 PCM。
 
+P2 `6.2.3.4` 的 A-JOC 音频数据在 core/downmix 动态数据与 full/upmix 动态数据后各调用一次同一
+`oamd_dyndata_single()`。实现以一次解析同时填充既有逐 block OAMD 工作区并保存完整元素边界，
+避免为取得 dataset 重读码流；两侧各自的对象描述、有效块数与 bit offset 均独立保留。构造完整
+`audio_data_ajoc()` 的测试为两侧写入不同数量和内容的 dataset，核对两个结束 offset、整段最终
+落点及以同一 audio-region 切片重放出的候选内容。`SupportedAjocFullFrame` 对
+`b_alternative` 返回类型化 `AlternativeObjectMetadata` blocker：RequireCore 与 RequireFull
+都不得把未应用 metadata 静默变成 PCM，ObserveFull 仍可保留语法 observation；Scene 将该原因
+稳定映射到 OAMD syntax path。
+
 构造门禁覆盖 BED/ISF/DYN/LFE、逐对象与公共点、gain/position presence、category/dataset
 扩展、零 dataset、`b_keep`、零对象 keep-only dataset、静态床 LFE 对象序位、一/两字节
 additional data、扩展精度三轴 presence、opaque tail、envelope 后可读反例、变长溢出、
-I-frame 零块及完整 `ac4_substream()` 接线。当前提交只保留
-`b_keep` 原始更新；按物理 substream 事务性延续有效 dataset、把同一共享解析器接入 A-JOC
-`audio_data_ajoc()` 的两处调用，以及真实 alternative/direct-object 向量仍待后续。Channel-based
-没有对象 metadata 上下文，按既定范围继续失败关闭。
+I-frame 零块及完整 `ac4_substream()` 接线。当前只保留
+`b_keep` 原始更新；按物理 substream 事务性延续有效 dataset，以及真实 alternative/direct-object
+向量仍待后续。Channel-based 没有对象 metadata 上下文，按既定范围继续失败关闭。
 
 ## 6. 未决规范问题
 

@@ -187,10 +187,6 @@ fn substream_syntax_error(
                     DecodeErrorKind::Unsupported(UnsupportedReason::StaticDownmix),
                     AJOC_PAYLOAD_SYNTAX,
                 ),
-                AudioDataError::AlternativeDataUnsupported => (
-                    DecodeErrorKind::Unsupported(UnsupportedReason::AlternativeObjectMetadata),
-                    OAMD_SYNTAX,
-                ),
                 AudioDataError::Oamd(error) => (
                     DecodeErrorKind::InvalidBitstream(BitstreamFailure::Oamd(error)),
                     OAMD_SYNTAX,
@@ -298,6 +294,9 @@ const fn map_unsupported_reason(
     unsupported: Option<FullAjocUnsupported>,
 ) -> UnsupportedReason {
     match (mode, unsupported) {
+        (_, Some(FullAjocUnsupported::Full(FullAjocBlocker::AlternativeObjectMetadata))) => {
+            UnsupportedReason::AlternativeObjectMetadata
+        }
         (
             FullAjocDecodeMode::RequireCore,
             Some(FullAjocUnsupported::Full(FullAjocBlocker::ActiveDialogueEnhancement {
@@ -335,6 +334,10 @@ const fn decode_error_syntax_path(
 ) -> &'static str {
     match (kind, unsupported) {
         (FullAjocDecodeErrorKind::OamdState, _) => OAMD_SYNTAX,
+        (
+            FullAjocDecodeErrorKind::Unsupported,
+            Some(FullAjocUnsupported::Full(FullAjocBlocker::AlternativeObjectMetadata)),
+        ) => OAMD_SYNTAX,
         (FullAjocDecodeErrorKind::Unsupported, Some(FullAjocUnsupported::Aspx(_))) => ASPX_SYNTAX,
         _ => FULL_SYNTAX,
     }
@@ -646,6 +649,28 @@ mod tests {
             map_unsupported_reason(FullAjocDecodeMode::RequireFull, Some(blocker)),
             UnsupportedReason::FullAjoc(blocker)
         );
+    }
+
+    #[test]
+    fn alternative_oamd_keeps_its_scene_reason_and_syntax_path() {
+        let blocker = FullAjocUnsupported::Full(FullAjocBlocker::AlternativeObjectMetadata);
+        for mode in [
+            FullAjocDecodeMode::RequireCore,
+            FullAjocDecodeMode::RequireFull,
+        ] {
+            assert_eq!(
+                map_unsupported_reason(mode, Some(blocker)),
+                UnsupportedReason::AlternativeObjectMetadata
+            );
+            assert_eq!(
+                decode_error_syntax_path_for_mode(
+                    FullAjocDecodeErrorKind::Unsupported,
+                    Some(blocker),
+                    mode,
+                ),
+                OAMD_SYNTAX
+            );
+        }
     }
 
     #[test]

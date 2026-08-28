@@ -754,6 +754,7 @@ mod tests {
         nonzero_spectrum: bool,
         position_x: Option<u32>,
         active_companding: bool,
+        b_alternative: bool,
     ) {
         bits.push(false); // b_some_signals_inactive
         bits.push(true); // var_codec_mode = A-SPX
@@ -781,6 +782,11 @@ mod tests {
         } else {
             bits.push_inactive_object_block();
         }
+        if b_alternative {
+            bits.push(false); // b_ducking_disabled
+            bits.push_bits(0, 2); // object_sound_category
+            bits.push_bits(0, 2); // n_alt_data_sets
+        }
         bits.push(false); // b_oamd_extension_present
         bits.push_minimal_ajoc(1);
         bits.push_minimal_dmx_de(1);
@@ -790,6 +796,11 @@ mod tests {
             bits.push_absolute_position_block(b_iframe, x, 4, true, 5);
         } else {
             bits.push_inactive_object_block();
+        }
+        if b_alternative {
+            bits.push(false); // b_ducking_disabled
+            bits.push_bits(0, 2); // object_sound_category
+            bits.push_bits(0, 2); // n_alt_data_sets
         }
     }
 
@@ -834,6 +845,7 @@ mod tests {
             nonzero_spectrum,
             position_x,
             active_companding,
+            false,
         );
         audio.byte_align();
         let audio = audio.as_slice();
@@ -871,6 +883,20 @@ mod tests {
         payload_for_frame_with_spectrum(b_iframe, false)
     }
 
+    fn alternative_payload() -> BitBuf {
+        let mut audio = BitBuf::new();
+        push_audio_data(&mut audio, true, false, None, false, true);
+        audio.byte_align();
+        let audio = audio.as_slice();
+
+        let mut payload = BitBuf::new();
+        payload.push_bits(u32::try_from(audio.len()).unwrap_or(0), 15);
+        payload.push(false); // b_more_bits
+        payload.push_bytes(audio);
+        push_metadata(&mut payload);
+        payload
+    }
+
     fn payload() -> BitBuf {
         payload_for_frame(true)
     }
@@ -878,6 +904,11 @@ mod tests {
     fn context() -> AjocSubstreamContext {
         AjocSubstreamContext::derive(&toc(), &single_signal_info(true), 1, 1, false, Some(1))
             .expect("单信号上下文应可推导")
+    }
+
+    fn alternative_context() -> AjocSubstreamContext {
+        AjocSubstreamContext::derive(&toc(), &single_signal_info(true), 1, 1, true, Some(1))
+            .expect("alternative 单信号上下文应可推导")
     }
 
     fn dependent_context() -> AjocSubstreamContext {
@@ -1064,6 +1095,43 @@ mod tests {
             )
         };
         assert_eq!(second_pointers, first_pointers, "稳定解码不得扩容");
+    }
+
+    #[test]
+    fn alternative_oamd_is_observable_but_cannot_issue_a_full_credential() {
+        let payload = alternative_payload();
+        let mut decoder = super::super::FullAjocDecoder::new();
+        let decoded = decoder
+            .decode_syntax_frame(input_with_context(
+                payload.as_slice(),
+                alternative_context(),
+            ))
+            .expect("alternative OAMD 应保留为语法观察");
+
+        assert_eq!(
+            decoded.full_support(),
+            Err(super::super::FullAjocBlocker::AlternativeObjectMetadata)
+        );
+        assert_eq!(
+            decoded
+                .parsed()
+                .audio
+                .dmx_oamd
+                .alternative()
+                .expect("core header 应保留")
+                .n_data_sets,
+            0
+        );
+        assert_eq!(
+            decoded
+                .parsed()
+                .audio
+                .umx_oamd
+                .alternative()
+                .expect("full header 应保留")
+                .n_data_sets,
+            0
+        );
     }
 
     #[test]

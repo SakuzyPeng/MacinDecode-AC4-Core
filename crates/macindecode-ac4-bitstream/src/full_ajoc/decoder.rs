@@ -636,7 +636,7 @@ impl FullAjocObservation {
 pub enum FullAjocDecodeMode {
     /// 仅产生 A-SPX/A-JOC 输入诊断 PCM。
     AspxOnly,
-    /// 产生可作为 A-JOC Core 对象使用的 A-SPX PCM，并拒绝未应用的对话增强。
+    /// 产生可作为 A-JOC Core 对象使用的 A-SPX PCM，并拒绝未应用的对话增强或 alternative OAMD。
     RequireCore,
     /// 支持时执行 Full；Full blocker 不抹掉诊断 PCM，下游失败保留前端 census 历史。
     ObserveFull,
@@ -652,9 +652,10 @@ enum InputExhaustionPolicy {
 
 /// 在当前帧进入表 188 控制 FIFO 前核对所请求出口的凭证。
 ///
-/// `RequireCore` 只提升会改变 core 对象语义的活动 DE；`RequireFull` 提升全部 full
-/// blocker。到期控制仍会重复核对，防御 FIFO 所有权或对齐错误；但必需出口不能只
-/// 等控制到期才拒绝，否则流末尾不足一个控制延迟的 blocker 会永远留在 FIFO 中。
+/// `RequireCore` 只提升会改变 core 对象语义的活动 DE 或未应用的 alternative OAMD；
+/// `RequireFull` 提升全部 full blocker。到期控制仍会重复核对，防御 FIFO 所有权或
+/// 对齐错误；但必需出口不能只等控制到期才拒绝，否则流末尾不足一个控制延迟的
+/// blocker 会永远留在 FIFO 中。
 #[expect(
     clippy::too_many_arguments,
     reason = "凭证必须与同一 raw frame 的 A-SPX、A-JOC、时间轴及物理拓扑逐项核对"
@@ -697,6 +698,14 @@ fn reject_required_output_blocker(
     substream: u32,
 ) -> Result<(), FullAjocDecodeError> {
     let blocker = match full_requirement {
+        FullAjocDecodeMode::RequireCore
+            if matches!(
+                full_support,
+                Err(FullAjocBlocker::AlternativeObjectMetadata)
+            ) =>
+        {
+            Some(FullAjocBlocker::AlternativeObjectMetadata)
+        }
         FullAjocDecodeMode::RequireCore if dialogue_objects != 0 => {
             Some(FullAjocBlocker::ActiveDialogueEnhancement { dialogue_objects })
         }
@@ -3465,6 +3474,30 @@ mod tests {
                     dialogue_objects: 2,
                 }
             ))
+        );
+
+        let alternative = FullAjocBlocker::AlternativeObjectMetadata;
+        for requirement in [
+            FullAjocDecodeMode::RequireCore,
+            FullAjocDecodeMode::RequireFull,
+        ] {
+            let error = reject_required_output_blocker(&Err(alternative), requirement, 0, 2)
+                .expect_err("未应用的 alternative OAMD 不得进入必需对象出口");
+            assert_eq!(error.kind(), FullAjocDecodeErrorKind::Unsupported);
+            assert_eq!(
+                error.unsupported_reason(),
+                Some(FullAjocUnsupported::Full(alternative))
+            );
+        }
+        assert!(
+            reject_required_output_blocker(
+                &Err(alternative),
+                FullAjocDecodeMode::ObserveFull,
+                0,
+                2,
+            )
+            .is_ok(),
+            "观察模式应继续保留 alternative 语法结果"
         );
     }
 

@@ -37,6 +37,28 @@ impl OamdDyndataSingle {
         b_iframe: bool,
         b_alternative: bool,
     ) -> Result<Self, OamdError> {
+        Self::parse_with_block_observer(
+            reader,
+            objects,
+            num_obj_info_blocks,
+            b_iframe,
+            b_alternative,
+            |_| {},
+        )
+    }
+
+    /// 与 [`Self::parse`] 相同，但把已验证的逐对象 block 同步交给 crate 内调用方。
+    ///
+    /// `audio_data_ajoc()` 需要在一次解析中既保留 alternative dataset 边界，又填充
+    /// 既有 OAMD 状态工作区；observer 避免为此重复读取完整元素。
+    pub(crate) fn parse_with_block_observer(
+        reader: &mut BitReader<'_>,
+        objects: &[ObjectDescriptor],
+        num_obj_info_blocks: u8,
+        b_iframe: bool,
+        b_alternative: bool,
+        mut observe_block: impl FnMut(OamdMetadataBlock),
+    ) -> Result<Self, OamdError> {
         if objects.len() > MAX_OAMD_OBJECTS {
             return Err(OamdError::TooManyObjects {
                 limit: MAX_OAMD_OBJECTS,
@@ -53,10 +75,15 @@ impl OamdDyndataSingle {
 
         let objects = ObjectDescriptors::try_from_slice(objects)?;
         let blocks_bit_offset = reader.bit_position();
-        for object in objects.as_slice() {
+        for (object_index, object) in objects.as_slice().iter().enumerate() {
             for block in 0..num_obj_info_blocks {
                 let b_no_delta = b_iframe && block == 0;
-                ObjectInfoBlock::parse(reader, b_no_delta, object.is_dynamic_object())?;
+                let info = ObjectInfoBlock::parse(reader, b_no_delta, object.is_dynamic_object())?;
+                observe_block(OamdMetadataBlock {
+                    object_index: u8::try_from(object_index).unwrap_or(u8::MAX),
+                    block_index: block,
+                    info,
+                });
             }
         }
         let blocks_bit_len = reader.bit_position().saturating_sub(blocks_bit_offset);

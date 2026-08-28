@@ -300,7 +300,9 @@ impl fmt::Display for UnsupportedReason {
             Self::AudioMetadataBranch => formatter
                 .write_str("ac4_substream metadata contains a branch unsupported by the current A-JOC scene subset"),
             Self::AlternativeObjectMetadata => {
-                formatter.write_str("b_alternative object dynamic-data branch is unsupported")
+                formatter.write_str(
+                    "b_alternative object metadata is parsed but not yet applied to object output",
+                )
             }
             Self::FullAjocBranch => {
                 formatter.write_str("Full A-JOC engine returned an unclassified unsupported branch")

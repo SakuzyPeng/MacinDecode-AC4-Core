@@ -359,7 +359,10 @@ core 与 full 的 timing 状态分别延续；只有 `b_derive_timing_from_dmx =
 
 **这一层暴露了落点判据的四类盲区**，五处注入里四处首轮全部通过。三处是覆盖不足（弱断言、分支未走到、状态污染场景不对），一处是判据本身无能为力——I 帧首块的 `b_no_delta` 在对象活动时两条路径**比特数恰好相同**，只有断言 `basic_info_status` 才区分得开。详见规范可追踪性 5.10。
 
-两条分支按 M2 的探针结论显式拒绝：`b_static_dmx` 为真需要 `audio_data_chan()`（声道编码的下混），`b_alternative` 为真带备选对象数据集。
+`b_static_dmx` 仍按 M2 的探针结论显式拒绝，因为它需要尚未纳入范围的
+`audio_data_chan()`（声道编码的下混）。`b_alternative` 已接入共享
+`oamd_dyndata_single()` 解析器：core/downmix 与 full/upmix 两份候选 dataset 均完整验证并保留；
+解析层不选择、不应用，必需 Core/Full 对象出口在应用语义落地前失败关闭。
 
 它同时是 M3 逐对象位置与帧内多次更新的唯一出口（表 7）。
 
@@ -551,7 +554,7 @@ duplicate 标志现均按码流原值保留。默认 `no_std` 构建以固定容
 byte view；未知或私有 ID 不报语义错误，也不解释或应用内容。ID 0 终止符缺失、数量/大小超限、
 配置或 payload 截断和所有变长字段溢出均结构化失败；音频 substream 内嵌路径保留同一 envelope。
 
-**non-A-JOC alternative OAMD 原始语法已落地。** P2 `6.2.7.1` 在
+**alternative OAMD 原始语法已落地。** P2 `6.2.7.1` 在
 `b_alternative && !b_ajoc` 时插入的 `oamd_dyndata_single()` 现在由标准
 `Ac4AudioSubstream::parse()` 路径解析。调用上下文按物理 direct-object substream 提供局部对象
 顺序、group OAMD 跨帧合并后的有效 `num_obj_info_blocks` 和精确 `b_audio_ndot`；CLI trace 也按
@@ -559,9 +562,11 @@ byte view；未知或私有 ID 不报语义错误，也不解释或应用内容�
 完整变长 dataset 数、BED/ISF/DYN/LFE gate、common/per-object gain/position、`b_keep` 与
 additional-data 内的扩展精度位置全部验证并保留，未定义尾部为零拷贝 bit view。大集合留在原
 payload 中按需迭代，解析结果始终暴露全部候选，不结合 target 或设备自动选择。additional-data
-使用继承父边界的子读取器，即使 envelope 后仍有可读字段也不能越界借用。当前尚未把 `b_keep`
-解析成跨帧有效 dataset，也未移除 A-JOC `audio_data_ajoc()` 的 alternative 拒绝；Channel-based
-没有对象 metadata 上下文，继续按本轮范围失败关闭。
+使用继承父边界的子读取器，即使 envelope 后仍有可读字段也不能越界借用。A-JOC
+`audio_data_ajoc()` 的 core/downmix 与 full/upmix 两处调用现已复用同一解析器，结果分别保存完整
+边界；`ObserveFull` 可继续观察语法，但 RequireCore/RequireFull 在 dataset 尚未应用时以类型化
+blocker 失败关闭。当前尚未把 `b_keep` 解析成跨帧有效 dataset；Channel-based 没有对象 metadata
+上下文，继续按本轮范围失败关闭。
 
 `n_substreams_in_presentation` 由 TOC 按 SGI 外层顺序和 group 内层顺序派生，不按物理 index
 去重；config 1/4 的 dialogue-enhancement SGI 即使不增加 `n_substream_groups` 也必须计入。
@@ -598,8 +603,7 @@ dependent `de_par_prev`、inactive-frame 零基准、latest keep、primary/simul
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
-EMDF envelope 与 non-A-JOC alternative dataset 原始解析已完成；后续补 dataset 状态延续与
-A-JOC alternative 数据路径；
+EMDF envelope 与 non-A-JOC/A-JOC alternative dataset 原始解析已完成；后续补 dataset 状态延续；
 边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵
