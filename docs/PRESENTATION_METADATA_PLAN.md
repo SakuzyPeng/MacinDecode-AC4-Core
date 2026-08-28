@@ -294,8 +294,8 @@ Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待�
 
 1. **已完成：** [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 冻结输出与
    状态边界。
-2. 把 M4.5 的解析交付物和退出条件写入 `ROADMAP.md`。
-3. 在 `ARCHITECTURE.md` 增加 metadata 状态所有权，在 `OUTPUT_CONTRACT.md` 增加
+2. **已完成：** 把 M4.5 的解析交付物和退出条件写入 `ROADMAP.md`。
+3. **已完成：** 在 `ARCHITECTURE.md` 增加 metadata 状态所有权，在 `OUTPUT_CONTRACT.md` 增加
    presentation metadata 与 opaque EMDF 契约；不增加处理后 PCM 契约。
 4. 在 `SPEC_TRACEABILITY.md` 录入经锁定 PDF 核对的精确条款，在
    `TEST_VECTOR_STRATEGY.md` 录入可获得的真实向量、外部向量待验证项和解析门禁。

@@ -45,6 +45,9 @@ bitstream/CLI 路径现已贯通核心带、A-SPX 与 A-JOC full 对象标量 PC
 | 目录 | 职责 |
 |---|---|
 | `macindecode-ac4-bitstream/src/oamd/` | common/object/payload 语法、跨帧状态和描述适配 |
+| `macindecode-ac4-bitstream/src/presentation_substream.rs` | presentation selection、响度、DRC、group/associated gain、custom downmix、loudness correction 原值及解析所需状态 |
+| `macindecode-ac4-bitstream/src/audio_substream.rs`、`audio_substream/` | 有界 audio metadata、dialogue-enhancement 原始/有效参数与按物理 substream 隔离的解析状态 |
+| `macindecode-ac4-bitstream/src/emdf.rs` | EMDF 配置、路由/时序 envelope 与不解释 datatype 的 opaque payload view |
 | `macindecode-ac4-bitstream/src/substream/` | channel/object/group substream 声明与共享读取逻辑 |
 | `macindecode-ac4-bitstream/src/topology/` | 拓扑解析、引用验证和随机访问状态机 |
 | `macindecode-ac4-bitstream/build_support/` | 数学表、QMF、规范 C 表/Huffman 与 SHA-256；`build.rs` 只调度 |
@@ -114,6 +117,26 @@ macindecode-ac4-audio-core   macindecode-ac4-oamd
 - 调用方请求 seek，并从随机访问点重新开始。
 
 状态不能隐藏在全局变量中，也不能由调用方猜测是否仍然有效。
+
+### 4.1 Presentation/metadata 解析状态所有权
+
+M4.5 的 presentation processing metadata 当前由 `macindecode-ac4-bitstream` 公开，只解析、
+验证和保留；`Ac4DecoderSession` 尚未把这些字段发布为 `Ac4SceneFrame` 观察面。调用方若直接
+消费 bitstream API，必须按下表持有状态，不能把数组位置或恰好相同的对象布局当作共享依据：
+
+| 数据 | 当前帧只读视图 | 跨帧状态键 | 所有权与限制 |
+|---|---|---|---|
+| presentation DRC | `Ac4PresentationSubstream` 中的配置、data/gain-set envelope 与原始 bit view | 一个配置代次内的 presentation | `PresentationDrcState` 只延续解析 dependent data 所需的配置；不拥有 gain 平滑或 PCM 处理状态 |
+| substream-group gain | 当前帧的 absent/keep/new 传输形态 | 一个配置代次内的 presentation | `PresentationSubstreamGroupGainState` 保存有效六比特码值；不换算或应用 gain |
+| dialogue enhancement | 当前物理 audio substream 的 tools-metadata view | 物理 `substream_index` | `DialogEnhancementState` 独立延续配置、panning、primary 与 simulcast 参数历史；不同 substream 或两类参数历史不得共用 |
+| alternative OAMD | non-A-JOC 或 A-JOC core/full 的 dataset/opaque view | `(physical substream, domain, data_set_index)` | `OamdAlternativeDataSetState` 只拥有化保存规范已定义的 gain/位置；三个 domain 和各 dataset index 相互隔离，opaque 尾部仍属于当前帧 |
+| EMDF | 当前 carrier substream 的 descriptor 与 payload bit range | 无通用跨帧 datatype 状态 | `EmdfPayloadsSubstream` 固定容量保存 envelope；opaque bytes 只在调用方传回解析时同一有界源切片期间有效，未知 ID 不建立语义状态 |
+
+associated-audio、custom downmix、loudness correction 及 alternative target/dataset map 保持
+当前帧码流形态；解析层不根据 target、设备或 presentation 顺序作选择。所有有状态更新都先在
+候选上完整验证再提交；seek、换源、配置/拓扑变化、不连续、丢帧或失去精确物理帧上下文后，
+调用方必须清除相应状态。把这些状态接入 Session 时也必须沿用相同键和事务边界，不能为了方便
+合并成一份 presentation 全局缓存。
 
 ## 5. 目标 access unit 处理顺序
 

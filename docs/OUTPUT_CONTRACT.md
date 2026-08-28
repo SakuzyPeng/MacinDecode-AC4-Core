@@ -1,6 +1,6 @@
 # 渲染前输出契约
 
-> **状态：A-JOC Core/Full 子集的流式 Rust 场景入口已发布，core/A-SPX 诊断基线、CoreCAF、ADM/DAMF 诊断探针与三条 Full CLI batch 出口已落地。** M4 已收口容器、拓扑、OAMD、音频语法、core/A-SPX PCM 与受限的动态 A-JOC core 对象输出；M6 又完成 full A-JOC 上混、LFE 插回和对象 PCM 导出。`macindecode-ac4-scene` 现已定义 `Ac4SceneFrame` Rust 数据模型、presentation/mode 选择和结构化错误，并在 `audio-decode` 下由公开 `decode_access_unit` 按配置选择同一 A-JOC engine 的 Core 诊断出口或 Full 重建出口，把对应的对象/LFE PCM、group OAMD common、完整 downmix/upmix 对象状态、raw timing、changed mask 与跨帧事件队列放入 Session 自有、可复用的表 188 对齐存储后借用返回；`export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 已改为消费该 Session。batch adapter 在 Scene 外应用容器 edit 投影，需要历史量级的 PCM 时将 normalized 样本乘精确的 `2^15`，并保持既有轨序；pre-A-SPX 核心带通过 `DecodedAccessUnit` 上不属于 SceneFrame 的 normalized 诊断侧车传递，但必须显式启用，普通 renderer 默认不复制它。ADM/DAMF 诊断探针只保留已完整解码并完成控制对齐的场景元数据。所选 presentation 的 OAMD 更新继续投影到既有 writer 契约。实施进度以[路线图](ROADMAP.md)为准。
+> **状态：A-JOC Core/Full 子集的流式 Rust 场景入口已发布，core/A-SPX 诊断基线、CoreCAF、ADM/DAMF 诊断探针与三条 Full CLI batch 出口已落地。** M4 已收口容器、拓扑、OAMD、音频语法、core/A-SPX PCM 与受限的动态 A-JOC core 对象输出；M6 又完成 full A-JOC 上混、LFE 插回和对象 PCM 导出。`macindecode-ac4-scene` 现已定义 `Ac4SceneFrame` Rust 数据模型、presentation/mode 选择和结构化错误，并在 `audio-decode` 下由公开 `decode_access_unit` 按配置选择同一 A-JOC engine 的 Core 诊断出口或 Full 重建出口，把对应的对象/LFE PCM、group OAMD common、完整 downmix/upmix 对象状态、raw timing、changed mask 与跨帧事件队列放入 Session 自有、可复用的表 188 对齐存储后借用返回；`export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 已改为消费该 Session。batch adapter 在 Scene 外应用容器 edit 投影，需要历史量级的 PCM 时将 normalized 样本乘精确的 `2^15`，并保持既有轨序；pre-A-SPX 核心带通过 `DecodedAccessUnit` 上不属于 SceneFrame 的 normalized 诊断侧车传递，但必须显式启用，普通 renderer 默认不复制它。ADM/DAMF 诊断探针只保留已完整解码并完成控制对齐的场景元数据。所选 presentation 的 OAMD 更新继续投影到既有 writer 契约。M4.5 的 presentation processing metadata 与 opaque EMDF 已在 bitstream 层解析和保留，但尚未作为 `Ac4SceneFrame` 字段发布，也未应用到 PCM。实施进度以[路线图](ROADMAP.md)为准。
 
 ## 1. 目的
 
@@ -115,6 +115,31 @@ Core 输出是 A-SPX 后、A-JOC 上混前的对象信号；Full 输出可能是
 distance、divergence 等尚无可靠通用映射的字段只保留 raw。如果规范字段无法无损映射到通用
 场景概念，应保留规范原始码值，而不是静默丢弃或伪造语义值。
 
+### 2.7 Presentation processing metadata 与 opaque EMDF
+
+当前实现只在 `macindecode-ac4-bitstream` Rust API 公开这些解析结果；`Ac4SceneFrame` 尚无
+对应字段。未来接入 Scene 或其他回放端观察面时，必须保持以下契约：
+
+- presentation name/target、逐 substream activation/dataset map、响度、DRC、group gain、
+  associated audio、custom downmix、loudness correction 与 dialogue-enhancement 都保留 presence、
+  码流顺序和原始量化值；当前帧传输形态与跨帧有效状态不得折叠成一个无法区分来源的值。
+- alternative OAMD 必须同时携带物理 substream、non-A-JOC/A-JOC core/full domain 和 dataset
+  loop index。解析层公开全部候选，不按 target、设备能力或数组顺序自动选择，也不把未选择的
+  gain/位置并入普通 OAMD 状态。
+- EMDF descriptor 保留 payload ID、时序、路由、processing/discard/duplicate 等配置及声明长度；
+  未注册或私有 datatype 的 payload 以原始 8 比特元素无损保留，不因未知 ID 失败，也不发明
+  Scene 语义。终止符、容量和边界仍必须在发布 view 前完整验证。
+- 原 payload 中的 DRC/DE/EMDF/alternative opaque view 只在其有界输入切片的生命周期内有效。
+  若未来由 Session 发布，必须改为借用 Session 拥有且已验证的存储，并沿用下一次可变调用即
+  失效的 Rust 生命周期；不得只暴露无法安全回取数据的裸 offset 或长期裸指针。
+- 任何这些字段的解析、状态还原或 opaque 保留都不得原地修改 `Ac4SceneFrame` PCM、对象 identity、
+  OAMD 事件顺序或时间线。DRC、DE、gain、downmix 与 loudness processing 需要独立、显式请求的
+  后续处理接口。
+
+在 alternative dataset 尚未由上层明确选择并应用时，Core/Full 输出继续以结构化
+`AlternativeObjectMetadata` 原因失败关闭；active dialogue enhancement 也不得被静默忽略。
+这两个 blocker 表示处理语义尚未接入，不表示对应 metadata 没有被解析和保留。
+
 ## 3. 状态语义
 
 - 未在当前帧更新的元数据继承上一有效状态。
@@ -124,6 +149,10 @@ distance、divergence 等尚无可靠通用映射的字段只保留 raw。如果
   `state_complete = false`。
 - 调用方可以仅根据连续 `Ac4SceneFrame` 重建完整场景状态，不需要回读解码器内部对象。
 - seek 后的首个输出必须明确说明场景状态是否完整。
+- presentation DRC 与 group gain 状态按 presentation 隔离；dialogue enhancement 按物理 audio
+  substream 隔离；alternative OAMD 再按物理 substream、dataset domain 与 loop index 隔离。
+  EMDF opaque envelope 不建立跨帧 datatype 状态。任一键变化或连续性丢失后都不得复用旧值。
+- metadata 状态更新必须事务性提交；解析或还原失败不能发布半更新，也不能污染上一份有效状态。
 
 ## 4. PCM 语义
 

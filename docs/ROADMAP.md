@@ -609,6 +609,7 @@ dependent `de_par_prev`、inactive-frame 零基准、latest keep、primary/simul
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
 EMDF envelope 与 non-A-JOC/A-JOC alternative dataset 原始解析及 keep 状态延续已完成；
+状态所有权和未来只读观察面分别见[架构](ARCHITECTURE.md)与[渲染前输出契约](OUTPUT_CONTRACT.md)，
 边界与门禁见[专项计划](PRESENTATION_METADATA_PLAN.md)。
 
 ## 音频重建与 core/full 场景输出支持矩阵
