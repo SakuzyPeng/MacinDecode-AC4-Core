@@ -25,8 +25,8 @@ use super::tables::{
     get_aspx_hcb, num_aspx_timeslots,
 };
 use crate::huffman::HuffmanError;
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// 一个包络内的最大子带组数，取主子带组表的上界。
 pub const MAX_SBG_PER_ENVELOPE: usize = MAX_SBG_MASTER;

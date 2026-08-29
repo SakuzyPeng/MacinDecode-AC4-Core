@@ -13,8 +13,8 @@ use super::tables::{
     n_grp_bits_long_base, n_grp_bits_short_base, n_msfb_bits_48, n_side_bits_48, num_sfb_48,
     num_windows_first_half, sfb_offsets_48, transform_length_48,
 };
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// 一帧内的最大窗口数。
 ///

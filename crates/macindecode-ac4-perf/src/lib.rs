@@ -819,13 +819,13 @@ pub struct QmfSampleSummary {
     pub phases: QmfSynthesisPhaseSamples,
 }
 
-const QMF_SYNTHESIS_SAMPLE_SYMBOL: &str = "macindecode_ac4_bitstream::aspx::qmf::synthesise::h";
+const QMF_SYNTHESIS_SAMPLE_SYMBOL: &str = "macindecode_ac4_decode::aspx::qmf::synthesise::h";
 const QMF_STATE_ADVANCE_SAMPLE_SYMBOL: &str =
-    "macindecode_ac4_bitstream::aspx::qmf::advance_synthesis_state::h";
+    "macindecode_ac4_decode::aspx::qmf::advance_synthesis_state::h";
 const QMF_MODULATION_SAMPLE_SYMBOL: &str =
-    "macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::h";
+    "macindecode_ac4_decode::aspx::qmf::modulate_synthesis_slot::h";
 const QMF_POLYPHASE_SAMPLE_SYMBOL: &str =
-    "macindecode_ac4_bitstream::aspx::qmf::accumulate_synthesis_polyphase::h";
+    "macindecode_ac4_decode::aspx::qmf::accumulate_synthesis_polyphase::h";
 
 /// 汇总 macOS `sample` 调用树中的 QMF 合成分段 inclusive 样本。
 ///
@@ -1330,16 +1330,16 @@ mod tests {
 Analysis of sampling macinac4-perf every 1 millisecond
 Call graph:
     1000 Thread_123 DispatchQueue_1: com.apple.main-thread
-      + 800 macindecode_ac4_bitstream::aspx::qmf::synthesise::hparent
-      + ! 20 macindecode_ac4_bitstream::aspx::qmf::advance_synthesis_state::hstate
-      + ! : 500 macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::hmod
-      + ! : 230 macindecode_ac4_bitstream::aspx::qmf::accumulate_synthesis_polyphase::htail
-      + 100 macindecode_ac4_bitstream::aspx::qmf::synthesise::hsecond
-      + ! 80 macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::hsecond
-      + ! 20 macindecode_ac4_bitstream::aspx::qmf::accumulate_synthesis_polyphase::hsecond
+      + 800 macindecode_ac4_decode::aspx::qmf::synthesise::hparent
+      + ! 20 macindecode_ac4_decode::aspx::qmf::advance_synthesis_state::hstate
+      + ! : 500 macindecode_ac4_decode::aspx::qmf::modulate_synthesis_slot::hmod
+      + ! : 230 macindecode_ac4_decode::aspx::qmf::accumulate_synthesis_polyphase::htail
+      + 100 macindecode_ac4_decode::aspx::qmf::synthesise::hsecond
+      + ! 80 macindecode_ac4_decode::aspx::qmf::modulate_synthesis_slot::hsecond
+      + ! 20 macindecode_ac4_decode::aspx::qmf::accumulate_synthesis_polyphase::hsecond
 
 Total number in stack (recursive counted multiple, when >=5):
-        999 macindecode_ac4_bitstream::aspx::qmf::modulate_synthesis_slot::hignored
+        999 macindecode_ac4_decode::aspx::qmf::modulate_synthesis_slot::hignored
 "#;
 
     #[test]

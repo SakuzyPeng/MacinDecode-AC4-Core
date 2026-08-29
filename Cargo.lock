@@ -192,9 +192,6 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 [[package]]
 name = "macindecode-ac4-bitstream"
 version = "0.1.0"
-dependencies = [
- "libm",
-]
 
 [[package]]
 name = "macindecode-ac4-cli"
@@ -202,6 +199,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "macindecode-ac4-bitstream",
+ "macindecode-ac4-decode",
  "macindecode-ac4-inspect",
  "macindecode-ac4-mp4",
  "macindecode-ac4-scene",
@@ -209,6 +207,14 @@ dependencies = [
  "renamore",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "macindecode-ac4-decode"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "macindecode-ac4-bitstream",
 ]
 
 [[package]]
@@ -234,6 +240,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "macindecode-ac4-bitstream",
+ "macindecode-ac4-decode",
  "macindecode-ac4-mp4",
  "macindecode-ac4-scene",
  "serde",
@@ -246,6 +253,7 @@ name = "macindecode-ac4-scene"
 version = "0.1.0"
 dependencies = [
  "macindecode-ac4-bitstream",
+ "macindecode-ac4-decode",
 ]
 
 [[package]]

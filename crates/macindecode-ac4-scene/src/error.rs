@@ -1,8 +1,6 @@
 //! Scene 解码错误及其稳定上下文。
 
 use core::fmt;
-#[cfg(feature = "audio-decode")]
-use macindecode_ac4_bitstream::full_ajoc::FullAjocUnsupported;
 use macindecode_ac4_bitstream::{
     PresentationSubstreamCapacity, PresentationSubstreamError,
     PresentationSubstreamGroupGainStateError,
@@ -10,6 +8,8 @@ use macindecode_ac4_bitstream::{
     reader::ReadError,
     topology::{Capacity, TopologyError, Unsupported as TopologyUnsupported},
 };
+#[cfg(feature = "audio-decode")]
+use macindecode_ac4_decode::full_ajoc::FullAjocUnsupported;
 
 /// 解码流水线中的结构化阶段。
 #[non_exhaustive]

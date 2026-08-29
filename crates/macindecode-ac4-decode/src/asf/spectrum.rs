@@ -15,8 +15,8 @@
 use super::framing::{AsfError, AsfLayoutKey, AsfWindowLayout, MAX_SFB, MAX_WINDOWS};
 use super::tables::{num_sfb_48, spectrum_codebook};
 use crate::huffman::{HuffmanError, tables};
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// 一帧内的最大谱线数。
 ///

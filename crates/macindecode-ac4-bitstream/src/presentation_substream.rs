@@ -33,16 +33,6 @@ use crate::reader::{BitReader, ReadError};
 use crate::substream::MAX_LF_SUBSTREAMS;
 use core::fmt;
 
-#[cfg(feature = "audio-decode")]
-mod drc_gains;
-#[cfg(feature = "audio-decode")]
-pub use drc_gains::{
-    MAX_PRESENTATION_DRC_BANDS, MAX_PRESENTATION_DRC_CHANNEL_GROUPS,
-    MAX_PRESENTATION_DRC_GAIN_VALUES, MAX_PRESENTATION_DRC_SUBFRAMES,
-    PresentationDrcDecodedGainSet, PresentationDrcGains, PresentationDrcGainsContext,
-    PresentationDrcGainsError,
-};
-
 /// alternative presentation 可保存的 target 数上限。
 ///
 /// 规范用 `variable_bits(2)` 扩展该计数而未给出上限。本 crate 不分配内存，并把

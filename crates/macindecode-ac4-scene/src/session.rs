@@ -33,7 +33,7 @@ use crate::{
     model::SceneFrameStorage,
 };
 #[cfg(feature = "audio-decode")]
-use macindecode_ac4_bitstream::full_ajoc::{
+use macindecode_ac4_decode::full_ajoc::{
     DecodedFullAjocAsfFrame, DecodedFullAjocAudioFrame, FullAjocAudioFrameInput, FullAjocDecoder,
 };
 
@@ -2670,7 +2670,7 @@ mod tests {
         assert_eq!(input.lfe_position, Some(0));
         assert_eq!(
             input.mode,
-            macindecode_ac4_bitstream::full_ajoc::FullAjocDecodeMode::RequireFull
+            macindecode_ac4_decode::full_ajoc::FullAjocDecodeMode::RequireFull
         );
         assert_eq!(input.provenance.access_unit_index(), 41);
         assert_eq!(input.provenance.source_sample_start(), Some(-2048));
@@ -2697,7 +2697,7 @@ mod tests {
 
         assert_eq!(
             prepared.engine_input.mode,
-            macindecode_ac4_bitstream::full_ajoc::FullAjocDecodeMode::RequireCore
+            macindecode_ac4_decode::full_ajoc::FullAjocDecodeMode::RequireCore
         );
         assert_eq!(prepared.presentation.ajoc_info.n_dmx_signals, 1);
         assert_eq!(session.topology.generation(), 0, "engine 输入仍只是候选");

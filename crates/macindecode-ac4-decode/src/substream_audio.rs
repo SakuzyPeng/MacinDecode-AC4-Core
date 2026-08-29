@@ -1,6 +1,6 @@
 //! `ac4_substream()` 与 `audio_data_ajoc()` 的接合。
 //!
-//! [`crate::audio_substream`] 按 `audio_size` 跳过音频数据直取 metadata；本模块
+//! [`macindecode_ac4_bitstream::audio_substream`] 按 `audio_size` 跳过音频数据直取 metadata；本模块
 //! 把跳过的那一段真正解出来，并用 `audio_size` 声明的长度作为落点判据。
 //!
 //! # 参数从哪里来
@@ -23,7 +23,7 @@
 //!
 //! 音频区段的结构是 `audio_data` + `fill_bits`(VAR) + `byte_align`。本模块把
 //! 读取器限制在该区段上，因此**多读**必然撞到边界报
-//! [`crate::reader::ReadError`]；但 `fill_bits` 长度不受约束，**少读**只会表现为
+//! [`macindecode_ac4_bitstream::reader::ReadError`]；但 `fill_bits` 长度不受约束，**少读**只会表现为
 //! 一个偏大的 [`Ac4SubstreamAjoc::fill_bits`]。
 //! 这个判据是单向的，与 `docs/SPEC_TRACEABILITY.md` §5.10 记的落点盲区同类：
 //! 长度相等不等于语义正确，长度不足也未必被拒。调用方若掌握编码器的填充
@@ -35,14 +35,16 @@ use crate::audio_data::{
     AudioDataAjoc, AudioDataError, AudioDataParams, AudioDataState, AudioDataWorkspace,
     parse_audio_data_ajoc,
 };
-use crate::audio_substream::{Ac4AudioSubstream, AudioSubstreamError, SubstreamContext};
 use crate::channel::{ChannelContext, ChannelElement};
-use crate::oamd::{OamdMetadataBlock, ObjectDescriptors};
-use crate::reader::BitReader;
-use crate::substream::SubstreamInfoAjoc;
-use crate::toc::Ac4Toc;
 use crate::var_element::MAX_FULLBAND_DMX_SIGNALS;
 use core::fmt;
+use macindecode_ac4_bitstream::audio_substream::{
+    Ac4AudioSubstream, AudioSubstreamError, SubstreamContext,
+};
+use macindecode_ac4_bitstream::oamd::{OamdMetadataBlock, ObjectDescriptors};
+use macindecode_ac4_bitstream::reader::BitReader;
+use macindecode_ac4_bitstream::substream::SubstreamInfoAjoc;
+use macindecode_ac4_bitstream::toc::Ac4Toc;
 
 /// 接合 `ac4_substream()` 与 `audio_data_ajoc()` 时的失败原因。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,7 +54,7 @@ pub enum SubstreamAudioError {
     /// `audio_data_ajoc()` 解析失败。
     AudioData(AudioDataError),
     /// 对象描述构造失败。
-    Oamd(crate::oamd::OamdError),
+    Oamd(macindecode_ac4_bitstream::oamd::OamdError),
     /// TOC 与 `frame_rate_factor` 的组合没有定义帧长。
     FrameLengthUnavailable {
         /// `fs_index`。
@@ -78,7 +80,7 @@ pub enum SubstreamAudioError {
     /// `frame_rate_factor` 不为 1，逐 substream 的 `b_iframe` 无从取得。
     ///
     /// 一个 `ac4_substream_info()` 此时指向 2 或 4 个连续解码的 substream，
-    /// 每个都有自己的 `b_audio_ndot`（P1 `4.3.3.7.8`）。[`crate::substream`]
+    /// 每个都有自己的 `b_audio_ndot`（P1 `4.3.3.7.8`）。[`macindecode_ac4_bitstream::substream`]
     /// 只保留它们的合取——那是随机访问点判定要的量，不是本元素的 I 帧标志。
     /// 用合取值代替会在混合 ndot 的帧上整段错位，故拒绝而非猜测。
     MultiSubstreamFrameRateUnsupported {
@@ -162,8 +164,8 @@ impl From<AudioDataError> for SubstreamAudioError {
     }
 }
 
-impl From<crate::oamd::OamdError> for SubstreamAudioError {
-    fn from(error: crate::oamd::OamdError) -> Self {
+impl From<macindecode_ac4_bitstream::oamd::OamdError> for SubstreamAudioError {
+    fn from(error: macindecode_ac4_bitstream::oamd::OamdError) -> Self {
         SubstreamAudioError::Oamd(error)
     }
 }
@@ -331,7 +333,7 @@ pub struct Ac4SubstreamAjoc {
 /// 解析一个 A-JOC 编码的 `ac4_substream()`，音频数据一并解出。
 ///
 /// `payload` 必须恰好是该 substream 的字节，可由
-/// [`crate::topology::Ac4Topology::substream_payload`] 取得。
+/// [`macindecode_ac4_bitstream::topology::Ac4Topology::substream_payload`] 取得。
 ///
 /// # Errors
 ///
@@ -393,9 +395,9 @@ pub fn parse_substream_ajoc(
 mod tests {
     use super::*;
     use crate::ajoc::AjocObjectMatrix;
-    use crate::oamd::{MAX_OAMD_OBJECTS, OamdError, ObjectType};
-    use crate::substream::{Ac4SubstreamGroupInfo, SubstreamInfo};
     use crate::testutil::BitBuf;
+    use macindecode_ac4_bitstream::oamd::{MAX_OAMD_OBJECTS, OamdError, ObjectType};
+    use macindecode_ac4_bitstream::substream::{Ac4SubstreamGroupInfo, SubstreamInfo};
 
     /// 24 fps、48 kHz、单 presentation 的 TOC。
     fn toc() -> Ac4Toc {
@@ -877,7 +879,9 @@ mod tests {
     /// 越界发生在哪一段取决于缺掉的那个字节落在哪里，因此不能把断言钉死在
     /// 某一个包装层上。只解一层：更深的嵌套返回 `None`，由断言的错误信息
     /// 报出实际形状。
-    fn innermost_read(error: SubstreamAudioError) -> Option<crate::reader::ReadError> {
+    fn innermost_read(
+        error: SubstreamAudioError,
+    ) -> Option<macindecode_ac4_bitstream::reader::ReadError> {
         let SubstreamAudioError::AudioData(audio) = error else {
             return None;
         };
@@ -911,7 +915,7 @@ mod tests {
         let error = parse_substream_ajoc(buf.as_slice(), &context, &mut state, workspace.borrow())
             .expect_err("应在音频区段内越界");
 
-        let Some(crate::reader::ReadError::OutOfBounds {
+        let Some(macindecode_ac4_bitstream::reader::ReadError::OutOfBounds {
             bit_position,
             remaining_bits,
             ..

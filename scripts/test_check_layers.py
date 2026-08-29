@@ -15,10 +15,11 @@ from unittest import mock
 from scripts import check_layers
 
 
-# 与被测实现无共同来源的一份层映射：语法层一个模块、解码层一个模块、基础层一个。
+# 与被测实现无共同来源的一份层映射：语法层一个模块、DSP 层一个模块、基础层一个。
+# 层名写死在此处，不从 check_layers 引用——判据引用实现自己的常量会随实现漂移。
 TEST_LAYERS = {
     "meta": "syntax",
-    "dsp": "decode",
+    "dsp": "dsp",
     "bits": "primitive",
 }
 
@@ -253,10 +254,34 @@ class GateTests(unittest.TestCase):
 
 class RealTreeTests(unittest.TestCase):
     def test_repository_currently_passes(self):
-        """真实源码树上的基线。CI 的 quality 检查跑的是同一条路径。"""
-        edges = check_layers.collect_edges()
-        self.assertEqual(check_layers.violations(edges), [])
-        self.assertGreater(len(edges), 50)
+        """真实源码树上的基线。CI 的 quality 检查跑的是同一条路径。
+
+        拆包后两个 crate 各有一张层映射，逐个审计；`main` 走的是同一条路径。
+        """
+        total = 0
+        for crate, layers in check_layers.CRATES.items():
+            with self.subTest(crate):
+                with (
+                    mock.patch.object(
+                        check_layers,
+                        "CRATE_SRC",
+                        check_layers.REPO_ROOT / "crates" / crate / "src",
+                    ),
+                    mock.patch.object(check_layers, "LAYERS", layers),
+                ):
+                    edges = check_layers.collect_edges()
+                    self.assertEqual(check_layers.violations(edges), [])
+                    total += len(edges)
+        self.assertGreater(total, 50)
+
+    def test_both_crates_are_registered(self):
+        """两个 crate 都必须在 CRATES 里，且源码目录真实存在。"""
+        self.assertEqual(
+            sorted(check_layers.CRATES),
+            ["macindecode-ac4-bitstream", "macindecode-ac4-decode"],
+        )
+        for crate in check_layers.CRATES:
+            self.assertTrue((check_layers.REPO_ROOT / "crates" / crate / "src").is_dir())
 
 
 if __name__ == "__main__":

@@ -16,11 +16,11 @@ use crate::{
         spectrum::MAX_SPECTRAL_LINES,
     },
     channel::{ChannelElement, ChannelMatrixError, MAX_ELEMENT_CHANNELS},
-    topology::MAX_SUBSTREAMS,
     var_element::MAX_CHANNEL_ELEMENTS,
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
+use macindecode_ac4_bitstream::topology::MAX_SUBSTREAMS;
 
 const MAX_ASF_CHANNELS: usize = MAX_CHANNEL_ELEMENTS.saturating_mul(MAX_ELEMENT_CHANNELS);
 
@@ -1040,9 +1040,8 @@ const fn nonfinite_error(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        channel::ChannelContext, huffman::tables::ASF_HCB_1, reader::BitReader, testutil::BitBuf,
-    };
+    use crate::{channel::ChannelContext, huffman::tables::ASF_HCB_1, testutil::BitBuf};
+    use macindecode_ac4_bitstream::reader::BitReader;
 
     fn mono_element() -> ChannelElement {
         let mut payload = BitBuf::new();

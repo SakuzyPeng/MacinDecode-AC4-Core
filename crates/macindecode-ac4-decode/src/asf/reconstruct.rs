@@ -496,8 +496,8 @@ mod tests {
     use crate::asf::framing::{AsfPsyContext, AsfPsyInfo, AsfTransformInfo};
     use crate::asf::spectrum::MAX_SPECTRAL_LINES;
     use crate::huffman::tables;
-    use crate::reader::BitReader;
     use crate::testutil::BitBuf;
+    use macindecode_ac4_bitstream::reader::BitReader;
 
     fn long_frame_layout(max_sfb: u32) -> AsfWindowLayout {
         let mut buf = BitBuf::new();

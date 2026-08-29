@@ -30,19 +30,21 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CRATE_SRC = REPO_ROOT / "crates/macindecode-ac4-bitstream/src"
 
 PRIMITIVE = "primitive"
 SYNTAX = "syntax"
-DECODE = "decode"
+METADATA = "metadata"
+DSP = "dsp"
 
 # 层归属的单一声明点。新增顶层模块必须在此登记，否则审计失败——漏登记不得退化
 # 成默许。
-LAYERS: dict[str, str] = {
-    # 基础层：不解释任何 AC-4 语义，两侧共用。
+#
+# 物理拆包后 syntax -> decode 的方向已由 Cargo 强制（bitstream 不依赖 decode），
+# 本脚本因此转为守各 crate 内部的方向，以及「新模块必须登记」这条 fail-closed。
+BITSTREAM_LAYERS: dict[str, str] = {
+    # 基础层：不解释任何 AC-4 语义。
     "reader": PRIMITIVE,
     "math": PRIMITIVE,
-    "huffman": PRIMITIVE,
     # 语法与元数据层：有界解析、拓扑、原始/量化 OAMD 与不解释 datatype 的
     # opaque metadata。
     "syncframe": SYNTAX,
@@ -54,27 +56,45 @@ LAYERS: dict[str, str] = {
     "oamd": SYNTAX,
     "substream": SYNTAX,
     "topology": SYNTAX,
-    # 解码/engine 层：数值重建、QMF、表 188 对齐与统一 Full A-JOC engine。
-    "asf": DECODE,
-    "aspx": DECODE,
-    "ajoc": DECODE,
-    "full_ajoc": DECODE,
-    "channel": DECODE,
-    "var_element": DECODE,
-    "audio_data": DECODE,
-    "element_drive": DECODE,
-    "substream_audio": DECODE,
-    "frame_alignment": DECODE,
-    # 生成的 PDF 表。目前是 lib.rs 里的 `pub(crate) mod spec_tables`，但十个消费者
-    # （asf/aspx/ajoc）无一在语法层，因此按解码层记；物理拆包时随 decode crate 走。
-    "spec_tables": DECODE,
 }
+
+DECODE_LAYERS: dict[str, str] = {
+    # 码本机制：只在 BitReader 上走 trie，不解释任何 AC-4 语义。
+    "huffman": PRIMITIVE,
+    # Huffman 编码的**元数据**解码。它们按规范不是 DSP，放在本 crate 只因为消费
+    # 同一批随附 C 表；不得反过来依赖 DSP。
+    "drc_gains": METADATA,
+    "dialog_enhancement": METADATA,
+    # 数值重建、QMF、表 188 对齐与统一 Full A-JOC engine。
+    "asf": DSP,
+    "aspx": DSP,
+    "ajoc": DSP,
+    "full_ajoc": DSP,
+    "channel": DSP,
+    "var_element": DSP,
+    "audio_data": DSP,
+    "element_drive": DSP,
+    "substream_audio": DSP,
+    "frame_alignment": DSP,
+    # 生成的 PDF 表，lib.rs 里的 `pub(crate) mod spec_tables`。
+    "spec_tables": DSP,
+}
+
+CRATES: dict[str, dict[str, str]] = {
+    "macindecode-ac4-bitstream": BITSTREAM_LAYERS,
+    "macindecode-ac4-decode": DECODE_LAYERS,
+}
+
+# 当前被审计的 crate。`main` 逐个 crate 重新绑定这两个全局量。
+CRATE_SRC = REPO_ROOT / "crates/macindecode-ac4-bitstream/src"
+LAYERS: dict[str, str] = BITSTREAM_LAYERS
 
 # 允许该层引用的层。缺省即禁止。
 ALLOWED: dict[str, frozenset[str]] = {
     PRIMITIVE: frozenset({PRIMITIVE}),
     SYNTAX: frozenset({PRIMITIVE, SYNTAX}),
-    DECODE: frozenset({PRIMITIVE, SYNTAX, DECODE}),
+    METADATA: frozenset({PRIMITIVE, METADATA}),
+    DSP: frozenset({PRIMITIVE, SYNTAX, METADATA, DSP}),
 }
 
 # 不参与审计：crate 根是各层的装配点，testutil 只在测试配置下存在。
@@ -309,6 +329,8 @@ def violations(edges: dict[tuple[str, str], set[str]]) -> list[tuple[str, str, s
 
 
 def main() -> int:
+    global CRATE_SRC, LAYERS
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--list",
@@ -317,37 +339,49 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    try:
-        edges = collect_edges()
-        bad = violations(edges)
-    except LayerError as error:
-        print(f"层依赖审计无法完成：{error}", file=sys.stderr)
-        return 1
+    total_modules = total_edges = 0
+    failed = False
+    for crate, layers in CRATES.items():
+        CRATE_SRC = REPO_ROOT / "crates" / crate / "src"
+        LAYERS = layers
+        try:
+            edges = collect_edges()
+            bad = violations(edges)
+        except LayerError as error:
+            print(f"{crate} 层依赖审计无法完成：{error}", file=sys.stderr)
+            return 1
 
-    if args.list:
-        for layer in (PRIMITIVE, SYNTAX, DECODE):
-            print(f"[{layer}]")
-            for module in sorted(m for m, l in LAYERS.items() if l == layer):
-                targets = sorted(t for (s, t) in edges if s == module)
-                print(f"  {module:24s} -> {', '.join(targets) or '(无)'}")
+        total_modules += len(layers)
+        total_edges += len(edges)
 
-    if bad:
-        for source, target, files in bad:
-            print(
-                f"  违规  {declared_layer(source)}:{source}"
-                f" -> {declared_layer(target)}:{target}"
-                f"（{', '.join(sorted(files))}）",
-                file=sys.stderr,
-            )
-        print(
-            f"{len(bad)} 条边违反 ADR-0011 的层依赖方向",
-            file=sys.stderr,
-        )
+        if args.list:
+            print(f"=== {crate} ===")
+            for layer in (PRIMITIVE, SYNTAX, METADATA, DSP):
+                members = sorted(m for m, l in layers.items() if l == layer)
+                if not members:
+                    continue
+                print(f"[{layer}]")
+                for module in members:
+                    targets = sorted(t for (s, t) in edges if s == module)
+                    print(f"  {module:24s} -> {', '.join(targets) or '(无)'}")
+
+        if bad:
+            failed = True
+            for source, target, files in bad:
+                print(
+                    f"  违规  {crate}  {declared_layer(source)}:{source}"
+                    f" -> {declared_layer(target)}:{target}"
+                    f"（{', '.join(sorted(files))}）",
+                    file=sys.stderr,
+                )
+
+    if failed:
+        print("存在违反 ADR-0011 / ADR-0013 层依赖方向的边", file=sys.stderr)
         return 1
 
     print(
-        f"层依赖审计通过：{len(LAYERS)} 个模块、{len(edges)} 条边，"
-        "语法层没有引用解码层"
+        f"层依赖审计通过：{len(CRATES)} 个 crate、{total_modules} 个模块、"
+        f"{total_edges} 条边"
     )
     return 0
 

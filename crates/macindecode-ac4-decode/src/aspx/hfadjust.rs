@@ -56,7 +56,7 @@ use crate::aspx::dequant::ScaleFactors;
 use crate::aspx::frames::{AspxInterval, MAX_ATSG_SIG};
 use crate::aspx::qmf::QmfSlot;
 use crate::aspx::tables::NUM_QMF_SUBBANDS;
-use crate::math::sqrt_f32;
+use macindecode_ac4_bitstream::math::sqrt_f32;
 
 /// 子带数，`5.7.3.2` 规定恒为 64。
 const SUBBANDS: usize = NUM_QMF_SUBBANDS as usize;

@@ -20,7 +20,7 @@ MANIFEST = REPO_ROOT / "spec" / "MANIFEST.json"
 SPEC_LOCK = (
     REPO_ROOT
     / "crates"
-    / "macindecode-ac4-bitstream"
+    / "macindecode-ac4-decode"
     / "build_support"
     / "spec_lock.rs"
 )
@@ -28,29 +28,29 @@ SPEC_LOCK = (
 FORBIDDEN_TRACKED_SUFFIXES = {".pdf", ".zip", ".m4a", ".wav", ".caf"}
 FORBIDDEN_PACKAGE_SUFFIXES = FORBIDDEN_TRACKED_SUFFIXES | {".c"}
 FORBIDDEN_RUST_TABLES = {
-    "crates/macindecode-ac4-bitstream/src/asf/tables.rs": (
+    "crates/macindecode-ac4-decode/src/asf/tables.rs": (
         r"const\s+SFB_OFFSET_\d+\s*:",
         r"const\s+SPECTRUM_CODEBOOKS\s*:\s*\[[^=]+?=\s*\[",
         r"const\s+N_MSFB_BITS_48\s*:[^=]+?=\s*\[",
     ),
-    "crates/macindecode-ac4-bitstream/src/asf/imdct.rs": (
+    "crates/macindecode-ac4-decode/src/asf/imdct.rs": (
         r"const\s+KBD_ALPHA_HALVES_48\s*:[^=]+?=\s*\[",
     ),
-    "crates/macindecode-ac4-bitstream/src/aspx/tables.rs": (
+    "crates/macindecode-ac4-decode/src/aspx/tables.rs": (
         r"const\s+SBG_TEMPLATE_(?:LOW|HIGH)RES\s*:",
         r"const\s+NUM_TS_IN_ATS\s*:[^=]+?=\s*\[",
     ),
-    "crates/macindecode-ac4-bitstream/src/aspx/frames.rs": (
+    "crates/macindecode-ac4-decode/src/aspx/frames.rs": (
         r"const\s+TAB_BORDER\s*:[^=]+?=\s*\[",
     ),
-    "crates/macindecode-ac4-bitstream/src/ajoc/bands.rs": (
+    "crates/macindecode-ac4-decode/src/ajoc/bands.rs": (
         r"const\s+TABLE_28\s*:[^=]+?=\s*\[",
         r"static\s+SB_TO_PB\s*:[^=]+?=\s*\[",
     ),
-    "crates/macindecode-ac4-bitstream/src/ajoc/dequant.rs": (
+    "crates/macindecode-ac4-decode/src/ajoc/dequant.rs": (
         r"const\s+(?:DRY|WET)_(?:COARSE|FINE)\s*:\s*Quantizer\s*=",
     ),
-    "crates/macindecode-ac4-bitstream/src/ajoc/decorrelator.rs": (
+    "crates/macindecode-ac4-decode/src/ajoc/decorrelator.rs": (
         r"const\s+TABLE_(?:198|199|200|201)\s*:[^=]+?=\s*\[",
         r"AJOC_DECORRELATOR_CYCLE\s*:[^=]+?=\s*\[",
     ),

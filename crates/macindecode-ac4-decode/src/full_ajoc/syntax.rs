@@ -10,20 +10,22 @@ use crate::{
     ajoc::{AjocObjectControl, AjocObjectMatrix},
     aspx::syntax::{AspxConfig, AspxData},
     audio_data::AudioDataState,
-    audio_substream::AudioSubstreamError,
     channel::ChannelElement,
-    emdf::EmdfError,
-    oamd::{MAX_OBJ_INFO_BLOCKS, OamdError, OamdMetadataBlock},
-    reader::ReadError,
     substream_audio::{
         Ac4SubstreamAjoc, AjocAudioWorkspace, AjocSubstreamContext, SubstreamAudioError,
         parse_substream_ajoc,
     },
-    topology::MAX_SUBSTREAMS,
     var_element::{MAX_ASPX_ELEMENTS, MAX_CHANNEL_ELEMENTS},
 };
 use alloc::vec::Vec;
 use core::fmt;
+use macindecode_ac4_bitstream::{
+    audio_substream::AudioSubstreamError,
+    emdf::EmdfError,
+    oamd::{MAX_OBJ_INFO_BLOCKS, OamdError, OamdMetadataBlock},
+    reader::ReadError,
+    topology::MAX_SUBSTREAMS,
+};
 
 /// Full 音频语法帧的输入。
 #[derive(Debug, Clone, Copy)]
@@ -697,11 +699,10 @@ fn workspace_invariant(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        huffman::tables::ASF_HCB_1,
+    use crate::{huffman::tables::ASF_HCB_1, testutil::BitBuf};
+    use macindecode_ac4_bitstream::{
         reader::BitReader,
         substream::{Ac4SubstreamGroupInfo, SubstreamInfo, SubstreamInfoAjoc},
-        testutil::BitBuf,
         toc::Ac4Toc,
     };
 

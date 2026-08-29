@@ -68,7 +68,7 @@ use crate::aspx::hfadjust::EnvelopeEstimate;
 use crate::aspx::limiter::{LimiterTable, MAX_SBG_LIM};
 use crate::aspx::patches::PatchTable;
 use crate::aspx::tables::NUM_QMF_SUBBANDS;
-use crate::math::sqrt;
+use macindecode_ac4_bitstream::math::sqrt;
 
 /// 子带数，`5.7.3.2` 规定恒为 64。
 const SUBBANDS: usize = NUM_QMF_SUBBANDS as usize;
@@ -452,8 +452,8 @@ mod tests {
     use crate::aspx::hfadjust::{SinePlacement, SineState, estimate};
     use crate::aspx::patches::PatchTable;
     use crate::aspx::qmf::QmfSlot;
-    use crate::math::sqrt_f32;
     use core::f32::consts::FRAC_1_SQRT_2;
+    use macindecode_ac4_bitstream::math::sqrt_f32;
 
     /// A-SPX 时隙数。单包络时它同时是包络的 ATS 跨度。
     const SLOTS: usize = 16;

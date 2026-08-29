@@ -17,16 +17,16 @@ use crate::ajoc::de::{
 use crate::ajoc::{Ajoc, AjocError, AjocObjectControl, AjocObjectMatrix, parse_ajoc};
 use crate::aspx::syntax::AspxData;
 use crate::channel::{ChannelContext, ChannelElement};
-use crate::oamd::{
-    OamdAlternativeDataSetDomain, OamdDyndataSingle, OamdError, OamdMetadataBlock, OamdTimingData,
-    ObjectDescriptor,
-};
-use crate::reader::{BitReader, ReadError};
 use crate::var_element::{
     MAX_FULLBAND_DMX_SIGNALS, VarChannelElement, VarChannelParams, VarChannelState,
     VarChannelWorkspace, VarElementError, parse_var_channel_element,
 };
 use core::fmt;
+use macindecode_ac4_bitstream::oamd::{
+    OamdAlternativeDataSetDomain, OamdDyndataSingle, OamdError, OamdMetadataBlock, OamdTimingData,
+    ObjectDescriptor,
+};
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// `audio_data_ajoc()` 中独立携带 OAMD 的解码模式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,7 +240,7 @@ pub struct AudioDataWorkspace<'a> {
     /// A-JOC 逐对象混合矩阵。
     pub matrices: &'a mut [AjocObjectMatrix],
     /// 下混对象的分类，长度须为 `n_fb_dmx_signals + b_lfe`；存在 LFE 时索引 0
-    /// 必须为 LFE。可用 [`crate::oamd::ObjectDescriptors::from_ajoc_assignment`]
+    /// 必须为 LFE。可用 [`macindecode_ac4_bitstream::oamd::ObjectDescriptors::from_ajoc_assignment`]
     /// 从 `dmx_assignment` 构造。
     pub dmx_objects: &'a [ObjectDescriptor],
     /// 上混对象的分类，长度须为 `n_fb_upmix_signals + b_lfe`，顺序约束同上；
@@ -249,7 +249,7 @@ pub struct AudioDataWorkspace<'a> {
     /// 下混动态数据的信息块，按对象与块下标线性填充。
     ///
     /// 每项自带 `object_index` 与 `block_index`，可直接交给
-    /// [`crate::oamd::OamdState::apply_blocks`]；填充顺序是对象在外、块在内，
+    /// [`macindecode_ac4_bitstream::oamd::OamdState::apply_blocks`]；填充顺序是对象在外、块在内，
     /// 但调用方不必依赖该顺序。
     pub dmx_blocks: &'a mut [OamdMetadataBlock],
     /// 上混动态数据的信息块，约定同上。
@@ -583,10 +583,10 @@ fn ensure_objects(
 mod tests {
     use super::*;
     use crate::ajoc::MAX_AJOC_DMX_SIGNALS;
-    use crate::oamd::{
+    use crate::testutil::BitBuf;
+    use macindecode_ac4_bitstream::oamd::{
         InfoStatus, OamdAlternativeDataSetState, OamdAlternativeDataSetStateError, ObjectType,
     };
-    use crate::testutil::BitBuf;
 
     const CONTEXT: ChannelContext = ChannelContext {
         frame_len_base: 2048,
@@ -1313,7 +1313,7 @@ mod tests {
     /// 结果就会错。
     #[test]
     fn blocks_feed_the_shared_oamd_state_machine() {
-        use crate::oamd::OamdState;
+        use macindecode_ac4_bitstream::oamd::OamdState;
 
         let objects = [dynamic()];
         let mut buf = BitBuf::new();

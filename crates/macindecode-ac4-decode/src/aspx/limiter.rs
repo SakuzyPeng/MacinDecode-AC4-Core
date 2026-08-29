@@ -45,7 +45,7 @@
 
 use crate::aspx::bands::{AspxBandTables, MAX_SBG_SIG_LOWRES};
 use crate::aspx::patches::{MAX_SBG_PATCHES, PatchTable};
-use crate::math::log2;
+use macindecode_ac4_bitstream::math::log2;
 
 /// 限幅器边界数的上界：低分辨率组数加 patch 段数。
 pub const MAX_SBG_LIM: usize = MAX_SBG_SIG_LOWRES + MAX_SBG_PATCHES;

@@ -1,13 +1,15 @@
 //! Session 控制候选到 Full A-JOC engine 的事务适配。
 
 use macindecode_ac4_bitstream::{
+    audio_substream::AudioSubstreamError, emdf::EmdfError, oamd::OamdError, reader::ReadError,
+    topology::Ac4Topology,
+};
+use macindecode_ac4_decode::{
     ajoc::{AjocError, de::AjocDeError},
     asf::{AsfError, AsfSpectrumError},
     aspx::AspxError,
     audio_data::AudioDataError,
-    audio_substream::AudioSubstreamError,
     channel::ChannelError,
-    emdf::EmdfError,
     full_ajoc::{
         DecodedFullAjocAudioFrame, FullAjocAsfError, FullAjocAsfErrorKind, FullAjocAudioFrameError,
         FullAjocAudioFrameInput, FullAjocBlocker, FullAjocDecodeError, FullAjocDecodeErrorKind,
@@ -15,10 +17,7 @@ use macindecode_ac4_bitstream::{
         FullAjocSyntaxError, FullAjocSyntaxFrameInput, FullAjocUnsupported,
     },
     huffman::HuffmanError,
-    oamd::OamdError,
-    reader::ReadError,
     substream_audio::{AjocSubstreamContext, SubstreamAudioError},
-    topology::Ac4Topology,
     var_element::{MAX_FULLBAND_DMX_SIGNALS, VarElementError},
 };
 
@@ -605,7 +604,7 @@ fn error_context(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use macindecode_ac4_bitstream::full_ajoc::AspxBlocker;
+    use macindecode_ac4_decode::full_ajoc::AspxBlocker;
 
     #[test]
     fn decode_error_path_follows_the_failing_engine_stage() {

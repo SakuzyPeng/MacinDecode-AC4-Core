@@ -9,7 +9,7 @@ use super::{
     FullAjocSyntaxObservation, ReconstructionInvariant, ScaledStats, companding_is_active,
 };
 #[cfg(feature = "audio-decode")]
-use macindecode_ac4_bitstream::substream_audio::AjocSubstreamContext;
+use macindecode_ac4_decode::substream_audio::AjocSubstreamContext;
 
 /// 一条物理 A-JOC substream 的成功观察结果。
 #[cfg(feature = "audio-decode")]
@@ -665,8 +665,8 @@ mod tests {
     use crate::trace::testutil::{
         minimal_full_audio_topology, minimal_full_audio_topology_with_active_companding,
     };
-    use macindecode_ac4_bitstream::asf::reconstruct::ReconstructError;
-    use macindecode_ac4_bitstream::full_ajoc::FullAjocSyntaxError;
+    use macindecode_ac4_decode::asf::reconstruct::ReconstructError;
+    use macindecode_ac4_decode::full_ajoc::FullAjocSyntaxError;
 
     #[test]
     fn tracing_collects_syntax_and_asf_from_the_unified_engine() {

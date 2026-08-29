@@ -21,8 +21,8 @@ use crate::asf::framing::{
 use crate::asf::spectrum::{AsfSpectrumError, AsfWorkspace};
 use crate::asf::tables::n_msfbl_bits_48;
 use crate::huffman::{HuffmanError, tables};
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// 一个声道元素内的最大声道数。
 ///

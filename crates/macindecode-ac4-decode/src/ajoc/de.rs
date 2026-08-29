@@ -8,12 +8,12 @@
 //! 除法，故不引入浮点。
 
 use crate::ajoc::MAX_AJOC_DMX_SIGNALS;
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// 可参与对话增强的上混对象数上限。
 ///
-/// 与 [`crate::oamd::MAX_OAMD_OBJECTS`] 取同一个值：上混信号数本身没有位宽
+/// 与 [`macindecode_ac4_bitstream::oamd::MAX_OAMD_OBJECTS`] 取同一个值：上混信号数本身没有位宽
 /// 上界，此处设一个覆盖实际编码链的容量，超出即报错而非静默截断。
 pub const MAX_DE_OBJECTS: usize = 32;
 

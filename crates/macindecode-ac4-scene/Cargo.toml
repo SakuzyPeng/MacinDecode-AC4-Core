@@ -14,10 +14,11 @@ include = ["src/**", "README.md", "LICENSE"]
 
 [features]
 default = []
-audio-decode = ["macindecode-ac4-bitstream/audio-decode"]
+audio-decode = ["dep:macindecode-ac4-decode", "macindecode-ac4-decode/audio-decode"]
 
 [dependencies]
 macindecode-ac4-bitstream.workspace = true
+macindecode-ac4-decode = { workspace = true, optional = true }
 
 [lints]
 workspace = true

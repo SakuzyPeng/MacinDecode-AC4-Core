@@ -12,13 +12,16 @@ use macindecode_ac4_bitstream::{
 use alloc::{vec, vec::Vec};
 #[cfg(feature = "audio-decode")]
 use macindecode_ac4_bitstream::{
+    oamd::{MAX_OAMD_METADATA_BLOCKS, MAX_OAMD_OBJECTS},
+    toc::DecodingDelay,
+    topology::{Ac4Topology, DecoderAction, RandomAccess, ResetReason, TopologyTransition},
+};
+#[cfg(feature = "audio-decode")]
+use macindecode_ac4_decode::{
     frame_alignment::frame_alignment,
     full_ajoc::{
         DecodedFullAjocFrame, FullAjocAlignedSideInformation, FullAjocPcmChannel, FullAjocPcmSource,
     },
-    oamd::{MAX_OAMD_METADATA_BLOCKS, MAX_OAMD_OBJECTS},
-    toc::DecodingDelay,
-    topology::{Ac4Topology, DecoderAction, RandomAccess, ResetReason, TopologyTransition},
 };
 
 #[cfg(feature = "audio-decode")]
@@ -1225,7 +1228,7 @@ fn empty_frame_storage(
     input: FullPcmAssemblyInput<'_>,
     frame_start: i64,
     duration_samples: u32,
-    alignment: macindecode_ac4_bitstream::frame_alignment::FrameAlignment,
+    alignment: macindecode_ac4_decode::frame_alignment::FrameAlignment,
 ) -> SceneFrameStorage {
     SceneFrameStorage {
         timeline: timeline(input, frame_start, duration_samples, alignment, None),
@@ -1268,7 +1271,7 @@ fn update_frame_header(
     input: FullPcmAssemblyInput<'_>,
     frame_start: i64,
     duration_samples: u32,
-    alignment: macindecode_ac4_bitstream::frame_alignment::FrameAlignment,
+    alignment: macindecode_ac4_decode::frame_alignment::FrameAlignment,
     random_access: bool,
     reset: Option<ResetKind>,
     output: &DecodedFullAjocFrame<'_>,
@@ -1378,7 +1381,7 @@ fn timeline(
     input: FullPcmAssemblyInput<'_>,
     frame_start: i64,
     duration_samples: u32,
-    alignment: macindecode_ac4_bitstream::frame_alignment::FrameAlignment,
+    alignment: macindecode_ac4_decode::frame_alignment::FrameAlignment,
     control_source_access_unit_index: Option<u64>,
 ) -> SceneTimeline {
     SceneTimeline {

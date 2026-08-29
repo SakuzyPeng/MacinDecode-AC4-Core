@@ -176,7 +176,7 @@ mod tests {
     use super::*;
     use crate::asf::framing::{AsfFraming, AsfPsyContext, AsfPsyInfo, AsfTransformInfo};
     use crate::asf::tables::{n_msfb_bits_48, num_sfb_48};
-    use crate::reader::BitReader;
+    use macindecode_ac4_bitstream::reader::BitReader;
     use std::vec;
     use std::vec::Vec;
 

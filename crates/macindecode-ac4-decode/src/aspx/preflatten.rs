@@ -44,7 +44,7 @@
 )]
 
 use crate::aspx::qmf::{QmfSlot, SUBBANDS};
-use crate::math::{exp2, log2};
+use macindecode_ac4_bitstream::math::{exp2, log2};
 
 /// 拟合阶数，`Pseudocode 85` 的 `polynomial_order`。
 const ORDER: usize = 3;
@@ -244,7 +244,7 @@ fn solve_cholesky(
                 if sum <= 0.0 || !sum.is_finite() {
                     return Err(PreFlattenError::FitFailed { pivot: row });
                 }
-                lower[row][column] = crate::math::sqrt(sum);
+                lower[row][column] = macindecode_ac4_bitstream::math::sqrt(sum);
             } else {
                 lower[row][column] = sum / lower[column][column];
             }
@@ -294,7 +294,7 @@ mod tests {
         let mut out = vec![QmfSlot::default(); count];
         for slot in &mut out {
             for (sb, &value) in power.iter().enumerate() {
-                let half = crate::math::sqrt(value * 0.5) as f32;
+                let half = macindecode_ac4_bitstream::math::sqrt(value * 0.5) as f32;
                 slot.re[sb] = half;
                 slot.im[sb] = half;
             }
@@ -314,7 +314,7 @@ mod tests {
         let mut imaginary_only = vec![QmfSlot::default(); 6];
         for index in 0..6 {
             for (sb, &value) in shape.iter().enumerate() {
-                let amplitude = crate::math::sqrt(value) as f32;
+                let amplitude = macindecode_ac4_bitstream::math::sqrt(value) as f32;
                 real_only[index].re[sb] = amplitude;
                 imaginary_only[index].im[sb] = amplitude;
             }

@@ -44,7 +44,7 @@ ADR_PATH = (
 )
 BUILD_CRATE_PATH = (
     Path(__file__).resolve().parent.parent
-    / "crates/macindecode-ac4-bitstream"
+    / "crates/macindecode-ac4-decode"
 )
 ADR_TABLE_MARKERS = {
     "旋转因子": "`IMDCT_ROTATION`",

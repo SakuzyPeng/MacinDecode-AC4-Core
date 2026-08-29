@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SOURCE = REPO_ROOT / "crates/macindecode-ac4-bitstream/src/aspx/patches.rs"
+SOURCE = REPO_ROOT / "crates/macindecode-ac4-decode/src/aspx/patches.rs"
 
 # 5.7.6.3.1.1 的两张静态模板表。
 TEMPLATE_LOWRES = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 26, 28, 30, 32, 35, 38, 42, 46]
@@ -238,7 +238,7 @@ SWEEP_DIGEST = re.compile(
 LIMITER_DIGEST = re.compile(
     r"LIMITER_SWEEP_FNV64\s*:\s*u64\s*=\s*(0x[0-9a-fA-F_]+|\d+)\s*;"
 )
-LIMITER_SOURCE = REPO_ROOT / "crates/macindecode-ac4-bitstream/src/aspx/limiter.rs"
+LIMITER_SOURCE = REPO_ROOT / "crates/macindecode-ac4-decode/src/aspx/limiter.rs"
 
 
 def read_anchors(text: str):

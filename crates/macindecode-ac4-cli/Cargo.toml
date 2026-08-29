@@ -21,7 +21,8 @@ default = []
 # 解析 A-JOC substream 的音频数据。转发到 bitstream crate 的同名 feature，
 # 关闭时 trace 的 `ajoc_audio` 字段为 null，其余输出不变。
 audio-decode = [
-    "macindecode-ac4-bitstream/audio-decode",
+    "dep:macindecode-ac4-decode",
+    "macindecode-ac4-decode/audio-decode",
     "dep:macindecode-ac4-scene",
     "macindecode-ac4-scene/audio-decode",
     "dep:renamore",
@@ -30,6 +31,7 @@ audio-decode = [
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }
 macindecode-ac4-bitstream.workspace = true
+macindecode-ac4-decode = { workspace = true, optional = true }
 macindecode-ac4-inspect.workspace = true
 macindecode-ac4-mp4.workspace = true
 macindecode-ac4-scene = { workspace = true, optional = true }

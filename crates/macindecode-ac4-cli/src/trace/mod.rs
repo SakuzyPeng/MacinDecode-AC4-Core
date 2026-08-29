@@ -38,13 +38,6 @@ use oamd::{MAX_POSITION_TIMELINE, PositionChange, resolve_oamd_blocks_timed};
 use spectrum::ScaledStats;
 use topology::{TopologyTrace, timing_json};
 
-#[cfg(feature = "audio-decode")]
-use macindecode_ac4_bitstream::{
-    Ac4SubstreamAjoc, AjocSubstreamContext,
-    ajoc::{Ajoc, AjocObjectControl, AjocObjectMatrix},
-    oamd::{MAX_OAMD_OBJECTS, OamdMetadataBlock, OamdStateError},
-    substream::SubstreamInfoAjoc,
-};
 use macindecode_ac4_bitstream::{
     Ac4Toc, DecodingDelay, SequenceTransition, SyncFrameIter,
     audio_substream::{Ac4AudioSubstream, SubstreamContext},
@@ -59,6 +52,16 @@ use macindecode_ac4_bitstream::{
         RandomAccess, ResetReason, ScenePath, TopologyStateMachine, validate_group_references,
         validate_substream_references,
     },
+};
+#[cfg(feature = "audio-decode")]
+use macindecode_ac4_bitstream::{
+    oamd::{MAX_OAMD_OBJECTS, OamdMetadataBlock, OamdStateError},
+    substream::SubstreamInfoAjoc,
+};
+#[cfg(feature = "audio-decode")]
+use macindecode_ac4_decode::{
+    Ac4SubstreamAjoc, AjocSubstreamContext,
+    ajoc::{Ajoc, AjocObjectControl, AjocObjectMatrix},
 };
 use macindecode_ac4_mp4::{
     Ac4Dsi, Ac4Track, BoxIter, EditListEntry, SampleDelta, SampleTable, find_box, find_path,

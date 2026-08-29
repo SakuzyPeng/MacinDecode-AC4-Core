@@ -12,8 +12,8 @@
 //! 继续加大——因此工作区容量交由调用方决定，超出即报错而非静默截断。
 
 use crate::huffman::{HuffmanError, HuffmanTable, tables};
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 // 这些定义在无 `audio-decode` feature 时也供纯推导层使用；这里重新导出以保留
 // 早期版本留下的 `ajoc::syntax::*` 路径。

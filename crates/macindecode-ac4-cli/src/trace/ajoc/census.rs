@@ -299,7 +299,7 @@ mod tests {
     use super::*;
     use crate::trace::testutil::{pack_bits, shortest_codeword};
     use macindecode_ac4_bitstream::BitReader;
-    use macindecode_ac4_bitstream::ajoc::{AjocHcbType, MatrixKind, cb_off, parse_ajoc, table_for};
+    use macindecode_ac4_decode::ajoc::{AjocHcbType, MatrixKind, cb_off, parse_ajoc, table_for};
 
     fn codeword(kind: MatrixKind, coarse: bool, hcb: AjocHcbType, value: i16) -> String {
         let symbol = value.saturating_add(cb_off(kind, coarse, hcb));

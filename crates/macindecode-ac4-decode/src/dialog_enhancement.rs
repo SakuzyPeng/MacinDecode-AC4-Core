@@ -6,12 +6,12 @@
 //! keep、M/S、hybrid contribution 与 simulcast gate；[`DialogEnhancementState`] 再按物理
 //! substream 延续配置与参数索引。它不反量化、不执行 dialogue enhancement，也不修改 PCM。
 
-use super::{
+use crate::huffman::{HuffmanError, HuffmanTable, tables};
+use core::fmt;
+use macindecode_ac4_bitstream::audio_substream::{
     DialogEnhancementConfiguration, DialogEnhancementConfigurationUpdate, DialogEnhancementMetadata,
 };
-use crate::huffman::{HuffmanError, HuffmanTable, tables};
-use crate::reader::{BitReader, ReadError};
-use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 mod state;
 pub use state::{
@@ -455,8 +455,8 @@ mod tests {
     extern crate std;
 
     use super::*;
-    use crate::audio_substream::{Ac4AudioSubstream, SubstreamContext};
     use crate::testutil::BitBuf;
+    use macindecode_ac4_bitstream::audio_substream::{Ac4AudioSubstream, SubstreamContext};
 
     fn configuration(method: u8, channel_config: u8) -> DialogEnhancementConfiguration {
         DialogEnhancementConfiguration {

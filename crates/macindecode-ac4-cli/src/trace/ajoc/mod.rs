@@ -9,7 +9,7 @@ use super::{
 };
 use super::{Ac4Topology, OamdCommonData, OamdTimingData};
 #[cfg(feature = "audio-decode")]
-use macindecode_ac4_bitstream::full_ajoc::{
+use macindecode_ac4_decode::full_ajoc::{
     AspxBlocker, AspxReach, FullAjocAsfError, FullAjocAsfErrorKind, FullAjocAsfFrameObservation,
     FullAjocAsfStage, FullAjocAudioFrameError, FullAjocAudioFrameInput, FullAjocBlocker,
     FullAjocDecodeError, FullAjocDecodeErrorKind, FullAjocDecodeMode, FullAjocDecoder,
@@ -194,7 +194,7 @@ pub(crate) struct AjocTrace {
 mod tests {
     use super::super::testutil::*;
     use super::*;
-    use macindecode_ac4_bitstream::{
+    use macindecode_ac4_decode::{
         aspx::{IntervalClass, collect_aspx_reach},
         channel::CompandingControl,
     };

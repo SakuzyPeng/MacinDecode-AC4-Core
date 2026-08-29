@@ -51,15 +51,17 @@ use crate::{
         drive_element, empty_channel_frame, prime_control_delay_element,
     },
     frame_alignment::{FrameAlignment, FrameAlignmentState, MAX_CONTROL_ALIGNMENT_DELAY_FRAMES},
+    substream_audio::Ac4SubstreamAjoc,
+    var_element::{MAX_ASPX_ELEMENTS, MAX_SIGNALS, VarChannelElement},
+};
+use alloc::{boxed::Box, collections::VecDeque, format, string::String, vec::Vec};
+use macindecode_ac4_bitstream::{
     oamd::{
         AdditionalObjectMetadata, MAX_OAMD_METADATA_BLOCKS, OamdCommonData, OamdMetadataBlock,
         OamdState, OamdStateError, OamdTimingData, ObjectMetadataState,
     },
-    substream_audio::Ac4SubstreamAjoc,
     topology::{MAX_SUBSTREAM_GROUPS, MAX_SUBSTREAMS},
-    var_element::{MAX_ASPX_ELEMENTS, MAX_SIGNALS, VarChannelElement},
 };
-use alloc::{boxed::Box, collections::VecDeque, format, string::String, vec::Vec};
 
 /// 最大四帧在 FIFO，另留一槽让刚到期的 side information 借用到下一次调用。
 const CONTROL_SNAPSHOT_SLOTS: usize = MAX_CONTROL_ALIGNMENT_DELAY_FRAMES + 1;
@@ -1023,7 +1025,7 @@ fn resolve_oamd_updates(
             snapshots.clear();
             return Err(OamdStateError::ObjectIndexOutOfRange {
                 object_index: raw.object_index,
-                limit: crate::oamd::MAX_OAMD_OBJECTS,
+                limit: macindecode_ac4_bitstream::oamd::MAX_OAMD_OBJECTS,
             });
         };
         snapshots.push(FullAjocOamdUpdateSnapshot { raw: *raw, state });
@@ -3311,12 +3313,12 @@ fn take_due_control<T>(queue: &mut VecDeque<T>, delay: usize) -> Result<Option<T
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use crate::testutil::BitBuf;
+    use alloc::vec;
+    use macindecode_ac4_bitstream::{
         oamd::{InfoStatus, ObjectInfoBlock},
         reader::BitReader,
-        testutil::BitBuf,
     };
-    use alloc::vec;
 
     const fn group_state(group_index: u32) -> FullAjocGroupOamdState {
         FullAjocGroupOamdState::new(group_index, None, false, None, false)

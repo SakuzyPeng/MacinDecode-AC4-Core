@@ -7,8 +7,8 @@
 //! 数值；下标到数值的映射（`cb_mod` / `cb_off` 等）属于各语法元素自身，不在
 //! 本模块内完成。
 
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// 码本解码失败。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

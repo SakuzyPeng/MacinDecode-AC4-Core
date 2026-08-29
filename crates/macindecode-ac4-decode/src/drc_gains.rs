@@ -5,10 +5,12 @@
 //! 整数 dB₂ 码值，并保留 version 1+ 的扩展比特；不维护跨帧配置，不平滑或应用增益，也不
 //! 修改 PCM。
 
-use super::{PresentationDrcFrameBits, PresentationDrcGainSet};
 use crate::huffman::{HuffmanError, tables};
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::presentation_substream::{
+    PresentationDrcFrameBits, PresentationDrcGainSet,
+};
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// P2 表 69 扩展后的 `nr_drc_channels` 上限。
 ///

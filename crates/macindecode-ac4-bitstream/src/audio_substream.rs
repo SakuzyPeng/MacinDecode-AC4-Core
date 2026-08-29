@@ -34,20 +34,6 @@ use crate::oamd::{
 use crate::reader::{BitReader, ReadError};
 use core::fmt;
 
-#[cfg(feature = "audio-decode")]
-mod dialog_enhancement;
-#[cfg(feature = "audio-decode")]
-pub use dialog_enhancement::{
-    DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
-    DialogEnhancementDecodedData, DialogEnhancementEffectiveData,
-    DialogEnhancementEffectiveDataBlock, DialogEnhancementEffectiveParameterData,
-    DialogEnhancementEffectiveSimulcastData, DialogEnhancementMixCoefficients,
-    DialogEnhancementParameterData, DialogEnhancementParameterUpdate,
-    DialogEnhancementPositionUpdate, DialogEnhancementSimulcastData, DialogEnhancementState,
-    DialogEnhancementStateError, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
-    MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
-};
-
 /// 解析 `ac4_substream()` 失败的原因。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioSubstreamError {

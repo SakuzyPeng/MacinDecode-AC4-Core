@@ -17,19 +17,19 @@ pub(crate) use crate::metadata_batch::{
     default_output_metadata_event,
 };
 #[cfg(feature = "audio-decode")]
-pub(crate) use macindecode_ac4_bitstream::aspx::{
-    AspxBandTables, AspxConfig, AspxData, AspxState, EnvelopeKind, HcbType, StereoMode,
-    codebooks::table_for, get_aspx_hcb,
-};
-#[cfg(feature = "audio-decode")]
-pub(crate) use macindecode_ac4_bitstream::huffman::HuffmanTable;
-#[cfg(feature = "audio-decode")]
 pub(crate) use macindecode_ac4_bitstream::oamd::{
     AbsolutePosition, AdditionalObjectMetadata, DifferentialPosition, InfoStatus, ObjectBasicInfo,
     ObjectInfoBlock, ObjectRenderInfo, OtherPropertiesUpdate, PositionUpdate, ZoneUpdate,
 };
 pub(crate) use macindecode_ac4_bitstream::substream::Ac4SubstreamGroupInfo;
 pub(crate) use macindecode_ac4_bitstream::{Ac4PresentationV1Info, BitReader};
+#[cfg(feature = "audio-decode")]
+pub(crate) use macindecode_ac4_decode::aspx::{
+    AspxBandTables, AspxConfig, AspxData, AspxState, EnvelopeKind, HcbType, StereoMode,
+    codebooks::table_for, get_aspx_hcb,
+};
+#[cfg(feature = "audio-decode")]
+pub(crate) use macindecode_ac4_decode::huffman::HuffmanTable;
 
 pub(crate) fn pack_bits(source: &str) -> (Vec<u8>, usize) {
     let bits: Vec<u8> = source

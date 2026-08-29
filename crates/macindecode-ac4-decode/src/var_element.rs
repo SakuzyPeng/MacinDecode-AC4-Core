@@ -16,8 +16,8 @@ use crate::aspx::{
     syntax::{AspxConfig, AspxData, AspxError, AspxState},
 };
 use crate::channel::{ChannelContext, ChannelElement, ChannelError, CompandingControl};
-use crate::reader::{BitReader, ReadError};
 use core::fmt;
+use macindecode_ac4_bitstream::reader::{BitReader, ReadError};
 
 /// `n_fullband_dmx_signals` 的上界。
 ///
