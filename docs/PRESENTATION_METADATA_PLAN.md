@@ -1,6 +1,12 @@
-# Presentation 与元数据闭环计划
+# Presentation 与元数据闭环计划（已完成）
 
-> **状态：解析实现完成；部分真实向量仍受限。** alternative presentation 的名称、target 与逐
+> **状态：计划已完成并转为历史记录，不再作为活动路线图。** 解析实现已经收口；尚缺的
+> alternative presentation/dataset、非零 DE Huffman body 与其他 EMDF ID/configuration 是
+> 外部真实向量能力限制，继续由 [实施路线图](ROADMAP.md)的支持矩阵、
+> [测试向量策略](TEST_VECTOR_STRATEGY.md)与[规范可追踪性](SPEC_TRACEABILITY.md)维护。
+> 以下正文保留实施时的范围、退出条件和证据，不能用其中的未来时措辞覆盖当前实现状态。
+>
+> alternative presentation 的名称、target 与逐
 > substream activation/dataset selection 前缀、公共 additional-data envelope，以及
 > dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新与有效状态、
 > associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC

@@ -43,9 +43,13 @@ TS103190-2:v1.3.1:clause <待录入>
 
 以下矩阵随实现推进逐条补充精确条款：
 
-表中的 `macindecode-ac4-audio-core`、`macindecode-ac4-ajoc` 与 `macindecode-ac4-oamd` 仍是目标职责边界，并非当前已存在的 crate；`macindecode-ac4-scene` 已建立首版数据模型，当前量化音频语法与 OAMD 实现仍集中在 `macindecode-ac4-bitstream`。实际结构见架构设计第 2 节。
+表格优先记录当前实现路径。按 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md)，
+后续先在现有 crate 内建立 syntax/decode/engine 边界，再评估把完整数值路径提取为单一
+`macindecode-ac4-decode` crate；旧的 `audio-core` / `ajoc` / `oamd` 三路目标包不再使用。
+当前量化音频语法、DSP 与 raw OAMD 仍集中在 `macindecode-ac4-bitstream`，Scene 语义组装位于
+`macindecode-ac4-scene`。实际依赖见架构设计第 2–3 节。
 
-| 能力 | 规范部分 | 目标模块 | 主要验证 |
+| 能力 | 规范部分 | 当前/目标模块 | 主要验证 |
 |---|---|---|---|
 | sync frame 与帧长度 | Part 1 | `macindecode-ac4-bitstream` | 合法/截断/损坏帧语料 |
 | TOC 与序列配置 | Part 1/2 | `macindecode-ac4-bitstream` | trace 与独立 inspection 对比 |
@@ -78,9 +82,9 @@ TS103190-2:v1.3.1:clause <待录入>
 | `ac4_substream` 与音频数据接合 | P2 `6.2.2.2`、`6.2.3.4`；P1 `4.2.4.2`、`4.3.4.1`、`4.3.3.7.8` | `macindecode-ac4-bitstream::substream_audio` | `audio_data_ajoc()` 在 `audio_size` 声明的区段内走完，越界报错且越界位置即区段末尾；八条实测流 568 帧的 `fill_bits` 全部小于 8 |
 | ASF 量化重建、缩放与解组 | P1 `5.1.3`（`Pseudocode 21`）、`5.1.5`（`Pseudocode 25`）；码本 `A.1` | `macindecode-ac4-bitstream::asf::{reconstruct, dequant}` | 手工验算并跨窗口组延续的 DPCM 链；缺失差值显式失败；标度因子落在 `5.1.3.2` 规定的 `0…255`，八条流 41 693 个频带零越界；反量化表与增益常量由整数判据正确舍入，完全立方数恰为整数，八条流 99 万条谱线零非有限值；布局按 `AsfLayoutKey` 核对，标度因子再与当前工作区精确比对；解组的双射性由下标编码验证，实测 11 030 528 条谱线非零数零失配、能量漂移 `4.2×10⁻¹⁶` |
 | IMDCT 块切换、窗口与 IFFT | P1 `5.5.2.2`（`Pseudocode 60`–`64`）、`5.5.3`（表 186、187） | `macindecode-ac4-bitstream::asf::imdct` | 窗口三段和精确等于块长，十五档全部有序对覆盖；生产 Stockham IFFT 在十五档长度上与定义式差分，固定 16 KiB scratch，根表摘要及轴点/共轭/象限换位/单位圆判据闭合。前/后旋转与 KBD 生产表已接入，另由切分、角度、Princen-Bradley 与右窗镜像判据覆盖；完整 IMDCT 由分析—合成完美重建、未加窗后半与定义式差分、`N_full` 延迟等价、`5.5.3` 文字示例差分与混合块长延迟恒定五条判据闭合 |
-| 音频核心工具 | Part 1 | `macindecode-ac4-audio-core` | 标量单元测试和频域诊断 |
+| 音频核心工具 | Part 1 | 当前 `macindecode-ac4-bitstream::{asf,aspx,element_drive,full_ajoc}`；目标 `macindecode-ac4-decode` | 标量单元测试和频域诊断 |
 | direct-object | Part 2 | `macindecode-ac4-scene` | 自生成对象母版 |
-| A-JOC 数据与重建 | Part 2 | `macindecode-ac4-ajoc` | PRBS、相关性、串扰和轨迹 |
+| A-JOC 数据与重建 | Part 2 | 当前 `macindecode-ac4-bitstream::{ajoc,full_ajoc}`；目标 `macindecode-ac4-decode` | PRBS、相关性、串扰和轨迹 |
 | OAMD | P2 `6.2.2.4`、`6.2.8.1`–`6.2.8.12`、`6.2.9.9`–`6.2.9.10`；语义 `6.3.9`；位置映射 `4.8.3.4.2` 表 7 | `macindecode-ac4-bitstream::oamd` | `byte_align` 残余 < 8；common/timing/additional 跨帧复用；整帧提交或整帧回滚；`trajectory_check.py` 逐轴比对母版轨迹 |
 | OAMD → DAMF 试听探针 | P2 `6.3.9` 语义；DAMF 0.5.1 | `macindecode-ac4-cli::{trace,damf}` | MP4 edit/priming 与裸流时间线；48 kHz/24-bit CAF；确定性对象粉红噪声；三件套经本地 ADM 规范化工具接受 |
 | full A-JOC → DAMF | P2 `4.8.3.1`、`4.8.3.4.2`、`5.7.2.3`、`6.3.2.8.1`、`6.3.9`；DAMF 0.5.1/home、0.6.0/3DoF | `macindecode-ac4-cli::{scene_export,damf}` | 单趟 full PCM/OAMD 配对；48 kHz/24-bit S24LE CAF 与 full ADM `data` 逐字节一致；home/3DoF 只改 manifest version/type，OAMD-derived `headTrackMode` 不变；见 §5.55 |

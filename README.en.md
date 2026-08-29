@@ -127,6 +127,7 @@ macindecode-ac4-cli ──→ macindecode-ac4-inspect ──→ macindecode-ac4-
                          │                          │
                          └──────────────────────────┴→ macindecode-ac4-bitstream
 macindecode-ac4-scene ──────────────────────────────→ macindecode-ac4-bitstream
+macindecode-ac4-perf ──→ macindecode-ac4-scene / macindecode-ac4-mp4 (internal)
 ```
 
 | Crate | Responsibility | `no_std` |
@@ -136,6 +137,7 @@ macindecode-ac4-scene ───────────────────�
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` contract and streaming Rust API for A-JOC Core/Full | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF boxes, `dac4`, sample table, edit/priming timeline | ✅ |
 | [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` tool: inspect, trace, PCM/ADM/DAMF/CAF export | — |
+| `macindecode-ac4-perf` | Unpublished Session timing, allocation, and hotspot-sampling harness | — |
 
 ## Data Flow
 
@@ -160,9 +162,10 @@ MP4 / raw AC-4
 | M2 TOC & topology | ✅ | Presentation/Group/Substream, random access state machine |
 | M3 OAMD & timeline | ✅ | Cross-frame state, intra-frame updates, post-seek integrity |
 | M4 Audio core baseline | ✅ | Dequant→IMDCT→A-SPX, 12 A-JOC media bit-exact core/A-SPX baselines frozen |
-| M6 Full A-JOC reconstruction | ✅ | Object matrix/wet/LFE/terminal QMF synthesis, third bit-exact baseline frozen |
+| M4.5 Presentation/Metadata | ✅ (limited) | Read-only parsing and DE/EMDF real-media gates complete; alternative, non-empty DE bodies, and other EMDF types still await samples |
 | M5 Scene API | 🚧 | A-JOC Core/Full borrowed Rust API, core/A-SPX baselines, CoreCAF, ADM/DAMF diagnostic renderers, and Full batch exports integrated; direct-object support pending |
-| M7 Public ABI | 🔲 | C ABI, SIMD optimization, fuzzing |
+| M6 Full A-JOC reconstruction | ✅ | Object matrix/wet/LFE/terminal QMF synthesis, third bit-exact baseline frozen |
+| M7 Architecture, ABI & robustness | 🚧 | ARM64 performance baselines and QMF optimizations complete; responsibility cleanup, C ABI, fuzzing, and x86-64 measurements pending |
 
 For detailed progress, known limitations, and the audio reconstruction support matrix, see the [Roadmap](docs/ROADMAP.md).
 
@@ -189,7 +192,7 @@ For detailed progress, known limitations, and the audio reconstruction support m
 | [Roadmap](docs/ROADMAP.md) | Milestone details, support matrix, known limitations |
 | [Test Vector Strategy](docs/TEST_VECTOR_STRATEGY.md) | Vector production chain, verification tiers, external references |
 | [Spec Traceability](docs/SPEC_TRACEABILITY.md) | Clause ↔ implementation ↔ test traceability matrix |
-| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, and Scene API boundaries (7 records) |
+| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (11 records) |
 
 ## License
 
