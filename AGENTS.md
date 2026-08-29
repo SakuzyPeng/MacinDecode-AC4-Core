@@ -20,7 +20,9 @@ cargo run --bin macinac4 -- trace path/to/input.m4a
 ./scripts/decode_check.py                        # local bit-exact PCM baselines (core + A-SPX stages)
 ./scripts/dme_native_check.py                    # verify local DME channel/IMS topology and DE
 ./scripts/emdf_census.py                         # verify local presentation EMDF signatures
-python3 -m unittest scripts/test_trajectory_check.py scripts/test_decode_check.py scripts/test_ajoc_census.py scripts/test_emdf_census.py scripts/test_check_patch_tables.py scripts/test_dme_ac4.py scripts/test_dme_native.py scripts/test_dee_ims.py
+python3 -m unittest scripts/test_check_layers.py scripts/test_trajectory_check.py scripts/test_decode_check.py scripts/test_ajoc_census.py scripts/test_emdf_census.py scripts/test_check_patch_tables.py scripts/test_dme_ac4.py scripts/test_dme_native.py scripts/test_dee_ims.py
+./scripts/check_layers.py                        # audit syntax/decode layer direction (ADR-0011)
+./scripts/check_layers.py --list                 # print the module dependency graph
 ./scripts/check_transform_tables.py              # audit transform constants without the PDF
 ./scripts/check_sfb_tables.py                    # verify Annex B against the PDF
 ./scripts/check_aspx_tables.py                   # verify the A-SPX static tables against the PDF
