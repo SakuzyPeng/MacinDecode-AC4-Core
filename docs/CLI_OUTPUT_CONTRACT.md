@@ -167,6 +167,9 @@ schema 的严格程度是分层的，消费者应据此判断可以依赖到哪�
   sync/CRC 及 presentation/audio-substream 数。
 - `presentations` 按 effective presentation ID 隔离状态，并报告类型、兼容级别、语言、
   码率、响度、DRC、mixing 和 downmix；不得按 DSI/TOC 数组位置强行关联。
+- topology 派生的 presentation/audio-substream 数和 presentation 的 audio-substream 引用
+  也使用上述 tagged 形状；缺少完整配置或配置代次变化时必须为 `unknown`，不得把旧基准的
+  数量或引用继续发布为当前值。
 - `audio_substreams` 只列唯一物理 audio substream，报告 object/channel/IMS 拓扑、有效
   presence-layout、preprocessing 原码/换算和 Dialogue Enhancement 配置。它不应用这些工具。
 - `issues` 中每项固定含 `code`、`severity`、`message`、`frame_index`、

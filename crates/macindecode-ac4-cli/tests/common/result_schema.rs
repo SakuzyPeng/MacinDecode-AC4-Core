@@ -74,6 +74,8 @@ fn assert_inspect_shape(result: &Value, schema: &Value) {
         "i_frame_interval",
         "sync_word",
         "crc_errors",
+        "number_of_presentations",
+        "number_of_audio_substreams",
     ] {
         assert_reported(
             &stream[name],
@@ -103,6 +105,7 @@ fn assert_inspect_shape(result: &Value, schema: &Value) {
             "language",
             "multi_pid",
             "bit_rate",
+            "audio_substreams",
             "metadata_authentication_id",
         ] {
             assert_reported(&presentation[name], schema, &format!("{path}.{name}"));

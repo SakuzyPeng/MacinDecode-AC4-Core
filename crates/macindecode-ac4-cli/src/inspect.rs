@@ -9,7 +9,8 @@ use std::io::Write as IoWrite;
 use std::path::Path;
 
 use macindecode_ac4_bitstream::{
-    Ac4PresentationSubstream, Ac4Toc, PresentationChannelContext, PresentationDrcState,
+    Ac4PresentationSubstream, Ac4Toc, PresentationChannelContext, PresentationDrcConfiguration,
+    PresentationDrcDecoderMode, PresentationDrcProfile, PresentationDrcState,
     PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainState,
     SequenceTransition, SyncFrameIter,
     audio_substream::{
@@ -38,6 +39,13 @@ pub(crate) enum FieldStatus {
     Present,
     NotPresent,
     NotApplicable,
+    Unknown,
+    Unsupported,
+}
+
+/// 解析未能形成 typed metadata 时，报告层可承诺的可用性。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MetadataFailure {
     Unknown,
     Unsupported,
 }
@@ -222,8 +230,8 @@ pub(crate) struct InspectStream {
     i_frame_interval: ReportedField,
     sync_word: ReportedField,
     crc_errors: ReportedField,
-    number_of_presentations: u32,
-    number_of_audio_substreams: u32,
+    number_of_presentations: ReportedField,
+    number_of_audio_substreams: ReportedField,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -331,7 +339,7 @@ pub(crate) struct InspectPresentation {
     language: ReportedField,
     multi_pid: ReportedField,
     bit_rate: ReportedField,
-    audio_substreams: Vec<u32>,
+    audio_substreams: ReportedField,
     metadata_authentication_id: ReportedField,
     loudness: InspectLoudness,
     dynamic_range_control: InspectDrc,
@@ -530,6 +538,7 @@ struct PresentationAccumulator {
     dsi_bitrate: Option<Ac4BitrateDsi>,
     measured_audio_bytes: u128,
     parsed_metadata: Option<PresentationMetadataOwned>,
+    metadata_failure: Option<MetadataFailure>,
     metadata_conflicts: PresentationMetadataConflicts,
 }
 
@@ -537,7 +546,7 @@ struct PresentationAccumulator {
 struct PresentationMetadataOwned {
     dialnorm_bits: u8,
     further_loudness: Option<FurtherLoudnessInfo>,
-    drc_profile: Option<u8>,
+    drc_configuration: Option<PresentationDrcConfiguration>,
     associated_scale: Option<(Option<u8>, Option<u8>, Option<u8>)>,
     stereo_downmix: Option<macindecode_ac4_bitstream::PresentationStereoDownmixCoefficients>,
 }
@@ -546,7 +555,7 @@ struct PresentationMetadataOwned {
 struct PresentationMetadataConflicts {
     dialnorm: bool,
     further_loudness: bool,
-    drc_profile: bool,
+    drc_configuration: bool,
     associated_scale: bool,
     stereo_downmix: bool,
 }
@@ -562,6 +571,7 @@ struct SubstreamAccumulator {
     preprocessing: Option<PreprocessingMetadata>,
     preprocessing_sampled: bool,
     preprocessing_conflict: bool,
+    metadata_failure: Option<MetadataFailure>,
     de_configuration: Option<DialogEnhancementConfiguration>,
     reported_de_configuration: Option<DialogEnhancementConfiguration>,
     de_configuration_sampled: bool,
@@ -1014,6 +1024,7 @@ impl Aggregator {
                                 preprocessing: None,
                                 preprocessing_sampled: false,
                                 preprocessing_conflict: false,
+                                metadata_failure: None,
                                 de_configuration: None,
                                 reported_de_configuration: None,
                                 de_configuration_sampled: false,
@@ -1064,6 +1075,7 @@ impl Aggregator {
                     dsi_bitrate: None,
                     measured_audio_bytes: 0,
                     parsed_metadata: None,
+                    metadata_failure: None,
                     metadata_conflicts: PresentationMetadataConflicts::default(),
                 },
             );
@@ -1081,7 +1093,14 @@ impl Aggregator {
             let Some(substream) = presentation.substream else {
                 continue;
             };
+            let key = presentation_key(topology, presentation_index, presentation.presentation_id);
             let Some(context) = topology.presentation_substream_context(presentation_index) else {
+                if let Some(accumulator) = self.presentations.get_mut(&key) {
+                    record_metadata_failure(
+                        &mut accumulator.metadata_failure,
+                        MetadataFailure::Unknown,
+                    );
+                }
                 self.issues.push(
                     InspectIssue::warning(
                         "presentation_context_unavailable",
@@ -1101,7 +1120,6 @@ impl Aggregator {
                     ));
                 }
             };
-            let key = presentation_key(topology, presentation_index, presentation.presentation_id);
             let state = self.presentation_states.entry(key).or_default();
             let locked_context = self
                 .presentation_channels
@@ -1159,8 +1177,14 @@ impl Aggregator {
                             presentation.presentation_id
                         ));
                     }
+                    let failure = presentation_metadata_failure(error);
+                    if let Some(accumulator) = self.presentations.get_mut(&key) {
+                        record_metadata_failure(&mut accumulator.metadata_failure, failure);
+                    }
                     let code = if presentation_metadata_error_is_reserved(error) {
                         "reserved_code"
+                    } else if failure == MetadataFailure::Unknown {
+                        "presentation_metadata_unavailable"
                     } else {
                         "presentation_metadata_unsupported"
                     };
@@ -1195,10 +1219,7 @@ impl Aggregator {
                     .presentation(presentation.presentation_id),
                 );
             }
-            let drc_profile = state
-                .drc
-                .configuration()
-                .map(|configuration| configuration.eac3_profile);
+            let drc_configuration = state.drc.configuration();
             let associated_scale = parsed.associated_audio.map(|associated| {
                 (
                     associated.scale_main,
@@ -1209,7 +1230,7 @@ impl Aggregator {
             let metadata = PresentationMetadataOwned {
                 dialnorm_bits: parsed.dialnorm_bits,
                 further_loudness: parsed.further_loudness,
-                drc_profile,
+                drc_configuration,
                 associated_scale,
                 stereo_downmix: parsed.custom_downmix.stereo_coefficients(),
             };
@@ -1316,6 +1337,12 @@ impl Aggregator {
                     .iter()
                     .find(|(_, error)| audio_metadata_error_is_reportable(*error));
                 if let Some((context, error)) = reportable {
+                    if let Some(accumulator) = self.substreams.get_mut(&substream_index) {
+                        record_metadata_failure(
+                            &mut accumulator.metadata_failure,
+                            MetadataFailure::Unsupported,
+                        );
+                    }
                     self.issues.push(
                         InspectIssue::warning(
                             "audio_metadata_unsupported",
@@ -1574,6 +1601,17 @@ impl Aggregator {
                 )
             })
             .collect::<Vec<_>>();
+        let topology_count = |count: usize| {
+            if self.canonical_fingerprint.is_none() {
+                ReportedField::unknown("complete configuration is unavailable")
+            } else if self.canonical_changed {
+                ReportedField::unknown("topology changes after the first configuration")
+            } else {
+                ReportedField::present(u32::try_from(count).unwrap_or(u32::MAX))
+            }
+        };
+        let number_of_presentations = topology_count(presentations.len());
+        let number_of_audio_substreams = topology_count(audio_substreams.len());
         self.issues
             .extend(reserved_code_issues(&presentations, &audio_substreams));
 
@@ -1596,9 +1634,8 @@ impl Aggregator {
                 i_frame_interval,
                 sync_word,
                 crc_errors,
-                number_of_presentations: u32::try_from(presentations.len()).unwrap_or(u32::MAX),
-                number_of_audio_substreams: u32::try_from(audio_substreams.len())
-                    .unwrap_or(u32::MAX),
+                number_of_presentations,
+                number_of_audio_substreams,
             },
             presentations,
             audio_substreams,
@@ -1838,6 +1875,20 @@ fn presentation_metadata_error_is_reserved(error: PresentationSubstreamError) ->
     )
 }
 
+fn presentation_metadata_failure(error: PresentationSubstreamError) -> MetadataFailure {
+    if matches!(error, PresentationSubstreamError::CapacityExceeded { .. }) {
+        MetadataFailure::Unsupported
+    } else {
+        MetadataFailure::Unknown
+    }
+}
+
+fn record_metadata_failure(slot: &mut Option<MetadataFailure>, failure: MetadataFailure) {
+    if slot.is_none() || failure == MetadataFailure::Unknown {
+        *slot = Some(failure);
+    }
+}
+
 fn audio_metadata_error_is_reportable(error: AudioSubstreamError) -> bool {
     matches!(error, AudioSubstreamError::Unsupported { .. })
 }
@@ -1896,12 +1947,9 @@ fn record_presentation_metadata_conflicts(
         conflicts.further_loudness = true;
         changes.push("further loudness".to_owned());
     }
-    if previous.drc_profile != current.drc_profile && !conflicts.drc_profile {
-        conflicts.drc_profile = true;
-        changes.push(format!(
-            "DRC profile {:?} -> {:?}",
-            previous.drc_profile, current.drc_profile
-        ));
+    if previous.drc_configuration != current.drc_configuration && !conflicts.drc_configuration {
+        conflicts.drc_configuration = true;
+        changes.push("DRC configuration".to_owned());
     }
     if previous.associated_scale != current.associated_scale && !conflicts.associated_scale {
         conflicts.associated_scale = true;
@@ -2032,46 +2080,54 @@ fn build_presentation_report(
     configuration_changed: bool,
     measurement_incomplete: bool,
 ) -> InspectPresentation {
-    let presentation_id = presentation
-        .id
-        .map(|value| ReportedField::present_raw(value, None, value))
-        .unwrap_or_else(ReportedField::not_present);
+    const TOPOLOGY_CHANGED: &str = "topology changes after the first configuration";
+
+    let presentation_id = if configuration_changed {
+        ReportedField::unknown(TOPOLOGY_CHANGED)
+    } else {
+        presentation
+            .id
+            .map(|value| ReportedField::present_raw(value, None, value))
+            .unwrap_or_else(ReportedField::not_present)
+    };
     let config_label = presentation
         .presentation_config
         .map_or("single_group", presentation_config_label);
-    let layout = if presentation.scene_path == "IMS" {
-        "Stereo / IMS"
-    } else {
-        presentation
+    let layout = match presentation.scene_path {
+        "IMS" => "Stereo / IMS",
+        "Channel-Based" => presentation
             .channel_label
             .as_deref()
-            .unwrap_or(presentation.scene_path)
+            .unwrap_or(presentation.scene_path),
+        _ => presentation.scene_path,
     };
     let summary_value = format!(
         "{layout} {} ({config_label})",
         presentation.role.to_lowercase()
     );
     let summary = if configuration_changed {
-        ReportedField::unknown("topology changes after the first configuration")
+        ReportedField::unknown(TOPOLOGY_CHANGED)
     } else if let Some(raw) = presentation.presentation_config {
         ReportedField::present_raw(summary_value, None, raw)
     } else {
         ReportedField::present(summary_value)
     };
     let presentation_type = if configuration_changed {
-        ReportedField::unknown("topology changes after the first configuration")
+        ReportedField::unknown(TOPOLOGY_CHANGED)
     } else {
         ReportedField::present(presentation.role)
     };
     let minimal_compatibility_level = if configuration_changed {
-        ReportedField::unknown("topology changes after the first configuration")
+        ReportedField::unknown(TOPOLOGY_CHANGED)
     } else {
         presentation
             .md_compat
             .map(|value| ReportedField::present_raw(value, None, value))
             .unwrap_or_else(ReportedField::not_present)
     };
-    let language = if presentation.language_conflict {
+    let language = if configuration_changed {
+        ReportedField::unknown(TOPOLOGY_CHANGED)
+    } else if presentation.language_conflict {
         ReportedField::unknown("multiple language tags contribute to the presentation")
     } else {
         presentation
@@ -2090,7 +2146,7 @@ fn build_presentation_report(
             )
     };
     let multi_pid = if configuration_changed {
-        ReportedField::unknown("topology changes after the first configuration")
+        ReportedField::unknown(TOPOLOGY_CHANGED)
     } else {
         presentation
             .multi_pid
@@ -2122,6 +2178,17 @@ fn build_presentation_report(
     } else {
         measured_bitrate
     };
+    let audio_substreams = if configuration_changed {
+        ReportedField::unknown(TOPOLOGY_CHANGED)
+    } else {
+        ReportedField::present(json!(
+            presentation
+                .audio_substreams
+                .iter()
+                .copied()
+                .collect::<Vec<_>>()
+        ))
+    };
 
     let (mut dialogue_normalization, mut loudness, mut drc, mut mixing, mut downmix) =
         presentation.parsed_metadata.as_ref().map_or_else(
@@ -2143,7 +2210,7 @@ fn build_presentation_report(
                 (
                     dialnorm,
                     loudness_report(metadata.dialnorm_bits, metadata.further_loudness),
-                    drc_report(metadata.drc_profile),
+                    drc_report(metadata.drc_configuration),
                     mixing_report(metadata.associated_scale),
                     downmix_report(metadata.stereo_downmix),
                 )
@@ -2159,7 +2226,7 @@ fn build_presentation_report(
     if conflicts.further_loudness {
         loudness = conflicting_loudness_report();
     }
-    if conflicts.drc_profile {
+    if conflicts.drc_configuration {
         drc = conflicting_drc_report();
     }
     if conflicts.associated_scale {
@@ -2167,6 +2234,23 @@ fn build_presentation_report(
     }
     if conflicts.stereo_downmix {
         downmix = conflicting_downmix_report();
+    }
+    let metadata_unavailable = if configuration_changed {
+        Some((MetadataFailure::Unknown, TOPOLOGY_CHANGED))
+    } else {
+        presentation.metadata_failure.map(|failure| {
+            (
+                failure,
+                "presentation metadata could not be interpreted completely",
+            )
+        })
+    };
+    if let Some((failure, reason)) = metadata_unavailable {
+        dialogue_normalization = unavailable_field(failure, reason);
+        loudness = unavailable_loudness_report(failure, reason);
+        drc = unavailable_drc_report(failure, reason);
+        mixing = unavailable_mixing_report(failure, reason);
+        downmix = unavailable_downmix_report(failure, reason);
     }
 
     InspectPresentation {
@@ -2179,7 +2263,7 @@ fn build_presentation_report(
         language,
         multi_pid,
         bit_rate,
-        audio_substreams: presentation.audio_substreams.iter().copied().collect(),
+        audio_substreams,
         metadata_authentication_id: ReportedField::unsupported(
             "no confirmed ETSI field maps to the proprietary label",
         ),
@@ -2194,49 +2278,88 @@ fn metadata_changed_field() -> ReportedField {
     ReportedField::unknown("value changes within the configuration")
 }
 
-fn conflicting_loudness_report() -> InspectLoudness {
-    InspectLoudness {
-        loudness: metadata_changed_field(),
-        version: metadata_changed_field(),
-        regulation_type: metadata_changed_field(),
-        correction_type: metadata_changed_field(),
-        dialogue_intelligence: metadata_changed_field(),
-        integrated_speech_gated: metadata_changed_field(),
-        integrated_level_gated: metadata_changed_field(),
-        maximum_true_peak: metadata_changed_field(),
-        maximum_momentary_loudness: metadata_changed_field(),
-        loudness_range: metadata_changed_field(),
+fn unavailable_field(failure: MetadataFailure, reason: &str) -> ReportedField {
+    match failure {
+        MetadataFailure::Unknown => ReportedField::unknown(reason),
+        MetadataFailure::Unsupported => ReportedField::unsupported(reason),
     }
+}
+
+fn unavailable_loudness_report(failure: MetadataFailure, reason: &str) -> InspectLoudness {
+    let field = || unavailable_field(failure, reason);
+    InspectLoudness {
+        loudness: field(),
+        version: field(),
+        regulation_type: field(),
+        correction_type: field(),
+        dialogue_intelligence: field(),
+        integrated_speech_gated: field(),
+        integrated_level_gated: field(),
+        maximum_true_peak: field(),
+        maximum_momentary_loudness: field(),
+        loudness_range: field(),
+    }
+}
+
+fn unavailable_drc_report(failure: MetadataFailure, reason: &str) -> InspectDrc {
+    let field = || unavailable_field(failure, reason);
+    InspectDrc {
+        enhanced_ac3_profile: field(),
+        home_theater_avr: field(),
+        flat_panel_tv: field(),
+        portable_speakers: field(),
+        portable_headphones: field(),
+    }
+}
+
+fn unavailable_mixing_report(failure: MetadataFailure, reason: &str) -> InspectMixing {
+    let field = || unavailable_field(failure, reason);
+    InspectMixing {
+        main_audio_ducking_level: field(),
+        main_audio_ducking_level_center: field(),
+        main_audio_ducking_level_front: field(),
+    }
+}
+
+fn unavailable_downmix_report(failure: MetadataFailure, reason: &str) -> InspectDownmix {
+    let field = || unavailable_field(failure, reason);
+    InspectDownmix {
+        loro_center_mix_gain: field(),
+        loro_surround_mix_gain: field(),
+        ltrt_center_mix_gain: field(),
+        ltrt_surround_mix_gain: field(),
+        lfe_mix_info: field(),
+        lfe_mix_gain: field(),
+        preferred_downmix: field(),
+    }
+}
+
+fn conflicting_loudness_report() -> InspectLoudness {
+    unavailable_loudness_report(
+        MetadataFailure::Unknown,
+        "value changes within the configuration",
+    )
 }
 
 fn conflicting_drc_report() -> InspectDrc {
-    InspectDrc {
-        enhanced_ac3_profile: metadata_changed_field(),
-        home_theater_avr: metadata_changed_field(),
-        flat_panel_tv: metadata_changed_field(),
-        portable_speakers: metadata_changed_field(),
-        portable_headphones: metadata_changed_field(),
-    }
+    unavailable_drc_report(
+        MetadataFailure::Unknown,
+        "value changes within the configuration",
+    )
 }
 
 fn conflicting_mixing_report() -> InspectMixing {
-    InspectMixing {
-        main_audio_ducking_level: metadata_changed_field(),
-        main_audio_ducking_level_center: metadata_changed_field(),
-        main_audio_ducking_level_front: metadata_changed_field(),
-    }
+    unavailable_mixing_report(
+        MetadataFailure::Unknown,
+        "value changes within the configuration",
+    )
 }
 
 fn conflicting_downmix_report() -> InspectDownmix {
-    InspectDownmix {
-        loro_center_mix_gain: metadata_changed_field(),
-        loro_surround_mix_gain: metadata_changed_field(),
-        ltrt_center_mix_gain: metadata_changed_field(),
-        ltrt_surround_mix_gain: metadata_changed_field(),
-        lfe_mix_info: metadata_changed_field(),
-        lfe_mix_gain: metadata_changed_field(),
-        preferred_downmix: metadata_changed_field(),
-    }
+    unavailable_downmix_report(
+        MetadataFailure::Unknown,
+        "value changes within the configuration",
+    )
 }
 
 fn loudness_report(dialnorm_bits: u8, further: Option<FurtherLoudnessInfo>) -> InspectLoudness {
@@ -2349,17 +2472,76 @@ fn loudness_practice_field(raw: u8) -> ReportedField {
     ReportedField::present_raw(name, None, raw)
 }
 
-fn drc_report(profile: Option<u8>) -> InspectDrc {
-    let Some(profile) = profile else {
+fn drc_report(configuration: Option<PresentationDrcConfiguration>) -> InspectDrc {
+    let Some(configuration) = configuration else {
         return InspectDrc::default();
     };
-    let field = drc_profile_field(profile);
     InspectDrc {
-        enhanced_ac3_profile: field.clone(),
-        home_theater_avr: field.clone(),
-        flat_panel_tv: field.clone(),
-        portable_speakers: field.clone(),
-        portable_headphones: field,
+        enhanced_ac3_profile: drc_profile_field(configuration.eac3_profile),
+        home_theater_avr: drc_decoder_mode_field(&configuration, 0),
+        flat_panel_tv: drc_decoder_mode_field(&configuration, 1),
+        portable_speakers: drc_decoder_mode_field(&configuration, 2),
+        portable_headphones: drc_decoder_mode_field(&configuration, 3),
+    }
+}
+
+fn drc_decoder_mode_field(
+    configuration: &PresentationDrcConfiguration,
+    mode_id: u8,
+) -> ReportedField {
+    let mut modes = configuration
+        .decoder_modes()
+        .iter()
+        .filter(|mode| mode.mode_id == mode_id);
+    let Some(mode) = modes.next().copied() else {
+        return ReportedField::not_present();
+    };
+    if modes.next().is_some() {
+        return ReportedField::unknown_raw(
+            json!({"mode_id": mode_id}),
+            "decoder mode ID is declared more than once",
+        );
+    }
+    drc_decoder_mode_profile_field(mode, configuration.eac3_profile)
+}
+
+fn drc_decoder_mode_profile_field(
+    mode: PresentationDrcDecoderMode,
+    eac3_profile: u8,
+) -> ReportedField {
+    match mode.profile {
+        PresentationDrcProfile::DefaultEac3 => {
+            let mut field = drc_profile_field(eac3_profile);
+            field.raw_code = Some(json!({
+                "mode_id": mode.mode_id,
+                "profile": "default_eac3",
+                "eac3_profile": eac3_profile,
+            }));
+            field
+        }
+        PresentationDrcProfile::Repeat { repeat_id } => ReportedField::present_raw(
+            format!("Repeat decoder mode {repeat_id}"),
+            None,
+            json!({
+                "mode_id": mode.mode_id,
+                "profile": "repeat",
+                "repeat_id": repeat_id,
+            }),
+        ),
+        PresentationDrcProfile::CompressionCurve(_) => ReportedField::present_raw(
+            "Custom compression curve",
+            None,
+            json!({"mode_id": mode.mode_id, "profile": "compression_curve"}),
+        ),
+        PresentationDrcProfile::Gains { configuration } => ReportedField::present_raw(
+            "Per-frame DRC gains",
+            None,
+            json!({
+                "mode_id": mode.mode_id,
+                "profile": "gains",
+                "gains_configuration": configuration,
+            }),
+        ),
     }
 }
 
@@ -2529,6 +2711,11 @@ fn build_substream_report(
         unknown_preprocessing("topology changes after the first configuration")
     } else if substream.preprocessing_conflict {
         unknown_preprocessing("value changes within the configuration")
+    } else if let Some(failure) = substream.metadata_failure {
+        unavailable_preprocessing(
+            failure,
+            "audio metadata could not be interpreted completely",
+        )
     } else {
         substream
             .preprocessing
@@ -2538,6 +2725,11 @@ fn build_substream_report(
         unknown_dialogue_enhancement("topology changes after the first configuration")
     } else if substream.de_configuration_conflict {
         unknown_dialogue_enhancement("value changes within the configuration")
+    } else if let Some(failure) = substream.metadata_failure {
+        unavailable_dialogue_enhancement(
+            failure,
+            "audio metadata could not be interpreted completely",
+        )
     } else {
         dialogue_enhancement_report(substream.de_seen, substream.reported_de_configuration)
     };
@@ -2563,35 +2755,46 @@ fn build_substream_report(
 }
 
 fn unknown_preprocessing(reason: &str) -> InspectPreprocessing {
-    let unknown = || ReportedField::unknown(reason);
+    unavailable_preprocessing(MetadataFailure::Unknown, reason)
+}
+
+fn unavailable_preprocessing(failure: MetadataFailure, reason: &str) -> InspectPreprocessing {
+    let field = || unavailable_field(failure, reason);
     InspectPreprocessing {
-        previous_mix_type_2channel: unknown(),
-        phase90_filter_info_2channel: unknown(),
-        loro_center_mix_gain: unknown(),
-        loro_surround_mix_gain: unknown(),
-        loro_downmix_loudness_correction: unknown(),
-        ltrt_center_mix_gain: unknown(),
-        ltrt_surround_mix_gain: unknown(),
-        ltrt_downmix_loudness_correction: unknown(),
-        lfe_mix_gain: unknown(),
-        preferred_downmix: unknown(),
-        previous_downmix_type_5channel: unknown(),
-        previous_upmix_type_5channel: unknown(),
-        previous_upmix_type_3_4: unknown(),
-        previous_upmix_type_3_2_2: unknown(),
-        phase90_filter_info: unknown(),
-        surround_attenuation_known: unknown(),
-        lfe_attenuation_known: unknown(),
+        previous_mix_type_2channel: field(),
+        phase90_filter_info_2channel: field(),
+        loro_center_mix_gain: field(),
+        loro_surround_mix_gain: field(),
+        loro_downmix_loudness_correction: field(),
+        ltrt_center_mix_gain: field(),
+        ltrt_surround_mix_gain: field(),
+        ltrt_downmix_loudness_correction: field(),
+        lfe_mix_gain: field(),
+        preferred_downmix: field(),
+        previous_downmix_type_5channel: field(),
+        previous_upmix_type_5channel: field(),
+        previous_upmix_type_3_4: field(),
+        previous_upmix_type_3_2_2: field(),
+        phase90_filter_info: field(),
+        surround_attenuation_known: field(),
+        lfe_attenuation_known: field(),
     }
 }
 
 fn unknown_dialogue_enhancement(reason: &str) -> InspectDialogueEnhancement {
-    let unknown = || ReportedField::unknown(reason);
+    unavailable_dialogue_enhancement(MetadataFailure::Unknown, reason)
+}
+
+fn unavailable_dialogue_enhancement(
+    failure: MetadataFailure,
+    reason: &str,
+) -> InspectDialogueEnhancement {
+    let field = || unavailable_field(failure, reason);
     InspectDialogueEnhancement {
-        enabled: unknown(),
-        method: unknown(),
-        max_gain: unknown(),
-        channel_configuration: unknown(),
+        enabled: field(),
+        method: field(),
+        max_gain: field(),
+        channel_configuration: field(),
     }
 }
 
@@ -3000,15 +3203,17 @@ impl InspectReport {
         );
         text_field(&mut output, 1, "Sync word", &self.stream.sync_word);
         text_field(&mut output, 1, "CRC errors", &self.stream.crc_errors);
-        let _ = writeln!(
-            output,
-            "    Number of presentations: {}",
-            self.stream.number_of_presentations
+        text_field(
+            &mut output,
+            1,
+            "Number of presentations",
+            &self.stream.number_of_presentations,
         );
-        let _ = writeln!(
-            output,
-            "    Number of audio substreams: {}",
-            self.stream.number_of_audio_substreams
+        text_field(
+            &mut output,
+            1,
+            "Number of audio substreams",
+            &self.stream.number_of_audio_substreams,
         );
 
         for presentation in &self.presentations {
@@ -3036,21 +3241,7 @@ impl InspectReport {
             text_field(&mut output, 1, "Language", &presentation.language);
             text_field(&mut output, 1, "Multi-PID", &presentation.multi_pid);
             text_field(&mut output, 1, "Bit rate", &presentation.bit_rate);
-            let audio_refs = presentation
-                .audio_substreams
-                .iter()
-                .map(u32::to_string)
-                .collect::<Vec<_>>()
-                .join(", ");
-            let _ = writeln!(
-                output,
-                "    Audio substreams: {}",
-                if audio_refs.is_empty() {
-                    "None"
-                } else {
-                    &audio_refs
-                }
-            );
+            text_audio_substreams(&mut output, &presentation.audio_substreams);
             text_field(
                 &mut output,
                 1,
@@ -3381,6 +3572,32 @@ fn text_field(output: &mut String, indent: usize, label: &str, field: &ReportedF
     );
 }
 
+fn text_audio_substreams(output: &mut String, field: &ReportedField) {
+    if field.status != FieldStatus::Present {
+        text_field(output, 1, "Audio substreams", field);
+        return;
+    }
+    let Some(references) = field.value.as_ref().and_then(Value::as_array) else {
+        text_field(output, 1, "Audio substreams", field);
+        return;
+    };
+    let references = references
+        .iter()
+        .filter_map(Value::as_u64)
+        .map(|value| value.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let _ = writeln!(
+        output,
+        "    Audio substreams: {}",
+        if references.is_empty() {
+            "None"
+        } else {
+            &references
+        }
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3433,6 +3650,167 @@ mod tests {
             }),
         );
         assert_eq!(de.max_gain.text(), "9 dB (raw: 2)");
+    }
+
+    #[test]
+    fn drc_device_fields_only_report_their_declared_decoder_modes() {
+        const STRICT: [u8; 4] = [0x00, 0x3d, 0x01, 0x00];
+        let context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            PresentationChannelContext::UNDEFINED,
+        );
+        let mut state = PresentationDrcState::new();
+        Ac4PresentationSubstream::parse_with_drc_state(&STRICT, context, &mut state)
+            .expect("严格 presentation payload 应能解析");
+        let configuration = state.configuration().expect("payload 应声明 DRC 配置");
+        let modes = configuration.decoder_modes();
+        assert_eq!(modes.len(), 1);
+        let declared_mode = usize::from(modes.first().expect("应有一个 decoder mode").mode_id);
+        assert!(declared_mode < 4);
+
+        let report = drc_report(Some(configuration));
+        assert_eq!(report.enhanced_ac3_profile.status, FieldStatus::Present);
+        for (mode, field) in [
+            &report.home_theater_avr,
+            &report.flat_panel_tv,
+            &report.portable_speakers,
+            &report.portable_headphones,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(
+                field.status,
+                if mode == declared_mode {
+                    FieldStatus::Present
+                } else {
+                    FieldStatus::NotPresent
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn unsupported_audio_metadata_does_not_fall_back_to_absent_or_disabled() {
+        let report = build_substream_report(
+            &SubstreamAccumulator {
+                index: 1,
+                role: "Main",
+                channel_info: None,
+                ims: false,
+                object_coded: false,
+                measured_bytes: 0,
+                preprocessing: None,
+                preprocessing_sampled: false,
+                preprocessing_conflict: false,
+                metadata_failure: Some(MetadataFailure::Unsupported),
+                de_configuration: None,
+                reported_de_configuration: None,
+                de_configuration_sampled: false,
+                de_configuration_conflict: false,
+                de_seen: false,
+            },
+            None,
+            false,
+            false,
+        );
+        let preprocessing = serde_json::to_value(report.preprocessing).unwrap();
+        assert!(
+            preprocessing
+                .as_object()
+                .unwrap()
+                .values()
+                .all(|field| field["status"] == "unsupported")
+        );
+        let dialogue_enhancement = serde_json::to_value(report.dialogue_enhancement).unwrap();
+        assert!(
+            dialogue_enhancement
+                .as_object()
+                .unwrap()
+                .values()
+                .all(|field| field["status"] == "unsupported")
+        );
+    }
+
+    #[test]
+    fn unsupported_presentation_metadata_does_not_fall_back_to_not_present() {
+        let report = build_presentation_report(
+            &PresentationAccumulator {
+                index: 0,
+                id: Some(1),
+                presentation_config: None,
+                md_compat: None,
+                multi_pid: None,
+                alternative: false,
+                scene_path: "Object-Based",
+                channel_label: None,
+                audio_substreams: BTreeSet::from([1]),
+                role: "Main",
+                language: None,
+                language_conflict: false,
+                dsi_bitrate: None,
+                measured_audio_bytes: 0,
+                parsed_metadata: None,
+                metadata_failure: Some(MetadataFailure::Unsupported),
+                metadata_conflicts: PresentationMetadataConflicts::default(),
+            },
+            None,
+            false,
+            false,
+        );
+        assert_eq!(
+            report.dialogue_normalization.status,
+            FieldStatus::Unsupported
+        );
+        for section in [
+            serde_json::to_value(report.loudness).unwrap(),
+            serde_json::to_value(report.dynamic_range_control).unwrap(),
+            serde_json::to_value(report.mixing_metadata).unwrap(),
+            serde_json::to_value(report.downmix).unwrap(),
+        ] {
+            assert!(
+                section
+                    .as_object()
+                    .unwrap()
+                    .values()
+                    .all(|field| field["status"] == "unsupported")
+            );
+        }
+    }
+
+    #[test]
+    fn mixed_presentation_summary_is_not_replaced_by_a_channel_label() {
+        let report = build_presentation_report(
+            &PresentationAccumulator {
+                index: 0,
+                id: Some(1),
+                presentation_config: None,
+                md_compat: None,
+                multi_pid: None,
+                alternative: false,
+                scene_path: "Mixed",
+                channel_label: Some("5.1".to_owned()),
+                audio_substreams: BTreeSet::new(),
+                role: "Main",
+                language: None,
+                language_conflict: false,
+                dsi_bitrate: None,
+                measured_audio_bytes: 0,
+                parsed_metadata: None,
+                metadata_failure: None,
+                metadata_conflicts: PresentationMetadataConflicts::default(),
+            },
+            None,
+            false,
+            false,
+        );
+        assert_eq!(
+            report.summary.value,
+            Some(json!("Mixed main (single_group)"))
+        );
     }
 
     #[test]
@@ -3571,6 +3949,7 @@ mod tests {
                 preprocessing: None,
                 preprocessing_sampled: true,
                 preprocessing_conflict: false,
+                metadata_failure: None,
                 de_configuration: Some(configuration),
                 reported_de_configuration: Some(configuration),
                 de_configuration_sampled: true,

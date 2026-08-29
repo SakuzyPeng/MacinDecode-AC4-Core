@@ -551,12 +551,10 @@
           "$ref": "#/$defs/reportedField"
         },
         "number_of_presentations": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/$defs/reportedField"
         },
         "number_of_audio_substreams": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/$defs/reportedField"
         }
       }
     },
@@ -627,11 +625,7 @@
         "language": { "$ref": "#/$defs/reportedField" },
         "multi_pid": { "$ref": "#/$defs/reportedField" },
         "bit_rate": { "$ref": "#/$defs/reportedField" },
-        "audio_substreams": {
-          "type": "array",
-          "items": { "type": "integer", "minimum": 0 },
-          "uniqueItems": true
-        },
+        "audio_substreams": { "$ref": "#/$defs/reportedField" },
         "metadata_authentication_id": { "$ref": "#/$defs/reportedField" },
         "loudness": { "$ref": "#/$defs/inspectLoudness" },
         "dynamic_range_control": { "$ref": "#/$defs/inspectDrc" },

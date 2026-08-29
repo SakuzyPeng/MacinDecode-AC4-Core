@@ -289,10 +289,10 @@ fn raw_json_reports_crc_variable_iframes_and_unique_physical_substreams() {
     );
     assert_eq!(result["stream"]["i_frame_interval"]["value"]["minimum"], 2);
     assert_eq!(result["stream"]["i_frame_interval"]["value"]["maximum"], 3);
-    assert_eq!(result["stream"]["number_of_presentations"], 1);
-    assert_eq!(result["stream"]["number_of_audio_substreams"], 1);
+    assert_eq!(result["stream"]["number_of_presentations"]["value"], 1);
+    assert_eq!(result["stream"]["number_of_audio_substreams"]["value"], 1);
     assert_eq!(
-        result["presentations"][0]["audio_substreams"],
+        result["presentations"][0]["audio_substreams"]["value"],
         serde_json::json!([1])
     );
     assert!(
@@ -355,14 +355,14 @@ fn duplicate_presentation_references_count_one_physical_audio_substream() {
     let result = json_result(&path);
     let _ = fs::remove_file(&path);
 
-    assert_eq!(result["stream"]["number_of_presentations"], 2);
-    assert_eq!(result["stream"]["number_of_audio_substreams"], 1);
+    assert_eq!(result["stream"]["number_of_presentations"]["value"], 2);
+    assert_eq!(result["stream"]["number_of_audio_substreams"]["value"], 1);
     assert_eq!(
-        result["presentations"][0]["audio_substreams"],
+        result["presentations"][0]["audio_substreams"]["value"],
         serde_json::json!([1])
     );
     assert_eq!(
-        result["presentations"][1]["audio_substreams"],
+        result["presentations"][1]["audio_substreams"]["value"],
         serde_json::json!([1])
     );
     assert_eq!(result["audio_substreams"][0]["index"], 1);
@@ -378,8 +378,14 @@ fn known_unsupported_topology_returns_a_usable_report_and_issue() {
 
     assert_eq!(result["source"]["frame_count"], 1);
     assert_eq!(result["stream"]["bitstream_version"]["value"], 4);
-    assert_eq!(result["stream"]["number_of_presentations"], 0);
-    assert_eq!(result["stream"]["number_of_audio_substreams"], 0);
+    assert_eq!(
+        result["stream"]["number_of_presentations"]["status"],
+        "unknown"
+    );
+    assert_eq!(
+        result["stream"]["number_of_audio_substreams"]["status"],
+        "unknown"
+    );
     assert!(
         result["issues"]
             .as_array()
@@ -442,6 +448,18 @@ fn topology_change_marks_related_fields_unknown_and_records_frame() {
 
     assert_eq!(result["presentations"][0]["summary"]["status"], "unknown");
     assert_eq!(
+        result["stream"]["number_of_presentations"]["status"],
+        "unknown"
+    );
+    assert_eq!(
+        result["stream"]["number_of_audio_substreams"]["status"],
+        "unknown"
+    );
+    assert_eq!(
+        result["presentations"][0]["presentation_id"]["status"],
+        "unknown"
+    );
+    assert_eq!(
         result["presentations"][0]["presentation_type"]["status"],
         "unknown"
     );
@@ -451,6 +469,29 @@ fn topology_change_marks_related_fields_unknown_and_records_frame() {
     );
     assert_eq!(result["presentations"][0]["multi_pid"]["status"], "unknown");
     assert_eq!(result["presentations"][0]["bit_rate"]["status"], "unknown");
+    assert_eq!(
+        result["presentations"][0]["audio_substreams"]["status"],
+        "unknown"
+    );
+    assert_eq!(
+        result["presentations"][0]["dialogue_normalization"]["status"],
+        "unknown"
+    );
+    for section in [
+        "loudness",
+        "dynamic_range_control",
+        "mixing_metadata",
+        "downmix",
+    ] {
+        assert!(
+            result["presentations"][0][section]
+                .as_object()
+                .unwrap()
+                .values()
+                .all(|field| field["status"] == "unknown"),
+            "{section} 应全部标记为 unknown"
+        );
+    }
     assert_eq!(
         result["audio_substreams"][0]["channel_layout"]["status"],
         "unknown"
