@@ -61,7 +61,7 @@ use macindecode_ac4_bitstream::{
     },
 };
 use macindecode_ac4_mp4::{
-    Ac4Dsi, BoxIter, EditListEntry, SampleDelta, SampleTable, find_box, find_path,
+    Ac4Dsi, Ac4Track, BoxIter, EditListEntry, SampleDelta, SampleTable, find_box, find_path,
     media_time_to_presentation, parse_edit_list, parse_header_timing, presentation_timing,
 };
 #[cfg(feature = "audio-decode")]

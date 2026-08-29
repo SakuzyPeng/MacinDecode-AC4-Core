@@ -29,4 +29,7 @@ pub use timeline::{
     EditListEntry, HeaderTiming, PresentationTiming, TimelineError, media_time_to_presentation,
     parse_edit_list, parse_header_timing, presentation_timing,
 };
-pub use track::{AUDIO_SAMPLE_ENTRY_LEN, Ac4Track, find_ac4_sample_entry, find_ac4_track};
+pub use track::{
+    AUDIO_SAMPLE_ENTRY_LEN, Ac4SampleEntry, Ac4Track, TrackError, find_ac4_sample_entry,
+    find_ac4_track,
+};

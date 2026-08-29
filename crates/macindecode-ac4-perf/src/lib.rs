@@ -1049,7 +1049,9 @@ fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescrip
     let mvhd = find_box(moov.payload, b"mvhd").ok_or_else(|| "MP4 has no mvhd box".to_owned())?;
     let movie = parse_header_timing(*b"mvhd", mvhd.payload)
         .map_err(|error| format!("invalid MP4 mvhd: {error}"))?;
-    let track = find_ac4_track(moov.payload).ok_or_else(|| "MP4 has no AC-4 track".to_owned())?;
+    let track = find_ac4_track(moov.payload)
+        .map_err(|error| format!("invalid MP4 sample description: {error}"))?
+        .ok_or_else(|| "MP4 has no AC-4 track".to_owned())?;
     let mdhd = find_box(track.mdia.payload, b"mdhd")
         .ok_or_else(|| "AC-4 track has no mdhd box".to_owned())?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload)
@@ -1095,6 +1097,10 @@ fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescrip
     let mut access_units = Vec::with_capacity(capacity);
     for item in table.iter() {
         let info = item.map_err(|error| format!("invalid MP4 sample: {error}"))?;
+        track
+            .sample_entry
+            .validate_sample(&info)
+            .map_err(|error| format!("invalid MP4 sample: {error}"))?;
         let range = checked_sample_range(info.offset, info.size, data.len())?;
         let raw_frame = data
             .get(range.clone())

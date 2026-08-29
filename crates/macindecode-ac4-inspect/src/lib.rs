@@ -861,8 +861,9 @@ fn inspect_raw(data: &[u8], input: &str) -> Result<InspectReport, String> {
 
 fn inspect_mp4(data: &[u8], input: &str) -> Result<InspectReport, String> {
     let moov = find_box(data, b"moov").ok_or("moov box not found")?;
-    let track =
-        find_ac4_track(moov.payload).ok_or("No track with an ac-4 sample entry was found")?;
+    let track = find_ac4_track(moov.payload)
+        .map_err(|error| error.to_string())?
+        .ok_or("No track with an ac-4 sample entry was found")?;
     let mdhd = find_box(track.mdia.payload, b"mdhd").ok_or("mdhd box not found")?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload).map_err(|error| error.to_string())?;
     let specific = track.dac4().ok_or("ac-4 sample entry has no dac4 box")?;
@@ -875,6 +876,10 @@ fn inspect_mp4(data: &[u8], input: &str) -> Result<InspectReport, String> {
     let mut duration_ticks = 0u128;
     for item in table.iter() {
         let info = item.map_err(|error| error.to_string())?;
+        track
+            .sample_entry
+            .validate_sample(&info)
+            .map_err(|error| error.to_string())?;
         let start = usize::try_from(info.offset).unwrap_or(usize::MAX);
         let len = usize::try_from(info.size).unwrap_or(usize::MAX);
         let end = start.checked_add(len).ok_or("MP4 sample range overflow")?;

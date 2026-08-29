@@ -1,7 +1,7 @@
 //! MP4 与 Annex G trace 报告渲染。
 
 use super::{
-    Ac4Dsi, Ac4Toc, Ac4Topology, BoxIter, EditListEntry, SampleDelta, SampleTable,
+    Ac4Dsi, Ac4Toc, Ac4Topology, Ac4Track, BoxIter, EditListEntry, SampleDelta, SampleTable,
     SequenceTransition, SyncFrameIter, TopologyTrace, dac4, find_ac4_track, find_box, find_path,
     media_time_to_presentation, parse_edit_list, parse_header_timing, parse_stsz,
     presentation_timing,
@@ -49,14 +49,14 @@ struct FrameTrace {
 
 fn trace_frames(
     data: &[u8],
-    stbl: &[u8],
+    track: &Ac4Track<'_>,
     dsi: &Ac4Dsi<'_>,
     media_timescale: u32,
     movie_timescale: u32,
     edits: &[EditListEntry],
     presented_duration: u64,
 ) -> Result<FrameTrace, String> {
-    let table = SampleTable::parse(stbl).map_err(|e| e.to_string())?;
+    let table = SampleTable::parse(track.stbl.payload).map_err(|e| e.to_string())?;
     let presented_end = i64::try_from(presented_duration)
         .map_err(|_| "Presentation duration exceeds the signed timeline range")?;
     let mut trace = FrameTrace {
@@ -79,6 +79,10 @@ fn trace_frames(
 
     for item in table.iter() {
         let info = item.map_err(|e| e.to_string())?;
+        track
+            .sample_entry
+            .validate_sample(&info)
+            .map_err(|error| error.to_string())?;
         trace.frames = trace.frames.saturating_add(1);
         let presentation_start = media_time_to_presentation(
             info.composition_time,
@@ -327,8 +331,9 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
     let mvhd = find_box(moov.payload, b"mvhd").ok_or("mvhd box not found")?;
     let movie = parse_header_timing(*b"mvhd", mvhd.payload).map_err(|e| e.to_string())?;
 
-    let track =
-        find_ac4_track(moov.payload).ok_or("No track with an ac-4 sample entry was found")?;
+    let track = find_ac4_track(moov.payload)
+        .map_err(|error| error.to_string())?
+        .ok_or("No track with an ac-4 sample entry was found")?;
     let track_index = track.index;
     let trak = &track.trak;
     let mdia = &track.mdia;
@@ -358,7 +363,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
 
     let trace = trace_frames(
         data,
-        stbl.payload,
+        &track,
         &dsi,
         media.timescale,
         movie.timescale,

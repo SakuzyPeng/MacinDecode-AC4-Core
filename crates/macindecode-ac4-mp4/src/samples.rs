@@ -28,10 +28,17 @@ pub enum SampleTableError {
         /// 实际版本号。
         version: u8,
     },
-    /// `stsc` 的首个条目未从第 1 个 chunk 开始，或条目非递增。
+    /// `stsc` 缺少有效映射、首项不从 chunk 1 开始、条目非递增，或 chunk 样本数为 0。
     ChunkMappingInvalid {
         /// 出问题的条目序号。
         entry: u32,
+    },
+    /// `stsc` 的 sample-description 下标为规范禁止的 0。
+    SampleDescriptionInvalid {
+        /// 出问题的 `stsc` 条目序号。
+        entry: u32,
+        /// 实际的 sample-description 下标。
+        index: u32,
     },
 }
 
@@ -64,7 +71,13 @@ impl fmt::Display for SampleTableError {
                 )
             }
             SampleTableError::ChunkMappingInvalid { entry } => {
-                write!(f, "Invalid first_chunk in stsc entry {entry}")
+                write!(f, "Invalid stsc chunk mapping at entry {entry}")
+            }
+            SampleTableError::SampleDescriptionInvalid { entry, index } => {
+                write!(
+                    f,
+                    "Invalid sample_description_index {index} in stsc entry {entry}"
+                )
             }
         }
     }
@@ -107,6 +120,8 @@ pub struct SampleInfo {
     pub offset: u64,
     /// 字节数。
     pub size: u32,
+    /// `stsc` 为该 sample 选择的、从 1 开始的 `stsd` entry 下标。
+    pub sample_description_index: u32,
     /// 解码时间，以 media 时间刻度表示。
     pub decode_time: u64,
     /// composition time，即应用 `ctts` 后、应用 edit list 前的 media PTS。
@@ -270,7 +285,8 @@ impl<'a> SampleTable<'a> {
             chunk_index: 0,
             sample_in_chunk: 0,
             samples_per_chunk: 0,
-            next_chunk_boundary: 0,
+            sample_description_index: 0,
+            last_first_chunk: 0,
             offset_in_chunk: 0,
             failed: false,
         }
@@ -293,7 +309,8 @@ pub struct SampleIter<'a> {
     chunk_index: u32,
     sample_in_chunk: u32,
     samples_per_chunk: u32,
-    next_chunk_boundary: u32,
+    sample_description_index: u32,
+    last_first_chunk: u32,
     offset_in_chunk: u64,
     failed: bool,
 }
@@ -343,41 +360,65 @@ impl SampleIter<'_> {
     }
 
     /// 推进 `stsc` 游标，必要时切换到下一个 chunk。
-    fn ensure_chunk(&mut self) -> Option<()> {
+    fn ensure_chunk(&mut self) -> Result<(), SampleTableError> {
         if self.sample_in_chunk < self.samples_per_chunk {
-            return Some(());
+            return Ok(());
         }
+        let truncated = || SampleTableError::Truncated { box_type: *b"stbl" };
 
         // 进入新 chunk：重置 chunk 内偏移
         if self.samples_per_chunk != 0 {
-            self.chunk_index = self.chunk_index.checked_add(1)?;
+            self.chunk_index = self.chunk_index.checked_add(1).ok_or_else(truncated)?;
         }
         self.sample_in_chunk = 0;
         self.offset_in_chunk = 0;
 
-        let entry_count = read_u32(self.table.stsc, 4)?;
+        let entry_count = read_u32(self.table.stsc, 4).ok_or_else(truncated)?;
         // stsc 条目按 first_chunk 分段；当前 chunk 落在最后一个 first_chunk
         // 不大于它的条目所描述的区间内
         while self.stsc_entry < entry_count {
-            let base =
-                8usize.checked_add(usize::try_from(self.stsc_entry).ok()?.checked_mul(12)?)?;
-            let first_chunk = read_u32(self.table.stsc, base)?;
-            if first_chunk == 0 {
-                return None;
+            let entry = self.stsc_entry;
+            let base = usize::try_from(entry)
+                .ok()
+                .and_then(|entry| entry.checked_mul(12))
+                .and_then(|entry| 8usize.checked_add(entry))
+                .ok_or_else(truncated)?;
+            let first_chunk = read_u32(self.table.stsc, base).ok_or_else(truncated)?;
+            if first_chunk == 0
+                || (entry == 0 && first_chunk != 1)
+                || (entry != 0 && first_chunk <= self.last_first_chunk)
+            {
+                return Err(SampleTableError::ChunkMappingInvalid { entry });
             }
             // first_chunk 从 1 开始计数
-            if first_chunk.checked_sub(1)? > self.chunk_index {
+            if first_chunk.saturating_sub(1) > self.chunk_index {
                 break;
             }
-            self.samples_per_chunk = read_u32(self.table.stsc, base.checked_add(4)?)?;
-            self.stsc_entry = self.stsc_entry.checked_add(1)?;
-            self.next_chunk_boundary = first_chunk;
+            self.samples_per_chunk =
+                read_u32(self.table.stsc, base.checked_add(4).ok_or_else(truncated)?)
+                    .ok_or_else(truncated)?;
+            self.sample_description_index =
+                read_u32(self.table.stsc, base.checked_add(8).ok_or_else(truncated)?)
+                    .ok_or_else(truncated)?;
+            if self.samples_per_chunk == 0 {
+                return Err(SampleTableError::ChunkMappingInvalid { entry });
+            }
+            if self.sample_description_index == 0 {
+                return Err(SampleTableError::SampleDescriptionInvalid {
+                    entry,
+                    index: self.sample_description_index,
+                });
+            }
+            self.stsc_entry = self.stsc_entry.checked_add(1).ok_or_else(truncated)?;
+            self.last_first_chunk = first_chunk;
         }
 
         if self.samples_per_chunk == 0 {
-            return None;
+            return Err(SampleTableError::ChunkMappingInvalid {
+                entry: self.stsc_entry,
+            });
         }
-        Some(())
+        Ok(())
     }
 }
 
@@ -389,38 +430,52 @@ impl Iterator for SampleIter<'_> {
             return None;
         }
 
-        let mut step = || -> Option<SampleInfo> {
+        let mut step = || -> Result<SampleInfo, SampleTableError> {
+            let truncated = || SampleTableError::Truncated { box_type: *b"stbl" };
             self.ensure_chunk()?;
-            let size = self.table.sample_size(self.index)?;
-            let chunk_start = self.table.chunk_offset(self.chunk_index)?;
-            let offset = chunk_start.checked_add(self.offset_in_chunk)?;
-            let duration = self.next_duration()?;
-            let composition_offset = self.next_composition_offset()?;
+            let size = self.table.sample_size(self.index).ok_or_else(truncated)?;
+            let chunk_start = self
+                .table
+                .chunk_offset(self.chunk_index)
+                .ok_or_else(truncated)?;
+            let offset = chunk_start
+                .checked_add(self.offset_in_chunk)
+                .ok_or_else(truncated)?;
+            let duration = self.next_duration().ok_or_else(truncated)?;
+            let composition_offset = self.next_composition_offset().ok_or_else(truncated)?;
             let composition_time = i64::try_from(self.decode_time)
-                .ok()?
-                .checked_add(composition_offset)?;
+                .map_err(|_| truncated())?
+                .checked_add(composition_offset)
+                .ok_or_else(truncated)?;
             let info = SampleInfo {
                 index: self.index,
                 offset,
                 size,
+                sample_description_index: self.sample_description_index,
                 decode_time: self.decode_time,
                 composition_time,
                 duration,
                 is_sync: self.table.is_sync_sample(self.index),
             };
 
-            self.offset_in_chunk = self.offset_in_chunk.checked_add(u64::from(size))?;
-            self.sample_in_chunk = self.sample_in_chunk.checked_add(1)?;
-            self.decode_time = self.decode_time.checked_add(u64::from(duration))?;
-            self.index = self.index.checked_add(1)?;
-            Some(info)
+            self.offset_in_chunk = self
+                .offset_in_chunk
+                .checked_add(u64::from(size))
+                .ok_or_else(truncated)?;
+            self.sample_in_chunk = self.sample_in_chunk.checked_add(1).ok_or_else(truncated)?;
+            self.decode_time = self
+                .decode_time
+                .checked_add(u64::from(duration))
+                .ok_or_else(truncated)?;
+            self.index = self.index.checked_add(1).ok_or_else(truncated)?;
+            Ok(info)
         };
 
         match step() {
-            Some(info) => Some(Ok(info)),
-            None => {
+            Ok(info) => Some(Ok(info)),
+            Err(error) => {
                 self.failed = true;
-                Some(Err(SampleTableError::Truncated { box_type: *b"stbl" }))
+                Some(Err(error))
             }
         }
     }
@@ -429,7 +484,10 @@ impl Iterator for SampleIter<'_> {
 #[cfg(test)]
 #[expect(clippy::indexing_slicing, reason = "测试内按固定布局构造并检视 stbl")]
 mod tests {
+    extern crate std;
+
     use super::*;
+    use std::vec::Vec;
 
     /// 构造一个最小 `stbl`：单 chunk、等长 sample、恒定时长。
     fn build_stbl(sample_count: u32, size: u32, delta: u32, chunk_offset: u32) -> [u8; 132] {
@@ -486,6 +544,7 @@ mod tests {
             let index = expected as u32;
             assert_eq!(info.index, index);
             assert_eq!(info.size, 100);
+            assert_eq!(info.sample_description_index, 1);
             assert_eq!(info.offset, 1_000 + u64::from(index) * 100);
             assert_eq!(info.decode_time, u64::from(index) * 2_048);
             assert_eq!(info.duration, 2_048);
@@ -493,6 +552,63 @@ mod tests {
             seen = seen.saturating_add(1);
         }
         assert_eq!(seen, 4);
+    }
+
+    #[test]
+    fn preserves_and_validates_sample_description_index() {
+        let mut data = build_stbl(1, 100, 2_048, 1_000);
+        let sample_description_at = 32 + 24;
+        data[sample_description_at..sample_description_at + 4].copy_from_slice(&7u32.to_be_bytes());
+        let table = SampleTable::parse(&data).unwrap();
+        assert_eq!(
+            table
+                .iter()
+                .next()
+                .expect("sample should exist")
+                .unwrap()
+                .sample_description_index,
+            7
+        );
+
+        data[sample_description_at..sample_description_at + 4].copy_from_slice(&0u32.to_be_bytes());
+        let table = SampleTable::parse(&data).unwrap();
+        assert_eq!(
+            table
+                .iter()
+                .next()
+                .expect("sample should fail")
+                .unwrap_err(),
+            SampleTableError::SampleDescriptionInvalid { entry: 0, index: 0 }
+        );
+    }
+
+    #[test]
+    fn switches_sample_description_at_chunk_boundary() {
+        let mut data = build_stbl(2, 100, 2_048, 1_000).to_vec();
+        data[32..36].copy_from_slice(&40u32.to_be_bytes());
+        data[44..48].copy_from_slice(&2u32.to_be_bytes());
+        data[52..56].copy_from_slice(&1u32.to_be_bytes());
+        let mut second_mapping = Vec::new();
+        second_mapping.extend_from_slice(&2u32.to_be_bytes());
+        second_mapping.extend_from_slice(&1u32.to_be_bytes());
+        second_mapping.extend_from_slice(&2u32.to_be_bytes());
+        data.splice(60..60, second_mapping);
+
+        let stco_at = 92usize;
+        data[stco_at..stco_at + 4].copy_from_slice(&24u32.to_be_bytes());
+        data[stco_at + 12..stco_at + 16].copy_from_slice(&2u32.to_be_bytes());
+        data.splice(stco_at + 20..stco_at + 20, 1_100u32.to_be_bytes());
+
+        let table = SampleTable::parse(&data).unwrap();
+        let samples = table
+            .iter()
+            .collect::<Result<Vec<_>, _>>()
+            .expect("both chunk mappings should be valid");
+        assert_eq!(samples.len(), 2);
+        assert_eq!(samples[0].sample_description_index, 1);
+        assert_eq!(samples[0].offset, 1_000);
+        assert_eq!(samples[1].sample_description_index, 2);
+        assert_eq!(samples[1].offset, 1_100);
     }
 
     #[test]

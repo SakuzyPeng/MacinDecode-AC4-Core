@@ -88,21 +88,28 @@ fn header_timing(timescale: u32, duration: u32) -> Vec<u8> {
     payload
 }
 
-fn sample_description() -> Vec<u8> {
+fn sample_description(include_second_entry: bool) -> Vec<u8> {
     let mut sample_entry = vec![0u8; 28];
     sample_entry.extend_from_slice(&mp4_box(b"dac4", &[0x00, 0xBA, 0x01]));
     let sample_entry = mp4_box(b"ac-4", &sample_entry);
     let mut payload = vec![0u8; 8];
-    payload[4..8].copy_from_slice(&1u32.to_be_bytes());
+    let entry_count = if include_second_entry { 2u32 } else { 1u32 };
+    payload[4..8].copy_from_slice(&entry_count.to_be_bytes());
     payload.extend_from_slice(&sample_entry);
+    if include_second_entry {
+        payload.extend_from_slice(&mp4_box(b"mp4a", &[0u8; 28]));
+    }
     mp4_box(b"stsd", &payload)
 }
 
-fn audio_track(chunk_offset: u32, frames: &[Vec<u8>]) -> Vec<u8> {
+fn audio_track(chunk_offset: u32, frames: &[Vec<u8>], sample_description_index: u32) -> Vec<u8> {
     let count = u32::try_from(frames.len()).unwrap();
-    let mut stbl_payload = sample_description();
+    let mut stbl_payload = sample_description(sample_description_index != 1);
     stbl_payload.extend_from_slice(&full_box_table(b"stts", &[1, count, 2_048]));
-    stbl_payload.extend_from_slice(&full_box_table(b"stsc", &[1, 1, count, 1]));
+    stbl_payload.extend_from_slice(&full_box_table(
+        b"stsc",
+        &[1, 1, count, sample_description_index],
+    ));
     let mut sizes = vec![0, count];
     sizes.extend(
         frames
@@ -119,21 +126,28 @@ fn audio_track(chunk_offset: u32, frames: &[Vec<u8>]) -> Vec<u8> {
     mp4_box(b"trak", &mp4_box(b"mdia", &mdia_payload))
 }
 
-fn moov(chunk_offset: u32, frames: &[Vec<u8>]) -> Vec<u8> {
+fn moov(chunk_offset: u32, frames: &[Vec<u8>], sample_description_index: u32) -> Vec<u8> {
     let duration = u32::try_from(frames.len())
         .unwrap()
         .checked_mul(2_048)
         .unwrap();
     let mut payload = mp4_box(b"mvhd", &header_timing(48_000, duration));
-    payload.extend_from_slice(&audio_track(chunk_offset, frames));
+    payload.extend_from_slice(&audio_track(chunk_offset, frames, sample_description_index));
     mp4_box(b"moov", &payload)
 }
 
 fn minimal_mp4(frames: &[Vec<u8>]) -> Vec<u8> {
+    minimal_mp4_with_sample_description(frames, 1)
+}
+
+fn minimal_mp4_with_sample_description(
+    frames: &[Vec<u8>],
+    sample_description_index: u32,
+) -> Vec<u8> {
     let ftyp = mp4_box(b"ftyp", b"isom\0\0\0\0isom");
-    let placeholder = moov(0, frames);
+    let placeholder = moov(0, frames, sample_description_index);
     let chunk_offset = u32::try_from(ftyp.len() + placeholder.len() + 8).unwrap();
-    let moov = moov(chunk_offset, frames);
+    let moov = moov(chunk_offset, frames, sample_description_index);
     let media = frames.iter().flatten().copied().collect::<Vec<_>>();
     [ftyp, moov, mp4_box(b"mdat", &media)].concat()
 }
@@ -211,6 +225,25 @@ fn forced_wrong_format_returns_the_resolved_parse_kind() {
             assert_eq!(format, InspectSourceKind::Mp4);
             assert!(cause.contains("moov box not found"));
         }
+        other => panic!("expected parse error, got {other:?}"),
+    }
+}
+
+#[test]
+fn mp4_samples_must_reference_the_selected_ac4_entry() {
+    let data = minimal_mp4_with_sample_description(&[topology_frame(0, true)], 2);
+    let error = inspect_bytes(
+        &data,
+        InspectSourceHint::new(Some("mixed.m4a"), InspectInputFormat::Mp4),
+    )
+    .unwrap_err();
+    match error {
+        InspectError::Parse { cause, .. } => assert!(
+            cause.contains(
+                "MP4 sample 0 references sample description 2, but selected AC-4 entry is 1"
+            ),
+            "unexpected parse cause: {cause}"
+        ),
         other => panic!("expected parse error, got {other:?}"),
     }
 }

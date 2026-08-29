@@ -332,9 +332,11 @@ fn collect_mp4(
         .ok_or_else(|| SceneBatchError::Failed("mvhd box not found".to_owned()))?;
     let movie = parse_header_timing(*b"mvhd", mvhd.payload)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-    let track = find_ac4_track(moov.payload).ok_or_else(|| {
-        SceneBatchError::Failed("No track with an ac-4 sample entry was found".to_owned())
-    })?;
+    let track = find_ac4_track(moov.payload)
+        .map_err(|error| SceneBatchError::Failed(error.to_string()))?
+        .ok_or_else(|| {
+            SceneBatchError::Failed("No track with an ac-4 sample entry was found".to_owned())
+        })?;
     let mdhd = find_box(track.mdia.payload, b"mdhd")
         .ok_or_else(|| SceneBatchError::Failed("mdhd box not found".to_owned()))?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload)
@@ -400,6 +402,10 @@ fn collect_mp4(
     );
     for item in table.iter() {
         let info = item.map_err(|error| SceneBatchError::Failed(error.to_string()))?;
+        track
+            .sample_entry
+            .validate_sample(&info)
+            .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
         let start = usize::try_from(info.offset).unwrap_or(usize::MAX);
         let end = start.saturating_add(usize::try_from(info.size).unwrap_or(0));
         let frame = data.get(start..end).ok_or_else(|| {
