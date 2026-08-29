@@ -70,7 +70,26 @@ def inspect(path: Path) -> dict:
         parse_failures = _integer(
             topology["coverage"]["parse_failures"], "parse_failures"
         )
-        scene_path = topology["configuration"]["scene_path"]
+        references = topology["references"]
+        size_overruns = _integer(
+            references["substream_size_overruns"], "substream_size_overruns"
+        )
+        dangling_group_references = _integer(
+            references["dangling_group_references"], "dangling_group_references"
+        )
+        substream_reference_failures = _integer(
+            references["substream_reference_failures"],
+            "substream_reference_failures",
+        )
+        configuration = topology["configuration"]
+        scene_path = configuration["scene_path"]
+        frames_differing_from_first = _integer(
+            configuration["frames_differing_from_first"],
+            "frames_differing_from_first",
+        )
+        config_generations = _integer(
+            configuration["config_generations"], "config_generations"
+        )
         groups = topology["observations"]["first_frame"]["substream_groups"]
         if not isinstance(groups, list):
             raise ValueError("first_frame.substream_groups 必须是数组")
@@ -102,6 +121,13 @@ def inspect(path: Path) -> dict:
         "parse_failures": parse_failures,
         "scene_path": scene_path,
         "channel_modes": channel_modes,
+        "topology_integrity": {
+            "substream_size_overruns": size_overruns,
+            "dangling_group_references": dangling_group_references,
+            "substream_reference_failures": substream_reference_failures,
+            "frames_differing_from_first": frames_differing_from_first,
+            "config_generations": config_generations,
+        },
         "audio": {
             "located": located,
             "parsed": parsed,
@@ -142,6 +168,53 @@ def validate_observation(
         problems.append(
             f"ch_mode={actual.get('channel_modes')!r}，预期 [{expected_ch_mode}]"
         )
+
+    topology_integrity = actual.get("topology_integrity")
+    if not isinstance(topology_integrity, dict):
+        problems.append("缺少 topology integrity")
+    else:
+        try:
+            size_overruns = _integer(
+                topology_integrity["substream_size_overruns"],
+                "topology.substream_size_overruns",
+            )
+            dangling_group_references = _integer(
+                topology_integrity["dangling_group_references"],
+                "topology.dangling_group_references",
+            )
+            substream_reference_failures = _integer(
+                topology_integrity["substream_reference_failures"],
+                "topology.substream_reference_failures",
+            )
+            frames_differing_from_first = _integer(
+                topology_integrity["frames_differing_from_first"],
+                "topology.frames_differing_from_first",
+            )
+            config_generations = _integer(
+                topology_integrity["config_generations"],
+                "topology.config_generations",
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            problems.append(str(error))
+        else:
+            reference_failures = (
+                size_overruns
+                + dangling_group_references
+                + substream_reference_failures
+            )
+            if reference_failures != 0:
+                problems.append(
+                    "topology 引用不完整："
+                    f"size_overruns/dangling/substream="
+                    f"{size_overruns}/{dangling_group_references}/"
+                    f"{substream_reference_failures}"
+                )
+            if frames_differing_from_first != 0 or config_generations != 1:
+                problems.append(
+                    "topology 配置不稳定："
+                    f"frames_differing_from_first={frames_differing_from_first}，"
+                    f"config_generations={config_generations}"
+                )
 
     audio = actual.get("audio")
     if not isinstance(audio, dict):

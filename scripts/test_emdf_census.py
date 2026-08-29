@@ -67,7 +67,12 @@ def sample(frames: int = 4, routed: int = 2) -> dict:
 
 class EmdfCensusTests(unittest.TestCase):
     def test_baseline_keys_cannot_escape_the_encoded_directory(self):
-        for name in ["../outside.m4a", "case/../outside.m4a", "case/..\\outside.m4a"]:
+        for name in [
+            "/outside.m4a",
+            "../outside.m4a",
+            "case/../outside.m4a",
+            "case/..\\outside.m4a",
+        ]:
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
                     emdf_census.path_for_key(name)

@@ -36,12 +36,19 @@ COMMENT = [
 
 def path_for_key(name: str) -> Path:
     """把 ``案例名/文件名`` 安全还原为被忽略的 encoded 媒体。"""
-    parts = PurePosixPath(name).parts
-    if len(parts) != 2 or any(
+    relative = PurePosixPath(name)
+    parts = relative.parts
+    if relative.is_absolute() or len(parts) != 2 or any(
         part in ("", ".", "..") or "\\" in part for part in parts
     ):
         raise ValueError(f"非法基线键：{name!r}")
-    return VECTORS / parts[0] / "encoded" / parts[1]
+    encoded = (VECTORS / parts[0] / "encoded").resolve()
+    target = VECTORS / parts[0] / "encoded" / parts[1]
+    try:
+        target.resolve().relative_to(encoded)
+    except ValueError as error:
+        raise ValueError(f"非法基线键：{name!r}") from error
+    return target
 
 
 def key_for(path: Path) -> str:

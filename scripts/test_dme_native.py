@@ -246,6 +246,13 @@ class DmeNativeCheckerTests(unittest.TestCase):
             "parse_failures": 0,
             "scene_path": "channel_based",
             "channel_modes": [ch_mode],
+            "topology_integrity": {
+                "substream_size_overruns": 0,
+                "dangling_group_references": 0,
+                "substream_reference_failures": 0,
+                "frames_differing_from_first": 0,
+                "config_generations": 1,
+            },
             "audio": {
                 "located": frames,
                 "parsed": frames,
@@ -325,6 +332,22 @@ class DmeNativeCheckerTests(unittest.TestCase):
         self.assertTrue(any("ch_mode" in item for item in problems))
         self.assertTrue(any("body" in item for item in problems))
         self.assertTrue(any("emdf.routed_infos" in item for item in problems))
+
+    def test_rejects_reference_failures_and_midstream_topology_changes(self) -> None:
+        actual = self.observation(49, 5, "general")
+        actual["topology_integrity"]["dangling_group_references"] = 1
+        actual["topology_integrity"]["frames_differing_from_first"] = 12
+        actual["topology_integrity"]["config_generations"] = 2
+
+        problems = dme_native_check.validate_observation(
+            actual,
+            expected_ch_mode=5,
+            expected_frame_count=49,
+            mode="general",
+        )
+
+        self.assertTrue(any("引用不完整" in item for item in problems))
+        self.assertTrue(any("配置不稳定" in item for item in problems))
 
 
 class DmeNativeToolBoundaryTests(unittest.TestCase):
