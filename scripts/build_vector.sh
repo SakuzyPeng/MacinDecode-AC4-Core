@@ -7,14 +7,17 @@
 # 标准作业：gen_damf.py -> ADM 规范化 -> AC-4 编码（按 encodes 逐档）。
 # 可选 DME A-JOC 作业：普通模式读取 ADM BWF；3DoF 模式读取隔离的 DAMF 0.6.0，
 # 两者都输出 raw AC-4 + timing manifest，再交给官方 MP4 muxer。
+# 可选 DME native 作业：从纯 bed 信号配方生成 speaker WAVE 后编码 channel-based
+# AC-4 / IMS，或把 canonical DAMF 直接交给 native IMS encoder。
 # 可选 DEE IMS 作业：gen_damf.py -> DEE staging -> raw AC-4 -> MP4 封装。
-# 三条链最终都校验为恰含一条音频轨，并移除编码器可能附带的辅助视频轨。
+# 各条链最终都校验为恰含一条音频轨，并移除编码器可能附带的辅助视频轨。
 # 工具路径优先取自 .env.local；FFPROBE/MP4BOX 未配置时按 check_tools.sh 的
 # 约定从 PATH 查找。
 #
 # 标准编码档位由 case.json 的 encodes 数组给出；DME 与 IMS 作业分别由
-# dme_ac4/dee_ims 数组给出。profile 默认为 default，保持既有生产行为；其他
-# profile 必须显式选择。已存在的产物默认跳过，加 --force 重新生成。
+# dme_ac4/dme_channel/dme_ims/dee_ims 数组给出。profile 默认为 default，保持
+# 既有生产行为；其他 profile 必须显式选择。已存在的产物默认跳过，加 --force
+# 重新生成。
 
 set -euo pipefail
 
@@ -66,14 +69,15 @@ done
 
 if [ "${BUILD_PROFILE}" != "default" ] \
     && [ "${BUILD_PROFILE}" != "dme_ac4" ] \
+    && [ "${BUILD_PROFILE}" != "dme_native" ] \
     && [ "${BUILD_PROFILE}" != "dee_ims" ] \
     && [ "${BUILD_PROFILE}" != "all" ]; then
-    echo "--profile 必须是 default、dme_ac4、dee_ims 或 all" >&2
+    echo "--profile 必须是 default、dme_ac4、dme_native、dee_ims 或 all" >&2
     exit 2
 fi
 
 if [ -z "${CASE}" ] || [ ! -f "${CASE}" ]; then
-    echo "用法：$0 [--force] [--profile default|dme_ac4|dee_ims|all] vectors/<case_id>/case.json" >&2
+    echo "用法：$0 [--force] [--profile default|dme_ac4|dme_native|dee_ims|all] vectors/<case_id>/case.json" >&2
     exit 2
 fi
 
@@ -168,14 +172,32 @@ if [ -n "${DME_LIST}" ]; then
     mapfile -t ALL_DME_JOBS <<<"${DME_LIST}"
 fi
 
+DME_CHANNEL_LIST="$("${PYTHON_BIN}" "${REPO_ROOT}/scripts/dme_native.py" list-channel "${CASE}")" || exit $?
+ALL_DME_CHANNEL_JOBS=()
+if [ -n "${DME_CHANNEL_LIST}" ]; then
+    mapfile -t ALL_DME_CHANNEL_JOBS <<<"${DME_CHANNEL_LIST}"
+fi
+
+DME_IMS_LIST="$("${PYTHON_BIN}" "${REPO_ROOT}/scripts/dme_native.py" list-ims "${CASE}")" || exit $?
+ALL_DME_IMS_JOBS=()
+if [ -n "${DME_IMS_LIST}" ]; then
+    mapfile -t ALL_DME_IMS_JOBS <<<"${DME_IMS_LIST}"
+fi
+
 BITRATES=()
 DME_JOBS=()
+DME_CHANNEL_JOBS=()
+DME_IMS_JOBS=()
 IMS_JOBS=()
 if [ "${BUILD_PROFILE}" = "default" ] || [ "${BUILD_PROFILE}" = "all" ]; then
     BITRATES=("${ALL_BITRATES[@]}")
 fi
 if [ "${BUILD_PROFILE}" = "dme_ac4" ] || [ "${BUILD_PROFILE}" = "all" ]; then
     DME_JOBS=("${ALL_DME_JOBS[@]}")
+fi
+if [ "${BUILD_PROFILE}" = "dme_native" ] || [ "${BUILD_PROFILE}" = "all" ]; then
+    DME_CHANNEL_JOBS=("${ALL_DME_CHANNEL_JOBS[@]}")
+    DME_IMS_JOBS=("${ALL_DME_IMS_JOBS[@]}")
 fi
 if [ "${BUILD_PROFILE}" = "dee_ims" ] || [ "${BUILD_PROFILE}" = "all" ]; then
     IMS_JOBS=("${ALL_IMS_JOBS[@]}")
@@ -191,6 +213,8 @@ done
 
 if [ "${#BITRATES[@]}" -eq 0 ] \
     && [ "${#DME_JOBS[@]}" -eq 0 ] \
+    && [ "${#DME_CHANNEL_JOBS[@]}" -eq 0 ] \
+    && [ "${#DME_IMS_JOBS[@]}" -eq 0 ] \
     && [ "${#IMS_JOBS[@]}" -eq 0 ]; then
     echo "case.json 没有为 ${BUILD_PROFILE} profile 声明作业" >&2
     exit 2
@@ -217,6 +241,25 @@ if [ "${#DME_JOBS[@]}" -gt 0 ]; then
             exit 1
         fi
     done
+fi
+
+if [ "${#DME_CHANNEL_JOBS[@]}" -gt 0 ] || [ "${#DME_IMS_JOBS[@]}" -gt 0 ]; then
+    if [ -z "${DME_MP4MUXER:-}" ] || [ ! -x "${DME_MP4MUXER}" ]; then
+        echo "DME_MP4MUXER 未配置或不可执行，DME native 封装不可用" >&2
+        exit 1
+    fi
+fi
+if [ "${#DME_CHANNEL_JOBS[@]}" -gt 0 ]; then
+    if [ -z "${DME_AC4_ENCODER:-}" ] || [ ! -x "${DME_AC4_ENCODER}" ]; then
+        echo "DME_AC4_ENCODER 未配置或不可执行，DME channel-based 编码不可用" >&2
+        exit 1
+    fi
+fi
+if [ "${#DME_IMS_JOBS[@]}" -gt 0 ]; then
+    if [ -z "${DME_AC4_IMS_ENCODER:-}" ] || [ ! -x "${DME_AC4_IMS_ENCODER}" ]; then
+        echo "DME_AC4_IMS_ENCODER 未配置或不可执行，DME native IMS 编码不可用" >&2
+        exit 1
+    fi
 fi
 
 if [ "${#IMS_JOBS[@]}" -gt 0 ]; then
@@ -255,6 +298,12 @@ if [ "${#BITRATES[@]}" -gt 0 ]; then
 fi
 if [ "${#DME_JOBS[@]}" -gt 0 ]; then
     echo "DME A-JOC 作业：${#DME_JOBS[@]} 个"
+fi
+if [ "${#DME_CHANNEL_JOBS[@]}" -gt 0 ]; then
+    echo "DME channel-based 作业：${#DME_CHANNEL_JOBS[@]} 个"
+fi
+if [ "${#DME_IMS_JOBS[@]}" -gt 0 ]; then
+    echo "DME native IMS 作业：${#DME_IMS_JOBS[@]} 个"
 fi
 if [ "${#IMS_JOBS[@]}" -gt 0 ]; then
     echo "DEE IMS 作业：${#IMS_JOBS[@]} 个"
@@ -504,6 +553,106 @@ for job in "${DME_JOBS[@]}"; do
         --track-options "${track_options}" --output "${mux_output}" >/dev/null
     if ! strip_auxiliary_video_tracks "${mux_output}"; then
         echo "DME M4A 校验失败，保留既有产物：${filename}" >&2
+        exit 1
+    fi
+    mv "${mux_output}" "${target}"
+done
+
+# --- 7. DME channel-based / native IMS 编码 ---
+DME_NATIVE_WAVE=""
+prepare_dme_native_wave() {
+    local layout="$1" token
+    ensure_dme_staging
+    token="${layout//./_}"
+    DME_NATIVE_WAVE="${DME_JOB_ROOT}/input_${token}.wav"
+    if [ ! -s "${DME_NATIVE_WAVE}" ]; then
+        "${PYTHON_BIN}" "${REPO_ROOT}/scripts/dme_native.py" prepare-wave \
+            "${CASE}" "${DME_NATIVE_WAVE}" --layout "${layout}"
+    fi
+}
+
+for job in "${DME_CHANNEL_JOBS[@]}"; do
+    IFS=$'\t' read -r layout bitrate input_format filename <<<"${job}"
+    target="${ENCODED}/${filename}"
+    if [ "${FORCE}" -eq 0 ] && [ -f "${target}" ]; then
+        echo "跳过 DME channel ${layout} ${bitrate} kbps（已存在：${filename}）"
+        strip_auxiliary_video_tracks "${target}"
+        continue
+    fi
+
+    prepare_dme_native_wave "${layout}"
+    stem="${filename%.m4a}"
+    raw_output="${DME_JOB_ROOT}/${stem}.ac4"
+    timing_manifest="${DME_JOB_ROOT}/${stem}.json"
+    mux_output="${DME_JOB_ROOT}/${stem}.m4a"
+
+    echo "DME channel ${layout} ${bitrate} kbps -> ${filename}"
+    "${DME_AC4_ENCODER}" \
+        --overwrite 1 --progress 0 --cc 0 --loglevel warning \
+        --start 0 --time-base file_position \
+        --input-format "${input_format}" --input "${DME_NATIVE_WAVE}" \
+        --output-channel-layout "${layout}" --data-rate "${bitrate}" \
+        --encoder drc_profile=film_light:iframe_interval=1sec \
+        --loudness-management measure_only \
+        --output "${raw_output}" --output-manifest "${timing_manifest}" >/dev/null
+
+    if [ ! -s "${raw_output}" ]; then
+        echo "DME channel encoder 未生成有效 raw AC-4：${raw_output}" >&2
+        exit 1
+    fi
+    track_options="$("${PYTHON_BIN}" "${REPO_ROOT}/scripts/dme_ac4.py" \
+        track-options "${timing_manifest}" "${raw_output}" \
+        --expected-duration "${DURATION_SAMPLES}")"
+    "${DME_MP4MUXER}" --overwrite 1 --loglevel warning \
+        --time-scale "${SAMPLE_RATE}" --track "${raw_output}" \
+        --track-options "${track_options}" --output "${mux_output}" >/dev/null
+    if ! strip_auxiliary_video_tracks "${mux_output}"; then
+        echo "DME channel M4A 校验失败，保留既有产物：${filename}" >&2
+        exit 1
+    fi
+    mv "${mux_output}" "${target}"
+done
+
+for job in "${DME_IMS_JOBS[@]}"; do
+    IFS=$'\t' read -r input_kind mode bitrate input_format drc_profile target_fps loudness filename <<<"${job}"
+    target="${ENCODED}/${filename}"
+    if [ "${FORCE}" -eq 0 ] && [ -f "${target}" ]; then
+        echo "跳过 DME native IMS ${mode}/${input_kind} ${bitrate} kbps（已存在：${filename}）"
+        strip_auxiliary_video_tracks "${target}"
+        continue
+    fi
+
+    ensure_dme_staging
+    if [ "${input_kind}" = "wav_5_1" ]; then
+        prepare_dme_native_wave "5.1"
+        encoder_input="${DME_NATIVE_WAVE}"
+    else
+        encoder_input="${CASE_DIR}/source/master.atmos"
+    fi
+    stem="${filename%.m4a}"
+    raw_output="${DME_JOB_ROOT}/${stem}.ac4"
+    mux_output="${DME_JOB_ROOT}/${stem}.m4a"
+
+    echo "DME native IMS ${mode}/${input_kind} ${bitrate} kbps -> ${filename}"
+    "${DME_AC4_IMS_ENCODER}" \
+        --overwrite 1 --progress 0 --cc 0 --loglevel warning \
+        --start 0 --time-base file_position \
+        --input-format "${input_format}" --input "${encoder_input}" \
+        --data-rate "${bitrate}" --target-fps "${target_fps}" \
+        --encoder "mode=${mode}:drc_profile=${drc_profile}:iframe_interval=24" \
+        --loudness-management "${loudness}" --output "${raw_output}" >/dev/null
+
+    if [ ! -s "${raw_output}" ]; then
+        echo "DME native IMS encoder 未生成有效 raw AC-4：${raw_output}" >&2
+        exit 1
+    fi
+    track_options="$("${PYTHON_BIN}" "${REPO_ROOT}/scripts/dme_native.py" \
+        ims-track-options --expected-duration "${DURATION_SAMPLES}" --mode "${mode}")"
+    "${DME_MP4MUXER}" --overwrite 1 --loglevel warning \
+        --time-scale "${SAMPLE_RATE}" --track "${raw_output}" \
+        --track-options "${track_options}" --output "${mux_output}" >/dev/null
+    if ! strip_auxiliary_video_tracks "${mux_output}"; then
+        echo "DME native IMS M4A 校验失败，保留既有产物：${filename}" >&2
         exit 1
     fi
     mv "${mux_output}" "${target}"

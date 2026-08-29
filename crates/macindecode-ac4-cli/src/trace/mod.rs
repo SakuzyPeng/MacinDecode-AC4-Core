@@ -16,6 +16,7 @@ pub(crate) mod testutil;
 mod ajoc;
 mod audio_substream;
 mod dac4;
+mod emdf;
 mod invariants;
 mod oamd;
 mod report;
@@ -27,6 +28,7 @@ use ajoc::{AjocTrace, GroupCommonState, GroupOamdState};
 use audio_substream::AudioTrace;
 #[cfg(feature = "audio-decode")]
 use audio_substream::group_is_alternative;
+use emdf::EmdfTrace;
 #[cfg(feature = "audio-decode")]
 use invariants::ReconstructionInvariant;
 use oamd::OamdTrace;

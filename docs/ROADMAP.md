@@ -51,19 +51,19 @@ CLI 遍历全部 `trak` 并以 `stsd` 中的 `ac-4` sample entry 选择轨道；
 
 **编码路径判定完成：默认 profile 只产生 A-JOC。** 依据是 `b_channel_coded = 0` 且 `b_ajoc = 1`，两个案例全部 143 帧无例外。同时解释了参考解码器 21 个输出槽位的来源——`n_fullband_upmix_signals = 20` 加上单独声明的 LFE，即码流自身声明的值，而非解码器固定容器。详见测试向量策略 9.2a。
 
-**「这套工具链只出 A-JOC」已被 IMS profile 推翻（M4 期间）。** 同一条母版改用 IMS profile 导出的两个 256 kbps 产物是 **channel-based**：`b_channel_coded = 1`、`ch_mode = 6`（`7.1_3/4/0.1`）、0 个对象、无 OAMD substream、`md_compat = 0`。`legacy` 变体多一个 `presentation_version = 1` 的 presentation，把同一个 substream 描述成 stereo。被推翻的是判定的**外推范围**，不是判定方法——9.2a 对 direct-object 的结论不受影响，那条至今没有真实样本。这也兑现了 9.2e 早就写下的限制：结论只限定当时的母版与工具配置，不外推到别的 profile。`ch_mode = 6` 由此第一次有了真实样本，此前只有构造码流的分支覆盖。详见测试向量策略 9.2j。
+**「这套工具链只出 A-JOC」已被 IMS profile 推翻（M4 期间），DME native 又扩展了真实矩阵。** DEE IMS 的两个 256 kbps 产物是 **channel-based**：`b_channel_coded = 1`、`ch_mode = 6`（`7.1_3/4/0.1`）、0 个对象、无 OAMD substream、`md_compat = 0`；`legacy` 变体多一个 `presentation_version = 1` 的 presentation，把同一个 substream 描述成 stereo。DME channel encoder 现另产出 `ch_mode = 1/4/12` 的 stereo/5.1/5.1.4，native IMS 的 5.1 WAVE 与 DAMF 输入分别产出 `ch_mode = 5/6`。被推翻的是判定的**外推范围**，不是判定方法——9.2a 对 direct-object 的结论不受影响，那条至今没有真实样本。详见测试向量策略 9.2j 与 9.2m。
 
 拓扑没有等价的外部工具可比，因此校验用两类独立证据：
 
 - **码流自洽**：`payload_base` 与 `substream_index_table()` 必须与帧长相容；presentation、EMDF、OAMD、音频与 HSF 引用经范围校验后，必须恰好覆盖索引表的下标集合。逐位解析错一位即破坏该排列。
-- **容器交叉**：Bento4 从 `dac4` 读出的 codec string 后两段（`presentation_version`、`mdcompat`）与本实现的 DSI 解析一致；本实现再按 effective presentation ID 将 DSI 与首帧 TOC 的 version、`md_compat`、group 路径及 A-JOC 对象数闭合，不依赖 presentation 数组顺序。该门禁先覆盖 A-JOC/direct-object；含不透明 v2 DSI 的 Channel-based 按已约定边界只记录。
+- **容器交叉**：Bento4 从 `dac4` 读出的 codec string 后两段（`presentation_version`、`mdcompat`）与本实现的 DSI 解析一致；本实现再按 effective presentation ID 将 DSI 与首帧 TOC 的 version、`md_compat`、group 路径及 A-JOC 对象数闭合，不依赖 presentation 数组顺序。12 条 A-JOC 与三条 DME channel 已闭合；五条含不透明 v2 DSI 的 IMS 按已约定边界只记录。
 
-真实码流原本只覆盖 A-JOC 一条路径；**channel-based 现已有真实样本**（见上文与 9.2j），direct-object 仍只有构造码流的单元测试覆盖，那是分支覆盖的下限，不能替代真实样本。默认 profile 内部的实验结论仍然成立：低至 256 kbps、以及纯 bed 零对象的输入，均未触发另两条路径（见测试向量策略 9.2e）——换 profile 才会。
+真实码流原本只覆盖 A-JOC 一条路径；**channel-based 现已有八条真实样本**，覆盖 `ch_mode = 1/4/5/6/12`（见上文及测试向量策略 9.2j、9.2m）。direct-object 仍只有构造码流的单元测试覆盖，那是分支覆盖的下限，不能替代真实样本。默认 profile 内部的实验结论仍然成立：低至 256 kbps、以及纯 bed 零对象的输入，均未触发另两条路径（见测试向量策略 9.2e）——换 profile 才会。
 
 **随机访问、配置代次与 reset 状态机：**
 
 - 随机访问点判定不以 `b_iframe_global` 为准。该标志按 Part 2 只覆盖每个 presentation 的首个 substream，因此完整起解点还要求 `b_audio_ndot`、`b_oamd_ndot` 与 `b_pres_ndot` 全部为真；只满足前者的帧标为「仅音频可起解」。实测 7 个完整起解点与容器 `stss` 的 7 个同步样本逐帧吻合，构成又一条独立交叉验证（见测试向量策略 9.2b）。
-- 配置代次由完整规范化拓扑指纹的变化界定：包含 program、presentation/group 固定引用、声道模式、A-JOC 配置和 LFE 等实际配置，只排除 ndot、`payload_base`、substream 尺寸、EMDF 保留填充及 EMDF payload 的逐帧路由。DME 流会在携带 payload 时临时增加第 4 个索引表项、无 payload 时回到 3 个；指纹按固定 presentation/audio/OAMD/HSF 映射跨度计算，三条 DME 全流仍各为 1 代。
+- 配置代次由完整规范化拓扑指纹的变化界定：包含 program、presentation/group 固定引用、声道模式、A-JOC 配置和 LFE 等实际配置，只排除 ndot、`payload_base`、substream 尺寸、EMDF 保留填充及 EMDF payload 的逐帧路由。三条 DME A-JOC 在携带 payload 时临时增加第 4 个索引表项，三条 DME channel 则临时增加第 3 个；无 payload 时各自回到固定映射。指纹按 presentation/audio/OAMD/HSF 的固定引用跨度计算，六条流都保持单一配置代次。
 - reset 状态机在首帧、配置变化、规范定义的来源变化、解析失败或外部不连续后挂起重置，只在下一个完整随机访问点执行。当前案例各有 1 次初始 reset，无等待帧，结束时无挂起状态。
 - 解码延迟按表 81 解释后为 5 帧。`wait_frames` 的原始码字在不同 `frame_rate_index` 下含义不同，规范 `4.3.0` 要求引用解释值，因此码字不对外暴露。
 - `sequence_counter` 不是普通的 10 比特回绕计数器：规范定义 `1020 → 1` 为正常回绕，前值 0 后的任意非零值为 splice 恢复。当前 `1019, 1020, 1, …, 141` 全程连续，来源变化为 0；该字段仍不可用作帧序号或时间基准。
@@ -223,7 +223,7 @@ P1 `5.7.1` 的全局 6 个 QMF 时隙改作另一层问题处理：它描述终�
 
 判据九条。前三条各钉一件事：LFE 与经 A-SPX 的各路走同一条时间轴、SIMPLE 一格延迟都不加、输出按 A-JOC 输入顺序而非传输顺序摆放；其余六条覆盖逐路帧长不一、SIMPLE 使用表外帧长、平衡式短工作区、LFE 先行时缺 A-SPX 数据，以及双向 codec mode 变化与显式重置。缺数据的两条分别钉住首个元素缺失，以及前一个元素合法而后一个缺失时仍报告真正下标且不推进任何声道。**对齐判据只能比低带**：`Q_out = Q_in(延迟后) + Y`，而 f32 下 `(a + b) − b` 不恒等于 `a`，实测在 `sbx` 处差 8×10⁻⁶ 的相对量；低带的 `Y` 恒为零，等式才是精确的，高带另用「`Y` 非零」单独钉住——否则那一路根本没走 A-SPX 也照样通过。原三条的注入 7 类缺陷全部被捕获、4 类等价变体沉默（含一条不可达的尾部清零）。
 
-**`export-aspx-pcm` 已接通并迁到 Scene Session：真实码流走完 A-SPX。** 命令把 bounded AU 交给 `Ac4DecoderSession(DecodeMode::Core)`，默认以 `AutoUnique` 解析 presentation，也接受显式零基 `--presentation`，再由同一 A-JOC engine 将核心带 PCM 交给 `element_drive` 并逐路做终端 QMF 合成；batch adapter 仅恢复旧 `±32768` 位型、轨序和 MP4 edit 投影。它是受限诊断出口：只放行 A-SPX 模式、1 536/1 920/2 048 样本长帧、未激活 companding 且未使用 FIC/TIC 的已确认子集；SIMPLE、短帧、活动压扩或交织分量都在数值通路前拒绝，并使用 `unsupported.coding_path` 而非把合法语法误报为 `parse.failed`。当前 12 条 A-JOC 实测流全部走通；最初语料中 `probe_bed_only` 256K 的第 0 路 RMS 由 5 632 升到 6 363、峰值由 8 087 升到 12 764——高频确实被补上了。channel-based 的两条仍报 `unsupported.coding_path`。
+**`export-aspx-pcm` 已接通并迁到 Scene Session：真实码流走完 A-SPX。** 命令把 bounded AU 交给 `Ac4DecoderSession(DecodeMode::Core)`，默认以 `AutoUnique` 解析 presentation，也接受显式零基 `--presentation`，再由同一 A-JOC engine 将核心带 PCM 交给 `element_drive` 并逐路做终端 QMF 合成；batch adapter 仅恢复旧 `±32768` 位型、轨序和 MP4 edit 投影。它是受限诊断出口：只放行 A-SPX 模式、1 536/1 920/2 048 样本长帧、未激活 companding 且未使用 FIC/TIC 的已确认子集；SIMPLE、短帧、活动压扩或交织分量都在数值通路前拒绝，并使用 `unsupported.coding_path` 而非把合法语法误报为 `parse.failed`。当前 12 条 A-JOC 实测流全部走通；最初语料中 `probe_bed_only` 256K 的第 0 路 RMS 由 5 632 升到 6 363、峰值由 8 087 升到 12 764——高频确实被补上了。八条 channel-based 仍报 `unsupported.coding_path`。
 
 **P1 `5.6`/`5.7.2` 的 frame alignment 已补齐。** 旧链把同一 raw frame 的 A-SPX 控制直接套到当前 IMDCT PCM，漏掉表 188 同时要求的 `d_pcm` 与 `d_ctrl`。48 kHz 音乐档应让 PCM 延迟 352 samples、控制延迟一个 2 048-sample codec frame；漏掉后高频控制相对低带早 `1 696` samples。现在逐声道环形缓冲执行八档 `d_pcm`，逐 substream FIFO 在 1/2/4 帧后释放带所有权的控制快照；首份控制到期前只预热 QMF/低带/TNA/输出及合成历史，不提前消费包络、噪声或音调状态。当时九条 A-SPX 逐位基线已按规范性变化重冻，当前已扩到十二条。一份本地私有音乐参考素材 q2 的 1024 点 STFT 能量互相关中，修复前相对 DRP 的低/高频 lag 为 2 432/4 096 samples，残差 1 664；修复后两者均为 2 048，残差 0（hop 64）。共同的 2 048 起点差与带间同步无关，暂不把 DRP 当容器 priming 的时间轴 oracle。见规范可追踪性 5.44 与[实验记录](experiments/aspx_frame_alignment_observation.json)。
 
@@ -251,7 +251,7 @@ S24LE 交织写入 CAF；其 payload 与 full ADM `data` 逐字节相同。home 
 
 **core/A-SPX 诊断导出的失败已进入 Session 事务边界。** 任一帧驱动、路由或合成失败都不提交 Scene 或核心带侧车，并清空该物理 substream 的预测、延迟、QMF 合成状态和未完整帧缓存；CLI batch adapter 将 Scene 的 selection、unsupported、invariant 与 parse/DSP 失败映射为各自稳定诊断码，不再靠整文件 survey 收尾后才判定。解析器仍把实际 A-SPX 分支可达性固化进 `VarChannelElement`，bitstream engine 只从该摘要发出拥有帧身份的 `SupportedAspxFrame`，并在入队和控制到期时复核凭证身份。trace 保留的 `commit_aspx_support`/`commit_aspx_frame` 只把统一 engine 结果映射到既有 census JSON，不持有 PCM 或第二套 DSP 状态。见规范可追踪性 5.41。
 
-**三层 PCM 的逐位基线各管各的。** `scripts/decode_check.py` 的 `--stage core|aspx|objects` 分别对应 `vectors/decode_baseline.json`、`vectors/aspx_baseline.json` 与 `vectors/objects_baseline.json`，默认三段都跑，全部 fail-closed 规则共用。分开存是因为下层基线的价值正在于「不因上层改动而变」；指定 `--stage ... --update` 只重冻一层。三段各十二条逐位一致、两条 channel-based 具名跳过，且一段失败仍继续报告后续段。逐路来源写入摘要，因此 LFE 或对象身份、插回顺序出错会直接顶出相应基线。
+**三层 PCM 的逐位基线各管各的。** `scripts/decode_check.py` 的 `--stage core|aspx|objects` 分别对应 `vectors/decode_baseline.json`、`vectors/aspx_baseline.json` 与 `vectors/objects_baseline.json`，默认三段都跑，全部 fail-closed 规则共用。分开存是因为下层基线的价值正在于「不因上层改动而变」；指定 `--stage ... --update` 只重冻一层。三段各十二条逐位一致、八条 channel-based 具名跳过，且一段失败仍继续报告后续段。逐路来源写入摘要，因此 LFE 或对象身份、插回顺序出错会直接顶出相应基线。
 
 **Companding（`5.7.5`）推迟，理由是实测不可达。** 七条流的 `n_dmx_signals` 超过 5，按 `4.2.11` 根本不传输 `companding_control()`；唯一传输的 256 kbps 流每帧都带 `companding_control(5)`，但五个 `b_compand_on` 与 `b_compand_avg` 全假，49 帧无一例外。**没有任何一帧的 QMF 数据会被压扩改动**，此时实现只会得到一段在真实素材上永不执行的代码。两类不可达分开计入 trace 的 `companding_frames` 与 `companding_active_frames`，换入会启用压扩的向量时数字会动；在实现 `5.7.5` 前，`export-aspx-pcm` 对任一活动压扩帧显式失败。见规范可追踪性 5.21。
 
@@ -462,6 +462,10 @@ Core、A-SPX、A-JOC PCM 全部逐位不变，24/24 项总时长与 p99 均改�
 
 ## M4.5：Presentation/Metadata 解析闭环
 
+**状态：只读解析与真实媒体 observation 门禁已完成；alternative presentation/dataset、非零
+DE Huffman body 及其他 EMDF ID/configuration 仍受样本能力限制。** 新 observation 保持在 CLI
+v1 既有四个 validation section 内，不改变 Scene 的渲染前 PCM 边界。
+
 **前十三个 presentation payload 增量已落地。** `presentation_substream` 现按 P2
 `6.2.2.3`/`6.3.3.1.1`–`6.3.3.1.15` 解析 presentation name 分片、target level、四类
 device category、扩展位、ducking/loudness-correction 原始码值，以及逐音频 substream 的
@@ -517,8 +521,11 @@ config `5..=7` 失败关闭。stereo 分支保留 LoRo/LtRt centre/surround、LF
 gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关闭。P2
 `6.2.9.1`/`6.3.10.1` 的 `loud_corr()` 现也按 full/core/object 条件解析：所有 presence gate
 与 5 比特 correction 原值保持可区分，core LoRo/LtRt 共用 gate，object 分支接续 9.X.4；
-码值 `31` 合法保留。解析最后消费 `byte_align` 并要求恰好落在 presentation payload 末尾，
-不执行响度归一化、DRC、group/associated gain、pan、advanced DE、custom downmix 或任何 gain。
+码值 `31` 合法保留。解析最后消费 `byte_align` 并要求恰好落在 presentation payload 末尾。
+Scene 回放入口另对已验证的 independent object/A-JOC、本帧 DRC configuration、唯一
+`0x00`/`0x80` 尾字节组合做窄兼容，完整 payload 与规范前缀分别公开，其他尾部仍失败关闭。
+两层都不执行响度归一化、DRC、group/associated gain、pan、advanced DE、custom downmix 或
+任何 gain。
 
 **四个 audio-substream tools metadata 增量也已落地。** `ac4_substream()` 不再把
 `tools_metadata_size` 只作为跳过量：P2 `6.2.7.1` 与 P1 `4.3.12.1.1` 声明的精确比特长度会
@@ -535,8 +542,11 @@ simulcast gate 和第二份 data；四张表的 `cb_off` 固定为 `0/31/30/60`�
 body。dependent `KeepPrevious` 缺少调用方提供的前一配置时失败，默认构建则继续原样保留 body。
 零长度、配置前缀过短、absence 尾随、非法 channel configuration、data/Huffman 截断、已知
 语法尾随以及区段越过 substream 均失败关闭，错误保留原 payload 的 bit offset；多倍 frame-rate
-info 无法确定逐 substream `b_iframe` 时，活动 DE 也失败关闭。现有真实向量仍是
-`tools_metadata_size = 1`、`b_de_data_present = 0`；活动分支只有构造验证。
+info 无法确定逐 substream `b_iframe` 时，活动 DE 也失败关闭。真实 channel-based 向量现已
+覆盖活动和缺席两侧：DME/DEE general 逐帧报告 DE present，并在 I/dependent frame 观察到
+New/KeepPrevious；DME music 全帧 absent。全部活动配置均为 `method = 0`、`max_gain = 2`、
+`channel_config = 0`，但 body 仍为 0 bit。因此 presence、配置和沿用已有真实验证，Huffman
+参数/panning/simulcast 数值仍只有构造覆盖。
 `DialogEnhancementState` 再由调用方按物理 substream 隔离：I-frame 从空状态重建，dependent
 frame 事务性延续配置、panning 与 primary/separate-core 两份参数历史。I-frame 首个 absolute
 index 后按 P1 表 78 的 `ref_val` 规则跨 band/channel 还原，dependent differential 逐项加到
@@ -604,7 +614,10 @@ dependent `de_par_prev`、inactive-frame 零基准、latest keep、primary/simul
 隔离、I-frame absence reset 与失败事务性，并由所有默认及 `audio-decode` 固定载荷共同验证
 末尾边界。EMDF 构造门禁另覆盖空/非空 substream、完整配置两类 timing gate、私有 codec data、
 非字节对齐 opaque bytes、扩展 ID 31、32/33 payload 容量边界、超 Annex G 大小、超 `u32` 变长
-长度、payload 截断与缺失终止符；当前没有非空真实 EMDF 向量，不能把这些门禁标作真实正向验证。
+长度、payload 截断与缺失终止符。CLI 另在 `topology.observations.emdf` 统计路由、配置、大小、
+FNV-1a 与 16 字节前缀，并严格拒绝尾随 bit；`scripts/emdf_census.py` 已冻结六条非空媒体和十四条
+零路由媒体。当前非空样本都只是 ID 20、1 字节 `00`、`discard_unknown_payload = true`，其他
+ID/configuration 仍不得标作真实正向验证。
 
 M4.5 只做只读解析：Channel-based PCM 继续延后，不实现 renderer 或设备接入，也不执行 DRC、
 dialog enhancement、gain、custom downmix、loudness correction 或自动 target/dataset 选择。
@@ -628,7 +641,7 @@ direct-object 仍属于 M5，当前没有真实输入与公共场景出口。
 | SIMPLE codec mode | 当前 A-JOC 向量均为 A-SPX | 元素路由已区分 SIMPLE；终端 PCM 导出尚未放行 | SIMPLE 与 A-SPX 跨帧切换时的历史状态、绝对时间轴尚未裁决 | 不阻塞当前向量；当前显式拒绝 |
 | 1 024 及以下短帧 | 当前 A-JOC 向量均为 2 048 样本长帧 | 短帧语法与局部工具可处理；终端 PCM 导出尚未放行 | `ts_offset_hfgen = 3` 与全局 6 QMF 时隙历史的关系未明确 | 不阻塞当前向量；当前显式拒绝 |
 | A-JOC 静态 core（`b_static_dmx = 1`） | 当前没有真实正向样本 | 能识别该标志，音频数据重建未实现 | 下混改走 `audio_data_chan()`，不能复用当前动态对象路径 | 不阻塞动态 core；当前显式拒绝 |
-| Channel-based | 已有两条 IMS 256K、`ch_mode = 6` 的真实样本 | 已识别拓扑和声道模式；PCM 重建入口尚未接通 | 缺少 channel-based 音频重建链路 | 不阻塞 A-JOC core；当前显式拒绝 |
+| Channel-based | 八条真实样本，覆盖 `ch_mode = 1/4/5/6/12`；general/music 对照覆盖 DE present/absent | 已识别拓扑、声道模式及 DE/EMDF metadata；PCM 重建入口尚未接通 | 缺少 channel-based 音频重建链路；DE body 仍无非零样本 | 不阻塞 A-JOC core；当前显式拒绝 |
 
 详细证据和规范原因分别保留在[规范可追踪性](SPEC_TRACEABILITY.md)、[测试向量策略](TEST_VECTOR_STRATEGY.md)与
 [core 布局实验记录](experiments/core_decode_layout_observation.json)中。MDCT 声道矩阵修复前后的

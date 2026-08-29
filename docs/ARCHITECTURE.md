@@ -129,7 +129,7 @@ M4.5 的 presentation processing metadata 由 `macindecode-ac4-bitstream` 负责
 
 | 数据 | 当前帧只读视图 | 跨帧状态键 | 所有权与限制 |
 |---|---|---|---|
-| presentation payload | `PresentationSubstreamMetadata::payload` 与 `parsed_substream()`；当前帧所有 presentation processing 字段及原始 bit view | Session 所选 presentation 的配置代次 | Session 复制完整 bounded payload；视图借用到下一次可变调用。`syntax_payload` 与 `compatibility_tail` 明确分开已知 `0x80` 尾部，且不赋予尾部语义 |
+| presentation payload | `PresentationSubstreamMetadata::payload` 与 `parsed_substream()`；当前帧所有 presentation processing 字段及原始 bit view | Session 所选 presentation 的配置代次 | Session 复制完整 bounded payload；视图借用到下一次可变调用。`syntax_payload` 与 `compatibility_tail` 明确分开已知 `0x00`/`0x80` 尾部，且不赋予尾部语义 |
 | presentation DRC | `Ac4PresentationSubstream` 中的本帧配置、data/gain-set envelope 与原始 bit view；侧车另给出 effective configuration | Session 所选 presentation 的配置代次 | Session 内的 `PresentationDrcState` 只延续解析 dependent data 所需的配置；不拥有 gain 平滑或 PCM 处理状态 |
 | substream-group gain | 当前帧的 absent/keep/new 传输形态；侧车另给出 effective 六比特码值 | Session 所选 presentation 的配置代次 | Session 内的 `PresentationSubstreamGroupGainState` 保存有效码值；不换算或应用 gain |
 | dialogue enhancement | 当前物理 audio substream 的 tools-metadata view | 物理 `substream_index` | 默认构建只保留配置与原始 bit view；`DialogEnhancementState` 仅在 `audio-decode` 下可用，并独立延续配置、panning、primary 与 simulcast 参数历史；不同 substream 或两类参数历史不得共用 |

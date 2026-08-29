@@ -86,11 +86,17 @@ jobs:
       - name: Test A-JOC census checker
         run: python3 -m unittest scripts/test_ajoc_census.py
 
+      - name: Test EMDF census checker
+        run: python3 -m unittest scripts/test_emdf_census.py
+
       - name: Test DEE IMS job configuration
         run: python3 -m unittest scripts/test_dee_ims.py
 
       - name: Test DME A-JOC job configuration
         run: python3 -m unittest scripts/test_dme_ac4.py
+
+      - name: Test DME native job configuration
+        run: python3 -m unittest scripts/test_dme_native.py
 
   audio_decode:
     name: audio-decode

@@ -38,8 +38,8 @@ use macindecode_ac4_bitstream::full_ajoc::{
 const PRESENTATION_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info";
 const GROUP_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info/ac4_substream_group_info";
 const PRESENTATION_SUBSTREAM_SYNTAX: &str = "raw_ac4_frame/ac4_presentation_substream";
-/// Dolby object/A-JOC 生产链在 independent DRC 帧规范语法之后写入的已观测尾字节。
-const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTE: u8 = 0x80;
+/// object/A-JOC 生产链在 independent DRC 帧规范语法之后写入的已观测尾字节。
+const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 2] = [0x00, 0x80];
 
 /// 所选 presentation 的解析历史与当前 AU 可见存储。
 #[derive(Debug, Default)]
@@ -674,8 +674,8 @@ impl Ac4DecoderSession {
 
 /// 保持 bitstream parser 的规范严格边界，同时接纳回放端已验证的一种窄兼容形态。
 ///
-/// 多条 Dolby object/A-JOC 生产链只在携带 DRC configuration 的 independent frame 中，于
-/// 完整 `ac4_presentation_substream()` 之后追加单字节 `0x80`。它不是
+/// 多条 object/A-JOC 生产链只在携带 DRC configuration 的 independent frame 中，于完整
+/// `ac4_presentation_substream()` 之后追加单字节 `0x00` 或 `0x80`。它们不是
 /// `TS103190-2:v1.3.1:6.2.2.3` 的字段；Scene 保留完整 bounded payload，但只把前缀交给
 /// 严格 parser。任何其他尾部仍原样报错。
 fn parse_presentation_substream_for_scene<'payload>(
@@ -693,11 +693,12 @@ fn parse_presentation_substream_for_scene<'payload>(
         Err(error @ PresentationSubstreamError::TrailingBits { remaining_bits: 8 })
             if context.presentation_is_independent() && context.pres_ch_mode_undefined() =>
         {
-            let Some((&INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTE, syntax_payload)) =
-                payload.split_last()
-            else {
+            let Some((&compatibility_byte, syntax_payload)) = payload.split_last() else {
                 return Err(error);
             };
+            if !INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES.contains(&compatibility_byte) {
+                return Err(error);
+            }
             let mut compatibility_state = initial_state;
             let parsed = Ac4PresentationSubstream::parse_with_drc_state(
                 syntax_payload,
@@ -1786,7 +1787,7 @@ mod tests {
     /// 普通 object/A-JOC presentation：无 additional data、dialnorm 0x55、DRC absent、
     /// associated audio absent、object loudness correction absent。
     const MINIMAL_PRESENTATION_PAYLOAD: [u8; 3] = [0x55, 0x04, 0x00];
-    /// independent object/A-JOC presentation：单一 default DRC mode，随后是已知 `0x80` 兼容尾部。
+    /// independent object/A-JOC presentation：单一 default DRC mode，随后是已知兼容尾部。
     const INDEPENDENT_DRC_PRESENTATION_PAYLOAD: [u8; 5] = [0x00, 0x3d, 0x01, 0x00, 0x80];
     /// bitstream crate 的最小有效 Full A-JOC I-frame：单 ASF/A-SPX 输入、单对象。
     #[cfg(feature = "audio-decode")]
@@ -2119,17 +2120,18 @@ mod tests {
             1,
             macindecode_ac4_bitstream::PresentationChannelContext::UNDEFINED,
         );
-        let mut state = PresentationDrcState::new();
-        let (parsed, syntax_payload_len) = parse_presentation_substream_for_scene(
-            &INDEPENDENT_DRC_PRESENTATION_PAYLOAD,
-            context,
-            &mut state,
-        )
-        .expect("已验证的 independent object DRC 尾部应进入窄兼容路径");
-        assert_eq!(syntax_payload_len, 4);
-        assert!(parsed.drc_present);
-        assert!(parsed.drc_configuration.is_some());
-        assert!(state.configuration().is_some());
+        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+            let mut payload = INDEPENDENT_DRC_PRESENTATION_PAYLOAD;
+            payload[4] = compatibility_byte;
+            let mut state = PresentationDrcState::new();
+            let (parsed, syntax_payload_len) =
+                parse_presentation_substream_for_scene(&payload, context, &mut state)
+                    .expect("已验证的 independent object DRC 尾部应进入窄兼容路径");
+            assert_eq!(syntax_payload_len, 4);
+            assert!(parsed.drc_present);
+            assert!(parsed.drc_configuration.is_some());
+            assert!(state.configuration().is_some());
+        }
 
         let mut wrong_byte = INDEPENDENT_DRC_PRESENTATION_PAYLOAD;
         wrong_byte[4] = 0x81;
@@ -2141,49 +2143,80 @@ mod tests {
         );
         assert_eq!(rejected_state, PresentationDrcState::new());
 
-        let absent_drc_with_tail = [0x55, 0x04, 0x00, 0x80];
-        assert_eq!(
-            parse_presentation_substream_for_scene(
-                &absent_drc_with_tail,
-                context,
-                &mut rejected_state,
-            )
-            .unwrap_err(),
-            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+            let absent_drc_with_tail = [0x55, 0x04, 0x00, compatibility_byte];
+            assert_eq!(
+                parse_presentation_substream_for_scene(
+                    &absent_drc_with_tail,
+                    context,
+                    &mut rejected_state,
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+            );
+            assert_eq!(rejected_state, PresentationDrcState::new());
+        }
+
+        let channel_context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            macindecode_ac4_bitstream::PresentationChannelContext::new(
+                Some(0),
+                None,
+                false,
+                0,
+                false,
+            ),
         );
-        assert_eq!(rejected_state, PresentationDrcState::new());
+        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+            let mut payload = INDEPENDENT_DRC_PRESENTATION_PAYLOAD;
+            payload[4] = compatibility_byte;
+            assert_eq!(
+                parse_presentation_substream_for_scene(
+                    &payload,
+                    channel_context,
+                    &mut rejected_state,
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+            );
+            assert_eq!(rejected_state, PresentationDrcState::new());
+        }
     }
 
     #[cfg(feature = "audio-decode")]
     #[test]
-    fn public_decode_preserves_known_presentation_compatibility_tail() {
-        let frame = frame_with_presentation_and_audio_payload(
-            FULL_AUDIO_TOC_PREFIX,
-            FULL_AUDIO_PRESENTATION,
-            FULL_AUDIO_GROUP,
-            &INDEPENDENT_DRC_PRESENTATION_PAYLOAD,
-            &MINIMAL_FULL_AUDIO_PAYLOAD,
-        );
-        let mut session = Ac4DecoderSession::default();
-        let decoded = session
-            .decode_access_unit(AccessUnit::new(&frame, AccessUnitContext::new(131)))
-            .expect("已知独立帧兼容尾部不得阻断 Scene 回放入口");
-        let metadata = decoded
-            .presentation_metadata()
-            .expect("成功 AU 应发布 presentation metadata");
+    fn public_decode_preserves_known_presentation_compatibility_tails() {
+        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+            let mut presentation_payload = INDEPENDENT_DRC_PRESENTATION_PAYLOAD;
+            presentation_payload[4] = compatibility_byte;
+            let frame = frame_with_presentation_and_audio_payload(
+                FULL_AUDIO_TOC_PREFIX,
+                FULL_AUDIO_PRESENTATION,
+                FULL_AUDIO_GROUP,
+                &presentation_payload,
+                &MINIMAL_FULL_AUDIO_PAYLOAD,
+            );
+            let mut session = Ac4DecoderSession::default();
+            let decoded = session
+                .decode_access_unit(AccessUnit::new(&frame, AccessUnitContext::new(131)))
+                .expect("已知独立帧兼容尾部不得阻断 Scene 回放入口");
+            let metadata = decoded
+                .presentation_metadata()
+                .expect("成功 AU 应发布 presentation metadata");
 
-        assert_eq!(metadata.payload(), INDEPENDENT_DRC_PRESENTATION_PAYLOAD);
-        assert_eq!(
-            metadata.syntax_payload(),
-            &INDEPENDENT_DRC_PRESENTATION_PAYLOAD[..4]
-        );
-        assert_eq!(metadata.compatibility_tail(), &[0x80]);
-        assert!(metadata.effective_drc_configuration().is_some());
-        let parsed = metadata
-            .parsed_substream()
-            .expect("Session 自持规范前缀应可重建借用视图");
-        assert!(parsed.drc_present);
-        assert!(parsed.drc_configuration.is_some());
+            assert_eq!(metadata.payload(), presentation_payload);
+            assert_eq!(metadata.syntax_payload(), &presentation_payload[..4]);
+            assert_eq!(metadata.compatibility_tail(), &[compatibility_byte]);
+            assert!(metadata.effective_drc_configuration().is_some());
+            let parsed = metadata
+                .parsed_substream()
+                .expect("Session 自持规范前缀应可重建借用视图");
+            assert!(parsed.drc_present);
+            assert!(parsed.drc_configuration.is_some());
+        }
     }
 
     #[cfg(feature = "audio-decode")]

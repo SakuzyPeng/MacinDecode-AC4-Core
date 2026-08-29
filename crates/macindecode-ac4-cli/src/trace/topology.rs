@@ -4,9 +4,9 @@
 //! 渲染成 JSON。
 
 use super::{
-    Ac4Topology, AjocTrace, AudioTrace, ConfigFingerprint, DecoderAction, DecodingDelay, OamdTrace,
-    RandomAccess, ResetReason, SampleOffsetSource, ScenePath, SequenceTransition, SubstreamInfo,
-    TopologyStateMachine, presentation_config_label, validate_group_references,
+    Ac4Topology, AjocTrace, AudioTrace, ConfigFingerprint, DecoderAction, DecodingDelay, EmdfTrace,
+    OamdTrace, RandomAccess, ResetReason, SampleOffsetSource, ScenePath, SequenceTransition,
+    SubstreamInfo, TopologyStateMachine, presentation_config_label, validate_group_references,
     validate_substream_references,
 };
 
@@ -53,6 +53,7 @@ pub(crate) struct TopologyTrace {
     pub(super) delay: Option<DecodingDelay>,
     pub(super) detail: String,
     pub(super) oamd: OamdTrace,
+    pub(super) emdf: EmdfTrace,
     pub(super) audio: AudioTrace,
     pub(super) ajoc_audio: AjocTrace,
 }
@@ -111,6 +112,7 @@ impl TopologyTrace {
             delay: None,
             detail: String::new(),
             oamd: OamdTrace::new(),
+            emdf: EmdfTrace::new(),
             audio: AudioTrace::new(),
             ajoc_audio: AjocTrace::new(),
         }
@@ -154,6 +156,7 @@ impl TopologyTrace {
                 "    \"presentations\": {},\n",
                 "    \"substream_groups\": {},\n",
                 "    \"total_objects\": {},\n",
+                "    \"emdf\": {},\n",
                 "    \"oamd\": {},\n",
                 "    \"audio_substream\": {},\n",
                 "    \"ajoc_audio\": {},\n",
@@ -186,6 +189,7 @@ impl TopologyTrace {
                 .map_or_else(|| "null".to_owned(), |value| value.to_string()),
             self.total_objects
                 .map_or_else(|| "null".to_owned(), |value| value.to_string()),
+            self.emdf.to_json(),
             self.oamd.to_json(),
             self.audio.to_json(),
             self.ajoc_audio.to_json(),
@@ -307,6 +311,7 @@ impl TopologyTrace {
         }
 
         let group_oamd = self.oamd.observe(frame, &topology, index, is_sync);
+        self.emdf.observe(frame, &topology, index);
         self.audio.observe(frame, &topology, index, &group_oamd);
         self.ajoc_audio
             .observe_at(frame, &topology, index, &group_oamd, frame_start_samples);

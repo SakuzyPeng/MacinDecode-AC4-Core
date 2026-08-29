@@ -17,6 +17,7 @@ Dolby、Dolby Atmos 与 AC-4 是其各自权利人的商标；文中名称仅用
 
 - **容器与同步**：MP4 (`ac-4` sample entry / `dac4`) 和 raw AC-4 sync frame 解析
 - **场景拓扑**：Presentation / Group / Substream 关系、随机访问与配置代次状态机
+- **Presentation 元数据**：响度/DRC/DE 只读语法、alternative OAMD、opaque EMDF 路由与 census
 - **OAMD 时间线**：跨帧状态延续、帧内更新、ramp 和 seek 后完整性标记
 - **音频核心解码**：反量化、IMDCT、联合声道矩阵、A-SPX 频谱扩展与 QMF 合成
 - **A-JOC full 重建**：对象矩阵、wet/去相关、LFE 插回、终端 QMF 合成
@@ -130,6 +131,7 @@ MP4 / raw AC-4
 | M2 TOC 与拓扑 | ✅ | Presentation/Group/Substream，随机访问状态机 |
 | M3 OAMD 与时间线 | ✅ | 跨帧状态、帧内更新、seek 后完整性 |
 | M4 音频核心基线 | ✅ | 反量化→IMDCT→A-SPX，12 条 A-JOC 媒体 core/A-SPX 逐位基线冻结 |
+| M4.5 Presentation/Metadata | ✅（受限） | 只读解析与 DE/EMDF 真实媒体门禁完成；alternative、非零 DE body 与其他 EMDF 类型仍待样本 |
 | M6 Full A-JOC 重建 | ✅ | 对象矩阵/wet/LFE/QMF 终端合成，第三份逐位基线冻结 |
 | M5 场景 API | 🚧 | A-JOC Core/Full 借用 Rust API、core/A-SPX 基线、CoreCAF、ADM/DAMF 诊断渲染器与 Full batch 出口已接入；direct-object 待完成 |
 | M7 公共 ABI | 🔲 | C ABI、SIMD 优化、fuzz |

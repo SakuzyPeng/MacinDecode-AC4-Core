@@ -239,13 +239,33 @@ core/A-SPX 两条 WAVE 是 A-JOC 前的诊断层；`export-objects-pcm` 是 full
 ./scripts/audio_check.sh path/to/input.m4a
 ./scripts/trajectory_check.py vectors/<case_id>
 ./scripts/decode_check.py
+./scripts/ajoc_census.py
+./scripts/dme_native_check.py
+./scripts/emdf_census.py
 ```
 
 本地逐位回归基线分 core/aspx/objects 三份，默认三段都跑。每段基线中的十二条 A-JOC 媒体全部必须存在且成功，既有条目不得跳过。未入基线且走尚未实现编码路径的媒体会逐条列名跳过；至少一条须真正解码。`--update` 仅在该段门禁全部通过后原子更新对应基线，不会波及另外两段。
 
 ## 测试向量与集成测试
 
-无条件测试与本地真实向量测试明确分组：普通 `cargo test` 只运行无条件用例，并把真实向量用例显示为 `ignored`；只有追加 `-- --ignored` 才会执行后者。真实向量测试读取被版本控制排除的 `probe_axes_single_object` 编码产物；素材缺失时显式运行会失败，不再伪装成通过。也可用 `MACINAC4_PROBE_AXES_VECTOR=/path/to/master.m4a` 指定素材。该案例还声明 DME A-JOC L3 768K、L4 1500K、L4 768K 3DoF 与两个 DEE IMS 256K 作业。配置 `.env.local` 后可用 `--profile dme_ac4` 只生成 DME 向量，或用 `--profile all` 同时运行三条生产链。DME 输出名包含 Level 与非默认模式，不会覆盖既有同码率文件；普通模式读取规范化 ADM，3DoF 模式在隔离 staging 中生成 DAMF 0.6.0/type 3dof，canonical DAMF 不变。其 timing manifest 的 offset/duration 由配套 muxer 原样写入 M4A。省略 `--profile` 时仍只走原生产链；两种可选后端的 staging 在成功或失败退出时都会清理。DME 这一路固定生成 A-JOC，不作为 direct-object 向量来源。对象可在 `static_fields.headTrackMode` 中分别选择 `scene relative` 或 `head relative`；3DoF 的实测门禁与码流对照见 [测试向量策略](TEST_VECTOR_STRATEGY.md)。三条 DME 产物现已同时进入轨迹门禁与 core/A-SPX 逐位基线；presentation 级可选 EMDF payload 路由会在逐帧索引表中出现或消失，但不再被误判为配置变化。两个 IMS 产物是 channel-based，轨迹检查会按 manifest 明确跳过，而不是把它们混入 A-JOC 对象轨迹。
+无条件测试与本地真实向量测试明确分组：普通 `cargo test` 只运行无条件用例，并把真实向量用例
+显示为 `ignored`；只有追加 `-- --ignored` 才会执行后者。真实向量测试读取被版本控制排除的
+`probe_axes_single_object` 编码产物；素材缺失时显式运行会失败，不再伪装成通过。也可用
+`MACINAC4_PROBE_AXES_VECTOR=/path/to/master.m4a` 指定素材。
+
+`case.json` 可同时声明 default、DME A-JOC、DME native 与 DEE IMS 作业。配置 `.env.local` 后，
+`--profile dme_ac4` 只运行 DME A-JOC；`--profile dme_native` 运行 channel-based/native IMS；
+`--profile dee_ims` 只运行 DEE；`--profile all` 运行四条链。省略 profile 仍保持原 default 行为。
+DME A-JOC 的 Level/3DoF 输出名、隔离 DAMF 0.6.0/type 3dof、timing manifest 与对象
+`headTrackMode` 行为不变，三条产物继续进入轨迹与三层 PCM 基线。
+
+DME native 的 speaker WAVE 只从纯 bed case 的信号配方按 SMPTE 顺序重建，拒绝静默丢弃对象；
+DAMF IMS 直接读取 canonical DAMF。general 固定 24 fps、24 帧 I-frame 间隔及 -2000 samples
+offset；music 使用 native fps、关闭 Dialogue Intelligence 且 offset 为 0。当前六条 DME native
+媒体与两条 DEE IMS 都是 channel-based，轨迹和 PCM 门禁按 manifest 具名跳过；
+`dme_native_check.py` 单独验证 `ch_mode`、帧数和 DE New/Keep/absence，`emdf_census.py` 则冻结
+六条非空 presentation EMDF 签名并逐条检查本地零路由媒体。详见
+[测试向量策略](TEST_VECTOR_STRATEGY.md)。
 
 ## 补充说明
 

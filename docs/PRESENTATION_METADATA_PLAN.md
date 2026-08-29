@@ -1,6 +1,6 @@
 # Presentation 与元数据闭环计划
 
-> **状态：实施中；部分外部向量受限。** alternative presentation 的名称、target 与逐
+> **状态：解析实现完成；部分真实向量仍受限。** alternative presentation 的名称、target 与逐
 > substream activation/dataset selection 前缀、公共 additional-data envelope，以及
 > dialnorm/further-loudness 前缀、DRC 长度 envelope、substream-group gain 原始更新与有效状态、
 > associated-audio scaling/pan、custom downmix 与 loudness correction 已完成构造验证；DRC
@@ -9,11 +9,13 @@
 > 解析 dialogue-enhancement presence、I/dependent configuration gate 与 7 比特配置；默认构建
 > 仍以原始 bit view 保留 `de_data()`/simulcast body，`audio-decode` 下已可显式解码完整帧内
 > Huffman data 与 simulcast，并按物理 substream 事务性延续配置、panning 与两份参数索引。
-> EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证；non-A-JOC
+> EMDF payload envelope、时序/transcoding 配置与 opaque bytes 已完成构造验证和真实码流
+> census；non-A-JOC
 > `metadata()` 与 A-JOC `audio_data_ajoc()` 两处动态数据中的 alternative OAMD 原始 dataset
-> 及 `b_keep` 有效状态已完成构造验证。当前工具链可再生产普通 presentation payload
-> 与 dialog enhancement 正向候选；非空 EMDF payload 和 alternative presentation/dataset 仍按第 5 节
-> 保持外部向量待验证。当前实际进度以[实施路线图](ROADMAP.md)为准。
+> 及 `b_keep` 有效状态已完成构造验证。当前 DME/DEE 工具链可再生产普通 presentation payload、
+> dialogue-enhancement presence/configuration/keep 和非空 EMDF payload；DE Huffman body
+> 仍为 0 bit，alternative presentation/dataset 仍按第 5 节保持外部向量待验证。当前实际进度以
+> [实施路线图](ROADMAP.md)为准。
 
 ## 1. 目的
 
@@ -100,7 +102,10 @@ output config 和 stereo surround 保留码失败关闭。custom/stereo/LFE 的 
 保持可区分。随后按 full/core/object mode gate 解析 `loud_corr()`，保留所有 presence 与 5 比特
 correction 原值；core LoRo/LtRt 共用 presence，object correction 分支包含 9.X.4，规范解释为
 0 dB 的码值 `31` 仍合法保留。末尾 `byte_align` 的填充值不解释，但对齐后必须恰好耗尽有界
-payload，额外整字节失败关闭。这里不执行 gain、dB 换算、角度换算、pan 或 downmix。
+payload，额外整字节失败关闭。Scene 回放入口另有一个不改变 bitstream parser 的窄兼容层：仅在
+independent object/A-JOC 帧、本帧确实携带 DRC configuration 且唯一尾字节为 `0x00` 或
+`0x80` 时，把该字节作为 opaque compatibility tail 保留。这里不执行 gain、dB 换算、角度换算、
+pan 或 downmix。
 
 当前无状态 API 已显式接收 TOC/拓扑上下文并解析 I-frame 配置及其 data envelope；stateful API
 另行显式接收按 presentation 隔离的 DRC 或 group gain 状态，feature-gated gain API 再接收表
@@ -158,9 +163,12 @@ P1 表 78 的 I-frame 还原从首个 absolute index 开始：同一 channel 沿
 keep 或还原错误均不污染已提交状态。I-frame absence 清空全部状态；缺少精确物理 `b_iframe`
 上下文时，stateful API 失败而不猜测随机访问边界。
 
-现有真实向量的 `tools_metadata_size = 1` 且 `b_de_data_present = 0`，只关闭 absence 路径的真实
-验证；活动分支与跨帧状态仍只有构造验证。解析结果只保留有效整数索引，不反量化或执行 dialogue
-enhancement，也不修改 PCM。
+真实 channel-based 向量现已同时覆盖 absence 与活动分支：DME/DEE general 产物逐帧报告
+`b_de_data_present = 1`，并跨 I/dependent frame 观察到 New/KeepPrevious；DME music 产物则
+逐帧缺席。全部活动配置均为 `method = 0`、`max_gain = 2`、`channel_config = 0`，但当前 body
+仍恰为 0 bit。因此 presence、配置和沿用已获真实正向验证，Huffman 参数、panning、simulcast
+及数值状态仍只有构造覆盖。解析结果只保留有效整数索引，不反量化或执行 dialogue enhancement，
+也不修改 PCM。
 
 ### 3.3 EMDF 与 alternative 数据路径
 
@@ -177,6 +185,13 @@ EMDF 项已完成构造验证：固定容量保存 32 个有序 payload descript
 24 比特最大帧长作为上限；原始 8 比特元素即使不在字节边界也可从原 substream 零拷贝重建。
 解析结果保留 sample offset、duration、group ID、codec data、priority、processing/discard 与
 duplicate 标志，但不解释注册表或私有 datatype。
+
+CLI trace 现把 presentation 路由、完整配置、payload 大小、FNV-1a 64 指纹和最多 16 字节 opaque
+前缀写入 `result.validation.topology.observations.emdf`，并要求 payload substream 解析后没有尾随
+bit。`scripts/emdf_census.py` 以 fail-closed 基线冻结真实媒体；当前六条非空媒体均观察到 ID 20、
+1 字节 `00`、`discard_unknown_payload = true`，其中三条 DME A-JOC 和三条 DME channel-based
+分别在每条流的 8 帧和 4 帧出现。该证据关闭“非空 envelope 无真实向量”的缺口，但不能外推到
+其他 ID、配置或 payload 语义。
 
 alternative OAMD 的首个增量已实现 P2 `6.2.7.1`/`6.2.8.3`/`6.2.8.12` 中 non-A-JOC
 `metadata()` 路径：上下文显式携带当前物理 direct-object substream 的对象描述、group timing
@@ -248,11 +263,27 @@ Dolby Atmos Renderer 的 768 kbit/s AC-4 后端编码：
 `payloads_substream_index`，因此其中的 `emdf_info()` 保留字段不能视为非空 EMDF payload。
 legacy 流可用于“多 presentation 共享物理 substream”的回归，不能冒充 alternative 向量。
 
-因此当前独立工具链已提供“非空普通 presentation payload”和 dialog enhancement 正向候选；
-非空 EMDF 与 alternative presentation/dataset 仍没有可控生产入口。IMS 是 channel-based
-路径，只验证 presentation/metadata，不替代 A-JOC 对象重建向量。这是当前编码工具及其
-Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待验证语法。除非工具能力
-改变，不得重复把通用 AXML 改写或 legacy presentation 当作这两类向量的生产方案。
+2026-08-29 又把 DME 安装中的 channel encoder 与 native IMS encoder 接入独立
+`dme_native` profile。speaker WAVE 只允许从 `objects = []` 的纯 bed 案例按信号配方和 SMPTE
+顺序重新生成，拒绝把 Atmos 对象母版静默下混；DAMF IMS 则直接读取 canonical 0.5.1/home DAMF。
+本地门禁得到：
+
+| 输入/模式 | 帧数 | `ch_mode` | dialogue enhancement | presentation EMDF |
+| --- | ---: | ---: | --- | --- |
+| channel stereo / 5.1 / 5.1.4 | 各 49 | 1 / 4 / 12 | 各 4 New + 45 Keep | 各 4 帧，ID 20 |
+| IMS general / 5.1 WAVE | 49 | 5 | 3 New + 46 Keep | 无路由 |
+| IMS music / 5.1 WAVE | 47 | 5 | 47 帧缺席 | 无路由 |
+| IMS general / DAMF | 145 | 6 | 7 New + 138 Keep | 无路由 |
+
+DEE 的两条 IMS 也各在 141 帧内观察到 6 New + 135 Keep。所有活动 DE 配置相同且 body 为
+0 bit。另有三条既存 DME A-JOC 在各 8 帧携带相同 ID 20 payload，因此 EMDF 基线目前登记六条
+非空媒体，并逐条 trace 其余十四条零路由媒体。
+
+因此当前独立工具链已提供非空普通 presentation payload、DE presence/configuration/keep 与
+非空 EMDF envelope。IMS 和 DME channel 作业仍是 channel-based，只验证 topology/metadata，
+不替代 A-JOC 对象重建向量。尚无可控入口的是非零 DE Huffman body、其他 EMDF ID/configuration
+以及 alternative presentation/dataset；这描述当前工具配置的行为边界，不表示 AC-4 规范不支持
+这些语法。通用 AXML 改写或 legacy presentation 仍不能冒充 alternative 向量。
 
 ### 5.2 临时分层门禁
 
@@ -261,12 +292,12 @@ Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待�
 
 真实码流验证按当前可获得能力拆分：
 
-- 非空普通 presentation payload 与 dialog enhancement 是 M4.5 的必需真实向量；DEE IMS
-  已接入 `build_vector.sh`，解析落地后必须纳入本机回归；
+- 非空普通 presentation payload、dialog-enhancement presence/configuration/keep 与非空 EMDF
+  envelope 均已进入本机真实媒体回归；`dme_native_check.py` 和 `emdf_census.py` 缺件或失配即失败；
 - DEE IMS legacy 流只作为多 presentation/共享 substream 回归，不关闭 alternative 的外部
   验证状态；
-- 非空 EMDF payload 与 alternative presentation/dataset 暂记为**外部向量待验证**，不阻塞
-  解析代码合入、M4.5 的“实现完成（构造验证）”状态或 M5 开始；
+- 非零 DE Huffman body、其他 EMDF ID/configuration 与 alternative presentation/dataset 暂记为
+  **外部向量待验证**，不阻塞解析代码合入或 M5 推进；
 - 待验证分支不得标为“真实码流已验证”，不得据此宣称完整 conformance，也不得作为默认启用
   自动 target/dataset 选择的依据；
 - 获得授权码流或具备对应配置入口的编码器后，必须补做正向真实向量、独立解析交叉检查和回归门禁，
@@ -297,6 +328,8 @@ Dolby Atmos ADM/IMS profile 的行为边界，不表示 AC-4 规范不支持待�
 2. **已完成：** 把 M4.5 的解析交付物和退出条件写入 `ROADMAP.md`。
 3. **已完成：** 在 `ARCHITECTURE.md` 增加 metadata 状态所有权，在 `OUTPUT_CONTRACT.md` 增加
    presentation metadata 与 opaque EMDF 契约；不增加处理后 PCM 契约。
-4. 在 `SPEC_TRACEABILITY.md` 录入经锁定 PDF 核对的精确条款，在
+4. **已完成：** 在 `SPEC_TRACEABILITY.md` 录入经锁定 PDF 核对的精确条款，在
    `TEST_VECTOR_STRATEGY.md` 录入可获得的真实向量、外部向量待验证项和解析门禁。
-5. 实现及机器接口真正落地后，再版本化更新 CLI 输出契约与 schema；不得提前发布空字段。
+5. **已完成：** 实现落地后在现有 v1 四 section 骨架内增加
+   `topology.observations.emdf` 与 `audio_substream.observations.dialogue_enhancement` 叶子，并同步
+   CLI 输出契约；未增加空的顶层 validation section。

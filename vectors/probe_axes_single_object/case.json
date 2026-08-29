@@ -65,6 +65,13 @@
       "mode": "3dof"
     }
   ],
+  "dme_ims": [
+    {
+      "input": "damf",
+      "mode": "general",
+      "bitrate": 256
+    }
+  ],
   "dee_ims": [
     {
       "bitrate": 256,
@@ -83,6 +90,7 @@
     "bed 全静音，任何非零 bed 输出都说明存在串扰或布局重映射。",
     "3DoF 作业固定对象为 scene relative，用于验证旋转头部跟踪路径；presentation 类型只在隔离 staging 中提升，不改写 canonical DAMF。",
     "DEE IMS 基线用于 presentation、loudness、DRC 与 dialog enhancement 正向验证。",
-    "DEE IMS legacy 作业只覆盖多 presentation 共享物理 substream，不视为 alternative 向量。"
+    "DEE IMS legacy 作业只覆盖多 presentation 共享物理 substream，不视为 alternative 向量。",
+    "DME native IMS general 作业直接读取 canonical DAMF，用独立后端覆盖 ch_mode=6 与 dialog enhancement 配置/沿用。"
   ]
 }

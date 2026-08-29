@@ -46,9 +46,13 @@ from pathlib import Path
 if __package__:
     from .dee_ims import parse_jobs as parse_dee_ims_jobs
     from .dme_ac4 import parse_jobs as parse_dme_ac4_jobs
+    from .dme_native import parse_channel_jobs as parse_dme_channel_jobs
+    from .dme_native import parse_ims_jobs as parse_dme_ims_jobs
 else:
     from dee_ims import parse_jobs as parse_dee_ims_jobs
     from dme_ac4 import parse_jobs as parse_dme_ac4_jobs
+    from dme_native import parse_channel_jobs as parse_dme_channel_jobs
+    from dme_native import parse_ims_jobs as parse_dme_ims_jobs
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -73,8 +77,9 @@ def select_trajectory_media(
     """按 case 的编码作业选择 A-JOC 媒体。
 
     默认 ``encodes`` 与 ``dme_ac4`` 都生成 A-JOC，必须进入轨迹门禁；
-    ``dee_ims`` 是 channel-based presentation/metadata 向量，存在时明确跳过。
-    encoded 目录里无法由这三类声明解释的 M4A 失败关闭，避免新后端静默绕过。
+    ``dee_ims``、``dme_channel`` 与 ``dme_ims`` 是 channel-based
+    presentation/metadata 向量，存在时明确跳过。encoded 目录里无法由这些
+    声明解释的 M4A 失败关闭，避免新后端静默绕过。
     """
     encoded = case_dir / "encoded"
     actual = {path.name: path for path in sorted(encoded.glob("*.m4a"))}
@@ -94,6 +99,10 @@ def select_trajectory_media(
     try:
         ajoc_names.extend(job.output_filename for job in parse_dme_ac4_jobs(case))
         ims_names = {job.output_filename for job in parse_dee_ims_jobs(case)}
+        ims_names.update(
+            job.output_filename for job in parse_dme_channel_jobs(case)
+        )
+        ims_names.update(job.output_filename for job in parse_dme_ims_jobs(case))
     except ValueError as error:
         errors.append(str(error))
         ims_names = set()

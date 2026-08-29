@@ -36,10 +36,38 @@
     256,
     448
   ],
+  "dme_channel": [
+    {
+      "layout": "stereo",
+      "bitrate": 64
+    },
+    {
+      "layout": "5.1",
+      "bitrate": 128
+    },
+    {
+      "layout": "5.1.4",
+      "bitrate": 192
+    }
+  ],
+  "dme_ims": [
+    {
+      "input": "wav_5_1",
+      "mode": "general",
+      "bitrate": 256
+    },
+    {
+      "input": "wav_5_1",
+      "mode": "music",
+      "bitrate": 256
+    }
+  ],
   "notes": [
     "objects 为空是本案例的关键：现有向量都至少有一个对象，因而恒走 A-JOC。",
     "若编码器对纯 bed 仍选择 A-JOC，则 channel-based 路径同样不可达。",
     "LFE 取 40 Hz，其余声道 200 + 150·index Hz，互不重叠。",
-    "768 kbps 未采用：编码器对本素材实测得 770 510 bps，未通过其自带的码率校验。"
+    "768 kbps 未采用：编码器对本素材实测得 770 510 bps，未通过其自带的码率校验。",
+    "DME native speaker WAVE 只复用本案例的逐声道信号配方，按 stereo、5.1 与 5.1.4 的 SMPTE 顺序重新生成，不把 Atmos 对象母版做隐式下混。",
+    "DME native IMS 的 general/music 对照使用同一份 5.1 WAVE；前者覆盖 dialog enhancement 配置/沿用，后者覆盖其缺席。"
   ]
 }

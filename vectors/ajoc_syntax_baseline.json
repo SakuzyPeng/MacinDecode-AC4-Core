@@ -1102,7 +1102,13 @@
     }
   },
   "skips": {
+    "probe_axes_single_object/master_ac4_dme_ims_general_damf_256K.m4a": "channel_based",
     "probe_axes_single_object/master_ac4_ims_256K.m4a": "channel_based",
-    "probe_axes_single_object/master_ac4_ims_legacy_256K.m4a": "channel_based"
+    "probe_axes_single_object/master_ac4_ims_legacy_256K.m4a": "channel_based",
+    "probe_bed_only/master_ac4_dme_channel_5_1_128K.m4a": "channel_based",
+    "probe_bed_only/master_ac4_dme_channel_5_1_4_192K.m4a": "channel_based",
+    "probe_bed_only/master_ac4_dme_channel_stereo_64K.m4a": "channel_based",
+    "probe_bed_only/master_ac4_dme_ims_general_wav_256K.m4a": "channel_based",
+    "probe_bed_only/master_ac4_dme_ims_music_wav_256K.m4a": "channel_based"
   }
 }

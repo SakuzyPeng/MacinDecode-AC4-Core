@@ -18,7 +18,9 @@ cargo run --bin macinac4 -- trace path/to/input.m4a
 ./scripts/audio_check.sh path/to/input.m4a       # require full A-JOC parsing to land exactly
 ./scripts/trajectory_check.py vectors/<case_id>  # compare decoded object tracks with case.json
 ./scripts/decode_check.py                        # local bit-exact PCM baselines (core + A-SPX stages)
-python3 -m unittest scripts/test_trajectory_check.py scripts/test_decode_check.py scripts/test_ajoc_census.py scripts/test_check_patch_tables.py scripts/test_dme_ac4.py scripts/test_dee_ims.py
+./scripts/dme_native_check.py                    # verify local DME channel/IMS topology and DE
+./scripts/emdf_census.py                         # verify local presentation EMDF signatures
+python3 -m unittest scripts/test_trajectory_check.py scripts/test_decode_check.py scripts/test_ajoc_census.py scripts/test_emdf_census.py scripts/test_check_patch_tables.py scripts/test_dme_ac4.py scripts/test_dme_native.py scripts/test_dee_ims.py
 ./scripts/check_transform_tables.py              # audit transform constants without the PDF
 ./scripts/check_sfb_tables.py                    # verify Annex B against the PDF
 ./scripts/check_aspx_tables.py                   # verify the A-SPX static tables against the PDF
@@ -27,7 +29,7 @@ python3 -m unittest scripts/test_trajectory_check.py scripts/test_decode_check.p
 ./scripts/check_spec_distribution.py --generated # audit local-only tables and crate packages
 ```
 
-Install `scripts/requirements-spec.txt`, then run `./scripts/fetch_specs.py` and `./scripts/generate_spec_tables.py` before feature-gated or PDF-backed checks. `decode_check.py` runs two stages against separate baselines (`--stage core|aspx`) and requires every ignored medium named by each; CI tests only the checker logic. SFB/A-SPX/A-JOC audits need the PDF and `pdfplumber`; the transform audit uses the standard library. Check the default production chain with `./scripts/check_tools.sh`, DME A-JOC with `--profile dme_ac4`, or every configured backend with `--profile all`.
+Install `scripts/requirements-spec.txt`, then run `./scripts/fetch_specs.py` and `./scripts/generate_spec_tables.py` before feature-gated or PDF-backed checks. `decode_check.py` runs three stages against separate baselines (`--stage core|aspx|objects`) and requires every ignored medium named by each; CI tests only the checker logic. SFB/A-SPX/A-JOC audits need the PDF and `pdfplumber`; the transform audit uses the standard library. Check the default production chain with `./scripts/check_tools.sh`, DME A-JOC with `--profile dme_ac4`, DME channel-based/native IMS with `--profile dme_native`, or every configured backend with `--profile all`.
 
 ## Coding Style & Naming Conventions
 

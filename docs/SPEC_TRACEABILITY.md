@@ -54,7 +54,8 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
 | presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
-| 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；活动真实向量待验证 |
+| 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；DME/DEE 真实向量覆盖 present/absent、New/KeepPrevious 与配置，body 仍为 0 bit |
+| presentation EMDF opaque envelope | P1 `4.2.4.4`、`4.2.14.14`、`4.3.15`、表 18/79/174–175 | `macindecode-ac4-bitstream::emdf`、`macindecode-ac4-cli::trace::emdf` | 空/非空、完整配置、非字节对齐、扩展 ID、容量/长度/终止符构造测试；六条真实媒体冻结路由、配置、大小、FNV-1a 与前缀，当前只覆盖 ID 20/`00` |
 | alternative OAMD datasets | P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream`、`audio_data`、`full_ajoc` | per-substream 对象/块上下文；non-A-JOC 及 A-JOC core/full 接线；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view；按 substream/domain/index 隔离的 keep 有效状态、无历史/独立帧/布局变化/跨域/失败事务构造测试；未应用时对象出口失败关闭；真实向量待验证 |
 | Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
 | ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
@@ -574,7 +575,7 @@ IFFT 已由 [ADR-0004](decisions/0004-mixed-radix-stockham-ifft.md) 落为 radix
 
 MP4 输入先按 edit list 投影到呈现时间线：media edit 裁掉 codec priming/tail，empty edit 写为静音。除摘要外还记录呈现形状（采样率、声道数、帧数、声道来源三元组）。形状先比：它变了摘要必然也变，而形状差异一眼能看出是声道少了还是长度变了。
 
-编码媒体被版本控制排除，因此实际数值比较是本地门禁。默认输入同时覆盖基线条目与本地新增媒体：每段基线中的十二条输入缺少或解码失败时一律失败，**既有条目永远不许跳过**；未入基线的输入若明确报 `unsupported.coding_path`，可逐条列名跳过，当前两条 channel-based IMS 产物走这一分支。其余新增媒体仍因没有基线而失败，且一条都没真正解码时整次门禁失败，不能让“全部尚未实现”变成免检。CI 运行 `scripts/test_decode_check.py`，覆盖缺件失败、条件跳过、全部跳过失败、路径约束、失败更新不改写旧基线、下面三段的隔离，以及**入库基线的注释必须与脚本现在会写出的一致**。
+编码媒体被版本控制排除，因此实际数值比较是本地门禁。默认输入同时覆盖基线条目与本地新增媒体：每段基线中的十二条输入缺少或解码失败时一律失败，**既有条目永远不许跳过**；未入基线的输入若明确报 `unsupported.coding_path`，可逐条列名跳过，当前八条 channel-based 产物走这一分支。其余新增媒体仍因没有基线而失败，且一条都没真正解码时整次门禁失败，不能让“全部尚未实现”变成免检。CI 运行 `scripts/test_decode_check.py`，覆盖缺件失败、条件跳过、全部跳过失败、路径约束、失败更新不改写旧基线、下面三段的隔离，以及**入库基线的注释必须与脚本现在会写出的一致**。
 
 **三段导出，三份基线，各自冻结。** `--stage core` 校验 `vectors/decode_baseline.json`（`export-core-pcm`），`--stage aspx` 校验 `vectors/aspx_baseline.json`（`export-aspx-pcm`，见 5.41），`--stage objects` 校验 `vectors/objects_baseline.json`（`export-objects-pcm`，见 5.53），默认三段都跑。全部 fail-closed 规则共用，只有命令、基线文件与逐路来源的写法不同。**基线文件必须分开**：核心带那份的价值正在于「不因上层改动而变」，共用文件会让一次 `--update` 把三层一起重冻。`--stage ... --update` 只改指定一层；一段失败仍继续报告后续段。core、A-SPX 与 objects 对多 presentation 向量都从各自基线的 `presentation_overrides` 读取显式零基下标，禁止静默选择第一项；迁移只新增该选择元数据，既有 PCM 摘要与形状不重冻。
 
@@ -1317,7 +1318,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 标签由 SceneFrame 的 `SceneElementSource` 在 `frame_tracks` 中一次性投影：对象生成 `PcmTrackSource::AjocInput { input_index }`，原生 LFE 生成 `PcmTrackSource::Lfe`，不再从交织位置反推来源。该接缝的判据落在 `decode_check.py` 的 aspx 段（来源串含 `role`，见 5.19d）；实测八条流每条都有 LFE 且排在最后，另有 Rust 构造用例锁定 LFE 不获得伪 A-JOC input 下标。
 
-**这份带宽扩展基线于 2026-08-19 随 P1 `5.3` 联合声道矩阵重新冻结**，当时九条流逐位一致，当前已扩到十二条、两条 channel-based 具名跳过；核心带基线也因矩阵发生在 IMDCT 前而同步更新。脚本固定使用 release 构建，避免本地媒体重复走未优化解码。`probe_ramp_control` 与 `probe_ramp_lengths` 摘要仍相同，与核心带那份的情形一致——两者只在元数据上不同，音频完全相同。
+**这份带宽扩展基线于 2026-08-19 随 P1 `5.3` 联合声道矩阵重新冻结**，当时九条流逐位一致，当前已扩到十二条、八条 channel-based 具名跳过；核心带基线也因矩阵发生在 IMDCT 前而同步更新。脚本固定使用 release 构建，避免本地媒体重复走未优化解码。`probe_ramp_control` 与 `probe_ramp_lengths` 摘要仍相同，与核心带那份的情形一致——两者只在元数据上不同，音频完全相同。
 
 ### 5.42 MDCT 联合声道矩阵（`5.3`）
 
@@ -1525,7 +1526,7 @@ P2 `Pseudocode 15` 的 `pos_lfe` 取 full/upmix assignment 派生值。若有 LF
 
 full 驱动错误不靠中文消息分类。`QmfDriveError` 显式区分合法未支持、矩阵重建、对象非有限与对象形状；后三类分别累加 `ajoc_reconstruction_failures`、`objects_nonfinite`、`object_shape_mismatches`，进入同一 `ReconstructionInvariant` 清单。对象导出在通用 `aspx_failures` 总括门禁之前读取具体分类：合法未支持映射 `unsupported.coding_path`，内部数值/形状破坏映射 `internal.invariant_failed`，容器或语法损坏仍为 `parse.failed`。
 
-`scripts/decode_check.py` 现默认连续报告 core/aspx/objects 三段；`--stage objects --update` 只原子更新 `vectors/objects_baseline.json`。对象基线包含 12 条真实 A-JOC 媒体，另两条 channel-based 媒体具名跳过；生成后立即复跑逐位一致。它只证明当前对象输出没有意外变化，不单独证明正确，外部参考解码器逐对象差分留到下一轮。
+`scripts/decode_check.py` 现默认连续报告 core/aspx/objects 三段；`--stage objects --update` 只原子更新 `vectors/objects_baseline.json`。对象基线包含 12 条真实 A-JOC 媒体，另八条 channel-based 媒体具名跳过；生成后立即复跑逐位一致。它只证明当前对象输出没有意外变化，不单独证明正确，外部参考解码器逐对象差分留到下一轮。
 
 ### 5.54 full A-JOC 对象 ADM 与 Logic RF64/dbmd
 
@@ -1612,8 +1613,8 @@ CLI 展开这些不透明字节时保留完整长度，但只输出最多 64 字
 presentation 会被放大成数千万个 `serde_json::Value` number 节点。
 
 Channel-based 在本阶段仅为继续解析 presentation 而保存 channel mode 与 18 位 group 掩码，
-不把该信令解释成可播放扬声器布局，也不接通 PCM。14 份本地真实 MP4（12 份 A-JOC、2 份
-IMS channel-based）均能完整落到各自 `pres_bytes` 边界；direct-object 与 alternative 仍只有
+不把该信令解释成可播放扬声器布局，也不接通 PCM。20 份本地真实 MP4（12 份 A-JOC、8 份
+channel-based）均能完整落到各自 `pres_bytes` 边界；direct-object 与 alternative 仍只有
 构造码流分支覆盖，不能据此声称存在真实正向样本。本层不执行 renderer、设备适配、DRC、
 dialogue enhancement 或任何额外音频处理。
 
@@ -1625,11 +1626,11 @@ CLI trace 在 `result.source.dac4.presentations` 展开上述只读选择信令�
 channel/A-JOC/direct-object 路径，以及 A-JOC 静态下混和 full/core 对象数。构造测试交换两边
 presentation 顺序仍能正确关联，并分别覆盖对象数失配与多路无 ID 拒绝按序对齐。
 
-12 份 A-JOC MP4 的 DSI/首帧 TOC 均为 1/1 ID 匹配、0 字段失配。两份 IMS
-Channel-based MP4 的 DSI 同时携带尚不解释的 presentation v2 envelope 与 v1 兼容描述；
+12 份 A-JOC MP4 与三份 DME channel MP4 的 DSI/首帧 TOC 均为 1/1 ID 匹配、0 字段失配。
+五份 IMS Channel-based MP4 的 DSI 同时携带尚不解释的 presentation v2 envelope 与 v1 兼容描述；
 其中一份 TOC 只传 v2，不能在不猜测 v2 body 的前提下完整按 ID 关联。因此
 `scripts/cross_check.sh` 按 DSI 中是否存在 `details = null` 的不透明 envelope 决定只记录；
-当前恰好只有这两份 Channel-based 文件触发该边界，而不是按编码路径笼统豁免。其余输入要求
+当前恰好只有这五份 IMS 文件触发该边界，而不是按编码路径笼统豁免。其余输入要求
 DSI/首帧 TOC 的全部 presentation 闭合，再让 Bento4
 codec string 的 presentation version 与 `mdcompat` 对照本实现的 DSI 解析值。这里仍只做
 容器 inspection，不以 DSI 配置解码器，也不把 selection 信令解释成 renderer 或设备策略。
@@ -1735,8 +1736,10 @@ LFE gate 未传、传零和传输 5 比特 gain 三种状态不会合并。随�
 5.X.2、7.X 及 7.X.4/7.X.2/5.X.4 分支，core mode 分别控制 5.X.2、5.X 和共用 presence 的
 LoRo/LtRt pair；object correction 还控制 9.X.4。所有 correction 均保留 5 比特原值，码值
 `31` 按规范合法保留而不错误拒绝。末尾 `byte_align` 的填充值不赋予语义，但成功解析必须恰好
-落在 presentation payload 末尾，额外完整字节失败关闭。API 不做 dB 换算或应用任何
-downmix/gain。
+落在 presentation payload 末尾，额外完整字节失败关闭。Scene 回放入口不放宽该 bitstream
+API，只对已验证的 independent object/A-JOC + 本帧 DRC configuration 组合剥离唯一一个
+`0x00`/`0x80` opaque compatibility tail，并在侧车中原样公开；其他尾部仍失败关闭。API 不做
+dB 换算或应用任何 downmix/gain。
 alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在
 本阶段范围。
@@ -1797,9 +1800,10 @@ configuration/latest-transmitted data，但使下一 differential 使用零基�
 需要精确的物理 `b_iframe`，未知时失败而不猜测。
 
 解析层仍不反量化或执行 dialogue enhancement，不生成处理后的 PCM，也不与 A-JOC
-`ajoc_dmx_de_data()` 共用状态。现有真实向量均只观察到 `tools_metadata_size = 1`、
-`b_de_data_present = 0`；活动路径的 config/data/state、非字节对齐 view 和失败边界由构造码流
-覆盖，不能标作真实正向验证。
+`ajoc_dmx_de_data()` 共用状态。DME/DEE channel-based general 真实向量现已逐帧观察到
+`b_de_data_present = 1`，并覆盖 New/KeepPrevious；DME music 则逐帧 absent。活动配置都为
+`method = 0`、`max_gain = 2`、`channel_config = 0`，但 body 恰为 0 bit。故 presence/config/keep
+已获真实正向验证，非零 Huffman data、panning、simulcast 与数值 state 仍只由构造码流覆盖。
 
 ### 5.59 EMDF opaque payload envelope（P1 `4.2.4.4`、`4.2.14.14`、`4.3.15`）
 
@@ -1826,8 +1830,13 @@ frame-aligned，且只有 frame-aligned 为真才读取 create/remove duplicate�
 私有 codec data、priority/proc、非字节对齐两字节 payload、扩展 ID 31/34、32 项容量端点、
 第 33 项、超 24 比特大小、超 `u32` 变长长度、payload 截断和缺失终止符。内嵌
 `b_emdf_payloads_substream` 路径另从完整 `ac4_substream()` 取回相同 bytes，证明 offset 以原物理
-substream 为坐标。当前工具链没有非空 EMDF 正向向量，以上仍是构造验证，外部向量状态不关闭；
-解析结果不会修改 PCM，也不增加 renderer、设备或额外音频处理。
+substream 为坐标。CLI 现从 presentation `EmdfInfo` 路由到对应 substream，要求完整 envelope 后
+无尾随 bit，并在 `topology.observations.emdf` 聚合 route、完整 config、大小、FNV-1a 64 与最多
+16 字节 opaque 前缀。`scripts/emdf_census.py` 以 fail-closed 基线冻结六条非空媒体并同时检查
+十四条零路由媒体：三条 DME A-JOC 各有 8 帧、三条 DME channel 各有 4 帧，payload 均为 ID 20、
+1 字节 `00`、`discard_unknown_payload = true`。这关闭了非空 envelope 的真实向量缺口，但其他
+ID/configuration 与 payload 语义仍待外部向量；解析结果不会修改 PCM，也不增加 renderer、设备
+或额外音频处理。
 
 ### 5.60 alternative OAMD datasets（P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4`）
 

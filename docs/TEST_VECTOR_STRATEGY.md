@@ -44,6 +44,7 @@ CLI 的 `export-adm-bwf` 另提供一条 OAMD → ADM BWF 的直接试听与互�
 cp .env.local.example .env.local   # 按本机情况填写
 ./scripts/check_tools.sh           # 校验齐备性
 ./scripts/check_tools.sh --json    # 输出 provenance.json 的 tools 片段
+./scripts/check_tools.sh --profile dme_native  # 只校验 DME channel/native IMS 链
 ```
 
 变量含义见模板注释。外部工具视为不透明的黑盒：本项目只约定输入、输出和版本指纹，不依赖也不记录其实现方式。
@@ -113,6 +114,9 @@ vectors/<case_id>/
     master_ac4_dme_l3_768K.m4a
     master_ac4_dme_l4_768K_3dof.m4a
     master_ac4_dme_l4_1500K.m4a
+    master_ac4_dme_channel_5_1_128K.m4a
+    master_ac4_dme_ims_general_wav_256K.m4a
+    master_ac4_dme_ims_general_damf_256K.m4a
     master_ac4_ims_256K.m4a
     master_ac4_ims_legacy_256K.m4a
   inspection/
@@ -132,6 +136,7 @@ vectors/<case_id>/
 - ADM 规范化工具的 SHA-256。
 - AC-4 编码工具的 SHA-256 与源仓库提交 ID。
 - DME A-JOC 编码器及其配套 MP4 muxer 的 SHA-256。
+- DME channel encoder、native IMS encoder 及共用 MP4 muxer 的 SHA-256。
 - DEE IMS 作业使用的包装器、engine binary 与 XML 模板 SHA-256。
 - 编码档位、码率和所有可控参数。
 - 每个输入与输出文件的 SHA-256。
@@ -140,9 +145,10 @@ vectors/<case_id>/
 两份清单由 `scripts/record_provenance.py` 生成，工具指纹取自 `check_tools.sh --json`。
 产物目录或作业声明的编码输出缺失时，脚本报错而非跳过：不完整的溯源比没有溯源更危险。
 
-`build_vector.sh` 保留既有 `encodes` 数组的 ADM BWF 编码路径，并接受可选 `dme_ac4` 与
-`dee_ims` 作业。`--profile` 默认为 `default`，因此旧命令与未配置可选工具的环境不改变行为；
-`dme_ac4` 或 `dee_ims` 只跑对应后端，`all` 运行三条链。DME 作业严格区分 Level 3/4：
+`build_vector.sh` 保留既有 `encodes` 数组的 ADM BWF 编码路径，并接受可选 `dme_ac4`、
+`dme_channel`、`dme_ims` 与 `dee_ims` 作业。`--profile` 默认为 `default`，因此旧命令与未配置
+可选工具的环境不改变行为；`dme_ac4`、`dme_native` 或 `dee_ims` 只跑对应后端，`all` 运行
+default、DME A-JOC、DME native 与 DEE IMS 四条链。DME A-JOC 作业严格区分 Level 3/4：
 
 ```json
 "dme_ac4": [
@@ -186,6 +192,36 @@ A-JOC 能力，不把 3DoF 或纯对象 ADM 误标为 direct-object。
 - 只把标签改成 3DoF 虽能通过工具验证，却不足以形成有诊断力的向量。正式案例还必须明确
   哪些对象留在场景坐标系、哪些对象跟随听者，并设计能区分旋转补偿的轨迹。3DoF 在这里指
   头部旋转跟踪，不包含听者平移；它也不等于 direct-object 编码。
+
+#### DME native channel-based / IMS
+
+`dme_native` profile 使用 DME 安装中的 channel encoder 与 native IMS encoder，并复用同版本
+官方 MP4 muxer。作业由两个独立数组声明：
+
+```json
+"dme_channel": [
+  {"layout": "stereo", "bitrate": 64},
+  {"layout": "5.1", "bitrate": 128},
+  {"layout": "5.1.4", "bitrate": 192}
+],
+"dme_ims": [
+  {"input": "wav_5_1", "mode": "general", "bitrate": 256},
+  {"input": "wav_5_1", "mode": "music", "bitrate": 256},
+  {"input": "damf", "mode": "general", "bitrate": 256}
+]
+```
+
+speaker WAVE 只允许 `objects = []` 的纯 bed case；`scripts/dme_native.py` 从 case 的信号配方按
+SMPTE 顺序重建 24-bit/48 kHz WAVE，绝不从 Atmos 对象母版静默下混。`5.1.4` 使用编码器要求的
+`cbi_wav` 输入格式；DAMF IMS 直接读取 canonical 0.5.1/home `master.atmos`，不经过 ADM
+normalizer 或临时改写。
+
+channel 作业固定 `film_light`、`iframe_interval=1sec` 与 `measure_only`，timing manifest 经
+校验后由 muxer 原样写入。IMS general 固定 `target-fps=24`、`iframe_interval=24`、
+`offset=-2000`；music 必须用 `target-fps=native`，以
+`measure_only:preset=manual:dialogue_intelligence=0` 关闭 Dialogue Intelligence，并使用
+`offset=0`。两者都把可见 duration 固定为 case 的整数采样数。未知字段、不支持的布局/码率、
+非 48 kHz、非 24 fps IMS、输出重名、WAVE 作业含对象或缺少工具均失败关闭。
 
 DEE IMS 直接读取生成的 DAMF，只支持
 64/72/112/144/256/320 kbit/s；每个作业可选择 `ims`/`ims_music` 和 legacy presentation：
@@ -280,7 +316,7 @@ XML 复制到 `tmp_macinac4_ims.*` 隔离目录，编码 raw AC-4，经 GPAC `MP
 
 ### 6.5 编码路径
 
-- channel-based：**已有真实样本**。IMS profile 的两条 256 kbps 产物是 `b_channel_coded = 1` 的 `7.1_3/4/0.1`（`ch_mode = 6`），见 9.2j。默认 profile 仍不产生该路径——纯 bed、零对象的 `probe_bed_only` 也是 A-JOC（9.2e）；两者不矛盾，profile 不同而已。解析侧已能读出拓扑，**重建侧尚未实现**，故门禁按 `unsupported.coding_path` 跳过。
+- channel-based：**已有八条真实样本**。DEE IMS 两条为 `ch_mode = 6`（见 9.2j）；DME channel/native IMS 六条再覆盖 `1/4/5/6/12`（见 9.2m）。默认 profile 仍不产生该路径——纯 bed、零对象的 `probe_bed_only` 在该后端仍是 A-JOC（9.2e）；两者不矛盾，profile 不同而已。解析侧已能读出拓扑及 DE/EMDF metadata，**重建侧尚未实现**，故 PCM 门禁按 `unsupported.coding_path` 具名跳过。
 - direct-object：**现有编码链不产生该路径**，已由 M2 的 TOC 拓扑解析确认，见 9.2a。解析侧的分支覆盖只能靠构造码流（见 `topology.rs` 的 `recognises_direct_object_path`）；重建侧在取得能产生 direct-object 的编码器或合法样本之前，不安排验证工作，缺口保留在支持矩阵中。
 - A-JOC full reconstruction。
 - A-JOC core/full 行为差异。
@@ -395,7 +431,7 @@ core 与 full 两侧的 `bed_dyn_obj_assignment()` 均为 `b_dyn_objects_only = 
 
 判定不依赖任何外部工具，但有两项独立佐证：
 
-- Bento4 从 `dac4` 读出的 codec string `ac-4.02.01.04`，其 `presentation_version = 1` 与 `mdcompat = 4` 同本实现解析的 DSI 一致；本实现再按 effective presentation ID 将 DSI 与逐位解析的首帧 TOC 闭合。DSI/TOC 顺序互换的构造测试确保该比较不依赖数组下标。12 份 A-JOC MP4 均为 1/1 匹配且零字段失配；两份 IMS Channel-based 的 DSI 还含保持不透明的 v2 envelope，暂只记录而不作闭合门禁。
+- Bento4 从 `dac4` 读出的 codec string `ac-4.02.01.04`，其 `presentation_version = 1` 与 `mdcompat = 4` 同本实现解析的 DSI 一致；本实现再按 effective presentation ID 将 DSI 与逐位解析的首帧 TOC 闭合。DSI/TOC 顺序互换的构造测试确保该比较不依赖数组下标。12 份 A-JOC MP4 与三份 DME channel MP4 均为 1/1 匹配且零字段失配；五份 IMS Channel-based 的 DSI 还含保持不透明的 v2 envelope，暂只记录而不作闭合门禁。
 - 每帧的 `payload_base` 与 `substream_index_table()` 必须与帧长自洽。两个案例的 substream 引用恰好覆盖 `{0, 1, 2}`（presentation → 0、OAMD → 1、A-JOC → 2），与索引表声明的三条尺寸一一对应。任何一位偏移都会破坏该排列。
 
 上述检查已固化进 `scripts/cross_check.sh` 的拓扑门禁。
@@ -588,18 +624,24 @@ M4 完整解析两处 `oamd_dyndata_single()` 后得到最终结论：八条流�
 
 `ac4_substream()` 以 `audio_size` 开头。`TS103190-1:v1.4.1:4.3.4.1` 规定它是 `audio_data` 连同其后 `fill_bits` 与 `byte_align` 的字节数，**不含 `metadata` 及最后的 `byte_align`**，并附 NOTE：「这使解码器无需解析音频数据即可直接访问 metadata」。本增量正是走这条规范自带的捷径，因此不解码音频，也不触及频谱前端。
 
-**判定条件是落点。** substream 的总长由 `substream_index_table()` 独立声明，`ac4_substream()` 以 `byte_align` 结尾，所以「跳过 `audio_size` 字节 → 解析 `metadata()` → 对齐」之后必须**恰好**落在 substream 末尾。这比 OAMD 的 `byte_align` 残余强得多：那里只约束到 8 比特以内，这里是整字节级的精确等式。八条码流全部通过，0 次落点失败。
+**判定条件是落点。** substream 的总长由 `substream_index_table()` 独立声明，`ac4_substream()` 以 `byte_align` 结尾，所以「跳过 `audio_size` 字节 → 解析 `metadata()` → 对齐」之后必须**恰好**落在 substream 末尾。这比 OAMD 的 `byte_align` 残余强得多：那里只约束到 8 比特以内，这里是整字节级的精确等式。最初八条 A-JOC 码流全部通过，后续矩阵现已扩到十二条 A-JOC 与八条 channel-based，仍为 0 次落点失败。
 
 帧 0 的算术可直接核对：索引表声明 substream 2 为 948 字节 = 头部 2 + `audio_size` 943 + metadata 3。
 
 **`sus_ver` 在 `bitstream_version = 2` 下恒为 1**（`6.3.2.5.4`：不满足 `bitstream_version == 1` 的两个分支都直接赋 1）。这一条决定了两件事：
 
 - `basic_metadata` 的 `dialnorm_bits` **只在 `sus_ver == 0` 时传输**，因此本项目的码流里根本没有 dialnorm。实测 `dialnorm_frames = 0`，已入门禁。
-- `metadata()` 中的 `drc_frame()` 同样只在 `sus_ver == 0` 出现。实测 `tools_metadata_size` 恒为 **1 比特**，即只有 `dialog_enhancement` 的 `b_de_data_present = 0`。
+- `metadata()` 中的 `drc_frame()` 同样只在 `sus_ver == 0` 出现。最初 A-JOC 样本的 `tools_metadata_size` 恒为 **1 比特**，即只有 `dialog_enhancement` 的 `b_de_data_present = 0`；DME/DEE channel-based general 样本后来补出了 DE present、New 与 KeepPrevious，见 9.2m。
 
-由此得到一条与解码器无关的码流事实：**本项目的码流不含任何响度或 dialnorm 元数据。** `basic_metadata.dialnorm_bits` 在 `sus_ver == 1` 下根本不传输，实测 `b_substream_loudness_info = 0`，连 `substream_loudness_bits` 也没有。这条结论独立成立，任何涉及响度的推断都不能把它当作来源。（它原本是为追查一个「15.0 dB 固定衰减」而查的；那个现象已于 2026-08-18 撤回，见 9.6。上面的码流事实不受影响。）
+由此得到一条与解码器无关的语法事实：`sus_ver = 1` 的 audio-substream metadata 不传
+`basic_metadata.dialnorm_bits`；最初 A-JOC 样本的 `b_substream_loudness_info` 也全部为 0。
+这不等于 presentation payload 没有响度字段，更不能从 audio-substream metadata 推断节目响度。
+（该调查原本用于追查一个「15.0 dB 固定衰减」；那个现象已于 2026-08-18 撤回，见 9.6。）
 
-其余实测：`b_dialog = 0`、`b_channels_classifier = 0`、`dc_block_on = 1`，metadata 区段恒为 2 至 3 字节。A-JOC 的 `channel_mode` 未设定（`6.2.2.2` NOTE 2 规定此时视为负值），`basic_metadata` 与 `extended_metadata` 中所有以它为条件的分支都不成立；声道编码 substream 会走这些分支，本实现显式拒绝而非猜测。
+其余初始 A-JOC 实测：`b_dialog = 0`、`b_channels_classifier = 0`、`dc_block_on = 1`，metadata
+区段恒为 2 至 3 字节。A-JOC 的 `channel_mode` 未设定（`6.2.2.2` NOTE 2 规定此时视为负值），
+`basic_metadata` 与 `extended_metadata` 中所有以它为条件的分支都不成立。声道编码 substream
+现已能完成 metadata 只读解析；PCM 重建仍在 Scene 边界显式拒绝。
 
 **这个首个增量当时尚未解锁逐对象位置。** 表 7 规定 A-JOC 的 `oamd_dyndata_single` 位于 `audio_data_ajoc` 内部，跳过音频数据的同时也跳过了它。后续 M4 已完成 `var_channel_element()` 到 `audio_data_ajoc()` 的全链路解析，结果见 9.2h。
 
@@ -634,7 +676,7 @@ ASF 成帧与熵编码、声道元素、A-SPX 九个语法元素、`var_channel_
 
 ### 9.2i 母版轨迹的自动比对（M3）
 
-`scripts/trajectory_check.py` 把 9.2h 标定的轴映射固化成回归门禁：由 `case.json` 的分段位置生成母版逐帧轨迹，与 trace 解出的逐对象轨迹逐轴比对。媒体选择同样由 manifest 驱动：默认 `encodes` 与 `dme_ac4` 声明的 A-JOC 产物必须存在并逐条检查；`dee_ims` 声明的 channel-based 产物会具名跳过；目录里无法归入任一作业的 M4A、重复输出名或缺少已声明的 A-JOC 产物都 fail-closed，防止新后端静默绕过轨迹门禁。
+`scripts/trajectory_check.py` 把 9.2h 标定的轴映射固化成回归门禁：由 `case.json` 的分段位置生成母版逐帧轨迹，与 trace 解出的逐对象轨迹逐轴比对。媒体选择同样由 manifest 驱动：默认 `encodes` 与 `dme_ac4` 声明的 A-JOC 产物必须存在并逐条检查；`dee_ims`、`dme_channel` 与 `dme_ims` 声明的 channel-based 产物会具名跳过；目录里无法归入任一作业的 M4A、重复输出名或缺少已声明的 A-JOC 产物都 fail-closed，防止新后端静默绕过轨迹门禁。
 
 **判据不能是逐帧相等，因为编码器对位置做了一阶平滑。** `probe_ramp_control` 每 4 096 采样在 ±1 之间跳变，段边界正好落在帧边界上，解出的 x 是稳定的四帧周期：
 
@@ -656,7 +698,10 @@ ASF 成帧与熵编码、声道元素、A-SPX 九个语法元素、`var_channel_
 
 **六个案例的动态对象全部落在同一个槽位：full 侧的对象 1。** 脚本不假设母版对象下标与输出槽位相同，而是逐槽位取相关性最高者；结果一致落在对象 1，与 9.6 中 A-JOC identity 的未决问题相互印证，但样本都是单对象场景，不足以推广。
 
-`probe_axes_single_object` 现在一次检查默认 768K/1500K 与三条 DME，共 5 个 A-JOC 产物；它们都匹配 substream 2 的 full 对象 1，三轴相关系数均为 1.000、最佳滞后均为 3 帧，六个长段均精确到位。两个 IMS 256K 产物按上述 manifest 分类明确排除，因为其 `b_channel_coded = 1`，不存在可与 full A-JOC 对象槽位等价比较的轨迹。
+`probe_axes_single_object` 现在一次检查默认 768K/1500K 与三条 DME A-JOC，共 5 个 A-JOC
+产物；它们都匹配 substream 2 的 full 对象 1，三轴相关系数均为 1.000、最佳滞后均为 3 帧，
+六个长段均精确到位。两个 DEE IMS 与一条 DME native DAMF IMS 按 manifest 明确排除，因为其
+`b_channel_coded = 1`，不存在可与 full A-JOC 对象槽位等价比较的轨迹。
 
 ### 9.2j IMS profile 产出 channel-based（M4）
 
@@ -682,7 +727,7 @@ ASF 成帧与熵编码、声道元素、A-SPX 九个语法元素、`var_channel_
 
 ### 9.2k core 是扬声器形状的对象网格，不是声道布局（M4）
 
-先把规范边界钉死。P2 `4.8.3.1` 与表 6 条件 3.1 只在 full decoding mode 使用 A-JOC；core 模式绕过 A-JOC 上混，采用较少的下混对象。`4.8.3.4.2` 又规定 `b_static_dmx = 0` 时第一份 OAMD 专供 core、第二份专供 full。只有 `6.3.2.8.3` 的 `b_static_dmx = 1` 才把 core signal 定义成静态 5.0/5.1 bed；当前九条 A-JOC 流全部为假，伪码 26 因而给出 `pres_ch_mode_core = -1`。所以严格答案是：**当前 core 没有规范声道模式，它由带独立 OAMD 的对象组成。** `5.8.2.4` 又把 core DE 的 `x_ch` 明确定义成 `5.7.2.1` 的 `Qin_AJOC`，因此 Pseudocode 14a 不只是 full 上混的输入置换，也是 core 对象 essence 的顺序。
+先把规范边界钉死。P2 `4.8.3.1` 与表 6 条件 3.1 只在 full decoding mode 使用 A-JOC；core 模式绕过 A-JOC 上混，采用较少的下混对象。`4.8.3.4.2` 又规定 `b_static_dmx = 0` 时第一份 OAMD 专供 core、第二份专供 full。只有 `6.3.2.8.3` 的 `b_static_dmx = 1` 才把 core signal 定义成静态 5.0/5.1 bed；当前十二条 A-JOC 流全部为假，伪码 26 因而给出 `pres_ch_mode_core = -1`。所以严格答案是：**当前 core 没有规范声道模式，它由带独立 OAMD 的对象组成。** `5.8.2.4` 又把 core DE 的 `x_ch` 明确定义成 `5.7.2.1` 的 `Qin_AJOC`，因此 Pseudocode 14a 不只是 full 上混的输入置换，也是 core 对象 essence 的顺序。
 
 编码器仍然表现出非常规则的行为。把第一份 OAMD 以 core 模式导出后，四档全带对象固定在以下坐标网格；LFE 另算一路：
 
@@ -693,7 +738,7 @@ ASF 成帧与熵编码、声道元素、A-SPX 九个语法元素、`var_channel_
 | 768 kbps | 9 | 5 点 + 顶部前/后 L/R | 5.1.4-like |
 | 1500 kbps | 11 | 前方 L/R/C + 侧/后 L/R + 顶部前/后 L/R | 7.1.4-like |
 
-这里的 `*-like` 是对坐标形状的简称，**不是码流传输的声道标签**。九条 A-JOC 流的所有 core 对象在全时长内位置都不动；另外五条 768 kbps 探针与 `probe_axes_single_object` 得到逐对象完全相同的 9 点网格。因此这是当前编码器按 core 宽度选择的稳定模板，而不是某一条母版的偶然位置。
+这里的 `*-like` 是对坐标形状的简称，**不是码流传输的声道标签**。十二条 A-JOC 流的所有 core 对象在全时长内位置都不动；另外五条 768 kbps 探针与 `probe_axes_single_object` 得到逐对象完全相同的 9 点网格。因此这是当前编码器按 core 宽度选择的稳定模板，而不是某一条母版的偶然位置。
 
 `probe_bed_only` 说明 BED 的作者侧类型在这里已经消失。其 core/full 两份 `bed_dyn_obj_assignment()` 都是 `dynamic_only`；full 侧对象 1–9 的位置分别覆盖源 7.1.2 BED 的 L、C、Lss、R、Lrs、Rss、Lts、Rrs、Rts，余下对象保持默认位置。换句话说，**源 BED 通过动态对象的静态位置模板表达，不再是 BED 类型。** core 再把这套内容压到 5 或 7 个固定对象。
 
@@ -740,6 +785,44 @@ ASF 成帧与熵编码、声道元素、A-SPX 九个语法元素、`var_channel_
 模板的试听/后处理，不替代 9.2k 的规范结论，也不扩展到其他编码器的动态 core。最终发布
 在同目录对已同步临时文件建立 hard link：目标若已存在由文件系统原子拒绝，随后才移除
 临时链接，不再留下“检查后覆盖式 rename”的竞态窗口。
+
+### 9.2m DME native 扩展 channel-based 与 metadata 矩阵（M4.5）
+
+2026-08-29 用 `dme_native` profile 生成并登记六条 channel-based 媒体；正式媒体继续由 Git
+忽略，`case.json`、`provenance.json`、`hashes.sha256` 与可公开 census 入库：
+
+| 作业 | codec frame | `ch_mode` | dialogue enhancement | presentation EMDF |
+|---|---:|---:|---|---|
+| channel stereo 64K | 49 | 1 | 4 New + 45 Keep | 4 帧非空 |
+| channel 5.1 128K | 49 | 4 | 4 New + 45 Keep | 4 帧非空 |
+| channel 5.1.4 192K | 49 | 12 | 4 New + 45 Keep | 4 帧非空 |
+| IMS general / 5.1 WAVE 256K | 49 | 5 | 3 New + 46 Keep | 无路由 |
+| IMS music / 5.1 WAVE 256K | 47 | 5 | 47 帧 absent | 无路由 |
+| IMS general / DAMF 256K | 145 | 6 | 7 New + 138 Keep | 无路由 |
+
+DEE 的两条 `ch_mode = 6` IMS 各为 141 帧、6 New + 135 Keep。上述所有活动 DE 配置都恰为
+`method = 0, max_gain = 2, channel_config = 0`，且配置后的 body 为 0 bit。这关闭了
+presence/configuration/KeepPrevious 的真实正向缺口，也给 music 的 absence 提供同工具族对照；
+它**没有**覆盖非零 Huffman 参数、panning、M/S、simulcast 或 DE 数值执行。
+
+三条 DME channel 的非空 EMDF 完全相同：primary route 指向 substream 2，ID 20，大小 1 字节，
+opaque `00`，FNV-1a 64 为 `af63bd4c8601b7df`，且
+`discard_unknown_payload = true`。既有三条 DME A-JOC 在各 8 帧携带相同 payload，只是 route
+指向 substream 3。`vectors/emdf_baseline.json` 因此登记六条非空媒体；
+`scripts/emdf_census.py` 默认同时 trace 本地发现的十四条零路由媒体，缺失基线媒体、出现未登记
+非零路由、签名变化或解析尾随 bit 都失败，`--update` 仅在完整集合成功后原子重建。
+
+`scripts/dme_native_check.py` 不另建可随意重冻的拓扑基线，而是从 `case.json` 作业推导预期帧数、
+`ch_mode`、DE 与 EMDF 行为，要求每个物理 audio substream 全帧定位并解析。`trajectory_check.py`、
+`decode_check.py` 与 A-JOC census 则按 manifest 把这六条媒体具名归类为 channel-based，不能让新
+后端成为未声明文件，也不能把它们混入对象轨迹或 PCM 基线。当前总矩阵为 12 条 A-JOC 与 8 条
+channel-based；channel PCM 和 direct-object 仍未因此实现或获得真实样本。
+
+12 条 A-JOC 的首个 independent presentation payload 还暴露出两种稳定工具兼容尾部：7 条在
+P2 `6.2.2.3` 的末尾 `byte_align` 后多一个 `0x00`，5 条多一个 `0x80`。bitstream parser 继续按
+规范拒绝任何完整尾随字节；Scene 只在 object/A-JOC、independent、本帧携带 DRC configuration
+且唯一尾字节属于 `{0x00, 0x80}` 时剥离并原样保留它。`0x81`、DRC absent 与其他上下文均有
+构造拒绝门禁；三层 `decode_check.py` 对全部 12 条 A-JOC 仍逐位命中原基线。
 
 ### 9.3 参考解码器的能力边界
 

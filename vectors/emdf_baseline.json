@@ -1,0 +1,341 @@
+{
+  "comment": [
+    "Presentation EMDF 路由与 opaque payload 签名基线，由 scripts/emdf_census.py 维护。",
+    "只登记存在 EMDF payload substream 路由的媒体；本地零路由媒体仍会逐条检查。",
+    "payload 只冻结完整配置、大小、FNV-1a 64 指纹和最多 16 字节前缀，不解释未知语义。",
+    "基线只证明现有语料覆盖未意外改变；未出现的 ID、配置与 payload 不因此成为受支持路径。",
+    "编码媒体不入库；默认校验基线声明与本地发现集合的并集，缺失媒体时不运行子集。"
+  ],
+  "entries": {
+    "probe_axes_single_object/master_ac4_dme_l3_768K.m4a": {
+      "codec_frames": 143,
+      "census": {
+        "empty_substreams": 0,
+        "failures": 0,
+        "first_detail": {
+          "frame": 0,
+          "payload_bytes": 1,
+          "payload_count": 1,
+          "substream_bytes": 4,
+          "substream_index": 3
+        },
+        "first_error": null,
+        "infos": 143,
+        "located_substreams": 8,
+        "max_payload_bytes": 1,
+        "nonempty_substreams": 8,
+        "parsed_substreams": 8,
+        "payload_bytes": 8,
+        "payloads": 8,
+        "routed_frames": 8,
+        "routed_infos": 8,
+        "routes": [
+          {
+            "count": 8,
+            "emdf_version": 0,
+            "key_id": 0,
+            "kind": "primary",
+            "substream_index": 3
+          }
+        ],
+        "signatures": [
+          {
+            "config": {
+              "codec_data": null,
+              "create_duplicate": false,
+              "discard_unknown_payload": true,
+              "duration": null,
+              "group_id": null,
+              "payload_frame_aligned": false,
+              "priority": null,
+              "processing_allowed": null,
+              "remove_duplicate": false,
+              "sample_offset": null
+            },
+            "count": 8,
+            "fnv1a64": "af63bd4c8601b7df",
+            "id": 20,
+            "opaque_prefix_hex": "00",
+            "opaque_prefix_truncated": false,
+            "size_bytes": 1
+          }
+        ]
+      }
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a": {
+      "codec_frames": 143,
+      "census": {
+        "empty_substreams": 0,
+        "failures": 0,
+        "first_detail": {
+          "frame": 0,
+          "payload_bytes": 1,
+          "payload_count": 1,
+          "substream_bytes": 4,
+          "substream_index": 3
+        },
+        "first_error": null,
+        "infos": 143,
+        "located_substreams": 8,
+        "max_payload_bytes": 1,
+        "nonempty_substreams": 8,
+        "parsed_substreams": 8,
+        "payload_bytes": 8,
+        "payloads": 8,
+        "routed_frames": 8,
+        "routed_infos": 8,
+        "routes": [
+          {
+            "count": 8,
+            "emdf_version": 0,
+            "key_id": 0,
+            "kind": "primary",
+            "substream_index": 3
+          }
+        ],
+        "signatures": [
+          {
+            "config": {
+              "codec_data": null,
+              "create_duplicate": false,
+              "discard_unknown_payload": true,
+              "duration": null,
+              "group_id": null,
+              "payload_frame_aligned": false,
+              "priority": null,
+              "processing_allowed": null,
+              "remove_duplicate": false,
+              "sample_offset": null
+            },
+            "count": 8,
+            "fnv1a64": "af63bd4c8601b7df",
+            "id": 20,
+            "opaque_prefix_hex": "00",
+            "opaque_prefix_truncated": false,
+            "size_bytes": 1
+          }
+        ]
+      }
+    },
+    "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a": {
+      "codec_frames": 143,
+      "census": {
+        "empty_substreams": 0,
+        "failures": 0,
+        "first_detail": {
+          "frame": 0,
+          "payload_bytes": 1,
+          "payload_count": 1,
+          "substream_bytes": 4,
+          "substream_index": 3
+        },
+        "first_error": null,
+        "infos": 143,
+        "located_substreams": 8,
+        "max_payload_bytes": 1,
+        "nonempty_substreams": 8,
+        "parsed_substreams": 8,
+        "payload_bytes": 8,
+        "payloads": 8,
+        "routed_frames": 8,
+        "routed_infos": 8,
+        "routes": [
+          {
+            "count": 8,
+            "emdf_version": 0,
+            "key_id": 0,
+            "kind": "primary",
+            "substream_index": 3
+          }
+        ],
+        "signatures": [
+          {
+            "config": {
+              "codec_data": null,
+              "create_duplicate": false,
+              "discard_unknown_payload": true,
+              "duration": null,
+              "group_id": null,
+              "payload_frame_aligned": false,
+              "priority": null,
+              "processing_allowed": null,
+              "remove_duplicate": false,
+              "sample_offset": null
+            },
+            "count": 8,
+            "fnv1a64": "af63bd4c8601b7df",
+            "id": 20,
+            "opaque_prefix_hex": "00",
+            "opaque_prefix_truncated": false,
+            "size_bytes": 1
+          }
+        ]
+      }
+    },
+    "probe_bed_only/master_ac4_dme_channel_5_1_128K.m4a": {
+      "codec_frames": 49,
+      "census": {
+        "empty_substreams": 0,
+        "failures": 0,
+        "first_detail": {
+          "frame": 0,
+          "payload_bytes": 1,
+          "payload_count": 1,
+          "substream_bytes": 4,
+          "substream_index": 2
+        },
+        "first_error": null,
+        "infos": 49,
+        "located_substreams": 4,
+        "max_payload_bytes": 1,
+        "nonempty_substreams": 4,
+        "parsed_substreams": 4,
+        "payload_bytes": 4,
+        "payloads": 4,
+        "routed_frames": 4,
+        "routed_infos": 4,
+        "routes": [
+          {
+            "count": 4,
+            "emdf_version": 0,
+            "key_id": 0,
+            "kind": "primary",
+            "substream_index": 2
+          }
+        ],
+        "signatures": [
+          {
+            "config": {
+              "codec_data": null,
+              "create_duplicate": false,
+              "discard_unknown_payload": true,
+              "duration": null,
+              "group_id": null,
+              "payload_frame_aligned": false,
+              "priority": null,
+              "processing_allowed": null,
+              "remove_duplicate": false,
+              "sample_offset": null
+            },
+            "count": 4,
+            "fnv1a64": "af63bd4c8601b7df",
+            "id": 20,
+            "opaque_prefix_hex": "00",
+            "opaque_prefix_truncated": false,
+            "size_bytes": 1
+          }
+        ]
+      }
+    },
+    "probe_bed_only/master_ac4_dme_channel_5_1_4_192K.m4a": {
+      "codec_frames": 49,
+      "census": {
+        "empty_substreams": 0,
+        "failures": 0,
+        "first_detail": {
+          "frame": 0,
+          "payload_bytes": 1,
+          "payload_count": 1,
+          "substream_bytes": 4,
+          "substream_index": 2
+        },
+        "first_error": null,
+        "infos": 49,
+        "located_substreams": 4,
+        "max_payload_bytes": 1,
+        "nonempty_substreams": 4,
+        "parsed_substreams": 4,
+        "payload_bytes": 4,
+        "payloads": 4,
+        "routed_frames": 4,
+        "routed_infos": 4,
+        "routes": [
+          {
+            "count": 4,
+            "emdf_version": 0,
+            "key_id": 0,
+            "kind": "primary",
+            "substream_index": 2
+          }
+        ],
+        "signatures": [
+          {
+            "config": {
+              "codec_data": null,
+              "create_duplicate": false,
+              "discard_unknown_payload": true,
+              "duration": null,
+              "group_id": null,
+              "payload_frame_aligned": false,
+              "priority": null,
+              "processing_allowed": null,
+              "remove_duplicate": false,
+              "sample_offset": null
+            },
+            "count": 4,
+            "fnv1a64": "af63bd4c8601b7df",
+            "id": 20,
+            "opaque_prefix_hex": "00",
+            "opaque_prefix_truncated": false,
+            "size_bytes": 1
+          }
+        ]
+      }
+    },
+    "probe_bed_only/master_ac4_dme_channel_stereo_64K.m4a": {
+      "codec_frames": 49,
+      "census": {
+        "empty_substreams": 0,
+        "failures": 0,
+        "first_detail": {
+          "frame": 0,
+          "payload_bytes": 1,
+          "payload_count": 1,
+          "substream_bytes": 4,
+          "substream_index": 2
+        },
+        "first_error": null,
+        "infos": 49,
+        "located_substreams": 4,
+        "max_payload_bytes": 1,
+        "nonempty_substreams": 4,
+        "parsed_substreams": 4,
+        "payload_bytes": 4,
+        "payloads": 4,
+        "routed_frames": 4,
+        "routed_infos": 4,
+        "routes": [
+          {
+            "count": 4,
+            "emdf_version": 0,
+            "key_id": 0,
+            "kind": "primary",
+            "substream_index": 2
+          }
+        ],
+        "signatures": [
+          {
+            "config": {
+              "codec_data": null,
+              "create_duplicate": false,
+              "discard_unknown_payload": true,
+              "duration": null,
+              "group_id": null,
+              "payload_frame_aligned": false,
+              "priority": null,
+              "processing_allowed": null,
+              "remove_duplicate": false,
+              "sample_offset": null
+            },
+            "count": 4,
+            "fnv1a64": "af63bd4c8601b7df",
+            "id": 20,
+            "opaque_prefix_hex": "00",
+            "opaque_prefix_truncated": false,
+            "size_bytes": 1
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,9 +1,13 @@
 //! 普通音频子流框架与 metadata trace。
 //!
+use std::collections::BTreeMap;
+
 use super::{
     Ac4AudioSubstream, Ac4Topology, GroupOamdState, MAX_SUBSTREAMS, SubstreamContext, SubstreamInfo,
 };
-use macindecode_ac4_bitstream::AlternativeOamdContext;
+use macindecode_ac4_bitstream::{
+    AlternativeOamdContext, DialogEnhancementConfiguration, DialogEnhancementConfigurationUpdate,
+};
 
 /// `ac4_substream()` 框架与 metadata 的统计。
 ///
@@ -32,6 +36,14 @@ pub(crate) struct AudioTrace {
     pub(super) substream_loudness_frames: u32,
     /// 首帧的 metadata 摘要。
     pub(super) first_detail: Option<String>,
+    /// `dialog_enhancement()` 的 presence、配置更新与 opaque body 覆盖。
+    de_absent: u32,
+    de_present: u32,
+    de_new_config: u32,
+    de_keep_previous: u32,
+    de_body_bits: u64,
+    de_max_body_bits: u32,
+    de_configurations: BTreeMap<(u8, u8, u8), u32>,
     /// 已由非歧义帧确认的物理 substream metadata 解析上下文。
     ///
     /// DEE IMS 允许 7.1/stereo 两个候选，但同一配置代次内不能逐帧切换语法。
@@ -54,19 +66,20 @@ pub(crate) fn group_is_alternative(topology: &Ac4Topology, group_index: usize) -
     })
 }
 
-/// DEE 的 IMS presentation v2 以 `ch_mode = 6` 描述沉浸式呈现，但其物理
-/// audio substream 的 metadata 仍使用 stereo 分支。
+/// 已观测的 IMS presentation v2 以 `ch_mode = 5` 或 `6` 描述沉浸式呈现，但其
+/// 物理 audio substream 的 metadata 仍使用 stereo 分支。
 ///
 /// 这里只增加一个兼容候选，不覆盖 TOC 声明；由
 /// [`Ac4AudioSubstream::parse`] 的严格子流末尾校验筛选，并在首个非歧义帧后
-/// 固定选择。DEE legacy IMS 同时引用 7.1 与 stereo group，共享同一物理载荷，
-/// 因此也为该兼容关系提供了可观测的对照。
-fn group_needs_dee_ims_stereo_candidate(
+/// 固定选择。Atmos 输入通常产出 `ch_mode = 6`，5.1 WAV 输入则可产出
+/// `ch_mode = 5`；DEE legacy IMS 还会同时引用 7.1 与 stereo group，共享同一
+/// 物理载荷，因此为该兼容关系提供了可观测的对照。
+fn group_needs_ims_stereo_candidate(
     topology: &Ac4Topology,
     group_index: usize,
     channel_mode: u32,
 ) -> bool {
-    channel_mode == 6
+    matches!(channel_mode, 5 | 6)
         && topology.presentations().iter().any(|presentation| {
             presentation.presentation_version == 2
                 && presentation
@@ -76,7 +89,7 @@ fn group_needs_dee_ims_stereo_candidate(
         })
 }
 
-fn is_known_dee_ims_pair(current: SubstreamContext, candidate: SubstreamContext) -> bool {
+fn is_known_ims_pair(current: SubstreamContext, candidate: SubstreamContext) -> bool {
     current.sus_ver == candidate.sus_ver
         && current.b_iframe == candidate.b_iframe
         && !current.ajoc
@@ -85,7 +98,7 @@ fn is_known_dee_ims_pair(current: SubstreamContext, candidate: SubstreamContext)
         && candidate.alternative_oamd.is_none()
         && matches!(
             (current.channel_mode, candidate.channel_mode),
-            (Some(1), Some(6)) | (Some(6), Some(1))
+            (Some(1), Some(5 | 6)) | (Some(5 | 6), Some(1))
         )
 }
 
@@ -115,7 +128,7 @@ fn push_context(
     if slot
         .iter()
         .copied()
-        .all(|current| is_known_dee_ims_pair(current, candidate))
+        .all(|current| is_known_ims_pair(current, candidate))
     {
         slot.push(candidate);
         Ok(())
@@ -277,7 +290,7 @@ impl AudioTrace {
                     }
 
                     if channel_mode.is_some_and(|mode| {
-                        group_needs_dee_ims_stereo_candidate(topology, group_index, mode)
+                        group_needs_ims_stereo_candidate(topology, group_index, mode)
                     }) && let Err(error) = push_context(
                         slot,
                         SubstreamContext {
@@ -387,6 +400,12 @@ impl AudioTrace {
                 .map_or(parsed.metadata_bytes, |v| v.max(parsed.metadata_bytes)),
         );
         self.max_tools_bits = self.max_tools_bits.max(parsed.tools_metadata_bits);
+        let de = parsed.tools_metadata.dialog_enhancement;
+        self.record_dialogue_enhancement(
+            de.data_present,
+            de.configuration,
+            de.unparsed_body_len_bits(),
+        );
         if self.first_detail.is_none() {
             self.first_detail = Some(format!(
                 "{{\"frame\": {index}, \"audio_size\": {}, \"metadata_bytes\": {}, \
@@ -406,6 +425,39 @@ impl AudioTrace {
                     .dc_block_on
                     .map_or_else(|| "null".to_owned(), |v| v.to_string()),
             ));
+        }
+    }
+
+    fn record_dialogue_enhancement(
+        &mut self,
+        data_present: bool,
+        update: DialogEnhancementConfigurationUpdate,
+        body_bits: u32,
+    ) {
+        if data_present {
+            self.de_present = self.de_present.saturating_add(1);
+        } else {
+            self.de_absent = self.de_absent.saturating_add(1);
+        }
+        self.de_body_bits = self.de_body_bits.saturating_add(u64::from(body_bits));
+        self.de_max_body_bits = self.de_max_body_bits.max(body_bits);
+        match update {
+            DialogEnhancementConfigurationUpdate::NotPresent => {}
+            DialogEnhancementConfigurationUpdate::KeepPrevious => {
+                self.de_keep_previous = self.de_keep_previous.saturating_add(1);
+            }
+            DialogEnhancementConfigurationUpdate::New(DialogEnhancementConfiguration {
+                method,
+                max_gain,
+                channel_config,
+            }) => {
+                self.de_new_config = self.de_new_config.saturating_add(1);
+                let count = self
+                    .de_configurations
+                    .entry((method, max_gain, channel_config))
+                    .or_default();
+                *count = count.saturating_add(1);
+            }
         }
     }
 
@@ -429,12 +481,28 @@ impl AudioTrace {
             .as_ref()
             .map_or_else(|| "null".to_owned(), Clone::clone);
         let opt = |value: Option<u32>| value.map_or_else(|| "null".to_owned(), |v| v.to_string());
+        let mut configurations = String::from("[");
+        for (position, ((method, max_gain, channel_config), count)) in
+            self.de_configurations.iter().enumerate()
+        {
+            if position > 0 {
+                configurations.push_str(", ");
+            }
+            configurations.push_str(&format!(
+                "{{\"method\": {method}, \"max_gain\": {max_gain}, \
+                 \"channel_config\": {channel_config}, \"count\": {count}}}"
+            ));
+        }
+        configurations.push(']');
         format!(
             "{{\"located\": {}, \"parsed\": {}, \"failures\": {}, \"first_error\": {error}, \
              \"min_audio_size\": {}, \"max_audio_size\": {}, \
              \"min_metadata_bytes\": {}, \"max_metadata_bytes\": {}, \
              \"max_tools_metadata_bits\": {}, \"dialnorm_frames\": {}, \
-             \"substream_loudness_frames\": {}, \"first_detail\": {detail}}}",
+             \"substream_loudness_frames\": {}, \"dialogue_enhancement\": {{\
+             \"absent\": {}, \"present\": {}, \"new_config\": {}, \
+             \"keep_previous\": {}, \"body_bits\": {}, \"max_body_bits\": {}, \
+             \"configurations\": {configurations}}}, \"first_detail\": {detail}}}",
             self.located,
             self.parsed,
             self.failures,
@@ -445,6 +513,12 @@ impl AudioTrace {
             self.max_tools_bits,
             self.dialnorm_frames,
             self.substream_loudness_frames,
+            self.de_absent,
+            self.de_present,
+            self.de_new_config,
+            self.de_keep_previous,
+            self.de_body_bits,
+            self.de_max_body_bits,
         )
     }
 }
@@ -464,6 +538,13 @@ impl AudioTrace {
             dialnorm_frames: 0,
             substream_loudness_frames: 0,
             first_detail: None,
+            de_absent: 0,
+            de_present: 0,
+            de_new_config: 0,
+            de_keep_previous: 0,
+            de_body_bits: 0,
+            de_max_body_bits: 0,
+            de_configurations: BTreeMap::new(),
             selected_contexts: [None; MAX_SUBSTREAMS],
         }
     }
@@ -486,17 +567,31 @@ mod tests {
         channel_mode: Some(1),
         ..SURROUND
     };
+    const SURROUND_704: SubstreamContext = SubstreamContext {
+        channel_mode: Some(5),
+        ..SURROUND
+    };
 
     fn minimal(context: SubstreamContext) -> Ac4AudioSubstream {
         Ac4AudioSubstream::parse(&[0, 0, 0, 0x20], context).expect("最小 metadata 应可解析")
     }
 
     #[test]
-    fn context_candidates_only_allow_the_known_dee_ims_pair() {
+    fn context_candidates_only_allow_the_known_ims_pair() {
         let mut slot = Vec::new();
         push_context(&mut slot, SURROUND).unwrap();
         push_context(&mut slot, STEREO).unwrap();
         assert_eq!(slot.len(), 2);
+
+        let mut mode_704 = Vec::new();
+        push_context(&mut mode_704, SURROUND_704).unwrap();
+        push_context(&mut mode_704, STEREO).unwrap();
+        assert_eq!(mode_704.len(), 2);
+
+        assert!(
+            push_context(&mut mode_704, SURROUND).is_err(),
+            "同一物理 substream 不得同时接受两个不同的沉浸式 TOC 模式"
+        );
 
         let ajoc = SubstreamContext {
             ajoc: true,
@@ -599,8 +694,12 @@ mod tests {
             Some(2)
         );
         assert!(
-            group_needs_dee_ims_stereo_candidate(&ims_v2, 0, 6),
+            group_needs_ims_stereo_candidate(&ims_v2, 0, 6),
             "v2 presentation 的 7.1 group 需要 stereo 兼容候选"
+        );
+        assert!(
+            group_needs_ims_stereo_candidate(&ims_v2, 0, 5),
+            "v2 presentation 的 7.0 group 同样需要 stereo 兼容候选"
         );
 
         // 只差一个版本比特的同形码流：v1 不得获得候选。用 v1 而不是 v0 做反例，
@@ -614,7 +713,7 @@ mod tests {
             Some(1)
         );
         assert!(
-            !group_needs_dee_ims_stereo_candidate(&ims_v1, 0, 6),
+            !group_needs_ims_stereo_candidate(&ims_v1, 0, 6),
             "非 v2 presentation 不得凭空获得 stereo 候选"
         );
 
@@ -624,8 +723,77 @@ mod tests {
         assert_eq!(trace.parsed, 0);
         assert_eq!(trace.failures, 1, "{:?}", trace.first_error);
 
-        // 声道模式那一维同样要收窄：v2 也只对 ch_mode 6 补候选。
-        assert!(!group_needs_dee_ims_stereo_candidate(&ims_v2, 0, 12));
+        // 声道模式那一维同样要收窄：v2 也只对已观测的 ch_mode 5/6 补候选。
+        assert!(!group_needs_ims_stereo_candidate(&ims_v2, 0, 12));
+    }
+
+    #[test]
+    fn ims_v2_ch_mode_5_selects_stereo_metadata() {
+        let (frame, topology) = topology_with_ims_v2_ch_mode_5_stereo_metadata();
+        assert!(matches!(
+            topology
+                .groups()
+                .first()
+                .and_then(|group| group.substreams().first()),
+            Some(SubstreamInfo::Chan(info)) if info.channel_mode.ch_mode == 5
+        ));
+
+        let mut trace = AudioTrace::new();
+        trace.observe(&frame, &topology, 0, &[]);
+        assert_eq!(trace.parsed, 1, "{:?}", trace.first_error);
+        assert_eq!(trace.failures, 0, "{:?}", trace.first_error);
+        assert_eq!(trace.de_absent, 1);
+        assert_eq!(trace.de_present, 0);
+        assert_eq!(
+            trace.selected_contexts.get(1).copied().flatten(),
+            Some(SubstreamContext {
+                b_iframe: Some(true),
+                ..STEREO
+            })
+        );
+    }
+
+    #[test]
+    fn dialogue_enhancement_census_distinguishes_new_keep_and_absent() {
+        let mut trace = AudioTrace::new();
+        trace.record_dialogue_enhancement(
+            true,
+            DialogEnhancementConfigurationUpdate::New(DialogEnhancementConfiguration {
+                method: 0,
+                max_gain: 2,
+                channel_config: 0,
+            }),
+            0,
+        );
+        trace.record_dialogue_enhancement(
+            true,
+            DialogEnhancementConfigurationUpdate::KeepPrevious,
+            0,
+        );
+        trace.record_dialogue_enhancement(
+            false,
+            DialogEnhancementConfigurationUpdate::NotPresent,
+            0,
+        );
+
+        let json: serde_json::Value = serde_json::from_str(&trace.to_json()).unwrap();
+        assert_eq!(
+            json.get("dialogue_enhancement"),
+            Some(&serde_json::json!({
+                "absent": 1,
+                "present": 2,
+                "new_config": 1,
+                "keep_previous": 1,
+                "body_bits": 0,
+                "max_body_bits": 0,
+                "configurations": [{
+                    "method": 0,
+                    "max_gain": 2,
+                    "channel_config": 0,
+                    "count": 1
+                }]
+            }))
+        );
     }
 
     /// 解码不连续必须丢弃已固定的解析上下文。

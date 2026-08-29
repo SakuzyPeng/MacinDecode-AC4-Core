@@ -274,25 +274,62 @@ pub(crate) fn topology_with_shared_channel_audio_substream() -> (Vec<u8>, Ac4Top
 /// 标准 DEE IMS 形状：presentation v2 只声明 7.1 group，但物理 audio
 /// substream 的 metadata 使用 stereo 分支。
 pub(crate) fn topology_with_ims_v2_stereo_metadata() -> (Vec<u8>, Ac4Topology) {
-    ims_stereo_metadata_topology(2)
+    ims_stereo_metadata_topology(2, 6)
+}
+/// DME 6.5.4 的 5.1 WAV IMS 形状：presentation v2 声明 `ch_mode = 5`，
+/// 物理 audio substream 的 metadata 同样使用 stereo 分支。
+pub(crate) fn topology_with_ims_v2_ch_mode_5_stereo_metadata() -> (Vec<u8>, Ac4Topology) {
+    ims_stereo_metadata_topology(2, 5)
+}
+
+/// 单 presentation、单声道 group，并以 presentation 主 `emdf_info()` 把
+/// substream 1 路由为 `ID 20`、一字节 `00` 的真实 DME 形状。
+pub(crate) fn topology_with_presentation_emdf_payload(
+    trailing_byte: bool,
+) -> (Vec<u8>, Ac4Topology) {
+    let toc = "10 0000000000 0 1 1101 1 1 0 0";
+    let presentation = "1 0 000 0 00 000 1 01 00 00 0 000 0 0 0 0 00";
+    let channel = "1 0 1 1 1110 0 0 1 00 0";
+    let emdf = if trailing_byte {
+        &[0xa0, 0x40, 0x40, 0x00, 0xff][..]
+    } else {
+        &[0xa0, 0x40, 0x40, 0x00][..]
+    };
+    let table = format!(
+        "10 0 {:010b} 0 {:010b}",
+        minimal_audio_payload().len(),
+        emdf.len()
+    );
+    let (mut frame, _) = pack_bits(&[toc, presentation, channel, &table].join(" "));
+    frame.extend_from_slice(&minimal_audio_payload());
+    frame.extend_from_slice(emdf);
+    let topology = Ac4Topology::parse(&frame).expect("presentation EMDF 拓扑应可解析");
+    validate_group_references(&topology).unwrap();
+    validate_substream_references(&topology).unwrap();
+    (frame, topology)
 }
 /// 同一码流形状，只把 presentation 降到 v1。
 ///
 /// 兼容候选的适用范围以 v2 为界，用它做反例才能分辨「按版本收窄」与「对任意
 /// 版本都补候选」——两个 fixture 之间只差 `presentation_version()` 的一个比特。
 pub(crate) fn topology_with_ims_v1_stereo_metadata() -> (Vec<u8>, Ac4Topology) {
-    ims_stereo_metadata_topology(1)
+    ims_stereo_metadata_topology(1, 6)
 }
-fn ims_stereo_metadata_topology(version: u32) -> (Vec<u8>, Ac4Topology) {
+fn ims_stereo_metadata_topology(version: u32, channel_mode: u32) -> (Vec<u8>, Ac4Topology) {
     let toc = "10 0000000000 0 1 1101 1 1 0 0";
     // presentation_version() 是一元码：version 个 1 后跟一个 0。改动它只让
     // TOC 少一个比特，91→90，div_ceil(8) 同为 12 字节，后续偏移不变。
     let mut unary = "1".repeat(version as usize);
     unary.push('0');
     let presentation = format!("1 {unary} 000 0 00 000 0 00 00 0 000 0 0 0 0 00");
-    let surround = "1 0 1 1 1111001 0 0 1 01 0";
+    let channel_mode_bits = match channel_mode {
+        5 => "1111000",
+        6 => "1111001",
+        _ => panic!("IMS stereo metadata fixture only supports ch_mode 5/6"),
+    };
+    let surround = format!("1 0 1 1 {channel_mode_bits} 0 0 1 01 0");
     let table = "10 0 0000000001 0 0000001000";
-    let joined = [toc, &presentation, surround, table].join(" ");
+    let joined = [toc, &presentation, &surround, table].join(" ");
     let (mut frame, _) = pack_bits(&joined);
     assert_eq!(frame.len(), 12, "改版本号不得改变 TOC 的字节长度");
     frame.push(0); // presentation substream，本阶段不解析。

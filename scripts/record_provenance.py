@@ -22,6 +22,8 @@ from pathlib import Path
 
 from dee_ims import parse_jobs as parse_dee_jobs
 from dme_ac4 import parse_jobs as parse_dme_jobs
+from dme_native import parse_channel_jobs as parse_dme_channel_jobs
+from dme_native import parse_ims_jobs as parse_dme_ims_jobs
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -110,6 +112,11 @@ def main() -> int:
         dme_jobs = parse_dme_jobs(case)
     except ValueError as error:
         raise SystemExit(f"case.json 的 DME A-JOC 作业无效：{error}") from error
+    try:
+        dme_channel_jobs = parse_dme_channel_jobs(case)
+        dme_ims_jobs = parse_dme_ims_jobs(case)
+    except ValueError as error:
+        raise SystemExit(f"case.json 的 DME native 作业无效：{error}") from error
     standard_bitrates = case.get("encodes", [])
     if not isinstance(standard_bitrates, list):
         raise SystemExit("case.json 的 encodes 必须是数组")
@@ -125,6 +132,15 @@ def main() -> int:
         {"backend": "dme_ac4", **job.provenance()}
         for job in dme_jobs
     ] + [
+        {"backend": "dme_channel", **job.provenance()}
+        for job in dme_channel_jobs
+    ] + [
+        {
+            "backend": "dme_ims",
+            **job.provenance(),
+        }
+        for job in dme_ims_jobs
+    ] + [
         {"backend": "dee_ims", **job.provenance()}
         for job in dee_jobs
     ]
@@ -133,6 +149,8 @@ def main() -> int:
         tool_profiles.append("default")
     if dme_jobs:
         tool_profiles.append("dme_ac4")
+    if dme_channel_jobs or dme_ims_jobs:
+        tool_profiles.append("dme_native")
     if dee_jobs:
         tool_profiles.append("dee_ims")
     tool_profile = "+".join(tool_profiles) if tool_profiles else "default"
@@ -203,7 +221,7 @@ def main() -> int:
             # 工具与后端指纹用于追溯，不把它们扩成测试矩阵的一维。
             "encoder_behavior_scope": (
                 "backend_and_job_parameters"
-                if dme_jobs
+                if dme_jobs or dme_channel_jobs or dme_ims_jobs
                 else "same_bitrate_behavior_bucket"
             ),
         },

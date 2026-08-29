@@ -1,11 +1,11 @@
 {
   "case_id": "probe_axes_single_object",
-  "generated_at": "2026-08-19T15:41:05Z",
+  "generated_at": "2026-08-29T00:55:25Z",
   "generator": {
     "script": "scripts/gen_damf.py",
-    "sha256": "573513786b08dfeb9005a60ea825f24a9c74e532abc3b0f1f87ce3058f122ef3",
+    "sha256": "56c905bf6f79268e10d60e0937693c2e9c0645a5c73cb175fcc0ccf85ef64397",
     "repo": {
-      "commit": "0893c10ee0a5ecca1e363b3868e524c19eb49b82",
+      "commit": "9dceedd6db9555814d065fce773529cd26a1e2d9",
       "dirty": true
     }
   },
@@ -61,6 +61,19 @@
         "input_transform": "damf_0.6.0_type_3dof"
       },
       {
+        "backend": "dme_ims",
+        "bitrate_kbps": 256,
+        "encoder_mode": "general",
+        "input": "damf",
+        "input_format": "atmos_mezz",
+        "input_transform": "canonical_damf_0.5.1_home",
+        "drc_profile": "film_light",
+        "iframe_interval": 24,
+        "target_fps": "24",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_ims_general_damf_256K.m4a"
+      },
+      {
         "backend": "dee_ims",
         "bitrate_kbps": 256,
         "encoding_profile": "ims",
@@ -82,8 +95,8 @@
   },
   "tools": {
     "ac4_encoder": {
-      "sha256": "6d5c72747e74eed3c784a0a8f17474ec37313757ac279d24fa85370db4ed4c5b",
-      "commit": "b4f7ca19eaae8da6057df81c7bd56e74d98438e4",
+      "sha256": "5d998d794c321b28d744748b129d12e4a475e270bba2fda972b233d1c54c25e6",
+      "commit": "7e94e3bceb0837af5b3b18e055c53a3543bcf174",
       "worktree_dirty": false
     },
     "adm_normalizer": {
@@ -91,6 +104,11 @@
     },
     "dme_ac4": {
       "encoder_sha256": "c8ac73eefb6af7bff58d1889017d8824705e29112cdac121d5a618e22af43889",
+      "muxer_sha256": "452a13d2320baee3880405da9e00886b294fdf317ae8e39d16c77614d185ce00"
+    },
+    "dme_native": {
+      "channel_encoder_sha256": "6a7594ed74e0ecc043d80a3b10691329369198bdeda0d7590006643b90a388d5",
+      "ims_encoder_sha256": "54b066d5272f42401e2acf9cfc9f815bf2498ef9bb78bce5a4d1abd3c16afea6",
       "muxer_sha256": "452a13d2320baee3880405da9e00886b294fdf317ae8e39d16c77614d185ce00"
     },
     "ac4_muxer": {
@@ -120,12 +138,12 @@
   },
   "artifacts": {
     "case.json": {
-      "sha256": "5f1b5bde58b5345411fa4660ac7f3cb990066a68a26bc2a57bb32251fe8f02bd",
-      "bytes": 2855
+      "sha256": "448d2828b835c3911ca781677521aeed3b94703dbc8975e85da3fd5790c68499",
+      "bytes": 3094
     },
     "source/master.atmos": {
-      "sha256": "f78412ad1078ffd6c4895e7c8ecca305044a517a805e575d2687dc190a42cd4e",
-      "bytes": 1095
+      "sha256": "89638a96a3cf792c253213862a03df79388f56887422c0dd35c18242d3edbf73",
+      "bytes": 1096
     },
     "source/master.atmos.audio": {
       "sha256": "e825a12fbd1b9eac50c285a312c0fc14be0c23261822e6044b2ca7dd9154f36b",
@@ -148,6 +166,11 @@
       "sha256": "e7e6f1cbf5e646b686bc005c369abeaf12799a1b53a0170ccf2242405951f705",
       "bytes": 586438,
       "payload_sha256": "4830e67269552c0a81ed5d0841a080d31cfbc2c096f5034d6e9b2a3b6e626fc4"
+    },
+    "encoded/master_ac4_dme_ims_general_damf_256K.m4a": {
+      "sha256": "27e6f8da9c938e719df09ba2985a33a57b0f0271d6cbff1b241ef42908c49ab5",
+      "bytes": 194829,
+      "payload_sha256": "d08e265f4511d72447bad84e6f831c73b30361ace7c3252ebeca07560392f044"
     },
     "encoded/master_ac4_dme_l3_768K.m4a": {
       "sha256": "43dcaaa3e2d7c7438ada6b5d2d8e0cfbfbccc9eea7fadd9790c169a587f6c881",

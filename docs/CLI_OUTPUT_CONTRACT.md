@@ -99,6 +99,18 @@ DSI 中的 filter、扩展配置、语言标签、名称原始字节和 `skip_ar
 原有成对 min/max 字段统一为 `{ "min": ..., "max": ... }`。任何非有限浮点值写为
 JSON `null`；相应的 `*_nonfinite` 计数不变。
 
+M4.5 在既有 section 内新增两个只增不减的 observation 叶子，**没有**增加第五个 validation
+section：
+
+- `validation.topology.observations.emdf` 统计 presentation 级 `EmdfInfo`、逐帧 payload substream
+  路由、定位/解析/空非空/失败计数、route 聚合与 opaque payload signature。每个 signature 保留
+  ID、完整配置、大小、FNV-1a 64、最多 16 字节十六进制前缀及截断标志；它不解释未知 payload
+  语义，FNV 也不是安全摘要。成功解析要求 payload substream 没有尾随 bit。
+- `validation.audio_substream.observations.dialogue_enhancement` 统计 `absent`、`present`、
+  `new_config`、`keep_previous`、总/最大 opaque body bit 数，并按
+  `method/max_gain/channel_config` 聚合实际传输的新配置。它只观察语法，不反量化、执行或应用 DE；
+  `body_bits = 0` 不能表述为非零 Huffman 参数正向覆盖。
+
 schema 的严格程度是分层的，消费者应据此判断可以依赖到哪一层：
 
 - **骨架锁死**：envelope、`source` 的两个判别分支、`validation` 的四个 section、
@@ -258,6 +270,9 @@ stderr 每行符合下列形状：
 | `substream_groups`、`total_objects`、`config_generations` | `configuration.<field>` |
 | `first_frame` | `observations.first_frame` |
 
+`observations.emdf` 是 v1 新叶子，没有旧 JSONPath；其完整相对路径固定为
+`$.result.validation.topology.observations.emdf`。
+
 ### 5.4 OAMD 验证
 
 旧前缀为 `$.topology.oamd`，新前缀为 `$.result.validation.oamd`。
@@ -287,6 +302,9 @@ stderr 每行符合下列形状：
 | `max_metadata_bytes` | `configuration.metadata_bytes.max` |
 | `max_tools_metadata_bits`、`dialnorm_frames`、`substream_loudness_frames` | `configuration.<field>` |
 | `first_detail` | `observations.first_detail` |
+
+`observations.dialogue_enhancement` 是 v1 新叶子，没有旧 JSONPath；其完整相对路径固定为
+`$.result.validation.audio_substream.observations.dialogue_enhancement`。
 
 ### 5.6 A-JOC 验证
 

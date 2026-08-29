@@ -40,9 +40,10 @@ done
 
 need_default=0
 need_dme=0
+need_dme_native=0
 need_dee=0
 if [[ "${PROFILE}" == "all" ]]; then
-    profile_parts=(default dme_ac4 dee_ims)
+    profile_parts=(default dme_ac4 dme_native dee_ims)
 else
     IFS='+' read -r -a profile_parts <<<"${PROFILE}"
 fi
@@ -66,6 +67,13 @@ for part in "${profile_parts[@]}"; do
             }
             need_dme=1
             ;;
+        dme_native)
+            [[ ${need_dme_native} -eq 0 ]] || {
+                echo "--profile 含重复项：dme_native" >&2
+                exit 2
+            }
+            need_dme_native=1
+            ;;
         dee_ims)
             [[ ${need_dee} -eq 0 ]] || {
                 echo "--profile 含重复项：dee_ims" >&2
@@ -74,7 +82,7 @@ for part in "${profile_parts[@]}"; do
             need_dee=1
             ;;
         *)
-            echo "--profile 必须由 default、dme_ac4、dee_ims 以 + 组合，或使用 all" >&2
+            echo "--profile 必须由 default、dme_ac4、dme_native、dee_ims 以 + 组合，或使用 all" >&2
             exit 2
             ;;
     esac
@@ -204,16 +212,33 @@ if [[ ${need_default} -eq 1 || ${need_dme} -eq 1 ]] \
     normalizer_sha="$(sha256_of "${ADM_NORMALIZER}")"
 fi
 
-# DME A-JOC 编码器与配套 muxer 必须来自同一套本机安装；分别记录哈希，
+# 三个 DME 编码器与配套 muxer 必须来自同一套本机安装；分别记录哈希，
 # 不把安装路径或版本字符串写入可分发的 provenance。
-dme_encoder_sha=""; dme_muxer_sha=""
+dme_encoder_sha=""; dme_channel_encoder_sha=""; dme_ims_encoder_sha=""
+dme_muxer_sha=""; dme_ac4_muxer_sha=""; dme_native_muxer_sha=""
 if [[ ${need_dme} -eq 1 ]]; then
     if check_exe DME_AC4_AJOC_ENCODER required; then
         dme_encoder_sha="$(sha256_of "${DME_AC4_AJOC_ENCODER}")"
     fi
+fi
+if [[ ${need_dme_native} -eq 1 ]]; then
+    if check_exe DME_AC4_ENCODER required; then
+        dme_channel_encoder_sha="$(sha256_of "${DME_AC4_ENCODER}")"
+    fi
+    if check_exe DME_AC4_IMS_ENCODER required; then
+        dme_ims_encoder_sha="$(sha256_of "${DME_AC4_IMS_ENCODER}")"
+    fi
+fi
+if [[ ${need_dme} -eq 1 || ${need_dme_native} -eq 1 ]]; then
     if check_exe DME_MP4MUXER required; then
         dme_muxer_sha="$(sha256_of "${DME_MP4MUXER}")"
     fi
+fi
+if [[ ${need_dme} -eq 1 ]]; then
+    dme_ac4_muxer_sha="${dme_muxer_sha}"
+fi
+if [[ ${need_dme_native} -eq 1 ]]; then
+    dme_native_muxer_sha="${dme_muxer_sha}"
 fi
 
 # 后端组件可能是目录也可能是文件；留空表示编码器自包含。
@@ -337,7 +362,12 @@ if [[ ${JSON_OUTPUT} -eq 1 ]]; then
     },
     "dme_ac4": {
       "encoder_sha256": "${dme_encoder_sha}",
-      "muxer_sha256": "${dme_muxer_sha}"
+      "muxer_sha256": "${dme_ac4_muxer_sha}"
+    },
+    "dme_native": {
+      "channel_encoder_sha256": "${dme_channel_encoder_sha}",
+      "ims_encoder_sha256": "${dme_ims_encoder_sha}",
+      "muxer_sha256": "${dme_native_muxer_sha}"
     },
     "ac4_muxer": {
       "backend": ${muxer_backend},
@@ -393,6 +423,15 @@ else
             row "ADM 规范化" "${ADM_NORMALIZER:-<缺失>}"
             [[ -n "${normalizer_sha}" ]] && row "" "sha256 ${normalizer_sha:0:16}…"
         fi
+        echo
+    fi
+    if [[ ${need_dme_native} -eq 1 ]]; then
+        row "DME channel AC-4" "${DME_AC4_ENCODER:-<缺失>}"
+        [[ -n "${dme_channel_encoder_sha}" ]] && row "" "encoder sha256 ${dme_channel_encoder_sha:0:16}…"
+        row "DME native IMS" "${DME_AC4_IMS_ENCODER:-<缺失>}"
+        [[ -n "${dme_ims_encoder_sha}" ]] && row "" "encoder sha256 ${dme_ims_encoder_sha:0:16}…"
+        row "DME MP4 muxer" "${DME_MP4MUXER:-<缺失>}"
+        [[ -n "${dme_native_muxer_sha}" ]] && row "" "muxer sha256 ${dme_native_muxer_sha:0:16}…"
         echo
     fi
     if [[ ${need_dee} -eq 1 ]]; then

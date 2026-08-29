@@ -1757,9 +1757,9 @@ impl<'a> PresentationSubstreamMetadata<'a> {
     /// 已按 `TS103190-2:v1.3.1:6.2.2.3` 的 `ac4_presentation_substream()` 语法严格验证的
     /// payload 前缀。
     ///
-    /// 通常与 [`payload`](Self::payload) 相同。已观测的 Dolby object/A-JOC 独立 DRC 帧会在
-    /// 规范末尾之后额外携带一个 `0x80`；Scene 为回放互操作性只接受这一精确形态，并把该字节
-    /// 排除在本切片之外。
+    /// 通常与 [`payload`](Self::payload) 相同。已观测的 object/A-JOC 独立 DRC 帧会在规范
+    /// 末尾之后额外携带一个 `0x00` 或 `0x80`；Scene 为回放互操作性只接受这两种精确形态，
+    /// 并把该字节排除在本切片之外。
     #[must_use]
     pub fn syntax_payload(self) -> &'a [u8] {
         self.payload
@@ -1769,8 +1769,8 @@ impl<'a> PresentationSubstreamMetadata<'a> {
 
     /// 规范语法之后、为已知回放兼容形态保留的原始尾部。
     ///
-    /// 当前返回值只可能为空或为单字节 `[0x80]`。该字节没有被赋予 AC-4 processing 语义，
-    /// 调用方不得把它解释为 DRC、gain 或 loudness-correction 字段。
+    /// 当前返回值只可能为空、单字节 `[0x00]` 或单字节 `[0x80]`。该字节没有被赋予 AC-4
+    /// processing 语义，调用方不得把它解释为 DRC、gain 或 loudness-correction 字段。
     #[must_use]
     pub fn compatibility_tail(self) -> &'a [u8] {
         self.payload
