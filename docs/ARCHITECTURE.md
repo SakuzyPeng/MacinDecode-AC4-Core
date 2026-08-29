@@ -55,8 +55,10 @@ bitstream/CLI 路径现已贯通核心带、A-SPX 与 A-JOC full 对象标量 PC
 | `macindecode-ac4-scene/src/session.rs` | Session 控制面、presentation/mode 选择、processing-metadata 跨帧状态与 payload 存储、Core/Full A-JOC 拓扑门禁及 engine 所有权 |
 | `macindecode-ac4-scene/src/full_engine.rs` | 同一 AU 候选到 A-JOC engine 的事务输入及结构化错误投影 |
 | `macindecode-ac4-scene/src/error.rs` | 可重试截断、选择、unsupported、码流与不变量错误及 AU/语法上下文 |
+| `macindecode-ac4-mp4/src/track.rs` | 首个 AC-4 轨、sample entry 与 `dac4` 的公共容器定位入口 |
+| `macindecode-ac4-inspect/src/lib.rs` | MP4/raw 单遍聚合、五状态报告 DTO、语义展示换算与稳定 text renderer |
 | `macindecode-ac4-cli/src/trace/` | MP4/raw trace、普通音频统计，以及对统一 Full engine observation 的 A-JOC census 聚合 |
-| `macindecode-ac4-cli/src/container.rs` | trace 与 Scene batch 共用的 AC-4 轨定位、sample table 辅助及 MP4 edit 时间投影 |
+| `macindecode-ac4-cli/src/container.rs` | Scene batch 与导出使用的 sample table 辅助及 MP4 edit 时间投影 |
 | `macindecode-ac4-cli/src/scene_batch.rs`、`pcm_batch.rs`、`metadata_batch.rs` | bounded raw/MP4 AU 到 Session 的 batch 适配、Scene 外历史 PCM 量级/轨序适配、OAMD 整文件桥接与 edit 投影 |
 | `macindecode-ac4-cli/src/scene_export/` | core CAF 与 full artifact 选择、OAMD 与 PCM 配对、节目级 S24LE full PCM 交织、确定性探针信号 |
 | `macindecode-ac4-cli/src/adm/`、`damf/` | 格式专属 metadata、容器与原子提交 |
@@ -71,10 +73,12 @@ bitstream/CLI 路径现已贯通核心带、A-SPX 与 A-JOC full 对象标量 PC
 当前 crate 依赖图（箭头表示“依赖”）：
 
 ```text
-macindecode-ac4-cli -> macindecode-ac4-mp4 -> macindecode-ac4-bitstream
-macindecode-ac4-cli -----------------> macindecode-ac4-bitstream
-macindecode-ac4-cli --------------------> macindecode-ac4-scene
-macindecode-ac4-scene ---------------> macindecode-ac4-bitstream
+macindecode-ac4-cli -> macindecode-ac4-inspect -> macindecode-ac4-mp4
+macindecode-ac4-cli ---------------------------> macindecode-ac4-mp4
+macindecode-ac4-cli ---------------------------> macindecode-ac4-bitstream
+macindecode-ac4-cli -> macindecode-ac4-scene --> macindecode-ac4-bitstream
+macindecode-ac4-inspect ------------------------> macindecode-ac4-bitstream
+macindecode-ac4-mp4 ----------------------------> macindecode-ac4-bitstream
 ```
 
 目标职责方向如下；虚线之外的规划 crate 尚未建立：
@@ -95,7 +99,7 @@ macindecode-ac4-audio-core   macindecode-ac4-oamd
                macindecode-ac4-cli
 ```
 
-当前 `macindecode-ac4-scene` 已定义容器无关的数据模型和 Session 控制面；`decode_access_unit` 只接收调用方定界的 access unit 与已经换算为整数采样的位置，不读取或解释 MP4 字节。`macindecode-ac4-mp4` 只负责 access unit 与时间线，不解释音频工具语义；CLI 的 `scene_batch` 消费两者，并在 Scene 返回以后执行 WAVE 兼容所需的 edit 与尺度投影。调用方可以把 DSI 等系统层选择信息保留在泛型 `PresentationSelectionMetadata<T>` 中，再由已选 `ScenePresentation` 按双方唯一的 effective ID 取得只读关联；数组下标不作为身份，身份不可用的 opaque 项会令关联保持 `Indeterminate`，metadata 不进入解码配置，也不形成 Scene 到 MP4 的依赖。presentation 处理前 Scene、选择、时间、所有权、normalized PCM 与 raw OAMD 的正式边界见 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md)。
+当前 `macindecode-ac4-scene` 已定义容器无关的数据模型和 Session 控制面；`decode_access_unit` 只接收调用方定界的 access unit 与已经换算为整数采样的位置，不读取或解释 MP4 字节。`macindecode-ac4-mp4` 只负责 access unit、AC-4 轨定位与时间线，不解释音频工具语义；`macindecode-ac4-inspect` 消费 MP4 与 bitstream typed API，形成文件级只读报告，不进入 Scene 或音频处理。CLI 的 `scene_batch` 消费 MP4 与 Scene，并在 Scene 返回以后执行 WAVE 兼容所需的 edit 与尺度投影。调用方可以把 DSI 等系统层选择信息保留在泛型 `PresentationSelectionMetadata<T>` 中，再由已选 `ScenePresentation` 按双方唯一的 effective ID 取得只读关联；数组下标不作为身份，身份不可用的 opaque 项会令关联保持 `Indeterminate`，metadata 不进入解码配置，也不形成 Scene 到 MP4 的依赖。presentation 处理前 Scene、选择、时间、所有权、normalized PCM 与 raw OAMD 的正式边界见 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md)。
 
 ## 4. 目标解码会话
 

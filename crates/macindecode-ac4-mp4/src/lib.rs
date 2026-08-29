@@ -11,6 +11,7 @@ pub mod boxes;
 pub mod dsi;
 pub mod samples;
 pub mod timeline;
+pub mod track;
 
 pub use boxes::{BoxError, BoxIter, Mp4Box, find_box, find_path};
 pub use dsi::{
@@ -28,3 +29,4 @@ pub use timeline::{
     EditListEntry, HeaderTiming, PresentationTiming, TimelineError, media_time_to_presentation,
     parse_edit_list, parse_header_timing, presentation_timing,
 };
+pub use track::{AUDIO_SAMPLE_ENTRY_LEN, Ac4Track, find_ac4_sample_entry, find_ac4_track};

@@ -52,6 +52,30 @@ cargo test --workspace
 cargo run --bin macinac4 -- trace path/to/input.m4a
 ```
 
+### Inspect bitstream metadata
+
+```bash
+cargo run --bin macinac4 -- inspect path/to/input.m4a
+cargo run --bin macinac4 -- inspect path/to/input.m4a --format json
+```
+
+Rust applications can obtain the same owned report without spawning the CLI:
+
+```rust
+use macindecode_ac4_inspect::{InspectSourceHint, inspect_bytes, inspect_path};
+
+fn inspect_inputs() -> Result<(), Box<dyn std::error::Error>> {
+    let file_report = inspect_path("path/to/input.m4a")?;
+    let bytes = std::fs::read("path/to/input.ac4")?;
+    let memory_report = inspect_bytes(&bytes, InspectSourceHint::default())?;
+    println!("{}", file_report.render_text());
+    println!("memory frames: {}", memory_report.source.frame_count);
+    Ok(())
+}
+```
+
+Serializing the report directly produces the shape found at CLI `result.inspectResult`.
+
 ### Full audio decoding
 
 When building from source, full audio support requires generating static tables locally from the
@@ -92,22 +116,26 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
   export-full-adm-bwf path/to/input.m4a --output path/to/full-adm.wav
 ```
 
-On success, stdout contains a JSON v1 envelope with `schema`/`version`; on failure, stdout is empty (exit code 2 for argument errors, 1 for runtime errors).
+On success, stdout contains a JSON v1 envelope with `schema`/`version`, except that `inspect`
+defaults to stable English text; on failure, stdout is empty (exit code 2 for argument errors,
+1 for runtime errors).
 
 ## Project Structure
 
 ```text
-macindecode-ac4-cli ──→ macindecode-ac4-mp4 ──→ macindecode-ac4-bitstream
-macindecode-ac4-cli ──────────────────────────→ macindecode-ac4-bitstream
-macindecode-ac4-scene ────────────────────────→ macindecode-ac4-bitstream
+macindecode-ac4-cli ──→ macindecode-ac4-inspect ──→ macindecode-ac4-mp4
+                         │                          │
+                         └──────────────────────────┴→ macindecode-ac4-bitstream
+macindecode-ac4-scene ──────────────────────────────→ macindecode-ac4-bitstream
 ```
 
 | Crate | Responsibility | `no_std` |
 |---|---|---|
 | [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | Bitstream parsing, TOC/OAMD/EMDF, ASF/A-SPX/A-JOC audio reconstruction | ✅ |
+| [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | File-level MP4/raw AC-4 aggregation, JSON DTOs, and stable text rendering | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` contract and streaming Rust API for A-JOC Core/Full | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF boxes, `dac4`, sample table, edit/priming timeline | ✅ |
-| [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` tool: trace, PCM/ADM/DAMF/CAF export | — |
+| [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` tool: inspect, trace, PCM/ADM/DAMF/CAF export | — |
 
 ## Data Flow
 

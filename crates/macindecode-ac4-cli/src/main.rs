@@ -7,7 +7,6 @@ mod container;
 mod corecaf;
 mod corepcm;
 mod damf;
-mod inspect;
 #[cfg(feature = "audio-decode")]
 mod metadata_batch;
 #[cfg(feature = "audio-decode")]
@@ -23,6 +22,7 @@ mod trace;
 mod wire;
 
 use clap::{Args, Parser, Subcommand, ValueEnum, error::ErrorKind};
+use macindecode_ac4_inspect::inspect_path;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -388,12 +388,14 @@ fn main() -> ExitCode {
     };
 
     if let Command::Inspect { input, format } = cli.command {
-        let result = inspect::run(&input).and_then(|report| match format {
-            InspectFormat::Text => report.write_text(),
-            InspectFormat::Json => {
-                wire::prepare_inspect(report).and_then(|success| success.write())
-            }
-        });
+        let result = inspect_path(&input)
+            .map_err(wire::inspect_error)
+            .and_then(|report| match format {
+                InspectFormat::Text => wire::write_inspect_text(&report.render_text()),
+                InspectFormat::Json => {
+                    wire::prepare_inspect(report).and_then(|success| success.write())
+                }
+            });
         return match result {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {

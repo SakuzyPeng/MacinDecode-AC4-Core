@@ -12,6 +12,7 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use common::success;
+use macindecode_ac4_inspect::{InspectInputFormat, InspectSourceHint, inspect_bytes};
 use serde_json::Value;
 
 static NEXT_FILE: AtomicU64 = AtomicU64::new(0);
@@ -436,6 +437,27 @@ fn mp4_json_uses_sample_timing_and_marks_transport_fields_not_applicable() {
 }
 
 #[test]
+fn library_serialization_is_exactly_the_cli_inspect_result() {
+    let path = temp_path("m4a");
+    let frames = vec![
+        topology_frame(0, true, false),
+        topology_frame(1, false, false),
+    ];
+    let data = minimal_mp4(&frames);
+    fs::write(&path, &data).unwrap();
+    let cli = json_result(&path);
+    let name = path.display().to_string();
+    let library = inspect_bytes(
+        &data,
+        InspectSourceHint::new(Some(&name), InspectInputFormat::Mp4),
+    )
+    .unwrap();
+    let _ = fs::remove_file(&path);
+
+    assert_eq!(serde_json::to_value(library).unwrap(), cli);
+}
+
+#[test]
 fn topology_change_marks_related_fields_unknown_and_records_frame() {
     let path = temp_path("ac4");
     let frames = [
@@ -593,6 +615,21 @@ fn fatal_inputs_return_nonzero_structured_diagnostics() {
         assert_eq!(diagnostic["command"], "inspect");
         assert_eq!(diagnostic["code"], code);
     }
+}
+
+#[test]
+fn missing_inspect_input_preserves_the_read_diagnostic_contract() {
+    let path = temp_path("missing");
+    let _ = fs::remove_file(&path);
+    let output = run_inspect(&path, None);
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let diagnostic: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(diagnostic["schema"], "macinac4.cli-diagnostic");
+    assert_eq!(diagnostic["command"], "inspect");
+    assert_eq!(diagnostic["code"], "input.read_failed");
+    assert_eq!(diagnostic["context"]["path"], path.display().to_string());
+    assert!(diagnostic["context"]["cause"].is_string());
 }
 
 fn vector(relative: &str) -> PathBuf {

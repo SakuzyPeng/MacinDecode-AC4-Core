@@ -58,6 +58,23 @@ cargo run --bin macinac4 -- inspect path/to/input.m4a
 cargo run --bin macinac4 -- inspect path/to/input.m4a --format json
 ```
 
+同一报告也可以不启动子进程，直接从 Rust 调用：
+
+```rust
+use macindecode_ac4_inspect::{InspectSourceHint, inspect_bytes, inspect_path};
+
+fn inspect_inputs() -> Result<(), Box<dyn std::error::Error>> {
+    let file_report = inspect_path("path/to/input.m4a")?;
+    let bytes = std::fs::read("path/to/input.ac4")?;
+    let memory_report = inspect_bytes(&bytes, InspectSourceHint::default())?;
+    println!("{}", file_report.render_text());
+    println!("memory frames: {}", memory_report.source.frame_count);
+    Ok(())
+}
+```
+
+`serde_json::to_value(&file_report)` 对应 CLI envelope 内的 `result.inspectResult`。
+
 ### 完整音频解码
 
 从源码构建时，完整音频功能需要从官方 ETSI 规范在用户本地生成静态表，
@@ -98,19 +115,22 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
   export-full-adm-bwf path/to/input.m4a --output path/to/full-adm.wav
 ```
 
-成功时 stdout 是带 `schema`/`version` 的 JSON v1 envelope；失败时 stdout 为空，参数错误返回 2，运行期错误返回 1。
+成功时 stdout 通常是带 `schema`/`version` 的 JSON v1 envelope；`inspect` 默认英文 text
+是显式例外。失败时 stdout 为空，参数错误返回 2，运行期错误返回 1。
 
 ## 项目结构
 
 ```text
-macindecode-ac4-cli ──→ macindecode-ac4-mp4 ──→ macindecode-ac4-bitstream
-macindecode-ac4-cli ──────────────────────────→ macindecode-ac4-bitstream
-macindecode-ac4-scene ────────────────────────→ macindecode-ac4-bitstream
+macindecode-ac4-cli ──→ macindecode-ac4-inspect ──→ macindecode-ac4-mp4
+                         │                          │
+                         └──────────────────────────┴→ macindecode-ac4-bitstream
+macindecode-ac4-scene ──────────────────────────────→ macindecode-ac4-bitstream
 ```
 
 | Crate | 职责 | `no_std` |
 |---|---|---|
 | [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | 比特流解析、TOC/OAMD/EMDF、ASF/A-SPX/A-JOC 音频重建 | ✅ |
+| [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | MP4/raw AC-4 文件级聚合报告、JSON DTO 与英文 text renderer | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` 数据契约及 A-JOC Core/Full 流式 Rust API | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF box、`dac4`、sample table、edit/priming 时间线 | ✅ |
 | [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` 工具：inspect、trace、PCM/ADM/DAMF/CAF 导出 | — |

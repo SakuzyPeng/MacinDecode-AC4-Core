@@ -150,6 +150,9 @@ schema 的严格程度是分层的，消费者应据此判断可以依赖到哪�
 `inspectResult` 及其所有 typed 子结构均为 closed object；字段集合由成功响应 schema 的
 `inspect*` definitions 固定。可选语义字段统一使用以下 tagged 形状：
 
+Rust library `macindecode-ac4-inspect` 直接序列化 `InspectReport` 时只产生这里的
+`inspectResult` 对象，不产生 CLI envelope；CLI 负责添加 envelope 与结构化诊断。
+
 ```json
 {"status":"present","value":23.438,"unit":"fps","raw_code":13}
 {"status":"not_present"}

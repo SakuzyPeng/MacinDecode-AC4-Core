@@ -30,6 +30,7 @@ audio-decode = [
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }
 macindecode-ac4-bitstream.workspace = true
+macindecode-ac4-inspect.workspace = true
 macindecode-ac4-mp4.workspace = true
 macindecode-ac4-scene = { workspace = true, optional = true }
 quick-xml = { version = "0.41", default-features = false }

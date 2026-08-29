@@ -1,12 +1,14 @@
-//! 面向人的 AC-4 只读检视报告。
+//! 面向人的 AC-4 只读检视报告与公开 Rust API。
 //!
 //! 本模块直接消费 MP4 sample 或 Annex G sync frame 的 typed 解析结果，不经过 `trace`
 //! JSON。所有换算只用于展示；不应用响度、DRC、dialogue enhancement、downmix 或 PCM。
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::error::Error;
+use std::fmt;
 use std::fmt::Write as FmtWrite;
-use std::io::Write as IoWrite;
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
 
 use macindecode_ac4_bitstream::{
     Ac4PresentationSubstream, Ac4Toc, PresentationChannelContext, PresentationDrcConfiguration,
@@ -24,18 +26,144 @@ use macindecode_ac4_bitstream::{
 };
 use macindecode_ac4_mp4::{
     Ac4BitrateDsi, Ac4Dsi, Ac4DsiPresentationIndicators, BaseSamplingFrequency, SampleTable,
-    dsi::frame_rate, find_box, parse_header_timing,
+    dsi::frame_rate, find_ac4_track, find_box, parse_header_timing,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::container::{AUDIO_SAMPLE_ENTRY_LEN, find_ac4_track};
-use crate::wire::{CliError, DiagnosticCode};
+/// How [`inspect_bytes`] should interpret its input.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum InspectInputFormat {
+    /// Detect Annex G by its leading sync word and otherwise parse the bytes as MP4.
+    #[default]
+    Auto,
+    /// Parse an ISO BMFF/MP4 container.
+    Mp4,
+    /// Parse an Annex G AC-4 sync-frame stream.
+    AnnexG,
+}
+
+/// Display information and an optional format override for an in-memory input.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct InspectSourceHint<'a> {
+    /// Name stored in [`InspectSource::input`]; `None` is rendered as `"<memory>"`.
+    pub name: Option<&'a str>,
+    /// Container format or automatic detection.
+    pub format: InspectInputFormat,
+}
+
+impl<'a> InspectSourceHint<'a> {
+    /// Construct an in-memory source hint.
+    #[must_use]
+    pub const fn new(name: Option<&'a str>, format: InspectInputFormat) -> Self {
+        Self { name, format }
+    }
+}
+
+/// The format actually selected for an inspected input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InspectSourceKind {
+    /// ISO BMFF/MP4 container.
+    Mp4,
+    /// Annex G AC-4 sync-frame stream.
+    AnnexG,
+}
+
+impl InspectSourceKind {
+    /// Stable text/JSON label for this source kind.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Mp4 => "mp4",
+            Self::AnnexG => "annex_g",
+        }
+    }
+}
+
+impl fmt::Display for InspectSourceKind {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+/// Severity attached to a non-fatal [`InspectIssue`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InspectIssueSeverity {
+    /// The report remains usable, but some metadata needs attention.
+    Warning,
+}
+
+impl InspectIssueSeverity {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Warning => "warning",
+        }
+    }
+}
+
+impl fmt::Display for InspectIssueSeverity {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+/// A fatal error produced before an inspect report can be completed.
+#[derive(Debug)]
+pub enum InspectError {
+    /// The input path could not be read.
+    Read {
+        /// Requested input path.
+        path: PathBuf,
+        /// Underlying filesystem failure.
+        source: io::Error,
+    },
+    /// The selected input contains no bytes.
+    EmptyInput {
+        /// Path or in-memory source name.
+        input: String,
+    },
+    /// The selected container or bitstream could not be parsed.
+    Parse {
+        /// Path or in-memory source name.
+        input: String,
+        /// Source format selected before parsing.
+        format: InspectSourceKind,
+        /// Stable human-readable parser cause.
+        cause: String,
+    },
+}
+
+impl fmt::Display for InspectError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Read { path, source } => {
+                write!(formatter, "failed to read {}: {source}", path.display())
+            }
+            Self::EmptyInput { input } => write!(formatter, "input {input} is empty"),
+            Self::Parse {
+                input,
+                format,
+                cause,
+            } => write!(formatter, "failed to parse {input} as {format}: {cause}"),
+        }
+    }
+}
+
+impl Error for InspectError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Read { source, .. } => Some(source),
+            Self::EmptyInput { .. } | Self::Parse { .. } => None,
+        }
+    }
+}
 
 /// 可选字段的稳定可用性状态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum FieldStatus {
+pub enum FieldStatus {
     Present,
     NotPresent,
     NotApplicable,
@@ -52,16 +180,21 @@ enum MetadataFailure {
 
 /// 同时承载语义值、单位与原始码值的 wire 字段。
 #[derive(Debug, Clone, PartialEq, Serialize)]
-pub(crate) struct ReportedField {
-    status: FieldStatus,
+pub struct ReportedField {
+    /// Availability state.
+    pub status: FieldStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
-    value: Option<Value>,
+    /// Converted semantic value when present.
+    pub value: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    unit: Option<&'static str>,
+    /// Display unit for the converted value.
+    pub unit: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    raw_code: Option<Value>,
+    /// Original bitstream code when one is available.
+    pub raw_code: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    reason: Option<String>,
+    /// Reason attached to an unavailable state.
+    pub reason: Option<String>,
 }
 
 impl ReportedField {
@@ -177,20 +310,20 @@ fn value_text(value: &Value) -> String {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub(crate) struct InspectIssue {
-    code: String,
-    severity: &'static str,
-    message: String,
-    frame_index: Option<u64>,
-    presentation_id: Option<u32>,
-    substream_index: Option<u32>,
+pub struct InspectIssue {
+    pub code: String,
+    pub severity: InspectIssueSeverity,
+    pub message: String,
+    pub frame_index: Option<u64>,
+    pub presentation_id: Option<u32>,
+    pub substream_index: Option<u32>,
 }
 
 impl InspectIssue {
     fn warning(code: &str, message: impl Into<String>, frame_index: Option<u64>) -> Self {
         Self {
             code: code.to_owned(),
-            severity: "warning",
+            severity: InspectIssueSeverity::Warning,
             message: message.into(),
             frame_index,
             presentation_id: None,
@@ -210,42 +343,42 @@ impl InspectIssue {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectSource {
-    kind: &'static str,
-    input: String,
-    track_index: ReportedField,
-    frame_count: u64,
-    duration: ReportedField,
+pub struct InspectSource {
+    pub kind: InspectSourceKind,
+    pub input: String,
+    pub track_index: ReportedField,
+    pub frame_count: u64,
+    pub duration: ReportedField,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectStream {
-    codec: String,
-    bit_rate: ReportedField,
-    estimated_average_bit_rate: ReportedField,
-    bitstream_version: ReportedField,
-    frame_rate: ReportedField,
-    sample_rate: ReportedField,
-    i_frame: ReportedField,
-    i_frame_interval: ReportedField,
-    sync_word: ReportedField,
-    crc_errors: ReportedField,
-    number_of_presentations: ReportedField,
-    number_of_audio_substreams: ReportedField,
+pub struct InspectStream {
+    pub codec: String,
+    pub bit_rate: ReportedField,
+    pub estimated_average_bit_rate: ReportedField,
+    pub bitstream_version: ReportedField,
+    pub frame_rate: ReportedField,
+    pub sample_rate: ReportedField,
+    pub i_frame: ReportedField,
+    pub i_frame_interval: ReportedField,
+    pub sync_word: ReportedField,
+    pub crc_errors: ReportedField,
+    pub number_of_presentations: ReportedField,
+    pub number_of_audio_substreams: ReportedField,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectLoudness {
-    loudness: ReportedField,
-    version: ReportedField,
-    regulation_type: ReportedField,
-    correction_type: ReportedField,
-    dialogue_intelligence: ReportedField,
-    integrated_speech_gated: ReportedField,
-    integrated_level_gated: ReportedField,
-    maximum_true_peak: ReportedField,
-    maximum_momentary_loudness: ReportedField,
-    loudness_range: ReportedField,
+pub struct InspectLoudness {
+    pub loudness: ReportedField,
+    pub version: ReportedField,
+    pub regulation_type: ReportedField,
+    pub correction_type: ReportedField,
+    pub dialogue_intelligence: ReportedField,
+    pub integrated_speech_gated: ReportedField,
+    pub integrated_level_gated: ReportedField,
+    pub maximum_true_peak: ReportedField,
+    pub maximum_momentary_loudness: ReportedField,
+    pub loudness_range: ReportedField,
 }
 
 impl Default for InspectLoudness {
@@ -266,12 +399,12 @@ impl Default for InspectLoudness {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectDrc {
-    enhanced_ac3_profile: ReportedField,
-    home_theater_avr: ReportedField,
-    flat_panel_tv: ReportedField,
-    portable_speakers: ReportedField,
-    portable_headphones: ReportedField,
+pub struct InspectDrc {
+    pub enhanced_ac3_profile: ReportedField,
+    pub home_theater_avr: ReportedField,
+    pub flat_panel_tv: ReportedField,
+    pub portable_speakers: ReportedField,
+    pub portable_headphones: ReportedField,
 }
 
 impl Default for InspectDrc {
@@ -287,10 +420,10 @@ impl Default for InspectDrc {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectMixing {
-    main_audio_ducking_level: ReportedField,
-    main_audio_ducking_level_center: ReportedField,
-    main_audio_ducking_level_front: ReportedField,
+pub struct InspectMixing {
+    pub main_audio_ducking_level: ReportedField,
+    pub main_audio_ducking_level_center: ReportedField,
+    pub main_audio_ducking_level_front: ReportedField,
 }
 
 impl Default for InspectMixing {
@@ -304,14 +437,14 @@ impl Default for InspectMixing {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectDownmix {
-    loro_center_mix_gain: ReportedField,
-    loro_surround_mix_gain: ReportedField,
-    ltrt_center_mix_gain: ReportedField,
-    ltrt_surround_mix_gain: ReportedField,
-    lfe_mix_info: ReportedField,
-    lfe_mix_gain: ReportedField,
-    preferred_downmix: ReportedField,
+pub struct InspectDownmix {
+    pub loro_center_mix_gain: ReportedField,
+    pub loro_surround_mix_gain: ReportedField,
+    pub ltrt_center_mix_gain: ReportedField,
+    pub ltrt_surround_mix_gain: ReportedField,
+    pub lfe_mix_info: ReportedField,
+    pub lfe_mix_gain: ReportedField,
+    pub preferred_downmix: ReportedField,
 }
 
 impl Default for InspectDownmix {
@@ -329,43 +462,43 @@ impl Default for InspectDownmix {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectPresentation {
-    index: usize,
-    presentation_id: ReportedField,
-    summary: ReportedField,
-    presentation_type: ReportedField,
-    minimal_compatibility_level: ReportedField,
-    dialogue_normalization: ReportedField,
-    language: ReportedField,
-    multi_pid: ReportedField,
-    bit_rate: ReportedField,
-    audio_substreams: ReportedField,
-    metadata_authentication_id: ReportedField,
-    loudness: InspectLoudness,
-    dynamic_range_control: InspectDrc,
-    mixing_metadata: InspectMixing,
-    downmix: InspectDownmix,
+pub struct InspectPresentation {
+    pub index: usize,
+    pub presentation_id: ReportedField,
+    pub summary: ReportedField,
+    pub presentation_type: ReportedField,
+    pub minimal_compatibility_level: ReportedField,
+    pub dialogue_normalization: ReportedField,
+    pub language: ReportedField,
+    pub multi_pid: ReportedField,
+    pub bit_rate: ReportedField,
+    pub audio_substreams: ReportedField,
+    pub metadata_authentication_id: ReportedField,
+    pub loudness: InspectLoudness,
+    pub dynamic_range_control: InspectDrc,
+    pub mixing_metadata: InspectMixing,
+    pub downmix: InspectDownmix,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectPreprocessing {
-    previous_mix_type_2channel: ReportedField,
-    phase90_filter_info_2channel: ReportedField,
-    loro_center_mix_gain: ReportedField,
-    loro_surround_mix_gain: ReportedField,
-    loro_downmix_loudness_correction: ReportedField,
-    ltrt_center_mix_gain: ReportedField,
-    ltrt_surround_mix_gain: ReportedField,
-    ltrt_downmix_loudness_correction: ReportedField,
-    lfe_mix_gain: ReportedField,
-    preferred_downmix: ReportedField,
-    previous_downmix_type_5channel: ReportedField,
-    previous_upmix_type_5channel: ReportedField,
-    previous_upmix_type_3_4: ReportedField,
-    previous_upmix_type_3_2_2: ReportedField,
-    phase90_filter_info: ReportedField,
-    surround_attenuation_known: ReportedField,
-    lfe_attenuation_known: ReportedField,
+pub struct InspectPreprocessing {
+    pub previous_mix_type_2channel: ReportedField,
+    pub phase90_filter_info_2channel: ReportedField,
+    pub loro_center_mix_gain: ReportedField,
+    pub loro_surround_mix_gain: ReportedField,
+    pub loro_downmix_loudness_correction: ReportedField,
+    pub ltrt_center_mix_gain: ReportedField,
+    pub ltrt_surround_mix_gain: ReportedField,
+    pub ltrt_downmix_loudness_correction: ReportedField,
+    pub lfe_mix_gain: ReportedField,
+    pub preferred_downmix: ReportedField,
+    pub previous_downmix_type_5channel: ReportedField,
+    pub previous_upmix_type_5channel: ReportedField,
+    pub previous_upmix_type_3_4: ReportedField,
+    pub previous_upmix_type_3_2_2: ReportedField,
+    pub phase90_filter_info: ReportedField,
+    pub surround_attenuation_known: ReportedField,
+    pub lfe_attenuation_known: ReportedField,
 }
 
 impl Default for InspectPreprocessing {
@@ -393,11 +526,11 @@ impl Default for InspectPreprocessing {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectDialogueEnhancement {
-    enabled: ReportedField,
-    method: ReportedField,
-    max_gain: ReportedField,
-    channel_configuration: ReportedField,
+pub struct InspectDialogueEnhancement {
+    pub enabled: ReportedField,
+    pub method: ReportedField,
+    pub max_gain: ReportedField,
+    pub channel_configuration: ReportedField,
 }
 
 impl Default for InspectDialogueEnhancement {
@@ -412,25 +545,25 @@ impl Default for InspectDialogueEnhancement {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectAudioSubstream {
-    index: u32,
-    summary: ReportedField,
-    channel_configuration: ReportedField,
-    channel_layout: ReportedField,
-    object_coded: ReportedField,
-    bit_rate: ReportedField,
-    preprocessing: InspectPreprocessing,
-    dialogue_enhancement: InspectDialogueEnhancement,
+pub struct InspectAudioSubstream {
+    pub index: u32,
+    pub summary: ReportedField,
+    pub channel_configuration: ReportedField,
+    pub channel_layout: ReportedField,
+    pub object_coded: ReportedField,
+    pub bit_rate: ReportedField,
+    pub preprocessing: InspectPreprocessing,
+    pub dialogue_enhancement: InspectDialogueEnhancement,
 }
 
 /// `inspectResult` 的固定 domain/wire 骨架。
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct InspectReport {
-    pub(crate) source: InspectSource,
-    pub(crate) stream: InspectStream,
-    pub(crate) presentations: Vec<InspectPresentation>,
-    pub(crate) audio_substreams: Vec<InspectAudioSubstream>,
-    pub(crate) issues: Vec<InspectIssue>,
+pub struct InspectReport {
+    pub source: InspectSource,
+    pub stream: InspectStream,
+    pub presentations: Vec<InspectPresentation>,
+    pub audio_substreams: Vec<InspectAudioSubstream>,
+    pub issues: Vec<InspectIssue>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -603,43 +736,64 @@ struct Aggregator {
     issues: Vec<InspectIssue>,
 }
 
-/// 读取并聚合一个 AC-4 输入。
-pub(crate) fn run(path: &Path) -> Result<InspectReport, CliError> {
-    let data = std::fs::read(path).map_err(|error| {
-        CliError::new(
-            "inspect",
-            DiagnosticCode::InputReadFailed,
-            "Failed to read input file",
-        )
-        .with_context("path", path.display().to_string())
-        .with_context("cause", error.to_string())
+/// Read and inspect an MP4/M4A or Annex G AC-4 file.
+///
+/// Format detection matches [`InspectInputFormat::Auto`]. The complete file is
+/// read before parsing, and no audio reconstruction tables are required.
+pub fn inspect_path(path: impl AsRef<Path>) -> Result<InspectReport, InspectError> {
+    let path = path.as_ref();
+    let data = std::fs::read(path).map_err(|source| InspectError::Read {
+        path: path.to_path_buf(),
+        source,
     })?;
-    if data.is_empty() {
-        return Err(CliError::new(
-            "inspect",
-            DiagnosticCode::InputInvalid,
-            "Input file is empty",
-        )
-        .with_context("path", path.display().to_string()));
-    }
+    let input = path.display().to_string();
+    inspect_named_bytes(&data, &input, InspectInputFormat::Auto)
+}
 
-    let result = if matches!(data.get(..2), Some([0xac, 0x40] | [0xac, 0x41])) {
-        inspect_raw(&data, path)
-    } else {
-        inspect_mp4(&data, path)
+/// Inspect MP4/M4A or Annex G AC-4 bytes already held by the caller.
+///
+/// A missing source name is reported as `"<memory>"`. The name is display-only
+/// and never participates in format detection.
+pub fn inspect_bytes(
+    data: &[u8],
+    source: InspectSourceHint<'_>,
+) -> Result<InspectReport, InspectError> {
+    inspect_named_bytes(data, source.name.unwrap_or("<memory>"), source.format)
+}
+
+fn inspect_named_bytes(
+    data: &[u8],
+    input: &str,
+    requested_format: InspectInputFormat,
+) -> Result<InspectReport, InspectError> {
+    if data.is_empty() {
+        return Err(InspectError::EmptyInput {
+            input: input.to_owned(),
+        });
+    }
+    let format = match requested_format {
+        InspectInputFormat::Auto => {
+            if matches!(data.get(..2), Some([0xac, 0x40] | [0xac, 0x41])) {
+                InspectSourceKind::AnnexG
+            } else {
+                InspectSourceKind::Mp4
+            }
+        }
+        InspectInputFormat::Mp4 => InspectSourceKind::Mp4,
+        InspectInputFormat::AnnexG => InspectSourceKind::AnnexG,
     };
-    result.map_err(|cause| {
-        CliError::new(
-            "inspect",
-            DiagnosticCode::ParseFailed,
-            "Failed to parse AC-4 input",
-        )
-        .with_context("path", path.display().to_string())
-        .with_context("cause", cause)
+    let result = match format {
+        InspectSourceKind::Mp4 => inspect_mp4(data, input),
+        InspectSourceKind::AnnexG => inspect_raw(data, input),
+    };
+    result.map_err(|cause| InspectError::Parse {
+        input: input.to_owned(),
+        format,
+        cause,
     })
 }
 
-fn inspect_raw(data: &[u8], path: &Path) -> Result<InspectReport, String> {
+fn inspect_raw(data: &[u8], input: &str) -> Result<InspectReport, String> {
     let mut aggregate = Aggregator::default();
     let mut total_transport_bytes = 0u128;
     let mut sync_words = BTreeSet::new();
@@ -694,8 +848,8 @@ fn inspect_raw(data: &[u8], path: &Path) -> Result<InspectReport, String> {
         )
     };
     aggregate.finish(
-        path,
-        "annex_g",
+        input,
+        InspectSourceKind::AnnexG,
         ReportedField::not_applicable(),
         duration,
         total_transport_bytes,
@@ -705,18 +859,13 @@ fn inspect_raw(data: &[u8], path: &Path) -> Result<InspectReport, String> {
     )
 }
 
-fn inspect_mp4(data: &[u8], path: &Path) -> Result<InspectReport, String> {
+fn inspect_mp4(data: &[u8], input: &str) -> Result<InspectReport, String> {
     let moov = find_box(data, b"moov").ok_or("moov box not found")?;
     let track =
         find_ac4_track(moov.payload).ok_or("No track with an ac-4 sample entry was found")?;
     let mdhd = find_box(track.mdia.payload, b"mdhd").ok_or("mdhd box not found")?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload).map_err(|error| error.to_string())?;
-    let specific = track
-        .sample_entry
-        .payload
-        .get(AUDIO_SAMPLE_ENTRY_LEN..)
-        .and_then(|tail| find_box(tail, b"dac4"))
-        .ok_or("ac-4 sample entry has no dac4 box")?;
+    let specific = track.dac4().ok_or("ac-4 sample entry has no dac4 box")?;
     let dsi = Ac4Dsi::parse(specific.payload).map_err(|error| error.to_string())?;
     let dsi_summary = collect_dsi_summary(&dsi)?;
     let table = SampleTable::parse(track.stbl.payload).map_err(|error| error.to_string())?;
@@ -744,8 +893,8 @@ fn inspect_mp4(data: &[u8], path: &Path) -> Result<InspectReport, String> {
         denominator: u128::from(media.timescale),
     };
     aggregate.finish(
-        path,
-        "mp4",
+        input,
+        InspectSourceKind::Mp4,
         ReportedField::present(track.index),
         Some(duration),
         total_sample_bytes,
@@ -1470,8 +1619,8 @@ impl Aggregator {
     #[allow(clippy::too_many_arguments)]
     fn finish(
         mut self,
-        path: &Path,
-        source_kind: &'static str,
+        input: &str,
+        source_kind: InspectSourceKind,
         track_index: ReportedField,
         duration: Option<DurationRatio>,
         source_bytes: u128,
@@ -1618,7 +1767,7 @@ impl Aggregator {
         Ok(InspectReport {
             source: InspectSource {
                 kind: source_kind,
-                input: path.display().to_string(),
+                input: input.to_owned(),
                 track_index,
                 frame_count: self.frame_count,
                 duration: duration_field,
@@ -3147,21 +3296,8 @@ fn format_decimal(value: f64, digits: usize) -> String {
 
 impl InspectReport {
     /// 渲染稳定的英文纯文本成功输出。
-    pub(crate) fn write_text(self) -> Result<(), CliError> {
-        let text = self.render_text();
-        let stdout = std::io::stdout();
-        let mut writer = stdout.lock();
-        writer.write_all(text.as_bytes()).map_err(|error| {
-            CliError::new(
-                "inspect",
-                DiagnosticCode::OutputWriteFailed,
-                "Failed to write to standard output",
-            )
-            .with_context("cause", error.to_string())
-        })
-    }
-
-    pub(crate) fn render_text(&self) -> String {
+    #[must_use]
+    pub fn render_text(&self) -> String {
         let mut output = String::new();
         let _ = writeln!(output, "Audio:");
         text_field(
@@ -3174,7 +3310,7 @@ impl InspectReport {
             &mut output,
             1,
             "Source",
-            &ReportedField::present(self.source.kind),
+            &ReportedField::present(self.source.kind.as_str()),
         );
         text_field(&mut output, 1, "Track index", &self.source.track_index);
         let _ = writeln!(output, "    Frames: {}", self.source.frame_count);
@@ -3554,7 +3690,10 @@ impl InspectReport {
                 let _ = writeln!(
                     output,
                     "    [{}] {}: {}{}",
-                    issue.severity, issue.code, issue.message, context
+                    issue.severity.as_str(),
+                    issue.code,
+                    issue.message,
+                    context
                 );
             }
         }

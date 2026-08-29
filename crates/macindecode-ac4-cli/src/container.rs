@@ -7,17 +7,9 @@
 use crate::metadata_batch::MediaSpan;
 #[cfg(feature = "audio-decode")]
 use crate::pcm_batch::PcmBatch;
-use macindecode_ac4_mp4::{BoxIter, boxes::Mp4Box, find_box, find_path};
+pub(crate) use macindecode_ac4_mp4::find_ac4_track;
 #[cfg(feature = "audio-decode")]
 use macindecode_ac4_mp4::{EditListEntry, media_time_to_presentation};
-
-/// `AudioSampleEntry` 在 box 负载中占用的字节数。
-///
-/// 依据 ISO/IEC 14496-12 与 `TS103190-1:v1.4.1` 表 E.2：
-/// `reserved[6]` + `data_reference_index(2)` + `reserved[2](8)`
-/// + `channel_count(2)` + `sample_size(2)` + `reserved(4)`
-/// + `sampling_frequency(2)` + `reserved(2)`。
-pub(crate) const AUDIO_SAMPLE_ENTRY_LEN: usize = 28;
 
 /// 把 edit list 中唯一的媒体区段投影到输出采样时间轴。
 ///
@@ -199,58 +191,6 @@ pub(crate) fn scale_u64_floor(value: u64, numerator: u64, denominator: u64) -> R
         .checked_div(u128::from(denominator))
         .ok_or("Timeline divisor is zero")?;
     u64::try_from(scaled).map_err(|_| "Timeline value exceeds u64".to_owned())
-}
-
-/// 在 `stsd` 中定位 `ac-4` sample entry。
-///
-/// `stsd` 是 FullBox 且带 entry_count，条目从负载偏移 8 处开始。
-pub(crate) fn find_ac4_sample_entry(stsd_payload: &[u8]) -> Option<Mp4Box<'_>> {
-    let entries = stsd_payload.get(8..)?;
-    BoxIter::new(entries)
-        .flatten()
-        .find(|item| item.is(b"ac-4"))
-}
-
-/// 与同一个 AC-4 轨道绑定的容器节点。
-pub(crate) struct Ac4Track<'a> {
-    pub(super) index: u32,
-    pub(super) trak: Mp4Box<'a>,
-    pub(super) mdia: Mp4Box<'a>,
-    pub(super) stbl: Mp4Box<'a>,
-    pub(super) sample_entry: Mp4Box<'a>,
-}
-
-/// 遍历全部轨道，以 `stsd` 中的 `ac-4` sample entry 选择目标。
-pub(crate) fn find_ac4_track(moov_payload: &[u8]) -> Option<Ac4Track<'_>> {
-    let mut track_index = 0u32;
-    for item in BoxIter::new(moov_payload).flatten() {
-        if !item.is(b"trak") {
-            continue;
-        }
-        let index = track_index;
-        track_index = track_index.saturating_add(1);
-
-        let Some(mdia) = find_box(item.payload, b"mdia") else {
-            continue;
-        };
-        let Some(stbl) = find_path(mdia.payload, &[*b"minf", *b"stbl"]) else {
-            continue;
-        };
-        let Some(stsd) = find_box(stbl.payload, b"stsd") else {
-            continue;
-        };
-        let Some(sample_entry) = find_ac4_sample_entry(stsd.payload) else {
-            continue;
-        };
-        return Some(Ac4Track {
-            index,
-            trak: item,
-            mdia,
-            stbl,
-            sample_entry,
-        });
-    }
-    None
 }
 
 pub(crate) fn read_u32(data: &[u8], at: usize) -> Option<u32> {

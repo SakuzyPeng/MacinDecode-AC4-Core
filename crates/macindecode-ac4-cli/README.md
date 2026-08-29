@@ -32,6 +32,10 @@ stderr。完整命令和输出契约见
 [CLI 使用指南](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/blob/main/docs/CLI_USAGE.md)
 与随包分发的 [`schema/`](schema/)。
 
+需要进程内 Rust 调用时，使用 `macindecode-ac4-inspect` 的 `inspect_path` 或
+`inspect_bytes`。其序列化结果是本 CLI envelope 内的裸 `result.inspectResult`，而 text
+renderer 与本命令保持逐字节一致。
+
 MSRV 为 Rust 1.98。
 
 ## License

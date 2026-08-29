@@ -1,0 +1,22 @@
+[package]
+name = "macindecode-ac4-inspect"
+description = "Human-readable and typed AC-4 bitstream metadata inspection"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/macindecode-ac4-inspect"
+readme = "README.md"
+keywords = ["ac-4", "audio", "metadata", "inspection", "mp4"]
+categories = ["multimedia::audio", "parser-implementations"]
+include = ["src/**", "tests/**", "README.md", "LICENSE"]
+
+[dependencies]
+macindecode-ac4-bitstream.workspace = true
+macindecode-ac4-mp4.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true

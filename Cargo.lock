@@ -202,10 +202,21 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "macindecode-ac4-bitstream",
+ "macindecode-ac4-inspect",
  "macindecode-ac4-mp4",
  "macindecode-ac4-scene",
  "quick-xml",
  "renamore",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "macindecode-ac4-inspect"
+version = "0.1.0"
+dependencies = [
+ "macindecode-ac4-bitstream",
+ "macindecode-ac4-mp4",
  "serde",
  "serde_json",
 ]

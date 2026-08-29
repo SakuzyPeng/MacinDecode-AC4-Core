@@ -4,6 +4,7 @@ members = [
     "crates/macindecode-ac4-bitstream",
     "crates/macindecode-ac4-scene",
     "crates/macindecode-ac4-mp4",
+    "crates/macindecode-ac4-inspect",
     "crates/macindecode-ac4-cli",
     "crates/macindecode-ac4-perf",
 ]
@@ -17,6 +18,7 @@ repository = "https://github.com/SakuzyPeng/MacinDecode-AC4-Core"
 
 [workspace.dependencies]
 macindecode-ac4-bitstream = { version = "0.1.0", path = "crates/macindecode-ac4-bitstream" }
+macindecode-ac4-inspect = { version = "0.1.0", path = "crates/macindecode-ac4-inspect" }
 macindecode-ac4-mp4 = { version = "0.1.0", path = "crates/macindecode-ac4-mp4" }
 macindecode-ac4-scene = { version = "0.1.0", path = "crates/macindecode-ac4-scene" }
 

@@ -81,6 +81,11 @@ text 章节固定依次为 `Audio`、各 `Presentation`、各 `Substream`、`Iss
 仍返回非零状态与结构化诊断；CRC 错误、保留码和已知未支持语法则尽可能生成可用报告与
 issue。
 
+Rust 应用无需启动 CLI：`macindecode-ac4-inspect::inspect_path` 检查文件，
+`inspect_bytes` 检查调用方持有的字节。公共 `InspectReport` 可直接读取字段或调用
+`render_text()`；其 Serde 输出对应 CLI 的裸 `result.inspectResult`，不包含
+`schema`/`version`/`command` envelope。
+
 术语和换算依据 ETSI，目标只是提供“类似 DRP 的可读信息”，不复刻或推断 DRP 私有字段与
 算法。`Metadata authentication ID` 首版固定为 `unsupported`，因为尚无已确认的 ETSI
 等价字段；不会根据编码器或品牌猜测为 `Dolby`。MediaInfo 可用于公开字段交叉核对，但不是

@@ -1,9 +1,9 @@
 //! MP4 与 Annex G trace 报告渲染。
 
 use super::{
-    AUDIO_SAMPLE_ENTRY_LEN, Ac4Dsi, Ac4Toc, Ac4Topology, BoxIter, EditListEntry, SampleDelta,
-    SampleTable, SequenceTransition, SyncFrameIter, TopologyTrace, dac4, find_ac4_track, find_box,
-    find_path, media_time_to_presentation, parse_edit_list, parse_header_timing, parse_stsz,
+    Ac4Dsi, Ac4Toc, Ac4Topology, BoxIter, EditListEntry, SampleDelta, SampleTable,
+    SequenceTransition, SyncFrameIter, TopologyTrace, dac4, find_ac4_track, find_box, find_path,
+    media_time_to_presentation, parse_edit_list, parse_header_timing, parse_stsz,
     presentation_timing,
 };
 
@@ -330,10 +330,9 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
     let track =
         find_ac4_track(moov.payload).ok_or("No track with an ac-4 sample entry was found")?;
     let track_index = track.index;
-    let trak = track.trak;
-    let mdia = track.mdia;
-    let stbl = track.stbl;
-    let entry = track.sample_entry;
+    let trak = &track.trak;
+    let mdia = &track.mdia;
+    let stbl = &track.stbl;
     let mdhd = find_box(mdia.payload, b"mdhd").ok_or("mdhd box not found")?;
     let media = parse_header_timing(*b"mdhd", mdhd.payload).map_err(|e| e.to_string())?;
     let timescale = media.timescale;
@@ -354,12 +353,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
     let presentation =
         presentation_timing(media, movie.timescale, edits).map_err(|error| error.to_string())?;
 
-    let specific = entry
-        .payload
-        .get(AUDIO_SAMPLE_ENTRY_LEN..)
-        .and_then(|tail| find_box(tail, b"dac4"))
-        .ok_or("ac-4 sample entry has no dac4 box")?;
-
+    let specific = track.dac4().ok_or("ac-4 sample entry has no dac4 box")?;
     let dsi = Ac4Dsi::parse(specific.payload).map_err(|error| error.to_string())?;
 
     let trace = trace_frames(

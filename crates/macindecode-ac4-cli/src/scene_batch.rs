@@ -9,7 +9,7 @@
 //! 对齐的 PCM。
 
 use crate::container::{
-    AUDIO_SAMPLE_ENTRY_LEN, find_ac4_track, presentation_media_span, presentation_sample_shift,
+    find_ac4_track, presentation_media_span, presentation_sample_shift,
     project_pcm_batch_to_presentation, scale_i64_round, scale_u64_round,
 };
 use crate::metadata_batch::{
@@ -360,10 +360,7 @@ fn collect_mp4(
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
 
     let specific = track
-        .sample_entry
-        .payload
-        .get(AUDIO_SAMPLE_ENTRY_LEN..)
-        .and_then(|tail| find_box(tail, b"dac4"))
+        .dac4()
         .ok_or_else(|| SceneBatchError::Failed("ac-4 sample entry has no dac4 box".to_owned()))?;
     let dsi = Ac4Dsi::parse(specific.payload)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;

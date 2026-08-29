@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 
-use crate::inspect::InspectReport;
+use macindecode_ac4_inspect::{InspectError, InspectReport};
 
 pub(crate) const RESULT_SCHEMA: &str = "macinac4.cli-result";
 pub(crate) const DIAGNOSTIC_SCHEMA: &str = "macinac4.cli-diagnostic";
@@ -101,6 +101,46 @@ pub(crate) fn write_error(error: &CliError) {
         &error.message,
         &error.context,
     );
+}
+
+/// Map the public inspect library error model onto the stable CLI diagnostic contract.
+pub(crate) fn inspect_error(error: InspectError) -> CliError {
+    match error {
+        InspectError::Read { path, source } => CliError::new(
+            "inspect",
+            DiagnosticCode::InputReadFailed,
+            "Failed to read input file",
+        )
+        .with_context("path", path.display().to_string())
+        .with_context("cause", source.to_string()),
+        InspectError::EmptyInput { input } => CliError::new(
+            "inspect",
+            DiagnosticCode::InputInvalid,
+            "Input file is empty",
+        )
+        .with_context("path", input),
+        InspectError::Parse { input, cause, .. } => CliError::new(
+            "inspect",
+            DiagnosticCode::ParseFailed,
+            "Failed to parse AC-4 input",
+        )
+        .with_context("path", input)
+        .with_context("cause", cause),
+    }
+}
+
+/// Write the stable inspect text report without moving stdout concerns into the library crate.
+pub(crate) fn write_inspect_text(text: &str) -> Result<(), CliError> {
+    let stdout = std::io::stdout();
+    let mut writer = stdout.lock();
+    writer.write_all(text.as_bytes()).map_err(|error| {
+        CliError::new(
+            "inspect",
+            DiagnosticCode::OutputWriteFailed,
+            "Failed to write to standard output",
+        )
+        .with_context("cause", error.to_string())
+    })
 }
 
 fn write_diagnostic(

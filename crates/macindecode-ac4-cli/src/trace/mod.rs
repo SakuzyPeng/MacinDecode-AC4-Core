@@ -23,7 +23,7 @@ mod report;
 mod spectrum;
 mod topology;
 
-use crate::container::{AUDIO_SAMPLE_ENTRY_LEN, find_ac4_track, parse_stsz};
+use crate::container::{find_ac4_track, parse_stsz};
 use ajoc::{AjocTrace, GroupCommonState, GroupOamdState};
 use audio_substream::AudioTrace;
 #[cfg(feature = "audio-decode")]

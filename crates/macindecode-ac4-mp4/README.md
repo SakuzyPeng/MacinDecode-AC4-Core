@@ -12,6 +12,10 @@ macindecode-ac4-mp4 = "0.1.0"
 本 crate 只负责容器定界和时间投影，不解释音频工具语义；AC-4 sync frame、TOC、
 OAMD 和重建原语由 `macindecode-ac4-bitstream` 提供。
 
+`find_ac4_track` 返回第一个含 `ac-4` sample entry 的 `Ac4Track`，统一提供 `trak`、
+`mdia`、`stbl`、sample entry、轨下标以及 `dac4()` 定位；Inspect、CLI 与性能工具共用
+这一容器入口。
+
 `dac4` DSI v1 额外提供无分配的只读选择信令：program/bitrate、presentation、
 substream group、direct-object/A-JOC 分类与 alternative 名称/目标。未知 presentation
 版本及规范的 `skip_area` 保持有界不透明；channel group 掩码只表示容器信令，不代表

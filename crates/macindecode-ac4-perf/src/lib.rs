@@ -5,7 +5,7 @@
 
 use macindecode_ac4_bitstream::Ac4Toc;
 use macindecode_ac4_mp4::{
-    Ac4Dsi, BoxIter, EditListEntry, Mp4Box, SampleTable, find_box, find_path,
+    Ac4Dsi, EditListEntry, SampleTable, find_ac4_track, find_box, find_path,
     media_time_to_presentation, parse_edit_list, parse_header_timing, presentation_timing,
 };
 use macindecode_ac4_scene::{
@@ -24,7 +24,6 @@ use std::time::{Duration, Instant};
 pub const REPORT_SCHEMA: &str = "macindecode-ac4.performance";
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
 pub const WORST_ACCESS_UNIT_LIMIT: usize = 8;
-const AUDIO_SAMPLE_ENTRY_LEN: usize = 28;
 const MAX_EDIT_ENTRIES: usize = 8;
 const NANOS_PER_SECOND: u128 = 1_000_000_000;
 
@@ -1045,14 +1044,6 @@ fn command_output(program: &str, args: &[&str]) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
-#[derive(Debug, Clone)]
-struct Ac4Track<'a> {
-    trak: Mp4Box<'a>,
-    mdia: Mp4Box<'a>,
-    stbl: Mp4Box<'a>,
-    sample_entry: Mp4Box<'a>,
-}
-
 fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescriptor>)> {
     let moov = find_box(data, b"moov").ok_or_else(|| "MP4 has no moov box".to_owned())?;
     let mvhd = find_box(moov.payload, b"mvhd").ok_or_else(|| "MP4 has no mvhd box".to_owned())?;
@@ -1084,10 +1075,7 @@ fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescrip
         .map_err(|error| format!("invalid MP4 presentation timing: {error}"))?;
 
     let specific = track
-        .sample_entry
-        .payload
-        .get(AUDIO_SAMPLE_ENTRY_LEN..)
-        .and_then(|tail| find_box(tail, b"dac4"))
+        .dac4()
         .ok_or_else(|| "AC-4 sample entry has no dac4 box".to_owned())?;
     let dsi =
         Ac4Dsi::parse(specific.payload).map_err(|error| format!("invalid MP4 dac4: {error}"))?;
@@ -1141,40 +1129,6 @@ fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescrip
         });
     }
     Ok((sample_rate, access_units))
-}
-
-fn find_ac4_track(moov_payload: &[u8]) -> Option<Ac4Track<'_>> {
-    for item in BoxIter::new(moov_payload).flatten() {
-        if !item.is(b"trak") {
-            continue;
-        }
-        let Some(mdia) = find_box(item.payload, b"mdia") else {
-            continue;
-        };
-        let Some(stbl) = find_path(mdia.payload, &[*b"minf", *b"stbl"]) else {
-            continue;
-        };
-        let Some(stsd) = find_box(stbl.payload, b"stsd") else {
-            continue;
-        };
-        let Some(sample_entry) = find_ac4_sample_entry(stsd.payload) else {
-            continue;
-        };
-        return Some(Ac4Track {
-            trak: item,
-            mdia,
-            stbl,
-            sample_entry,
-        });
-    }
-    None
-}
-
-fn find_ac4_sample_entry(stsd_payload: &[u8]) -> Option<Mp4Box<'_>> {
-    let entries = stsd_payload.get(8..)?;
-    BoxIter::new(entries)
-        .flatten()
-        .find(|item| item.is(b"ac-4"))
 }
 
 pub fn checked_sample_range(offset: u64, size: u32, input_len: usize) -> PerfResult<Range<usize>> {
