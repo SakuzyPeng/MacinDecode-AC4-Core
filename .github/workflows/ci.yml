@@ -74,6 +74,12 @@ jobs:
       - name: Audit HF patch tables
         run: python3 scripts/check_patch_tables.py --sweep
 
+      - name: Audit syntax/decode layer direction
+        run: python3 scripts/check_layers.py
+
+      - name: Test layer dependency checker
+        run: python3 -m unittest scripts/test_check_layers.py
+
       - name: Test HF patch table checker
         run: python3 -m unittest scripts/test_check_patch_tables.py
 

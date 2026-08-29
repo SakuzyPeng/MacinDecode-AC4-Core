@@ -99,8 +99,35 @@ class ReferencedModulesTests(unittest.TestCase):
             with self.subTest(label):
                 self.assertIn("dsp", check_layers.referenced_modules(source))
 
-    def test_super_paths_are_ignored(self):
-        self.assertEqual(check_layers.referenced_modules("use super::dsp::Thing;"), set())
+    def test_super_path_from_top_level_module_is_seen(self):
+        self.assertEqual(
+            check_layers.referenced_modules(
+                "use super::dsp::Thing;",
+                module_depth=1,
+                known_modules=set(TEST_LAYERS),
+            ),
+            {"dsp"},
+        )
+
+    def test_super_path_inside_same_top_level_module_is_ignored(self):
+        self.assertEqual(
+            check_layers.referenced_modules(
+                "use super::helper::Thing;",
+                module_depth=2,
+                known_modules=set(TEST_LAYERS),
+            ),
+            set(),
+        )
+
+    def test_repeated_super_path_can_cross_top_level_module(self):
+        self.assertEqual(
+            check_layers.referenced_modules(
+                "use super::super::{bits::Reader, dsp::Thing};",
+                module_depth=2,
+                known_modules=set(TEST_LAYERS),
+            ),
+            {"bits", "dsp"},
+        )
 
     def test_multiline_brace_group_heads(self):
         source = "use crate::{\n    bits::Reader,\n    dsp::{Thing, Other},\n};"
@@ -146,6 +173,26 @@ class GateTests(unittest.TestCase):
         )
         self.assertEqual([(s, t) for s, t, _ in bad], [("meta", "dsp")])
 
+    def test_top_level_super_syntax_referencing_decode_is_reported(self):
+        bad = self.run_gate(
+            {
+                "meta.rs": "use super::dsp::Thing;",
+                "dsp.rs": "pub struct Thing;",
+                "bits.rs": "pub struct Reader;",
+            }
+        )
+        self.assertEqual([(s, t) for s, t, _ in bad], [("meta", "dsp")])
+
+    def test_nested_super_syntax_referencing_decode_is_reported(self):
+        bad = self.run_gate(
+            {
+                "meta/child.rs": "use super::super::dsp::Thing;",
+                "dsp.rs": "pub struct Thing;",
+                "bits.rs": "pub struct Reader;",
+            }
+        )
+        self.assertEqual([(s, t) for s, t, _ in bad], [("meta", "dsp")])
+
     def test_decode_referencing_syntax_stays_silent(self):
         """等价变体：合法方向的边不得报——报了说明锁死的是实现细节。"""
         bad = self.run_gate(
@@ -176,6 +223,16 @@ class GateTests(unittest.TestCase):
             }
         )
         self.assertEqual(bad, [])
+
+    def test_single_line_test_item_does_not_hide_later_violation(self):
+        bad = self.run_gate(
+            {
+                "meta.rs": "#[cfg(test)]\nfn helper() {}\nuse crate::dsp::Thing;",
+                "dsp.rs": "pub struct Thing;",
+                "bits.rs": "pub struct Reader;",
+            }
+        )
+        self.assertEqual([(s, t) for s, t, _ in bad], [("meta", "dsp")])
 
     def test_undeclared_module_fails_closed(self):
         with self.assertRaises(check_layers.LayerError):

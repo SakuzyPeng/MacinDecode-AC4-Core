@@ -137,10 +137,14 @@ def strip_test_items(text: str) -> str:
         if index >= len(lines):
             break
         # 无花括号的单行条目（`#[cfg(test)] use ...;`）只跳这一行；带花括号的
-        # 条目跳到同缩进的收尾行。
+        # 条目跳到同缩进的收尾行。rustfmt 会把空函数保留成 `fn helper() {}`，
+        # 这种条目在起始行已经闭合，不能继续吞掉后面的生产代码。
         if "{" not in lines[index]:
             while index < len(lines) and not lines[index].rstrip().endswith(";"):
                 index += 1
+            index += 1
+            continue
+        if lines[index].count("{") <= lines[index].count("}"):
             index += 1
             continue
         while index < len(lines):
@@ -186,10 +190,19 @@ def brace_group_heads(text: str, start: int) -> tuple[list[str], int]:
     raise LayerError("`crate::{...}` 括号不闭合")
 
 
-def referenced_modules(text: str) -> set[str]:
+def referenced_modules(
+    text: str,
+    *,
+    module_depth: int | None = None,
+    known_modules: set[str] | None = None,
+) -> set[str]:
     """收集本文件引用到的顶层模块名。
 
-    `super::` 一律忽略：它指向同一顶层模块内的父模块，跨不出本模块。
+    `super::` 是否跨顶层模块取决于当前文件的模块深度：顶层 `meta.rs` 中的
+    `super::dsp` 等价于 `crate::dsp`，而 `meta/child.rs` 中的 `super::helper`
+    仍留在 `meta` 内。内联模块无法只凭文件路径精确定位；跨过文件模块根时仅把
+    已登记的顶层模块当作依赖，避免把 `tables { use super::Type; }` 中的类型名
+    误判为模块。
     """
     found: set[str] = set()
     for match in re.finditer(r"\bcrate::", text):
@@ -205,12 +218,43 @@ def referenced_modules(text: str) -> set[str]:
         ident = IDENT.match(text, position)
         if ident:
             found.add(ident.group())
+    if module_depth is None:
+        return found
+
+    registered = set(LAYERS) if known_modules is None else known_modules
+    for match in re.finditer(r"\bsuper(?:(?:::)[ \t\r\n]*super)*(?:::)", text):
+        hops = match.group().count("super")
+        if hops < module_depth:
+            continue
+        position = match.end()
+        while position < len(text) and text[position].isspace():
+            position += 1
+        if position >= len(text):
+            continue
+        if text[position] == "{":
+            heads, _ = brace_group_heads(text, position)
+        else:
+            ident = IDENT.match(text, position)
+            heads = [] if ident is None else [ident.group()]
+        found.update(head for head in heads if head in registered)
     return found
 
 
-def owning_module(path: Path) -> str:
+def module_parts(path: Path) -> tuple[str, ...]:
+    """返回标准文件布局对应的模块路径，不含 crate 根。"""
     relative = path.relative_to(CRATE_SRC)
-    return relative.parts[0][:-3] if len(relative.parts) == 1 else relative.parts[0]
+    directories = list(relative.parts[:-1])
+    stem = relative.stem
+    if stem != "mod":
+        directories.append(stem)
+    return tuple(directories)
+
+
+def owning_module(path: Path) -> str:
+    parts = module_parts(path)
+    if not parts:
+        raise LayerError(f"无法确定源码文件的顶层模块：{path}")
+    return parts[0]
 
 
 def declared_layer(module: str) -> str:
@@ -232,11 +276,16 @@ def collect_edges() -> dict[tuple[str, str], set[str]]:
     for path in sorted(CRATE_SRC.rglob("*.rs")):
         if path.name in EXEMPT_FILES and path.parent == CRATE_SRC:
             continue
+        parts = module_parts(path)
         source = owning_module(path)
         declared_layer(source)
         seen_modules = True
         production = strip_test_items(path.read_text(encoding="utf-8"))
-        for target in referenced_modules(production):
+        for target in referenced_modules(
+            production,
+            module_depth=len(parts),
+            known_modules=set(LAYERS),
+        ):
             if target == source:
                 continue
             declared_layer(target)
