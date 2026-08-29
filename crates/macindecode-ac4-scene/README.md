@@ -31,11 +31,11 @@ macindecode-ac4-scene = "0.1.0"
 macindecode-ac4-scene = { version = "0.1.0", features = ["audio-decode"] }
 ```
 
-`audio-decode` 会转发到 `macindecode-ac4-bitstream/audio-decode`，因此需要用户从
+`audio-decode` 会转发到 `macindecode-ac4-decode/audio-decode`，因此需要用户从
 官方 ETSI PDF 本地生成的 Rust 表与外部 C 表。它们不会随 crate 分发；注册表构建
 须设置 `MACINDECODE_AC4_SPEC_DIR`。
 目录格式与获取方式见
-[`macindecode-ac4-bitstream` 文档](https://docs.rs/macindecode-ac4-bitstream)。
+[`macindecode-ac4-decode` 文档](https://docs.rs/macindecode-ac4-decode)。
 
 MSRV 为 Rust 1.98，禁止 unsafe Rust。容器 sample table、priming 与 edit list
 换算不属于本 crate，相关功能由 `macindecode-ac4-mp4` 提供。

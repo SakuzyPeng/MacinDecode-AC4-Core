@@ -247,7 +247,11 @@ pub struct DialogEnhancementDecodedData {
     pub simulcast: DialogEnhancementSimulcastData,
 }
 
-impl DialogEnhancementMetadata {
+/// 为 bitstream 层保留的 dialogue-enhancement metadata 提供 Huffman data 解码。
+///
+/// 导入本 trait 后可继续以 `metadata.decode_data(...)` 的形式调用；trait 位于 decode
+/// crate，避免让纯语法 crate 反向依赖规范表。
+pub trait DialogEnhancementMetadataExt {
     /// 解码当前 tools metadata 中完整的 `de_data()` 与可选 simulcast data。
     ///
     /// `previous_configuration` 仅在当前更新为
@@ -259,7 +263,15 @@ impl DialogEnhancementMetadata {
     ///
     /// dependent frame 缺少前一配置、固定字段/Huffman 码字截断、配置超出字段范围或已知语法
     /// 后仍有尾随比特时返回错误。此方法无状态，失败不会修改调用方数据。
-    pub fn decode_data(
+    fn decode_data(
+        self,
+        payload: &[u8],
+        previous_configuration: Option<DialogEnhancementConfiguration>,
+    ) -> Result<Option<DialogEnhancementDecodedData>, DialogEnhancementDataError>;
+}
+
+impl DialogEnhancementMetadataExt for DialogEnhancementMetadata {
+    fn decode_data(
         self,
         payload: &[u8],
         previous_configuration: Option<DialogEnhancementConfiguration>,
@@ -268,7 +280,7 @@ impl DialogEnhancementMetadata {
             return Ok(None);
         }
 
-        let bit_position = self.unparsed_body_bit_offset;
+        let bit_position = self.unparsed_body_bit_offset();
         let b_iframe = self
             .b_iframe()
             .ok_or(DialogEnhancementDataError::InconsistentMetadata { bit_position })?;
@@ -289,11 +301,11 @@ impl DialogEnhancementMetadata {
 
         let mut reader = BitReader::new_bounded(
             payload,
-            self.unparsed_body_bit_offset,
-            u64::from(self.unparsed_body_bits),
+            self.unparsed_body_bit_offset(),
+            u64::from(self.unparsed_body_len_bits()),
         )?;
         let primary = parse_data_block(&mut reader, configuration, b_iframe, false)?;
-        let simulcast = if self.simulcast_gate {
+        let simulcast = if self.simulcast_gate() {
             if reader.read_flag()? {
                 DialogEnhancementSimulcastData::Present(parse_data_block(
                     &mut reader,
@@ -467,19 +479,22 @@ mod tests {
     }
 
     fn metadata(
+        payload: &[u8],
         bit_len: usize,
         update: DialogEnhancementConfigurationUpdate,
         b_iframe: bool,
         simulcast_gate: bool,
     ) -> DialogEnhancementMetadata {
-        DialogEnhancementMetadata {
-            data_present: true,
-            configuration: update,
-            unparsed_body_bit_offset: 0,
-            unparsed_body_bits: u32::try_from(bit_len).unwrap_or(u32::MAX),
-            frame_iframe: Some(b_iframe),
+        DialogEnhancementMetadata::from_raw_parts(
+            payload,
+            true,
+            update,
+            0,
+            u32::try_from(bit_len).unwrap_or(u32::MAX),
+            Some(b_iframe),
             simulcast_gate,
-        }
+        )
+        .unwrap()
     }
 
     fn push_parameter_codes(
@@ -562,6 +577,7 @@ mod tests {
         for cut in 0..bits.bit_len() {
             assert!(
                 metadata(
+                    bits.as_slice(),
                     cut,
                     DialogEnhancementConfigurationUpdate::New(configuration),
                     true,
@@ -574,6 +590,7 @@ mod tests {
         }
 
         let decoded = metadata(
+            bits.as_slice(),
             bits.bit_len(),
             DialogEnhancementConfigurationUpdate::New(configuration),
             true,
@@ -619,6 +636,7 @@ mod tests {
         bits.push_bits(31, 5);
 
         let decoded = metadata(
+            bits.as_slice(),
             bits.bit_len(),
             DialogEnhancementConfigurationUpdate::New(configuration),
             true,
@@ -648,6 +666,7 @@ mod tests {
         bits.push(true);
         bits.push(true);
         let frame_metadata = metadata(
+            bits.as_slice(),
             bits.bit_len(),
             DialogEnhancementConfigurationUpdate::KeepPrevious,
             false,
@@ -681,6 +700,7 @@ mod tests {
         bits.push(false);
         push_parameter_codes(&mut bits, new_configuration.method, false, 2, 0);
         let decoded = metadata(
+            bits.as_slice(),
             bits.bit_len(),
             DialogEnhancementConfigurationUpdate::New(new_configuration),
             false,
@@ -717,6 +737,7 @@ mod tests {
         for cut in 0..bits.bit_len() {
             assert!(
                 metadata(
+                    bits.as_slice(),
                     cut,
                     DialogEnhancementConfigurationUpdate::New(configuration),
                     true,
@@ -729,6 +750,7 @@ mod tests {
         }
 
         let decoded = metadata(
+            bits.as_slice(),
             bits.bit_len(),
             DialogEnhancementConfigurationUpdate::New(configuration),
             true,
@@ -760,6 +782,7 @@ mod tests {
         push_iframe_cross_two_data(&mut absent, configuration);
         absent.push(false);
         let decoded = metadata(
+            absent.as_slice(),
             absent.bit_len(),
             DialogEnhancementConfigurationUpdate::New(configuration),
             true,
@@ -778,17 +801,20 @@ mod tests {
     fn zero_channel_data_is_empty_but_simulcast_gate_still_needs_its_flag() {
         let configuration = configuration(0, 0);
         let empty = BitBuf::new();
-        let absent = DialogEnhancementMetadata {
-            data_present: false,
-            configuration: DialogEnhancementConfigurationUpdate::NotPresent,
-            unparsed_body_bit_offset: 0,
-            unparsed_body_bits: 0,
-            frame_iframe: None,
-            simulcast_gate: false,
-        };
+        let absent = DialogEnhancementMetadata::from_raw_parts(
+            empty.as_slice(),
+            false,
+            DialogEnhancementConfigurationUpdate::NotPresent,
+            0,
+            0,
+            None,
+            false,
+        )
+        .unwrap();
         assert_eq!(absent.decode_data(empty.as_slice(), None).unwrap(), None);
 
         let decoded = metadata(
+            empty.as_slice(),
             0,
             DialogEnhancementConfigurationUpdate::New(configuration),
             true,
@@ -807,6 +833,7 @@ mod tests {
 
         assert!(matches!(
             metadata(
+                empty.as_slice(),
                 0,
                 DialogEnhancementConfigurationUpdate::New(configuration),
                 true,
@@ -823,6 +850,7 @@ mod tests {
         one_bit.push(false);
         assert!(matches!(
             metadata(
+                one_bit.as_slice(),
                 one_bit.bit_len(),
                 DialogEnhancementConfigurationUpdate::New(configuration(0, 1)),
                 true,
@@ -835,6 +863,7 @@ mod tests {
         let empty = BitBuf::new();
         assert!(matches!(
             metadata(
+                empty.as_slice(),
                 0,
                 DialogEnhancementConfigurationUpdate::New(configuration(1, 6)),
                 true,
@@ -845,6 +874,7 @@ mod tests {
         ));
 
         let inconsistent = metadata(
+            empty.as_slice(),
             0,
             DialogEnhancementConfigurationUpdate::KeepPrevious,
             true,
@@ -863,6 +893,7 @@ mod tests {
             channel_config: 0,
         };
         let dependent = metadata(
+            empty.as_slice(),
             0,
             DialogEnhancementConfigurationUpdate::KeepPrevious,
             false,
@@ -875,6 +906,7 @@ mod tests {
 
         assert_eq!(
             metadata(
+                one_bit.as_slice(),
                 one_bit.bit_len(),
                 DialogEnhancementConfigurationUpdate::New(configuration(0, 0)),
                 true,

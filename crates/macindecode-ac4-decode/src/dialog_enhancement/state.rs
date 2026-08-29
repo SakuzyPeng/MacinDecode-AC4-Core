@@ -6,9 +6,10 @@
 use super::{
     DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementConfiguration,
     DialogEnhancementConfigurationUpdate, DialogEnhancementDataError, DialogEnhancementDecodedData,
-    DialogEnhancementMetadata, DialogEnhancementMixCoefficients, DialogEnhancementParameterData,
-    DialogEnhancementParameterUpdate, DialogEnhancementPositionUpdate,
-    DialogEnhancementSimulcastData, MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
+    DialogEnhancementMetadata, DialogEnhancementMetadataExt, DialogEnhancementMixCoefficients,
+    DialogEnhancementParameterData, DialogEnhancementParameterUpdate,
+    DialogEnhancementPositionUpdate, DialogEnhancementSimulcastData,
+    MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
 };
 use core::fmt;
 
@@ -294,7 +295,7 @@ impl DialogEnhancementState {
         metadata: DialogEnhancementMetadata,
         payload: &[u8],
     ) -> Result<Option<DialogEnhancementEffectiveData>, DialogEnhancementStateError> {
-        let bit_position = metadata.unparsed_body_bit_offset;
+        let bit_position = metadata.unparsed_body_bit_offset();
         let b_iframe = metadata
             .b_iframe()
             .ok_or(DialogEnhancementStateError::MissingFrameContext { bit_position })?;
@@ -302,7 +303,7 @@ impl DialogEnhancementState {
 
         if !metadata.data_present {
             if metadata.configuration != DialogEnhancementConfigurationUpdate::NotPresent
-                || metadata.unparsed_body_bits != 0
+                || metadata.unparsed_body_len_bits() != 0
             {
                 return Err(DialogEnhancementStateError::InconsistentData {
                     what: "DE absence carries configuration or data bits",
@@ -772,30 +773,34 @@ mod tests {
     }
 
     fn metadata(
-        bit_len: usize,
+        bits: &BitBuf,
         update: DialogEnhancementConfigurationUpdate,
         b_iframe: bool,
         simulcast_gate: bool,
     ) -> DialogEnhancementMetadata {
-        DialogEnhancementMetadata {
-            data_present: true,
-            configuration: update,
-            unparsed_body_bit_offset: 0,
-            unparsed_body_bits: u32::try_from(bit_len).unwrap_or(u32::MAX),
-            frame_iframe: Some(b_iframe),
+        DialogEnhancementMetadata::from_raw_parts(
+            bits.as_slice(),
+            true,
+            update,
+            0,
+            u32::try_from(bits.bit_len()).unwrap_or(u32::MAX),
+            Some(b_iframe),
             simulcast_gate,
-        }
+        )
+        .unwrap()
     }
 
     fn absent_metadata(b_iframe: Option<bool>) -> DialogEnhancementMetadata {
-        DialogEnhancementMetadata {
-            data_present: false,
-            configuration: DialogEnhancementConfigurationUpdate::NotPresent,
-            unparsed_body_bit_offset: 0,
-            unparsed_body_bits: 0,
-            frame_iframe: b_iframe,
-            simulcast_gate: false,
-        }
+        DialogEnhancementMetadata::from_raw_parts(
+            &[],
+            false,
+            DialogEnhancementConfigurationUpdate::NotPresent,
+            0,
+            0,
+            b_iframe,
+            false,
+        )
+        .unwrap()
     }
 
     fn push_parameter_values(bits: &mut BitBuf, method: u8, b_iframe: bool, values: &[i16]) {
@@ -834,7 +839,7 @@ mod tests {
     ) -> DialogEnhancementEffectiveData {
         state
             .decode_frame(
-                metadata(bits.bit_len(), update, b_iframe, simulcast_gate),
+                metadata(bits, update, b_iframe, simulcast_gate),
                 bits.as_slice(),
             )
             .unwrap()
@@ -1250,7 +1255,7 @@ mod tests {
         assert!(matches!(
             second_substream.decode_frame(
                 metadata(
-                    keep.bit_len(),
+                    &keep,
                     DialogEnhancementConfigurationUpdate::KeepPrevious,
                     false,
                     false,
@@ -1277,7 +1282,7 @@ mod tests {
             first_substream
                 .decode_frame(
                     metadata(
-                        keep.bit_len(),
+                        &keep,
                         DialogEnhancementConfigurationUpdate::New(incompatible),
                         false,
                         false,

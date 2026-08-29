@@ -277,7 +277,11 @@ impl<'a, 'b> PartialEq<PresentationDrcDecodedGainSet<'b>> for PresentationDrcDec
 
 impl Eq for PresentationDrcDecodedGainSet<'_> {}
 
-impl<'a> PresentationDrcGainSet<'a> {
+/// 为 bitstream 层保留的 DRC gain-set envelope 提供 Huffman gains 解码。
+///
+/// 导入本 trait 后可继续以 `gain_set.decode_gains(...)` 的形式调用；trait 位于 decode
+/// crate，避免让纯语法 crate 反向依赖规范表。
+pub trait PresentationDrcGainSetExt<'a> {
     /// 解码当前 gain-set 的已知 `drc_gains()` 并定出 version 1+ 扩展边界。
     ///
     /// `drc_gains_config == 0` 只携带一个 wideband gain，`context` 可为 `None`。配置
@@ -288,20 +292,23 @@ impl<'a> PresentationDrcGainSet<'a> {
     ///
     /// 固定字段或 Huffman 码字截断、配置 1–3 缺少上下文，或 version 0 解完规定数量后仍有
     /// 尾随比特时返回错误。失败不会修改任何跨帧状态。
-    pub fn decode_gains(
+    fn decode_gains(
+        self,
+        context: Option<PresentationDrcGainsContext>,
+    ) -> Result<PresentationDrcDecodedGainSet<'a>, PresentationDrcGainsError>;
+}
+
+impl<'a> PresentationDrcGainSetExt<'a> for PresentationDrcGainSet<'a> {
+    fn decode_gains(
         self,
         context: Option<PresentationDrcGainsContext>,
     ) -> Result<PresentationDrcDecodedGainSet<'a>, PresentationDrcGainsError> {
-        let mut reader = BitReader::new_bounded(
-            self.payload.source,
-            self.payload.bit_offset,
-            self.payload.bit_len,
-        )?;
+        let mut reader = self.payload.reader()?;
         let version = u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX);
         if version >= 2 {
             return Ok(PresentationDrcDecodedGainSet {
                 gains: None,
-                extension: Some(remaining_view(&reader, self.payload.source)),
+                extension: Some(remaining_view(&reader, self.payload)?),
             });
         }
 
@@ -372,7 +379,7 @@ impl<'a> PresentationDrcGainSet<'a> {
             }
             None
         } else {
-            Some(remaining_view(&reader, self.payload.source))
+            Some(remaining_view(&reader, self.payload)?)
         };
         Ok(PresentationDrcDecodedGainSet {
             gains: Some(gains),
@@ -381,12 +388,15 @@ impl<'a> PresentationDrcGainSet<'a> {
     }
 }
 
-fn remaining_view<'a>(reader: &BitReader<'a>, source: &'a [u8]) -> PresentationDrcFrameBits<'a> {
-    PresentationDrcFrameBits {
-        source,
-        bit_offset: reader.bit_position(),
-        bit_len: reader.remaining_bits(),
-    }
+fn remaining_view<'a>(
+    reader: &BitReader<'a>,
+    payload: PresentationDrcFrameBits<'a>,
+) -> Result<PresentationDrcFrameBits<'a>, PresentationDrcGainsError> {
+    Ok(PresentationDrcFrameBits::new(
+        payload.source(),
+        reader.bit_position(),
+        reader.remaining_bits(),
+    )?)
 }
 
 #[cfg(test)]
@@ -394,8 +404,8 @@ mod tests {
     extern crate std;
 
     use super::*;
-    use crate::presentation_substream::PresentationAddDataBits;
     use crate::testutil::BitBuf;
+    use macindecode_ac4_bitstream::presentation_substream::PresentationAddDataBits;
 
     fn gain_set<'a>(
         bits: &'a BitBuf,
@@ -408,11 +418,12 @@ mod tests {
             gains_configuration,
             size_value_offset: 0,
             version,
-            payload: PresentationAddDataBits {
-                source: bits.as_slice(),
-                bit_offset: 0,
-                bit_len: u64::try_from(bit_len).unwrap_or(u64::MAX),
-            },
+            payload: PresentationAddDataBits::new(
+                bits.as_slice(),
+                0,
+                u64::try_from(bit_len).unwrap_or(u64::MAX),
+            )
+            .unwrap(),
         }
     }
 

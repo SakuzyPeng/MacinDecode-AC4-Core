@@ -123,16 +123,18 @@ defaults to stable English text; on failure, stdout is empty (exit code 2 for ar
 ## Project Structure
 
 ```text
-macindecode-ac4-cli ──→ macindecode-ac4-inspect ──→ macindecode-ac4-mp4
-                         │                          │
-                         └──────────────────────────┴→ macindecode-ac4-bitstream
-macindecode-ac4-scene ──────────────────────────────→ macindecode-ac4-bitstream
-macindecode-ac4-perf ──→ macindecode-ac4-scene / macindecode-ac4-mp4 (internal)
+macindecode-ac4-cli ──→ inspect / mp4 / scene / decode / bitstream
+macindecode-ac4-inspect ──→ mp4 / bitstream
+macindecode-ac4-scene ──→ decode / bitstream
+macindecode-ac4-decode ──→ bitstream
+macindecode-ac4-mp4 ──→ bitstream
+macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream (internal)
 ```
 
 | Crate | Responsibility | `no_std` |
 |---|---|---|
-| [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | Bitstream parsing, TOC/OAMD/EMDF, ASF/A-SPX/A-JOC audio reconstruction | ✅ |
+| [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | Bounded bit reading, TOC/topology, presentation/OAMD/EMDF, and audio syntax | ✅ |
+| [`macindecode-ac4-decode`](crates/macindecode-ac4-decode) | ASF/A-SPX/A-JOC reconstruction, QMF, Table 188 alignment, and the Full engine | ✅ |
 | [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | File-level MP4/raw AC-4 aggregation, JSON DTOs, and stable text rendering | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` contract and streaming Rust API for A-JOC Core/Full | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF boxes, `dac4`, sample table, edit/priming timeline | ✅ |
@@ -165,7 +167,7 @@ MP4 / raw AC-4
 | M4.5 Presentation/Metadata | ✅ (limited) | Read-only parsing and DE/EMDF real-media gates complete; alternative, non-empty DE bodies, and other EMDF types still await samples |
 | M5 Scene API | 🚧 | A-JOC Core/Full borrowed Rust API, core/A-SPX baselines, CoreCAF, ADM/DAMF diagnostic renderers, and Full batch exports integrated; direct-object support pending |
 | M6 Full A-JOC reconstruction | ✅ | Object matrix/wet/LFE/terminal QMF synthesis, third bit-exact baseline frozen |
-| M7 Architecture, ABI & robustness | 🚧 | ARM64 performance baselines and QMF optimizations complete; responsibility cleanup, C ABI, fuzzing, and x86-64 measurements pending |
+| M7 Architecture, ABI & robustness | 🚧 | syntax/decode/scene extraction, ARM64 performance baselines, and QMF optimizations complete; C ABI, fuzzing, and x86-64 measurements pending |
 
 For detailed progress, known limitations, and the audio reconstruction support matrix, see the [Roadmap](docs/ROADMAP.md).
 
@@ -192,7 +194,7 @@ For detailed progress, known limitations, and the audio reconstruction support m
 | [Roadmap](docs/ROADMAP.md) | Milestone details, support matrix, known limitations |
 | [Test Vector Strategy](docs/TEST_VECTOR_STRATEGY.md) | Vector production chain, verification tiers, external references |
 | [Spec Traceability](docs/SPEC_TRACEABILITY.md) | Clause ↔ implementation ↔ test traceability matrix |
-| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (11 records) |
+| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (12 records) |
 
 ## License
 

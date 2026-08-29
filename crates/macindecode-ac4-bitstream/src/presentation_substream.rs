@@ -24,8 +24,9 @@
 //! associated-audio scale/pan 码值、custom downmix 的配置、路由与 gain 码值，以及 loudness
 //! correction 的 presence 与 5 比特原始码值。`PresentationDrcState` 可按 presentation 隔离
 //! 前一有效配置并解析 dependent-frame data；`PresentationSubstreamGroupGainState` 以同样的
-//! presentation 作用域延续 group gain 六比特码值。启用 `audio-decode` 时还可解码 DRC Huffman
-//! gains 并还原整数码值。本模块不换算或应用任何 gain，也不执行其他处理。
+//! presentation 作用域延续 group gain 六比特码值。调用方启用
+//! `macindecode-ac4-decode/audio-decode` 并导入 `PresentationDrcGainSetExt` 后，还可解码 DRC
+//! Huffman gains 并还原整数码值。本模块不换算或应用任何 gain，也不执行其他处理。
 
 use crate::audio_substream::FurtherLoudnessInfo;
 use crate::presentation::MAX_GROUPS_PER_PRESENTATION;
@@ -558,6 +559,35 @@ impl<'a, 'b> PartialEq<PresentationAddDataBits<'b>> for PresentationAddDataBits<
 impl Eq for PresentationAddDataBits<'_> {}
 
 impl<'a> PresentationAddDataBits<'a> {
+    /// 创建严格位于 `source` 内的 bit view。
+    ///
+    /// # Errors
+    ///
+    /// 起点或长度越过输入末尾，或末尾偏移溢出时返回 [`ReadError`]。
+    pub fn new(source: &'a [u8], bit_offset: u64, bit_len: u64) -> Result<Self, ReadError> {
+        BitReader::new_bounded(source, bit_offset, bit_len)?;
+        Ok(Self {
+            source,
+            bit_offset,
+            bit_len,
+        })
+    }
+
+    /// 在该视图边界内创建保留原 payload 全局偏移的读取器。
+    ///
+    /// # Errors
+    ///
+    /// 视图边界不再落在原 payload 内时返回 [`ReadError`]。
+    pub fn reader(self) -> Result<BitReader<'a>, ReadError> {
+        BitReader::new_bounded(self.source, self.bit_offset, self.bit_len)
+    }
+
+    /// 视图借用的完整原 payload。
+    #[must_use]
+    pub const fn source(self) -> &'a [u8] {
+        self.source
+    }
+
     /// 视图起点相对原 payload 的比特偏移。
     #[must_use]
     pub const fn bit_offset(self) -> u64 {
@@ -804,8 +834,9 @@ impl PresentationDrcState {
 /// 一个 decoder mode 的有界 DRC gain-set envelope。
 ///
 /// [`payload`](Self::payload) 从 2 比特 `drc_version` 开始，长度严格等于码流声明的
-/// `drc_gainset_size`。默认构建只解析版本并保留其后的 body；启用 `audio-decode` 后可调用
-/// `decode_gains()` 解码版本 `0..=1` 的 `drc_gains()` 并定出 `drc2_bits` 边界。
+/// `drc_gainset_size`。本 crate 只解析版本并保留其后的 body；启用
+/// `macindecode-ac4-decode/audio-decode` 并导入 `PresentationDrcGainSetExt` 后可调用
+/// `decode_gains()`，解码版本 `0..=1` 的 `drc_gains()` 并定出 `drc2_bits` 边界。
 #[derive(Debug, Clone, Copy)]
 pub struct PresentationDrcGainSet<'a> {
     /// 当前 gain set 对应的 3 比特 decoder mode ID。
@@ -867,8 +898,8 @@ pub struct PresentationDrcCurveData {
 
 /// I-frame 中按有效 DRC 配置解析的 `drc_data()` 结构包络。
 ///
-/// gain-set body 始终保持原始 bit view；`audio-decode` 下可另行熵解码，但仍不执行或维护 DRC
-/// 状态。
+/// gain-set body 始终保持原始 bit view；`macindecode-ac4-decode/audio-decode` 下可另行熵解码，
+/// 但仍不执行或维护 DRC 状态。
 #[derive(Debug, Clone, Copy)]
 pub struct PresentationDrcData<'a> {
     gain_set_count: u8,
@@ -1961,8 +1992,9 @@ impl<'a> Ac4PresentationSubstreamSelection<'a> {
 /// `custom_dmx_data()`，[`loudness_correction_offset`](Self::loudness_correction_offset) 指向
 /// `loud_corr()`。成功解析会继续消费末尾 `byte_align` 并严格落在 payload 末尾；DRC I-frame
 /// 配置与 I-frame `drc_data()` 包络已解析；使用 `parse_with_drc_state()` 时 dependent frame
-/// 也会按前一有效配置解析，`audio-decode` 下可再另行解码 Huffman gains。逐帧 group gain
-/// 更新可另交 [`PresentationSubstreamGroupGainState`] 得到跨帧有效六比特码值。
+/// 也会按前一有效配置解析；`macindecode-ac4-decode/audio-decode` 下可再另行解码 Huffman
+/// gains。逐帧 group gain 更新可另交 [`PresentationSubstreamGroupGainState`] 得到跨帧有效
+/// 六比特码值。
 #[derive(Debug, Clone, Copy)]
 pub struct Ac4PresentationSubstream<'a> {
     /// 普通或 alternative presentation 的 selection 视图。
@@ -1991,8 +2023,8 @@ pub struct Ac4PresentationSubstream<'a> {
     /// 按当前有效配置解析的 `drc_data()` gain-set/reset 包络。
     ///
     /// 无状态 [`parse`](Self::parse) 只解析 I-frame；[`parse_with_drc_state`](Self::parse_with_drc_state)
-    /// 也解析 dependent frame。gain-set 内的 Huffman gains 仅在调用 `audio-decode` 提供的显式
-    /// 解码 API 时解析。
+    /// 也解析 dependent frame。gain-set 内的 Huffman gains 仅在调用
+    /// `macindecode-ac4-decode/audio-decode` 提供的扩展 trait 时解析。
     pub drc_data_elements: Option<PresentationDrcData<'a>>,
     /// 当前帧传输的 substream-group gain 原始更新。
     pub substream_group_gain_update: PresentationSubstreamGroupGainUpdate,

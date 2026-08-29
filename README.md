@@ -121,16 +121,18 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 ## 项目结构
 
 ```text
-macindecode-ac4-cli ──→ macindecode-ac4-inspect ──→ macindecode-ac4-mp4
-                         │                          │
-                         └──────────────────────────┴→ macindecode-ac4-bitstream
-macindecode-ac4-scene ──────────────────────────────→ macindecode-ac4-bitstream
-macindecode-ac4-perf ──→ macindecode-ac4-scene / macindecode-ac4-mp4（内部）
+macindecode-ac4-cli ──→ inspect / mp4 / scene / decode / bitstream
+macindecode-ac4-inspect ──→ mp4 / bitstream
+macindecode-ac4-scene ──→ decode / bitstream
+macindecode-ac4-decode ──→ bitstream
+macindecode-ac4-mp4 ──→ bitstream
+macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream（内部）
 ```
 
 | Crate | 职责 | `no_std` |
 |---|---|---|
-| [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | 比特流解析、TOC/OAMD/EMDF、ASF/A-SPX/A-JOC 音频重建 | ✅ |
+| [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | bounded bit reader、TOC/拓扑、presentation/OAMD/EMDF 与音频语法 | ✅ |
+| [`macindecode-ac4-decode`](crates/macindecode-ac4-decode) | ASF/A-SPX/A-JOC 数值重建、QMF、表 188 对齐与 Full engine | ✅ |
 | [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | MP4/raw AC-4 文件级聚合报告、JSON DTO 与英文 text renderer | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` 数据契约及 A-JOC Core/Full 流式 Rust API | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF box、`dac4`、sample table、edit/priming 时间线 | ✅ |
@@ -163,7 +165,7 @@ MP4 / raw AC-4
 | M4.5 Presentation/Metadata | ✅（受限） | 只读解析与 DE/EMDF 真实媒体门禁完成；alternative、非零 DE body 与其他 EMDF 类型仍待样本 |
 | M5 场景 API | 🚧 | A-JOC Core/Full 借用 Rust API、core/A-SPX 基线、CoreCAF、ADM/DAMF 诊断渲染器与 Full batch 出口已接入；direct-object 待完成 |
 | M6 Full A-JOC 重建 | ✅ | 对象矩阵/wet/LFE/QMF 终端合成，第三份逐位基线冻结 |
-| M7 架构、ABI 与健壮性 | 🚧 | ARM64 性能基线与 QMF 优化已落地；职责收口、C ABI、fuzz、x86-64 实测待完成 |
+| M7 架构、ABI 与健壮性 | 🚧 | syntax/decode/scene 拆包、ARM64 性能基线与 QMF 优化已落地；C ABI、fuzz、x86-64 实测待完成 |
 
 详细进度、已知限制和音频重建支持矩阵见[实施路线图](docs/ROADMAP.md)。
 
@@ -190,7 +192,7 @@ MP4 / raw AC-4
 | [实施路线图](docs/ROADMAP.md) | 里程碑详情、支持矩阵、已知限制 |
 | [测试向量策略](docs/TEST_VECTOR_STRATEGY.md) | 向量生产链、验证层级、外部参考 |
 | [规范可追踪性](docs/SPEC_TRACEABILITY.md) | 条款↔实现↔测试追踪矩阵 |
-| [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 11 份 |
+| [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 12 份 |
 
 ## License
 

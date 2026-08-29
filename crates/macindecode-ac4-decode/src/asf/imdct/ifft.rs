@@ -578,7 +578,7 @@ mod tests {
         assert_eq!(core::mem::size_of::<IfftWorkspace>(), 16 * 1024);
     }
 
-    /// `cargo test -p macindecode-ac4-bitstream --release ifft_factor_order_benchmark -- --ignored --nocapture`
+    /// `cargo test -p macindecode-ac4-decode --release --features spec-tables ifft_factor_order_benchmark -- --ignored --nocapture`
     #[test]
     #[ignore = "手动运行的 IFFT 因子顺序微基准"]
     fn ifft_factor_order_benchmark() {

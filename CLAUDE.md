@@ -20,7 +20,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --workspace --all-targets --features audio-decode -- -D warnings
 
 # 单个测试：按名称子串过滤
-cargo test -p macindecode-ac4-bitstream --features audio-decode aspx::dequant
+cargo test -p macindecode-ac4-decode --features audio-decode aspx::dequant
 cargo test -p macindecode-ac4-cli --features audio-decode -- --exact wire::tests::nonfinite_numbers_become_json_null
 ```
 
@@ -30,15 +30,15 @@ CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 
 
 三层，不要混为一谈：
 
-- **目标侧零依赖**——`macindecode-ac4-bitstream`、`macindecode-ac4-mp4` 与 `macindecode-ac4-scene` 都是 `#![no_std]` 且不依赖任何外部 crate（后两者各自只依赖 bitstream），`no_std` 依赖图不受影响。CI 的 `cargo check -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features` 守着这条。
-- **构建期**只允许精确锁版本的 `libm = "=0.2.16"`，且只出现在 bitstream 的 `[build-dependencies]`。
+- **目标侧零外部依赖**——`macindecode-ac4-bitstream`、`macindecode-ac4-decode`、`macindecode-ac4-mp4` 与 `macindecode-ac4-scene` 都是 `#![no_std]`；运行期只形成 workspace 内的 syntax → decode → scene 与 mp4 → syntax 依赖。CI 的两条 thumbv7em 检查分别守默认 Scene API 和完整 decoder。
+- **构建期**只允许精确锁版本的 `libm = "=0.2.16"`，且只出现在 decode 的 `[build-dependencies]`。
 - **宿主侧工具不受目标侧约束**——CLI 有 clap / quick-xml / serde / serde_json（`audio-decode` 下另加 `renamore`）；`macindecode-ac4-inspect` 只有 serde / serde_json；`macindecode-ac4-perf` 有 clap / serde / serde_json（`allocation-stats` 下另加 `stats_alloc`），且 `publish = false`，只在仓库内部使用。
 
 `core` 不提供超越函数，`sqrt` 起就不在其中。运行期需要的实数函数在 `macindecode-ac4-bitstream/src/math.rs` 自实现（ADR-0005），**不使用 `f64::mul_add`**——它不在 `core`，且在有无 FMA 的目标上舍入次数不同。
 
 ## 构建期表与冻结摘要
 
-`build.rs` 只调度，实现在 `build_support/`。两类表的条件不同：
+decode 的 `build.rs` 只调度，实现在同 crate 的 `build_support/`。两类表的条件不同：
 
 - **纯数学表**（反量化、IFFT 根、IMDCT 前后旋转、KBD 窗、QMF 调制相位）在**任何**配置下生成，与 ETSI 附件无关。
 - **Huffman 码本**只在 `audio-decode` 下从 `spec/*.c` 解析，构建期校验 Kraft 等式与前缀无关性，任一不成立即中止构建。
@@ -47,7 +47,9 @@ CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 
 
 ## A-SPX 是现在最大的子系统
 
-`aspx/` 是 bitstream 里最大的单一子系统（约二十个模块，占该 crate 源码四成上下），逐节对应 `5.7.6.3`–`5.7.6.5`。**模块索引在 `aspx/mod.rs` 的文件头**，按「推导层（不需要 Huffman，任何配置下都在）／解码层（只在 `audio-decode` 下存在）」分栏列全，不要靠目录名猜哪个模块管哪一节。
+`aspx/` 是 decode 里最大的单一子系统（约二十个模块），逐节对应 `5.7.6.3`–`5.7.6.5`。
+**模块索引在 `aspx/mod.rs` 的文件头**，按「推导层（不需要 Huffman，任何配置下都在）／解码层
+（只在 `audio-decode` 下存在）」分栏列全，不要靠目录名猜哪个模块管哪一节。
 
 `pipeline.rs` 是编排点，文件头那张四段通路表里藏着这个子系统的判据方法论：**`Y ≡ 0` 时 `Q_out` 就是延迟后的输入**，所以在 `5.7.6.4.5` 的组装接上之前，中间每加一段都**不改变输出**——而「输出没变」对一条全错的接线同样成立。因此每一段必须自带**不看输出也能生效**的判据（延迟线互校、时隙对齐、跨帧状态逐个隔离观察、逐包络的组数与量化档），直到最后一段落地才收口成「`Q_out` 减去旁路输出逐位等于本帧的 `Y`」。加新段时照这个套路走，别指望终点判据。
 
@@ -138,13 +140,13 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 - ADR-0009 QMF 分析的镜像子带成对调制
 - ADR-0010 固定 Rust 1.98.0 并提升 MSRV
 - ADR-0011 按语法、解码与场景重整职责边界
+- ADR-0013 提取 `macindecode-ac4-decode` crate
 
-**动架构之前先读 ADR-0011。** 长期依赖方向是 syntax → decode/engine → scene：先在现有 crate 内
-建立这三层模块边界并保留兼容 re-export，用测试与依赖门禁证明边界之后，才评估物理提取单一的
-`macindecode-ac4-decode`；OAMD 暂不独立成 crate，FFI 继续延后。它同时作废了 `ARCHITECTURE.md`
-早期那张 `audio-core` / `ajoc` / `oamd` 三路拆包草图。**拆分不得混入数值或输出行为变更**——每个
-迁移增量都要分别过默认与 `audio-decode` 测试、`no_std` 检查、三层 PCM 基线、Scene/CLI 契约和
-规范分发门禁。
+**动架构之前先读 ADR-0011 与 ADR-0013。** 长期依赖方向是 syntax → decode/engine → scene；
+`macindecode-ac4-decode` 已完成物理提取，OAMD 暂不独立成 crate，FFI 继续延后。两份 ADR 同时
+作废了 `ARCHITECTURE.md` 早期那张 `audio-core` / `ajoc` / `oamd` 三路拆包草图。**拆分不得混入
+数值或输出行为变更**——每个迁移增量都要分别过默认与 `audio-decode` 测试、`no_std` 检查、
+三层 PCM 基线、Scene/CLI 契约和规范分发门禁。
 
 ## 当前边界
 

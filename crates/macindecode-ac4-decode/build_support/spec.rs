@@ -269,7 +269,7 @@ pub(crate) fn emit(arrays: &BTreeMap<String, Vec<i64>>) -> String {
     let mut out = String::new();
     out.push_str(
         "// 由 build.rs 依据规范随附的 C 表生成，请勿手工编辑。\n\
-         // 生成规则与校验条件见 crates/macindecode-ac4-bitstream/build.rs。\n\n",
+         // 生成规则与校验条件见 crates/macindecode-ac4-decode/build.rs。\n\n",
     );
 
     // 不能只遍历完整配对：解析器漏掉任一侧时必须立即失败，而非静默少生成

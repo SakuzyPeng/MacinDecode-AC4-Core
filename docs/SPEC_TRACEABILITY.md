@@ -43,11 +43,12 @@ TS103190-2:v1.3.1:clause <待录入>
 
 以下矩阵随实现推进逐条补充精确条款：
 
-表格优先记录当前实现路径。按 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md)，
-后续先在现有 crate 内建立 syntax/decode/engine 边界，再评估把完整数值路径提取为单一
-`macindecode-ac4-decode` crate；旧的 `audio-core` / `ajoc` / `oamd` 三路目标包不再使用。
-当前量化音频语法、DSP 与 raw OAMD 仍集中在 `macindecode-ac4-bitstream`，Scene 语义组装位于
-`macindecode-ac4-scene`。实际依赖见架构设计第 2–3 节。
+表格优先记录当前实现路径。按 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 与
+[ADR-0013](decisions/0013-extract-decode-crate.md)，bounded syntax、topology、raw OAMD 与
+opaque metadata 位于 `macindecode-ac4-bitstream`；完整数值路径及需要 ETSI 表的 Huffman
+metadata 解码位于 `macindecode-ac4-decode`；Scene 语义组装位于
+`macindecode-ac4-scene`。旧的 `audio-core` / `ajoc` / `oamd` 三路目标包不再使用。实际依赖见
+架构设计第 2–3 节。
 
 | 能力 | 规范部分 | 当前/目标模块 | 主要验证 |
 |---|---|---|---|
@@ -56,35 +57,35 @@ TS103190-2:v1.3.1:clause <待录入>
 | presentation/group/substream | P2 `6.2.1.3`–`6.2.1.14`；P1 `4.2.3.3`–`4.2.3.5`、`4.2.3.7`、`4.2.3.11`、`4.2.14.15` | `macindecode-ac4-bitstream` | `dac4` 与 TOC 一致性；`payload_base`/尺寸自洽；引用精确覆盖索引表 |
 | alternative presentation selection 前缀 | P2 `6.2.2.3`、`6.3.3.1.1`–`6.3.3.1.15` | `macindecode-ac4-bitstream::presentation_substream` | 0/32 字节名称、1/32 targets、非字节对齐视图、config 1 的 DE SGI 计数、截断/容量/变长溢出构造测试；真实向量待验证 |
 | presentation common additional data | P2 `6.2.2.3`、`6.2.2.5`、`6.3.3.1.16`–`6.3.3.1.18`；downmix helper 见 `6.3.3.1.27`–`6.3.3.1.31` Pseudocode 25/26 | `macindecode-ac4-bitstream::presentation_substream` | 1 字节基础与 18 字节扩展 envelope、对象/声道 presence、完整/core mode、four-back/top-pairs/LFE 派生、A-DE 12/28 比特、保留 bit view、截断/越界/变长溢出构造测试；普通真实向量接入待后续 |
-| presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
+| presentation 响度、DRC config/data/gains、group gain 与 associated audio | P2 `6.2.2.3`、`6.2.7.3`、`6.3.3.1.19`–`6.3.3.1.26`；P1 `4.2.14.5`–`4.2.14.10`、`4.3.12.3`、`4.3.13.1`–`4.3.13.7`、附录 `A.5`、`4.3.12.4.3`–`4.3.12.4.9` | `macindecode-ac4-bitstream::presentation_substream`、`macindecode-ac4-decode::drc_gains` | 完整响度原值、1/95/165 比特 DRC frame、四类 profile/完整 curve、repeat/gainset envelope 与 dependent 配置延续；`audio-decode` 下覆盖 fixed/Huffman gains、128 gain 上限、reference reset、version 1 扩展、截断/尾随；group gain 覆盖逐帧原值、默认零、keep/替换/清零、独立帧与拓扑事务状态；associated 覆盖全部 gate |
 | presentation custom downmix 与 loudness correction | P2 `6.2.9.1`–`6.2.9.10`、`6.3.10.1`–`6.3.10.3`；P1 `4.3.12.2.8`–`4.3.12.2.19` | `macindecode-ac4-bitstream::presentation_substream` | 六种输入配置、全部 routing tool、stereo/LtRt/LFE gate、unused/reserved 码值、full/core/object correction gate、合法码值 `31`、截断、末尾对齐及尾随字节构造测试；真实 alternative/direct-object 向量待验证 |
-| 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；DME/DEE 真实向量覆盖 present/absent、New/KeepPrevious 与配置，body 仍为 0 bit |
+| 音频 substream 框架、metadata 与 DE config/data/state | P2 `6.2.2.2`、`6.2.7.1`、`6.2.7.5`–`6.2.7.6`、`6.3.8.3.1`；P1 `4.2.14.1`–`4.2.14.4`、`4.2.14.11`–`4.2.14.13`、`4.3.4.1`、`4.3.12.1.1`、`4.3.14.2`–`4.3.14.5`、表 170–173、附录 `A.4` | `macindecode-ac4-bitstream::audio_substream`、`macindecode-ac4-decode::dialog_enhancement` | 解析后恰好落在 substream 末尾；I/dependent 配置、四张 Huffman 表、M/S、simulcast、`ref_val`/`de_par_prev`、物理 substream 隔离与失败事务构造测试；DME/DEE 真实向量覆盖 present/absent、New/KeepPrevious 与配置，body 仍为 0 bit |
 | presentation EMDF opaque envelope | P1 `4.2.4.4`、`4.2.14.14`、`4.3.15`、表 18/79/174–175 | `macindecode-ac4-bitstream::emdf`、`macindecode-ac4-cli::trace::emdf` | 空/非空、完整配置、非字节对齐、扩展 ID、容量/长度/终止符构造测试；六条真实媒体冻结路由、配置、大小、FNV-1a 与前缀，当前只覆盖 ID 20/`00` |
-| alternative OAMD datasets | P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::oamd`、`audio_substream`、`audio_data`、`full_ajoc` | per-substream 对象/块上下文；non-A-JOC 及 A-JOC core/full 接线；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view；按 substream/domain/index 隔离的 keep 有效状态、无历史/独立帧/布局变化/跨域/失败事务构造测试；未应用时对象出口失败关闭；真实向量待验证 |
-| Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-bitstream::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
-| ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-bitstream::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
-| ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-bitstream::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
-| ASF 熵编码谱数据 | P1 `4.2.8.3`–`4.2.8.6`（表 39–42）；`4.3.6.3`–`4.3.6.6`；`5.1.2`（`Pseudocode 19`、`20`） | `macindecode-ac4-bitstream::asf::spectrum` | 基数分解对 1 241 个符号可逆；标度因子与噪声填充条件互补；手工构造帧落点精确 |
-| 声道元素与立体声侧信息 | P1 `4.2.6.2`、`4.2.6.7`–`4.2.6.8`、`4.2.6.11`、`4.2.7.1`–`4.2.7.2`、`4.2.10`–`4.2.11`；语义 `4.3.5`、`4.3.8`–`4.3.9`（表 94、114） | `macindecode-ac4-bitstream::channel` | 各元素落点与构造长度相等；SSF 与共享/独立 `sf_info` 分支由注入实验区分 |
-| MDCT 立体声与三声道矩阵 | P1 `5.3.1`–`5.3.2`（`Pseudocode 59`）、`5.3.3.2`–`5.3.3.3`（表 178） | `macindecode-ac4-bitstream::channel`、`macindecode-ac4-bitstream::full_ajoc::asf` | mode 0/选择性 M/S/全带 M/S/SAP 构造谱线逐带验算；表 178 十二个选择码逐项核对，保留值 fail-closed；真实 768K 的 SAF/Apple APAC 方向左右差由 `+3.419 dB` 收敛至 `+0.300 dB`，DRP 参照为 `+0.469 dB` |
-| PCM/QMF 控制帧对齐 | P1 `5.6`（表 188）、`5.7.2` | `macindecode-ac4-bitstream::frame_alignment`、`macindecode-ac4-bitstream::full_ajoc` | 八档 `d_pcm`/`d_ctrl` 逐行核对；连续 PCM 环形延迟、1/2/4 帧控制 FIFO 与 reset；九条 A-SPX 逐位基线；真实 768K 节目的 14 kHz 上下能量包络残差由 1 664 samples 收敛为 0（64-sample 分辨率） |
-| A-SPX 静态表与时隙换算 | P1 `5.7.6.3.1.1`（模板表、表 190–191）、`5.7.3.2`（表 189）、`5.7.6.3.3`（表 192、`Pseudocode 75a`）；表 126、`Pseudocode 79` | `macindecode-ac4-bitstream::aspx::tables` | 表 190/191 反查模板表偶数下标；表 189 与 `frame_length/64` 互证；`check_aspx_tables.py` 反向核对 PDF |
-| A-SPX 子带组表推导 | P1 `5.7.6.3.1.1`–`5.7.6.3.1.3`（`Pseudocode 67`–`70`） | `macindecode-ac4-bitstream::aspx::bands` | 全部合法配置下派生边界均取自主表且严格递增；`num_sbg_noise` 的整数判据与浮点定义逐点一致 |
-| A-SPX 时频成帧 | P1 `5.7.6.3.3.1`（表 193、194，`Pseudocode 76`–`77`）；表 128 | `macindecode-ac4-bitstream::aspx::frames` | 表 194 五行恰好覆盖 `num_aspx_timeslots` 的值域；噪声边界是信号边界的子集；跨度阈值的整数判据与浮点定义一致 |
-| A-SPX 语法元素 | P1 `4.2.12`（表 50–58）；语义 `4.3.10`（表 122–136）；`Pseudocode 79` | `macindecode-ac4-bitstream::aspx::syntax` | 各元素落点与构造长度相等；`aspx_balance`、`aspx_tic_copy`、逐包络分辨率三处分支由注入实验区分 |
-| A-SPX 码本选择 | P1 表 `A.16`–`A.33`；`Pseudocode 79`；`4.3.10.8.3` | `macindecode-ac4-bitstream::aspx::codebooks` | 十八个标识映射到互不相同的码本；`cb_off` 由码本长度推出并与规范标注比对 |
-| `var_channel_element` 组装 | P2 `6.2.4.4`；语义 `6.3.5.5`–`6.3.5.6`（表 77） | `macindecode-ac4-bitstream::var_element` | 三条分支的落点与构造长度相等；逐 A-SPX 元素的交叉偏移跨帧各自沿用 |
-| A-JOC 数据与码本 | P2 `6.2.5`（表 78–80，`Pseudocode 27`）；附录 `A.1.1` | `macindecode-ac4-bitstream::ajoc` | 稀疏/非稀疏与时间/频带方向的落点相等；十二个标识按码本名比对；`cb_off` 与附录标注一致 |
-| A-JOC 对话增强与床信息 | P2 `6.2.3.5`–`6.2.3.6`；语义 `6.3.6.6`–`6.3.6.7`（表 82，`Pseudocode 28`） | `macindecode-ac4-bitstream::ajoc::de` | 表 82 十六个取值逐一往返且前缀无关；`num_dlg_obj` 跨帧沿用后落点仍相等；I 帧上缺席的配置读作空配置 |
-| A-JOC 参数频带映射 | P2 `5.7.3.1`（表 28）；P1 `5.7.7.2`（表 197） | `macindecode-ac4-bitstream::ajoc::bands` | 本地生成的八列单调非降、自 0 起、逐频带满射、末值为 `num_bands − 1`；`check_ajoc_tables.py` 从两份 PDF 逐格反查，并锁定 15/12/9/7 四列与表 197 相同 |
-| `audio_data_ajoc` 组装 | P2 `6.2.3.4`、`6.2.8.3`；语义 `6.3.4.7`、`6.3.9.3.6` | `macindecode-ac4-bitstream::audio_data` | 全链路落点与构造长度相等；core/full timing 独立、derive 分支、I 帧非零块数、LFE 信号顺序与事务状态均有定向断言；解出的块自带对象与块下标，可直接喂给 `OamdState` |
+| alternative OAMD datasets | P2 `6.2.3.4`、`6.2.7.1`、`6.2.8.3`、`6.2.8.12`、`6.3.9.4` | `macindecode-ac4-bitstream::{oamd,audio_substream}`、`macindecode-ac4-decode::{audio_data,full_ajoc}` | per-substream 对象/块上下文；non-A-JOC 及 A-JOC core/full 接线；BED/ISF/DYN/LFE、common/per-object、gain/position、keep、扩展数量、additional-data 子边界、扩展精度与 opaque bit view；按 substream/domain/index 隔离的 keep 有效状态、无历史/独立帧/布局变化/跨域/失败事务构造测试；未应用时对象出口失败关闭；真实向量待验证 |
+| Huffman 码本 | P1 附录 `A.0`–`A.5`；P2 附录 `A` | `macindecode-ac4-decode::huffman` | 构建期哈希 + Kraft + 前缀无关；逐符号往返 |
+| ASF 表格与派生量 | P1 附录 `B`、表 `A.2`–`A.15`；`4.3.6.1`–`4.3.6.2`（表 99–110） | `macindecode-ac4-decode::asf::tables` | 表内自洽约束；`check_sfb_tables.py` 反向核对 PDF |
+| ASF 成帧与窗口分组（44,1/48 kHz） | P1 `4.2.8.1`–`4.2.8.2`（表 37、38）；`4.3.6` `Pseudocode 2`–`5` | `macindecode-ac4-decode::asf::framing` | 16 种半帧组合的窗口恰好铺满一帧；`num_windows` 落在 `4.3.6.2.6` 的取值集合内；高采样率显式拒绝 |
+| ASF 熵编码谱数据 | P1 `4.2.8.3`–`4.2.8.6`（表 39–42）；`4.3.6.3`–`4.3.6.6`；`5.1.2`（`Pseudocode 19`、`20`） | `macindecode-ac4-decode::asf::spectrum` | 基数分解对 1 241 个符号可逆；标度因子与噪声填充条件互补；手工构造帧落点精确 |
+| 声道元素与立体声侧信息 | P1 `4.2.6.2`、`4.2.6.7`–`4.2.6.8`、`4.2.6.11`、`4.2.7.1`–`4.2.7.2`、`4.2.10`–`4.2.11`；语义 `4.3.5`、`4.3.8`–`4.3.9`（表 94、114） | `macindecode-ac4-decode::channel` | 各元素落点与构造长度相等；SSF 与共享/独立 `sf_info` 分支由注入实验区分 |
+| MDCT 立体声与三声道矩阵 | P1 `5.3.1`–`5.3.2`（`Pseudocode 59`）、`5.3.3.2`–`5.3.3.3`（表 178） | `macindecode-ac4-decode::channel`、`macindecode-ac4-decode::full_ajoc::asf` | mode 0/选择性 M/S/全带 M/S/SAP 构造谱线逐带验算；表 178 十二个选择码逐项核对，保留值 fail-closed；真实 768K 的 SAF/Apple APAC 方向左右差由 `+3.419 dB` 收敛至 `+0.300 dB`，DRP 参照为 `+0.469 dB` |
+| PCM/QMF 控制帧对齐 | P1 `5.6`（表 188）、`5.7.2` | `macindecode-ac4-decode::frame_alignment`、`macindecode-ac4-decode::full_ajoc` | 八档 `d_pcm`/`d_ctrl` 逐行核对；连续 PCM 环形延迟、1/2/4 帧控制 FIFO 与 reset；九条 A-SPX 逐位基线；真实 768K 节目的 14 kHz 上下能量包络残差由 1 664 samples 收敛为 0（64-sample 分辨率） |
+| A-SPX 静态表与时隙换算 | P1 `5.7.6.3.1.1`（模板表、表 190–191）、`5.7.3.2`（表 189）、`5.7.6.3.3`（表 192、`Pseudocode 75a`）；表 126、`Pseudocode 79` | `macindecode-ac4-decode::aspx::tables` | 表 190/191 反查模板表偶数下标；表 189 与 `frame_length/64` 互证；`check_aspx_tables.py` 反向核对 PDF |
+| A-SPX 子带组表推导 | P1 `5.7.6.3.1.1`–`5.7.6.3.1.3`（`Pseudocode 67`–`70`） | `macindecode-ac4-decode::aspx::bands` | 全部合法配置下派生边界均取自主表且严格递增；`num_sbg_noise` 的整数判据与浮点定义逐点一致 |
+| A-SPX 时频成帧 | P1 `5.7.6.3.3.1`（表 193、194，`Pseudocode 76`–`77`）；表 128 | `macindecode-ac4-decode::aspx::frames` | 表 194 五行恰好覆盖 `num_aspx_timeslots` 的值域；噪声边界是信号边界的子集；跨度阈值的整数判据与浮点定义一致 |
+| A-SPX 语法元素 | P1 `4.2.12`（表 50–58）；语义 `4.3.10`（表 122–136）；`Pseudocode 79` | `macindecode-ac4-decode::aspx::syntax` | 各元素落点与构造长度相等；`aspx_balance`、`aspx_tic_copy`、逐包络分辨率三处分支由注入实验区分 |
+| A-SPX 码本选择 | P1 表 `A.16`–`A.33`；`Pseudocode 79`；`4.3.10.8.3` | `macindecode-ac4-decode::aspx::codebooks` | 十八个标识映射到互不相同的码本；`cb_off` 由码本长度推出并与规范标注比对 |
+| `var_channel_element` 组装 | P2 `6.2.4.4`；语义 `6.3.5.5`–`6.3.5.6`（表 77） | `macindecode-ac4-decode::var_element` | 三条分支的落点与构造长度相等；逐 A-SPX 元素的交叉偏移跨帧各自沿用 |
+| A-JOC 数据与码本 | P2 `6.2.5`（表 78–80，`Pseudocode 27`）；附录 `A.1.1` | `macindecode-ac4-decode::ajoc` | 稀疏/非稀疏与时间/频带方向的落点相等；十二个标识按码本名比对；`cb_off` 与附录标注一致 |
+| A-JOC 对话增强与床信息 | P2 `6.2.3.5`–`6.2.3.6`；语义 `6.3.6.6`–`6.3.6.7`（表 82，`Pseudocode 28`） | `macindecode-ac4-decode::ajoc::de` | 表 82 十六个取值逐一往返且前缀无关；`num_dlg_obj` 跨帧沿用后落点仍相等；I 帧上缺席的配置读作空配置 |
+| A-JOC 参数频带映射 | P2 `5.7.3.1`（表 28）；P1 `5.7.7.2`（表 197） | `macindecode-ac4-decode::ajoc::bands` | 本地生成的八列单调非降、自 0 起、逐频带满射、末值为 `num_bands − 1`；`check_ajoc_tables.py` 从两份 PDF 逐格反查，并锁定 15/12/9/7 四列与表 197 相同 |
+| `audio_data_ajoc` 组装 | P2 `6.2.3.4`、`6.2.8.3`；语义 `6.3.4.7`、`6.3.9.3.6` | `macindecode-ac4-decode::audio_data` | 全链路落点与构造长度相等；core/full timing 独立、derive 分支、I 帧非零块数、LFE 信号顺序与事务状态均有定向断言；解出的块自带对象与块下标，可直接喂给 `OamdState` |
 | 编解码帧长与帧率因子 | P1 `4.3.3.2.5`–`4.3.3.2.6`（表 82–84）、`4.3.3.5`（表 87） | `macindecode-ac4-bitstream::toc` | 表 83 十四行逐条核对；表 87 允许的每个因子，商都落回表 83 的取值集合 |
-| `ac4_substream` 与音频数据接合 | P2 `6.2.2.2`、`6.2.3.4`；P1 `4.2.4.2`、`4.3.4.1`、`4.3.3.7.8` | `macindecode-ac4-bitstream::substream_audio` | `audio_data_ajoc()` 在 `audio_size` 声明的区段内走完，越界报错且越界位置即区段末尾；八条实测流 568 帧的 `fill_bits` 全部小于 8 |
-| ASF 量化重建、缩放与解组 | P1 `5.1.3`（`Pseudocode 21`）、`5.1.5`（`Pseudocode 25`）；码本 `A.1` | `macindecode-ac4-bitstream::asf::{reconstruct, dequant}` | 手工验算并跨窗口组延续的 DPCM 链；缺失差值显式失败；标度因子落在 `5.1.3.2` 规定的 `0…255`，八条流 41 693 个频带零越界；反量化表与增益常量由整数判据正确舍入，完全立方数恰为整数，八条流 99 万条谱线零非有限值；布局按 `AsfLayoutKey` 核对，标度因子再与当前工作区精确比对；解组的双射性由下标编码验证，实测 11 030 528 条谱线非零数零失配、能量漂移 `4.2×10⁻¹⁶` |
-| IMDCT 块切换、窗口与 IFFT | P1 `5.5.2.2`（`Pseudocode 60`–`64`）、`5.5.3`（表 186、187） | `macindecode-ac4-bitstream::asf::imdct` | 窗口三段和精确等于块长，十五档全部有序对覆盖；生产 Stockham IFFT 在十五档长度上与定义式差分，固定 16 KiB scratch，根表摘要及轴点/共轭/象限换位/单位圆判据闭合。前/后旋转与 KBD 生产表已接入，另由切分、角度、Princen-Bradley 与右窗镜像判据覆盖；完整 IMDCT 由分析—合成完美重建、未加窗后半与定义式差分、`N_full` 延迟等价、`5.5.3` 文字示例差分与混合块长延迟恒定五条判据闭合 |
-| 音频核心工具 | Part 1 | 当前 `macindecode-ac4-bitstream::{asf,aspx,element_drive,full_ajoc}`；目标 `macindecode-ac4-decode` | 标量单元测试和频域诊断 |
+| `ac4_substream` 与音频数据接合 | P2 `6.2.2.2`、`6.2.3.4`；P1 `4.2.4.2`、`4.3.4.1`、`4.3.3.7.8` | `macindecode-ac4-decode::substream_audio` | `audio_data_ajoc()` 在 `audio_size` 声明的区段内走完，越界报错且越界位置即区段末尾；八条实测流 568 帧的 `fill_bits` 全部小于 8 |
+| ASF 量化重建、缩放与解组 | P1 `5.1.3`（`Pseudocode 21`）、`5.1.5`（`Pseudocode 25`）；码本 `A.1` | `macindecode-ac4-decode::asf::{reconstruct, dequant}` | 手工验算并跨窗口组延续的 DPCM 链；缺失差值显式失败；标度因子落在 `5.1.3.2` 规定的 `0…255`，八条流 41 693 个频带零越界；反量化表与增益常量由整数判据正确舍入，完全立方数恰为整数，八条流 99 万条谱线零非有限值；布局按 `AsfLayoutKey` 核对，标度因子再与当前工作区精确比对；解组的双射性由下标编码验证，实测 11 030 528 条谱线非零数零失配、能量漂移 `4.2×10⁻¹⁶` |
+| IMDCT 块切换、窗口与 IFFT | P1 `5.5.2.2`（`Pseudocode 60`–`64`）、`5.5.3`（表 186、187） | `macindecode-ac4-decode::asf::imdct` | 窗口三段和精确等于块长，十五档全部有序对覆盖；生产 Stockham IFFT 在十五档长度上与定义式差分，固定 16 KiB scratch，根表摘要及轴点/共轭/象限换位/单位圆判据闭合。前/后旋转与 KBD 生产表已接入，另由切分、角度、Princen-Bradley 与右窗镜像判据覆盖；完整 IMDCT 由分析—合成完美重建、未加窗后半与定义式差分、`N_full` 延迟等价、`5.5.3` 文字示例差分与混合块长延迟恒定五条判据闭合 |
+| 音频核心工具 | Part 1 | `macindecode-ac4-decode::{asf,aspx,element_drive,full_ajoc}` | 标量单元测试和频域诊断 |
 | direct-object | Part 2 | `macindecode-ac4-scene` | 自生成对象母版 |
-| A-JOC 数据与重建 | Part 2 | 当前 `macindecode-ac4-bitstream::{ajoc,full_ajoc}`；目标 `macindecode-ac4-decode` | PRBS、相关性、串扰和轨迹 |
+| A-JOC 数据与重建 | Part 2 | `macindecode-ac4-decode::{ajoc,full_ajoc}` | PRBS、相关性、串扰和轨迹 |
 | OAMD | P2 `6.2.2.4`、`6.2.8.1`–`6.2.8.12`、`6.2.9.9`–`6.2.9.10`；语义 `6.3.9`；位置映射 `4.8.3.4.2` 表 7 | `macindecode-ac4-bitstream::oamd` | `byte_align` 残余 < 8；common/timing/additional 跨帧复用；整帧提交或整帧回滚；`trajectory_check.py` 逐轴比对母版轨迹 |
 | OAMD → DAMF 试听探针 | P2 `6.3.9` 语义；DAMF 0.5.1 | `macindecode-ac4-cli::{trace,damf}` | MP4 edit/priming 与裸流时间线；48 kHz/24-bit CAF；确定性对象粉红噪声；三件套经本地 ADM 规范化工具接受 |
 | full A-JOC → DAMF | P2 `4.8.3.1`、`4.8.3.4.2`、`5.7.2.3`、`6.3.2.8.1`、`6.3.9`；DAMF 0.5.1/home、0.6.0/3DoF | `macindecode-ac4-cli::{scene_export,damf}` | 单趟 full PCM/OAMD 配对；48 kHz/24-bit S24LE CAF 与 full ADM `data` 逐字节一致；home/3DoF 只改 manifest version/type，OAMD-derived `headTrackMode` 不变；见 §5.55 |
@@ -130,7 +131,7 @@ python3 -m pip install -r scripts/requirements-spec.txt
 生成物摘要记录在 `spec/MANIFEST.json`，同时编译进 crate 的 `spec_lock.rs`，使从
 crates.io 解包构建时不必把清单本身放进外部目录。
 
-### 5.1 Huffman 码本（`crates/macindecode-ac4-bitstream/build_support/spec.rs`）
+### 5.1 Huffman 码本（`crates/macindecode-ac4-decode/build_support/spec.rs`）
 
 附录 `A.0` 规定全部 Huffman 码本以随附 zip 给出，PDF 正文只列码本名称与长度，因此码本数值完全不经人工转写。
 
@@ -140,7 +141,7 @@ crates.io 解包构建时不必把清单本身放进外部目录。
 python3 -m pip install -r scripts/requirements-spec.txt
 ./scripts/fetch_specs.py                                            # 释出并校验 C 表
 ./scripts/generate_spec_tables.py                                   # 从官方 PDF 生成本地 Rust 表
-cargo test -p macindecode-ac4-bitstream --features audio-decode
+cargo test -p macindecode-ac4-decode --features audio-decode
 ```
 
 **默认构建与 crate 包不依赖这些未分发文件。** 两个 feature 默认关闭，是为了不把 ETSI 的分发限制传染给整个工作区——移走 `spec/` 下的本地文件后 `cargo test --workspace` 仍照常通过。构建脚本只依赖锁定的 `libm`；不会联网、启动 Python 或解压文件。它会对**实际读入的字节**重算 SHA-256 并与 crate 内置摘要比对，版本不匹配立即失败。
@@ -171,7 +172,7 @@ cargo test -p macindecode-ac4-bitstream --features audio-decode
 
 Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的下标与消耗的比特数。该用例不校验表值——表值由上述哈希与结构断言保证——它校验的是解码器与构造侧对比特序、叶子编码的理解一致。
 
-### 5.2 ASF 尺度因子频带表（`crates/macindecode-ac4-bitstream/src/asf/tables.rs`）
+### 5.2 ASF 尺度因子频带表（`crates/macindecode-ac4-decode/src/asf/tables.rs`）
 
 附录 B 与附录 A 的表 A.2–A.15 **只存在于规范正文**，没有随附的机器可读版本。`scripts/generate_spec_tables.py` 从用户本地的官方 PDF 确定性抽取这些值，写入被忽略的生成文件；仓库与 crate 包不再保存转录副本。该路径由 `spec-tables` 启用。
 
@@ -193,7 +194,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 一处已由测试纠正的误读：表 B.7 排成六列，最初被当作一个六列组，前缀一致性用例立即报错。实际它是两组独立的三列（`256/240/192` 与 `128/120/96`），由表头三行的采样率组合区分。
 
-### 5.3 A-SPX 模板子带组表（`crates/macindecode-ac4-bitstream/src/aspx/tables.rs`）
+### 5.3 A-SPX 模板子带组表（`crates/macindecode-ac4-decode/src/aspx/tables.rs`）
 
 `5.7.6.3.1.1` 的两张模板表同样只存在于规范正文，共 44 个边界值；它们与表 189/192、表 194 一起由统一生成器写入本地生成文件。
 
@@ -214,7 +215,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 模板表高段步长为 3（`44,47,50,53,56,59,62`），奇数下标项改动仍可保持严格递增，因而绕过全部自洽约束。低段步长为 1，任何单项改动都会破坏递增——所以盲区仅限高段的奇数下标。
 
-### 5.4 A-SPX 噪声子带组数的整数判据（`crates/macindecode-ac4-bitstream/src/aspx/bands.rs`）
+### 5.4 A-SPX 噪声子带组数的整数判据（`crates/macindecode-ac4-decode/src/aspx/bands.rs`）
 
 `Pseudocode 70` 用浮点对数定义 `num_sbg_noise = max(1, floor(aspx_noise_sbg * log2(sbz/sbx) + 0.5))`。本 crate 为 `no_std` 且不引入数学库，故改用等价的整数判据：结果为 `k` 当且仅当 `k` 是使
 
@@ -228,7 +229,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 `Pseudocode 77` 的 `case 2` 同样含浮点：`span > num_aspx_timeslots / 6.0 + 3.25`。两边乘 12 得 `12 * span > 2 * num_aspx_timeslots + 39`，右端恒为整数。测试对表 194 的五个时隙数与 0–24 的全部跨度逐点比对浮点定义。
 
-### 5.5 A-SPX 时频成帧（`crates/macindecode-ac4-bitstream/src/aspx/frames.rs`）
+### 5.5 A-SPX 时频成帧（`crates/macindecode-ac4-decode/src/aspx/frames.rs`）
 
 表 194 `tab_border` 的 50 个边界值同样只存在于规范正文。时隙数 6 的四分割 `{0,2,3,4,6}` **不是均分**（跨度 2、1、1、2），因此整表必须转录而非由公式生成。
 
@@ -245,7 +246,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 **跨帧状态：** VARFIX 与 VARVAR 在非 I 帧用 `previous_stop_pos` 替代 `aspx_var_bord_left`，该变量初值为 `num_aspx_timeslots`。`aspx_config` 与 `aspx_xover_subband_offset` 同样只在 I 帧传输，非 I 帧沿用上一个 I 帧的值。
 
-### 5.6 A-SPX 码本偏移（`crates/macindecode-ac4-bitstream/src/aspx/codebooks.rs`）
+### 5.6 A-SPX 码本偏移（`crates/macindecode-ac4-decode/src/aspx/codebooks.rs`）
 
 表 A.16–A.33 的十八张码本随 `build.rs` 生成，但 `cb_off` 只标在 PDF 的表头里，不在随附的 C 表内。**它没有进入实现**：十二张 DF／DT 表上 `cb_off == (codebook_length - 1) / 2` 恒成立，而 `codebook_length` 已由生成的 trie 给出，故直接推算。
 
@@ -253,7 +254,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 因此这一处**没有任何手工转录进入实现**，与 §5.1 的 Huffman 码本同类。
 
-### 5.7 A-SPX 语法元素（`crates/macindecode-ac4-bitstream/src/aspx/syntax.rs`）
+### 5.7 A-SPX 语法元素（`crates/macindecode-ac4-decode/src/aspx/syntax.rs`）
 
 主判据是落点：每个元素解析后消耗的比特数必须等于构造长度。任一字段宽度或循环次数写错，落点立即偏移。
 
@@ -272,7 +273,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 `aspx_freq_res_mode` 取 0 时 FIXFIX 只传输一个 `aspx_freq_res` 并复制到全部包络，非 FIXFIX 则逐包络传输——这是表 53 两个分支的差异，也是 `frames` 与本层唯一的接合点。
 
-### 5.8 `var_channel_element` 的状态粒度（`crates/macindecode-ac4-bitstream/src/var_element.rs`）
+### 5.8 `var_channel_element` 的状态粒度（`crates/macindecode-ac4-decode/src/var_element.rs`）
 
 三处跨帧状态的**作用域各不相同**，混为一谈会在非 I 帧上错位：
 
@@ -288,7 +289,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 **工作区由调用方提供。** 一个 `ChannelElement` 约 60 KiB，`n_fullband_dmx_signals_minus1` 占 4 位故最多 16 个全频带信号，最坏情形需要九个声道元素（十六信号取偶数分支得八个 `two_channel_data()` 加 LFE，十五信号取奇数分支得六加二加 LFE，同为九个）。合计约 540 KiB，放在栈上并不现实，故由调用方决定存储并跨帧复用。两组工作区的容量在读取任何比特前核对。
 
-### 5.10 落点判据的四类盲区（`crates/macindecode-ac4-bitstream/src/audio_data.rs`）
+### 5.10 落点判据的四类盲区（`crates/macindecode-ac4-decode/src/audio_data.rs`）
 
 `audio_data_ajoc()` 是本项目最长的一条解析链，五处注入里**四处首轮全部通过**。这批缺口比之前任何一层都集中，值得单列，因为它们各自代表落点判据的一类固有局限：
 
@@ -303,7 +304,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 这与 §5.9 记录的码本映射是同一类：**落点等式约束的是长度，不是语义**。凡是「长度相同但含义不同」的分歧，都必须另找判据。
 
-### 5.9 A-JOC 与 A-SPX 的码本差异（`crates/macindecode-ac4-bitstream/src/ajoc.rs`）
+### 5.9 A-JOC 与 A-SPX 的码本差异（`crates/macindecode-ac4-decode/src/ajoc/`）
 
 两处 Huffman 数据的语法几乎同构——`F0` 打头、`DF` 续频带、`DT` 走时间——但**码本参数的规律相反**，不可互相套用：
 
@@ -331,7 +332,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 注入实验：A-JOC 把 `COARSE` 与 `FINE` 的 `F0` 互换、A-SPX 把 `DF` 与 `DT` 互换，都只有比对 `ALL_CODEBOOKS` 里码本名的用例能抓出。该名字来自 `build.rs` 生成的代码，与手写的 `match` 分支互为独立来源。
 
-### 5.11 `audio_size` 作为判据（`crates/macindecode-ac4-bitstream/src/substream_audio.rs`）
+### 5.11 `audio_size` 作为判据（`crates/macindecode-ac4-decode/src/substream_audio.rs`）
 
 `ac4_substream()` 的音频区段结构是 `audio_data` + `fill_bits`(VAR) + `byte_align`，长度由 `audio_size` 声明（P1 `4.3.4.1`）。把读取器限制在该区段上之后：
 
@@ -356,7 +357,7 @@ Rust 侧逐符号走完全部 84 张码本共 4 917 个符号，核对解出的�
 
 trace 在解析前按 substream 下标合并所有 group 引用：同一物理载荷只解析一次，会改变语法的上下文不一致则整帧失败。`frames`/`parsed` 与 `substreams`/`parsed_substreams` 分别使用同一统计单位。任一 A-JOC 解析错误会清空对应 substream 历史；拓扑解析失败、来源变化、reset 或等待随机访问点则清空全部历史。
 
-### 5.11a 逐对象动态数据的两个下标（`crates/macindecode-ac4-bitstream/src/audio_data.rs`）
+### 5.11a 逐对象动态数据的两个下标（`crates/macindecode-ac4-decode/src/audio_data.rs`）
 
 `oamd_dyndata_single()` 按「对象在外、块在内」两层循环展开，写进调用方的定长工作区。若只写 `ObjectInfoBlock`，对象与块的归属就靠**填充顺序**这条隐式约定传递——而每个信息块的长度可变，任一侧的循环顺序改动都不会被落点判据发现（长度不变，语义变了，仍是 §5.10 的第四类盲区）。
 
@@ -366,7 +367,7 @@ core 与 full 各需一份 `OamdState`：两侧的对象集合不同（`n_fullba
 
 整批更新是事务性的。A-JOC 一次交进来的是**整帧所有对象所有块**，中途失败若已写下前几块，下一帧就会在半新半旧的状态上继续推进差分位置。trace 因此先在临时状态上逐块解算并记录中间位置，core/full 两批都成功后再一起提交；时间线同时保留 substream 与 block 下标，避免多物理子流下的对象下标冲突。
 
-### 5.12 I 帧上缺席的对话增强配置（`crates/macindecode-ac4-bitstream/src/ajoc/de.rs`）
+### 5.12 I 帧上缺席的对话增强配置（`crates/macindecode-ac4-decode/src/ajoc/de.rs`）
 
 `b_dmx_de_cfg` 为假时规范只说配置不在本帧（`6.3.6.6.1`），没有说该沿用什么。实测的八条流**每一帧都是 `b_dmx_de_cfg == 0`**：该编码链根本不带对话增强。若在 I 帧上也报「无历史配置」，整条链一帧都解不下来。
 
@@ -382,7 +383,7 @@ I 帧按 `4.5.2` 必须可独立于前序帧解码，因此缺席只能读作 `d
 
 这条路径是可达的，不是死代码：`substream_index` 读作 2 比特、取值 3 时以 `variable_bits(2)` 扩展，因此取值不受 `MAX_SUBSTREAMS` 约束；CLI 对 `validate_substream_references` 的失败只计数、不阻断后续巡检，超界的下标因此会一路走到音频统计里。
 
-### 5.14 标度因子取值域是弱判据（`crates/macindecode-ac4-bitstream/src/asf/reconstruct.rs`）
+### 5.14 标度因子取值域是弱判据（`crates/macindecode-ac4-decode/src/asf/reconstruct.rs`）
 
 `5.1.3.2` 的重建分三步：DPCM 还原绝对标度因子、由标度因子得增益 `2^((sf−100)/4)`、反量化 `sign(q)×|q|^(4/3)` 后相乘。三步均已实现，数值格式见 [ADR-0002](decisions/0002-numeric-format-for-reconstruction.md)。后两步的判据与第一步性质不同，见 §5.15。
 
@@ -401,7 +402,7 @@ I 帧按 `4.5.2` 必须可独立于前序帧解码，因此缺席只能读作 `d
 
 这与 §5.10 的第四类盲区同源：**取值域约束的是范围，不是关系**。DPCM 是累加链，链上任一步的偏移都不改变结果的量级，只改变位置。
 
-### 5.15 反量化与增益：自证判据与独立判据（`crates/macindecode-ac4-bitstream/src/asf/`）
+### 5.15 反量化与增益：自证判据与独立判据（`crates/macindecode-ac4-decode/src/asf/`）
 
 `5.1.3.2` 的后两步没有比特可数，落点判据在此完全失效。可用的判据分两类，**只有第二类抓得住错误**。
 
@@ -431,7 +432,7 @@ I 帧按 `4.5.2` 必须可独立于前序帧解码，因此缺席只能读作 `d
 
 匹配布局下频带偏移映射失败是不可达的（`coded_band_count ≤ max_sfb` 保证 `sect_sfb_offset` 有定义，`end ≤ total_lines = quant.len()` 保证切片合法），仍返回 `InvalidBandRange` 而非静默跳过：将来若因重构而可达，报错好过输出静音。该分支没有用例，与 §5.13 的退化分支同类。
 
-### 5.16 谱解组：排列的自洽判据（`crates/macindecode-ac4-bitstream/src/asf/reconstruct.rs`）
+### 5.16 谱解组：排列的自洽判据（`crates/macindecode-ac4-decode/src/asf/reconstruct.rs`）
 
 `5.1.5.2` 的 `Pseudocode 25` 把码流里「组 → 频带 → 组内窗口」的编排还原为「窗口 → 频率升序」。它**只搬运不计算**，因此「不重不漏」等价于正确，判据强度远高于前两步：
 
@@ -459,7 +460,7 @@ I 帧按 `4.5.2` 必须可独立于前序帧解码，因此缺席只能读作 `d
 
 因此该工具推迟，并且**只能靠构造码流覆盖**——当前材料无法验证任何实现。
 
-### 5.18 IMDCT 的三角常量与 IFFT 选型（`crates/macindecode-ac4-bitstream/src/asf/imdct.rs`）
+### 5.18 IMDCT 的三角常量与 IFFT 选型（`crates/macindecode-ac4-decode/src/asf/imdct.rs`）
 
 `5.5` 需要三类常量，**都无法沿用 §5.15 的整数判据**：
 
@@ -506,7 +507,7 @@ IFFT 已由 [ADR-0004](decisions/0004-mixed-radix-stockham-ifft.md) 落为 radix
 
 `I₀` 的逐项递推写法按 ADR-0003 第 5 条固定。实测 `term × (x/2 ÷ k)` 与 `(term × x/2) ÷ k` 在这十五档上给出**同一张表**，摘要不变——浮点下两者的舍入一般不同，此处相同是巧合而非可依赖的性质。
 
-### 5.19a 完整 IMDCT 的五条判据（`crates/macindecode-ac4-bitstream/src/asf/imdct/transform.rs`）
+### 5.19a 完整 IMDCT 的五条判据（`crates/macindecode-ac4-decode/src/asf/imdct/transform.rs`）
 
 `Pseudocode 60`–`64` 的六个步骤已接合。低层变换 API 的工作区（80 KiB，声道间复用）与重叠缓冲（每声道一份，长 `N_full`）仍由其调用方提供，不自行分配；Full engine 已把这份调用方所有权收进 `Ac4DecoderSession` 自持 decoder，边界由 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 固定。
 
@@ -532,7 +533,7 @@ IFFT 已由 [ADR-0004](decisions/0004-mixed-radix-stockham-ifft.md) 落为 radix
 
 **注入非零 overlap 是右窗 `skip` 段唯一的可观察条件，不是为了更完整。** 该段只在 `skip > 0` 时存在，而 `skip > 0` 只出现在块长切换处；此时右窗作用的是上一块的存量，缓冲若为全零，乘 1 与乘 0 的结果相同。实测对比：把右窗 `skip` 段从 1 改成 0，非零初值下 2 个用例失败，**全零初值下 0 个**；作为对照，把渐变段的逆序去掉在两种初值下都是 3 个用例失败——那类错误在等长块上就已暴露，等长块的 `skip` 恒为 0。
 
-### 5.19b 帧级合成不设 composition buffer（`crates/macindecode-ac4-bitstream/src/asf/imdct/frame.rs`）
+### 5.19b 帧级合成不设 composition buffer（`crates/macindecode-ac4-decode/src/asf/imdct/frame.rs`）
 
 `5.5.3` 规定一帧内各块处理进一个至多 4 096 样本的 composition buffer，处理完后交出最早的 `frame_length` 个。**本实现不设该缓冲，各块直接写入调用方的输出。**
 
@@ -608,7 +609,7 @@ MP4 输入先按 edit list 投影到呈现时间线：media edit 裁掉 codec pr
 `probe_ramp_control` 与 `probe_ramp_lengths` 的 `payload_sha256` 相同（`7a255fb0…`，见 9.2c 记录的「编码器忽略 `rampLength`」），两者的 PCM 摘要也相同。这是基线自带的一条确定性核对：同一份 `mdat` 必须解出同一份 PCM。
 
 
-### 5.20 QMF 分析与合成滤波器组（`crates/macindecode-ac4-bitstream/src/aspx/qmf.rs`）
+### 5.20 QMF 分析与合成滤波器组（`crates/macindecode-ac4-decode/src/aspx/qmf.rs`）
 
 `5.7.3` 的 `Pseudocode 65` 与 `5.7.4` 的 `Pseudocode 66` 已实现，共用表 D.3 的 640 抽头原型窗。64 子带、复数调制，状态与工作区都由调用方提供、不分配。调制按定义式直算（分析每时隙 `64 × 128` 次复数乘累加），改写成 128 点 FFT 加前后旋转属于另一次选型，先把语义与判据钉住。
 
@@ -763,7 +764,7 @@ tiling、反量化与 HF 生成均已实现，低带输出也已交给预平坦�
 
 ### 5.25 A-SPX 标度因子的反量化与立体声解码（`5.7.6.3.5`）
 
-`Pseudocode 82`/`83`/`84` 把 `qscf` 变成线性标度因子 `scf`，落在 `crates/macindecode-ac4-bitstream/src/aspx/dequant.rs`。
+`Pseudocode 82`/`83`/`84` 把 `qscf` 变成线性标度因子 `scf`，落在 `crates/macindecode-ac4-decode/src/aspx/dequant.rs`。
 
 **标度因子在能量域，不是幅度域。** 规范 `3.1` 把 signal scale factor 定义为「average energy of the signal within the region in a QMF matrix」。这一条把两档量化步长钉死：`scf = 2^(qscf/a)` 取 `10·log10`，`a = 2` 得 1,505 dB/步、`a = 1` 得 3,010 dB/步，正是 `aspx_qmode_env` 的两档；若误按幅度域取 `20·log10`，两档会变成 3 dB 与 6 dB。
 
@@ -844,7 +845,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.27 A-SPX 预平坦化（`5.7.6.4.1.2`）
 
-`Pseudocode 85` 把低带 `Q_low` 的谱包络在 dB 域拟合成一条三阶多项式，用它代表整体谱斜率，再翻成增益向量供 HF 生成搬移子带时取倒数。落在 `crates/macindecode-ac4-bitstream/src/aspx/preflatten.rs`。
+`Pseudocode 85` 把低带 `Q_low` 的谱包络在 dB 域拟合成一条三阶多项式，用它代表整体谱斜率，再翻成增益向量供 HF 生成搬移子带时取倒数。落在 `crates/macindecode-ac4-decode/src/aspx/preflatten.rs`。
 
 **拟合改在中心化坐标里做。** 伪码把 `x[i]` 直接取成子带号，于是正规方程 `AᵀA` 的元素是幂和 `S_k = Σ i^k`；实测几何下 `sbx` 在 28…40 之间，`S₆/S₀` 跨 `6,1×10⁷` 到 `5,4×10⁸`。改在 `u_i = (2i − (sbx−1))/(sbx−1) ∈ [−1, 1]` 上拟合后，同样的跨度降到 **0,17**——八个数量级。这不改变结果：最小二乘解唯一，换基只换系数的表示，拟合值 `slope[sb]` 不变；`polynomial_fit()` 本身是信息性引用（Numerical Recipes，[i.13]），规范只规定它是最小二乘意义下的拟合。因此本模块**不公开 `poly_array`**——那四个系数依赖基的选择。
 
@@ -875,7 +876,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.28 A-SPX 子带音调噪声比调整数据（`5.7.6.4.1.3`）
 
-`Pseudocode 86`–`88` 与表 195，落在 `crates/macindecode-ac4-bitstream/src/aspx/tna.rs`。产出逐 QMF 子带的复数预测系数 `alpha0`/`alpha1`，以及逐噪声子带组的 chirp 因子；两者都由 `5.7.6.4.1.4` 消费。
+`Pseudocode 86`–`88` 与表 195，落在 `crates/macindecode-ac4-decode/src/aspx/tna.rs`。产出逐 QMF 子带的复数预测系数 `alpha0`/`alpha1`，以及逐噪声子带组的 chirp 因子；两者都由 `5.7.6.4.1.4` 消费。
 
 **规范有一处排印脱漏。** `Pseudocode 87` 第二行写作 `abs(cov[1][2])`，少了 `[sb]` 一维；同段其余六处都带 `[sb]`，且 `cov` 在 `Pseudocode 86` 中就是三维的。按 `cov[sb][1][2]` 实现。这与 `5.7.6.3.5` 的 `Pseudocode 82` 无条件索引 `[1]` 是同一类排印问题（见 5.25）。
 
@@ -919,7 +920,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.29 A-SPX HF patch 子带组表（`5.7.6.3.1.4`）
 
-`Pseudocode 71`，落在 `crates/macindecode-ac4-bitstream/src/aspx/patches.rs`。patch 表说明 HF 生成把低带的哪几段搬到 A-SPX 范围、每段多长、源从哪个低带子带起，是 `5.7.6.4.1.4` 的直接输入。
+`Pseudocode 71`，落在 `crates/macindecode-ac4-decode/src/aspx/patches.rs`。patch 表说明 HF 生成把低带的哪几段搬到 A-SPX 范围、每段多长、源从哪个低带子带起，是 `5.7.6.4.1.4` 的直接输入。
 
 **不随频带表一起推导。** 它多要两个输入：`base_samp_freq` 是 TOC 级的采样率，`aspx_master_freq_scale` 是 `aspx_config()` 的字段而 [`AspxBandTables`] 推完就不再持有。把采样率塞进语法层的配置结构会让那个结构不再只是「码流里读到的东西」，故单列一次派生。
 
@@ -950,7 +951,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.30 A-SPX HF 信号创建（`5.7.6.4.1.4`）
 
-`Pseudocode 89`，落在 `crates/macindecode-ac4-bitstream/src/aspx/hfgen.rs`。它是 `5.7.6.4.1` 的汇合点：patch 表（5.29）、TNA 系数与 chirp（5.28）、预平坦化增益（5.27）四路输入在这里第一次同时用上。
+`Pseudocode 89`，落在 `crates/macindecode-ac4-decode/src/aspx/hfgen.rs`。它是 `5.7.6.4.1` 的汇合点：patch 表（5.29）、TNA 系数与 chirp（5.28）、预平坦化增益（5.27）四路输入在这里第一次同时用上。
 
 **同一次内层循环里有三个子带下标，混用任意两个都只是静默地搬错频段。**
 
@@ -996,7 +997,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.31 A-SPX 限幅器子带组表（`5.7.6.3.1.5`）
 
-`Pseudocode 72`–`74`，落在 `crates/macindecode-ac4-bitstream/src/aspx/limiter.rs`。把低分辨率信号包络表与 patch 边界并成一张表，再把靠得太近的边界合掉，使每个八度大约留两个组。`5.7.6.4.2.2` 的 `Pseudocode 96` 与 `99` 在 `aspx_limiter == 1` 时用它；关闭 limiter 的路径只执行初始增益 `Pseudocode 95`，不需要这张表。
+`Pseudocode 72`–`74`，落在 `crates/macindecode-ac4-decode/src/aspx/limiter.rs`。把低分辨率信号包络表与 patch 边界并成一张表，再把靠得太近的边界合掉，使每个八度大约留两个组。`5.7.6.4.2.2` 的 `Pseudocode 96` 与 `99` 在 `aspx_limiter == 1` 时用它；关闭 limiter 的路径只执行初始增益 `Pseudocode 95`，不需要这张表。
 
 **伪码的一处分号会改变语义。** 原文第二个复制循环写作 `for (sbg = 1; sbg < num_sbg_patches; sbg++);`，行尾的分号让循环体成为空语句，随后的块只在 `sbg == num_sbg_patches` 时执行一次。两条证据表明是排印错误：只复制一个边界与「把 patch 边界并进限幅器表」的意图矛盾；而 `sbg == num_sbg_patches` 时写入的下标 `num_sbg_patches + num_sbg_sig_lowres` 恰好比边界数上界大一格，按字面实现**还会越界写**。按意图逐个复制。
 
@@ -1028,7 +1029,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.32 A-SPX HF 包络调整：当前区间的估计（`5.7.6.4.2.1`）
 
-`Pseudocode 90`–`94`，落在 `crates/macindecode-ac4-bitstream/src/aspx/hfadjust.rs`。把 `Q_high` 的实际包络、传输来的标度因子、正弦标记与由它们算出的正弦/噪声电平铺到「QMF 子带 × 信号包络」的矩阵上，供 `5.7.6.4.2.2` 使用。ADR-0005 的六个 `sqrt` 里的头两个在 `Pseudocode 94`。
+`Pseudocode 90`–`94`，落在 `crates/macindecode-ac4-decode/src/aspx/hfadjust.rs`。把 `Q_high` 的实际包络、传输来的标度因子、正弦标记与由它们算出的正弦/噪声电平铺到「QMF 子带 × 信号包络」的矩阵上，供 `5.7.6.4.2.2` 使用。ADR-0005 的六个 `sqrt` 里的头两个在 `Pseudocode 94`。
 
 **`5.7.6.3.3.2` 的 tiling 到这里才有消费者。** `sbg_sig[atsg]` 按包络的 `atsg_freqres` 在高低分辨率两张表之间选一张；组数那一维此前由包络解码逐包络携带，边界表这一维一直悬空，`Pseudocode 90`、`91`、`93` 三处同时用上。
 
@@ -1068,7 +1069,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.33 A-SPX HF 包络调整：补偿增益（`5.7.6.4.2.2`）
 
-`Pseudocode 95`–`101`，落在 `crates/macindecode-ac4-bitstream/src/aspx/hfgain.rs`。把 5.32 的七张矩阵压成三张：`sig_gain_sb_adj` 缩放 HF 生成信号，`noise_lev_sb_adj` 交给 `5.7.6.4.3` 的噪声发生器，`sine_lev_sb_adj` 是要叠加的正弦幅度。ADR-0005 六个 `sqrt` 里的后四个都在这里。
+`Pseudocode 95`–`101`，落在 `crates/macindecode-ac4-decode/src/aspx/hfgain.rs`。把 5.32 的七张矩阵压成三张：`sig_gain_sb_adj` 缩放 HF 生成信号，`noise_lev_sb_adj` 交给 `5.7.6.4.3` 的噪声发生器，`sine_lev_sb_adj` 是要叠加的正弦幅度。ADR-0005 六个 `sqrt` 里的后四个都在这里。
 
 **`aspx_limiter` 决定是否进入 `Pseudocode 96`–`101`。** 表 122 明确定义 `0` 为 limiter off、`1` 为 limiter on；此前因七段伪码没有再写一层条件而误判成「无条件执行」。正确边界是：`Pseudocode 95` 始终计算初始信号增益；关闭时它与 `Pseudocode 94` 的噪声/正弦电平直接成为输出，boost 记为乘法中性元 `1`；打开时才做下面的两级钳制。接口用 `LimiterMode::Off/On` 表达，关闭路径不要求一张永远不会读取的 limiter 表。
 
@@ -1122,7 +1123,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.34 A-SPX 噪声发生器（`5.7.6.4.3`）
 
-`Pseudocode 102`–`103` 与表 D.2，落在 `crates/macindecode-ac4-bitstream/src/aspx/noisegen.rs`，表由 `build_support/noise.rs` 在构建期生成。把 5.33 的 `noise_lev_sb_adj` 逐时隙铺开，乘上 512 个复数，产出与 `Q_high` 同形的 `qmf_noise`。
+`Pseudocode 102`–`103` 与表 D.2，落在 `crates/macindecode-ac4-decode/src/aspx/noisegen.rs`，表由 `build_support/noise.rs` 在构建期生成。把 5.33 的 `noise_lev_sb_adj` 逐时隙铺开，乘上 512 个复数，产出与 `Q_high` 同形的 `qmf_noise`。
 
 **表 D.2 只在随附 zip 里。** PDF 正文只给出表名、`num_columns 2` 与 `num_rows 512`，数值在 `ts_10319001v010401p0.zip` 的 `ASPX_NOISE[512][2]`。与附录 A 的 Huffman 码本同一处境，因此同样关在 `audio-decode` 之后，由构建脚本从校验过的 C 文件生成到 `OUT_DIR`，不进版本控制。
 
@@ -1159,7 +1160,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.35 A-SPX 音调生成器（`5.7.6.4.4`）
 
-`Pseudocode 104`–`105` 与表 196，落在 `crates/macindecode-ac4-bitstream/src/aspx/tonegen.rs`。把 5.33 的 `sine_lev_sb_adj` 逐时隙铺开，乘上四个复数，产出与 `Q_high` 同形的 `qmf_sine`。表 196 在 PDF 正文内（不在随附 C 文件里），四项恰是 `i` 的前四个幂，但仍按表的四行写出——表是规范的呈现形式，逐行对照比论证「这确实是 `i^k`」更直接。
+`Pseudocode 104`–`105` 与表 196，落在 `crates/macindecode-ac4-decode/src/aspx/tonegen.rs`。把 5.33 的 `sine_lev_sb_adj` 逐时隙铺开，乘上四个复数，产出与 `Q_high` 同形的 `qmf_sine`。表 196 在 PDF 正文内（不在随附 C 文件里），四项恰是 `i` 的前四个幂，但仍按表的四行写出——表是规范的呈现形式，逐行对照比论证「这确实是 `i^k`」更直接。
 
 **与噪声发生器形似而不同的四处。** 两节的外层循环逐字相同，极易顺手照抄：
 
@@ -1213,7 +1214,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.36 A-SPX 高频信号组装（`5.7.6.4.5`）
 
-`Pseudocode 106`–`108`，落在 `crates/macindecode-ac4-bitstream/src/aspx/hfassemble.rs`。把 5.33 的 `sig_gain_sb_adj` 乘到 `Q_high` 上，再依次叠加 5.34 的 `qmf_noise` 与 5.35 的 `qmf_sine`，得到本区间的 `Y`。这是 A-SPX 参数侧的最后一步。
+`Pseudocode 106`–`108`，落在 `crates/macindecode-ac4-decode/src/aspx/hfassemble.rs`。把 5.33 的 `sig_gain_sb_adj` 乘到 `Q_high` 上，再依次叠加 5.34 的 `qmf_noise` 与 5.35 的 `qmf_sine`，得到本区间的 `Y`。这是 A-SPX 参数侧的最后一步。
 
 **跨帧搬运的是已组装的输出，不是输入。** `Pseudocode 106` 第一段把 `Y_prev[sb][num_qmf_timeslots + ts]` 取回本区间前 `atsg_sig[0]·num_ts_in_ats` 个时隙，正文 NOTE 给了缘由：区间右边界可以越过帧尾，那部分上一帧已经算完。这与 5.23 的低带延迟线是两回事——低带搬输入、按固定偏移取后缀，这里搬成品、长度由两帧边界共同决定。因此 `HfDelay` 与本区间左边界不等时**直接报错**而不是自动截断：串位在这里没有任何自证迹象。越帧量是 `aspx_var_bord_right·num_ts_in_ats`；该边界由 `4.3.10.4.5` 定义，语法表 53 给它 2 比特，表 192 的倍率至多 2，故上界恰为 6，是紧的。
 
@@ -1229,7 +1230,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.37 A-SPX 输出合并（`5.7.6.5.3`）
 
-落在 `crates/macindecode-ac4-bitstream/src/aspx/interleave.rs`。把延迟后的 `Q_in,ASPX` 与 `5.7.6.4.5` 的 `Y` 相加得到 `Q_out,ASPX`，交给下游 QMF 域处理（`5.7.6.1` 图 6、`5.7.7` 图 7 的 `A-SPX → Advanced Coupling → QMF Synthesis`）。
+落在 `crates/macindecode-ac4-decode/src/aspx/interleave.rs`。把延迟后的 `Q_in,ASPX` 与 `5.7.6.4.5` 的 `Y` 相加得到 `Q_out,ASPX`，交给下游 QMF 域处理（`5.7.6.1` 图 6、`5.7.7` 图 7 的 `A-SPX → Advanced Coupling → QMF Synthesis`）。
 
 **这一条款此前被整节推迟，是勘查接线时才发现漏掉的。** `5.7.6.5` 是交织波形编码，实测 `fic`/`tic` 恒为 0，故整节判为不可达。但**不可达的是交织分量，输出合并不是**——低带能出现在 `Q_out` 里全靠这条加法，没有它 A-SPX 就没有出口。
 
@@ -1241,7 +1242,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.38 A-SPX 通路编排（`5.7.6`）
 
-落在 `crates/macindecode-ac4-bitstream/src/aspx/pipeline.rs`。把 5.20 的 QMF 分析与 5.23–5.37 的各工具按 `5.7.6.1` 图 6 串到 `Q_out,ASPX`，再把仅供链路终点使用的 QMF 合成留在 PCM 包装层。`5.7.6` 至此除实测不可达的交织分量（`5.7.6.5.1`/`5.7.6.5.2`，及 `5.7.6.5.3` 的时间交织替换分支）外全部落地。**这一节不新增任何规范判读**——它全部的内容是接线：谁排在谁之前、哪个缓冲对齐到哪条时间轴、哪个跨帧状态在什么时候推进。因此它的判据也和前面各节不同，验的不是公式而是**顺序与对齐**。
+落在 `crates/macindecode-ac4-decode/src/aspx/pipeline.rs`。把 5.20 的 QMF 分析与 5.23–5.37 的各工具按 `5.7.6.1` 图 6 串到 `Q_out,ASPX`，再把仅供链路终点使用的 QMF 合成留在 PCM 包装层。`5.7.6` 至此除实测不可达的交织分量（`5.7.6.5.1`/`5.7.6.5.2`，及 `5.7.6.5.3` 的时间交织替换分支）外全部落地。**这一节不新增任何规范判读**——它全部的内容是接线：谁排在谁之前、哪个缓冲对齐到哪条时间轴、哪个跨帧状态在什么时候推进。因此它的判据也和前面各节不同，验的不是公式而是**顺序与对齐**。
 
 五档 QMF 域入口按加进来的工具递进，各有一个只追加终端合成的 PCM 包装器：
 
@@ -1278,7 +1279,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.39 声道到工具的路由（P2 `6.2.4.4`、`5.7.2.1`）
 
-落在 `crates/macindecode-ac4-bitstream/src/var_element.rs`。把 A-SPX 通路接进真实声道路径要先回答四个问题，四个的共同点是**答错了没有任何一处会报错**：错配的参数、错分的驱动方式、错序的上混输入，都照样算出有峰值、有能量、落点精确的音频。
+落在 `crates/macindecode-ac4-decode/src/var_element.rs`。把 A-SPX 通路接进真实声道路径要先回答四个问题，四个的共同点是**答错了没有任何一处会报错**：错配的参数、错分的驱动方式、错序的上混输入，都照样算出有峰值、有能量、落点精确的音频。
 
 **其一，某路核心带 PCM 的 A-SPX 参数在哪。** `var_channel_element()` 分两段传输，两段的元素数不同。`coding_config = true` 时两段的**分组**也不一样：信号 6、7、8 在声道侧属同一个 `three_channel_data()`，在 A-SPX 侧却分属两个元素（一个 `aspx_data_2ch()` 加一个 `aspx_data_1ch()`）。`coding_config = false` 时两侧尾部同为 `2 + 1`，分组一致。LFE 另占声道侧的第一个元素而**不占** A-SPX 下标。`VarChannelElement::signals()` 逐路给出两段落点，判据是双射：期望序列由解析器填好的工作区生成，覆盖 1…16 路 × 有无 LFE × 两种编码配置 × 两档 `aspx_balance`。
 
@@ -1296,7 +1297,7 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.40 元素级 A-SPX 驱动（P2 `6.2.4.4`、P1 `5.7.6`）
 
-落在 `crates/macindecode-ac4-bitstream/src/element_drive.rs`。它消费 5.39 的三份路由结果，把同一个 `var_channel_element()` 的全部核心带 PCM 分派到 SIMPLE QMF、A-SPX 单路/平衡式双路或 LFE 对齐通路，再按 `Pseudocode 14a` 的顺序写成 A-JOC 输入。A-SPX 元素里的 LFE 走 `Y ≡ 0` 的活动通路以补 `δ_ASPX`；SIMPLE 元素一路都不进 A-SPX，故只分析、不补该延迟。
+落在 `crates/macindecode-ac4-decode/src/element_drive.rs`。它消费 5.39 的三份路由结果，把同一个 `var_channel_element()` 的全部核心带 PCM 分派到 SIMPLE QMF、A-SPX 单路/平衡式双路或 LFE 对齐通路，再按 `Pseudocode 14a` 的顺序写成 A-JOC 输入。A-SPX 元素里的 LFE 走 `Y ≡ 0` 的活动通路以补 `δ_ASPX`；SIMPLE 元素一路都不进 A-SPX，故只分析、不补该延迟。
 
 **结构错误按整元素预检。** 全部声道必须共用表 189/192 的同一合法帧长；状态与中间量都必须覆盖传输顺序的全部声道；A-SPX 数据/配置的存在性与逐路访问、作业覆盖及 A-JOC 落点在第一路状态推进前走完。此前平衡式短切片会在 `split_at_mut(high)` 处 panic；带 LFE 的元素缺 A-SPX 数据时，则会先推进 LFE，再在后一条 Mono 作业失败。两者现分别返回容量错误与 `MissingAspxData`，状态、工作区和输出保持原样。底层 `PipelineError` 的边界不同：通路启动后的意外内部错误仍可能让此前声道部分推进，调用方必须丢弃整元素输出、重置状态并从随机访问点重新起解，接口文档不再把这类错误误称为可原帧重试。
 

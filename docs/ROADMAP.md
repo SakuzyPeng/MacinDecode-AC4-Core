@@ -6,17 +6,17 @@
 
 ## 当前活动方向
 
-截至 2026-08-29，M0–M4、受限 M4.5 与 M6 已完成；M5 已建立 A-JOC Core/Full Scene API，
-direct-object 仍待完成；M7 的 ARM64 性能基线和两轮 QMF 优化已经落地，公共 ABI、fuzz、x86-64
-实测和长期稳定性门禁仍未完成。
+截至 2026-08-30，M0–M4、受限 M4.5 与 M6 已完成；M5 已建立 A-JOC Core/Full Scene API，
+direct-object 仍待完成；M7 已按 ADR-0011/0013 完成 syntax/decode/scene 物理拆包，ARM64 性能
+基线和两轮 QMF 优化也已落地，公共 ABI、fuzz、x86-64 实测和长期稳定性门禁仍未完成。
 
 下一阶段按以下顺序推进：
 
-1. 按 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 先在现有 crate 内收口
-   `syntax` / `decode` / `engine` 边界，集中共享的 MP4 sample 与时间换算入口；不得混入数值变化。
+1. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
+   [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →
+   scene 单向边界；后续重构不得混入数值变化。
 2. 完成 direct-object 的真实输入、Scene identity/OAMD 语义与公共输出门禁，关闭 M5 剩余范围。
-3. 在默认、`audio-decode`、`no_std`、三层 PCM 和 Scene/CLI 契约均保持不变后，再评估提取单一
-   `macindecode-ac4-decode` crate；不再按旧的 `audio-core` / `ajoc` / `oamd` 三路草图拆包。
+3. 集中共享的 MP4 sample 与时间换算入口，继续消除 CLI 外层的重复适配。
 4. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。
 
 ## M0：文档与工具链冻结
@@ -449,7 +449,7 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 
 交付物：
 
-- 按 ADR-0011 收口语法、DSP/engine 与 Scene 的单向职责边界。
+- 按 ADR-0011/0013 收口语法、DSP/engine 与 Scene 的单向职责边界。
 - 版本化 C ABI。
 - Swift/C++ 最小集成示例。
 - fuzz corpus、sanitizer/Miri 辅助检查和长时间稳定性测试。
@@ -458,8 +458,8 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 
 退出条件：实时预算、内存上限、错误恢复和 ABI 生命周期均有自动测试；标量实现仍可作为独立参考路径运行。
 
-**状态：进行中。** 架构收口先于物理拆包和 FFI；direct-object 与真实宿主所有权需求稳定前，
-不冻结 C ABI。2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
+**状态：进行中。** 2026-08-30 已完成 `macindecode-ac4-decode` 物理提取；direct-object 与真实
+宿主所有权需求稳定前仍不冻结 C ABI。2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
 release 构建覆盖 12 条真实 A-JOC 向量的 Core/Full 共 24 个组合，当前 Core 为
 `11.64x`–`23.10x` 实时、Full 为 `5.22x`–`7.22x` 实时且均无 deadline miss；上一版数据捕获过
 1 次 56.114 ms 的 Full 单 AU miss，新增观测已开始保留最差事件的 pass/AU 索引。完整预热后

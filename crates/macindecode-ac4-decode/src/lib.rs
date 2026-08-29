@@ -61,18 +61,18 @@ pub use dialog_enhancement::{
     DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
     DialogEnhancementDecodedData, DialogEnhancementEffectiveData,
     DialogEnhancementEffectiveDataBlock, DialogEnhancementEffectiveParameterData,
-    DialogEnhancementEffectiveSimulcastData, DialogEnhancementMixCoefficients,
-    DialogEnhancementParameterData, DialogEnhancementParameterUpdate,
-    DialogEnhancementPositionUpdate, DialogEnhancementSimulcastData, DialogEnhancementState,
-    DialogEnhancementStateError, MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS,
-    MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
+    DialogEnhancementEffectiveSimulcastData, DialogEnhancementMetadataExt,
+    DialogEnhancementMixCoefficients, DialogEnhancementParameterData,
+    DialogEnhancementParameterUpdate, DialogEnhancementPositionUpdate,
+    DialogEnhancementSimulcastData, DialogEnhancementState, DialogEnhancementStateError,
+    MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS, MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
 };
 #[cfg(feature = "audio-decode")]
 pub use drc_gains::{
     MAX_PRESENTATION_DRC_BANDS, MAX_PRESENTATION_DRC_CHANNEL_GROUPS,
     MAX_PRESENTATION_DRC_GAIN_VALUES, MAX_PRESENTATION_DRC_SUBFRAMES,
-    PresentationDrcDecodedGainSet, PresentationDrcGains, PresentationDrcGainsContext,
-    PresentationDrcGainsError,
+    PresentationDrcDecodedGainSet, PresentationDrcGainSetExt, PresentationDrcGains,
+    PresentationDrcGainsContext, PresentationDrcGainsError,
 };
 #[cfg(feature = "audio-decode")]
 pub use huffman::{HuffmanError, HuffmanTable};

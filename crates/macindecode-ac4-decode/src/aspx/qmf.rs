@@ -1392,7 +1392,7 @@ mod tests {
     }
 
     /// 手动运行：
-    /// `cargo test -p macindecode-ac4-bitstream --release --features audio-decode qmf_paired_modulation_benchmark -- --ignored --nocapture`
+    /// `cargo test -p macindecode-ac4-decode --release --features audio-decode qmf_paired_modulation_benchmark -- --ignored --nocapture`
     #[test]
     #[ignore = "手动运行的 QMF 成对调制微基准"]
     fn qmf_paired_modulation_benchmark() {
@@ -1497,7 +1497,7 @@ mod tests {
     }
 
     /// 手动运行：
-    /// `cargo test -p macindecode-ac4-bitstream --release --features audio-decode qmf_channel_pair_analysis_benchmark -- --ignored --nocapture`
+    /// `cargo test -p macindecode-ac4-decode --release --features audio-decode qmf_channel_pair_analysis_benchmark -- --ignored --nocapture`
     #[test]
     #[ignore = "手动运行的 20 声道 QMF 分析微基准"]
     fn qmf_channel_pair_analysis_benchmark() {
@@ -1566,7 +1566,7 @@ mod tests {
     }
 
     /// 手动运行：
-    /// `cargo test -p macindecode-ac4-bitstream --release --features audio-decode qmf_channel_pair_benchmark -- --ignored --nocapture`
+    /// `cargo test -p macindecode-ac4-decode --release --features audio-decode qmf_channel_pair_benchmark -- --ignored --nocapture`
     #[test]
     #[ignore = "手动运行的 20 声道 QMF 批量微基准"]
     fn qmf_channel_pair_benchmark() {

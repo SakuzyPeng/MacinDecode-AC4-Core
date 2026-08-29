@@ -115,7 +115,7 @@ def ensure(entry: dict, *, verify_only: bool, force: bool) -> None:
 def verify_member(entry: dict) -> None:
     """校验 zip 内单个成员的内容哈希，并把它释出到 spec/。
 
-    释出是必需的而非便利：`macindecode-ac4-bitstream` 的 build script 在构建时
+    释出是必需的而非便利：`macindecode-ac4-decode` 的 build script 在构建时
     读取这些 C 表生成 Huffman 解码表。构建期不做解压，但会对实际读入字节
     再算一次 SHA-256；此处校验 zip 成员并负责安全释出。释出文件与 zip
     同样不进入版本控制。

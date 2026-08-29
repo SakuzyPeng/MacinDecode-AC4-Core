@@ -1,23 +1,13 @@
 #!/usr/bin/env python3
-"""审计 `macindecode-ac4-bitstream` 内部的层依赖方向（ADR-0011）。
+"""审计 bitstream 与 decode crate 内部的层依赖方向（ADR-0011、ADR-0013）。
 
     ./scripts/check_layers.py
     ./scripts/check_layers.py --list
 
-ADR-0011 把长期依赖方向定为 syntax -> decode/engine -> scene。物理拆包之前，
-这个方向在同一个 crate 内**没有任何东西强制**：Rust 允许模块之间互相引用，而
-`audio-decode` 只在解码层整体缺席时才顺带挡住一部分越界——`asf::dequant` 与
-`ajoc::{MAX_*, MatrixKind}` 在默认配置下无门控可见，语法层引用它们不会被任何
-配置抓到。本脚本补上那道门禁。
-
-规则只有一条：**语法层不得引用解码层**。反向（解码层引用语法层）是既定的正确
-方向，不报。基础层（bit reader、实数函数、Huffman 码本机制）两边都可依赖，但它
-自己不得反过来依赖上层。
-
-`huffman` 归入基础层而不是解码层，因为 DRC gains 与 dialogue enhancement 是
-**Huffman 编码的元数据**：`presentation_substream/drc_gains.rs` 与
-`audio_substream/dialog_enhancement.rs` 都要用 `huffman::tables`，它跟解码层
-一起走会造出环。
+ADR-0011 把长期依赖方向定为 syntax -> decode/engine -> scene；ADR-0013 已完成
+bitstream/decode 物理拆包。Cargo 强制 crate 间方向，本脚本继续拒绝各 crate 内从低层到
+高层的模块引用，并对未登记的新顶层模块失败关闭。decode 内的 Huffman metadata 层可依赖
+Huffman primitive，但不得依赖 DSP。
 
 只用标准库，不需要规范 PDF，也不需要任何 feature。由 CI 的 quality 检查运行。
 """

@@ -16,13 +16,14 @@ encoded access units
 
 场景帧之后的扬声器映射、对象声像计算、双耳化和设备处理均属于外部系统。
 
-## 2. 当前 workspace 与目标拆分
+## 2. 当前 workspace 与职责边界
 
-当前 workspace 有六个 crate，其中五个是可发布包，`macindecode-ac4-perf` 仅供仓库内部使用：
+当前 workspace 有七个 crate，其中六个是可发布包，`macindecode-ac4-perf` 仅供仓库内部使用：
 
 | crate | 当前职责 | 平台依赖 |
 |---|---|---|
-| `macindecode-ac4-bitstream` | bit reader、sync/TOC/拓扑、presentation/OAMD/EMDF、音频语法，以及 feature-gated ASF/A-SPX/A-JOC DSP 与 Full engine | 无，`no_std` |
+| `macindecode-ac4-bitstream` | bounded bit reader、sync/TOC/拓扑、presentation/OAMD/EMDF、音频语法与 opaque metadata view | 无，`no_std` |
+| `macindecode-ac4-decode` | ASF/A-SPX/A-JOC 数值重建、Huffman metadata、QMF、表 188 对齐与统一 Full engine | 无，`no_std` |
 | `macindecode-ac4-scene` | 容器无关的 `Ac4SceneFrame` 数据契约、Session 控制面、A-JOC Core/Full 场景组装与 presentation metadata 侧车 | 无，`no_std` |
 | `macindecode-ac4-mp4` | `ac-4`、`dac4`、sample table、edit/priming 时间线 | 无，`no_std` |
 | `macindecode-ac4-inspect` | MP4/raw 单遍聚合、公开报告 DTO、JSON 序列化与稳定 text renderer | 使用 `std` |
@@ -40,19 +41,19 @@ CLI 的 core/full artifact 出口消费同一 Scene batch adapter：raw 侧剥�
 control source AU、raw timing、ramp、完整更新后状态与 changed mask，并按 `(offset, 码流顺序)`
 稳定排列事件；越过帧尾的更新留在有界复用队列。
 
-下一轮重整由 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 冻结为三层职责：
+[ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 冻结的三层职责已经由
+[ADR-0013](decisions/0013-extract-decode-crate.md) 完成物理拆包：
 
 | 边界 | 状态 | 目标职责 |
 |---|---|---|
-| `macindecode-ac4-bitstream` | 已存在，逐步收口 | bounded syntax、topology、presentation、raw/quantized OAMD 与 opaque metadata |
-| `macindecode-ac4-decode` | 规划 crate | ASF/A-SPX/A-JOC 数值重建、QMF、表 188 对齐与统一 Full engine |
+| `macindecode-ac4-bitstream` | 已收口 | bounded syntax、topology、presentation、raw/quantized OAMD 与 opaque metadata |
+| `macindecode-ac4-decode` | 已提取 | ASF/A-SPX/A-JOC 数值重建、QMF、表 188 对齐与统一 Full engine |
 | `macindecode-ac4-scene` | 已存在 | presentation 选择、Session 事务、渲染前语义与借用输出 |
 | `macindecode-ac4-ffi` | 延后评估 | Rust Scene API 稳定且有真实宿主需求后建立的版本化 C ABI |
 
-迁移先在现有 crate 内建立 `syntax`、`decode`、`engine` 模块边界并保留兼容 re-export，再决定
-物理拆包。旧的 `audio-core` / `ajoc` / `oamd` 三路规划不再作为目标包结构；raw OAMD 留在
-bitstream，Scene 语义映射留在 scene，direct-object 完成后才重新评估是否存在无环的独立 OAMD
-中间层。无论最终包数如何，MP4、inspection、FFI、CLI 或 perf 都不得成为解码核心的反向依赖。
+旧的 `audio-core` / `ajoc` / `oamd` 三路规划不再作为目标包结构；raw OAMD 留在 bitstream，
+Scene 语义映射留在 scene，direct-object 完成后才重新评估是否存在无环的独立 OAMD 中间层。
+MP4、inspection、FFI、CLI 或 perf 都不得成为解码核心的反向依赖。
 
 ### 2.1 当前源码内职责边界
 
@@ -62,11 +63,14 @@ bitstream，Scene 语义映射留在 scene，direct-object 完成后才重新评
 |---|---|
 | `macindecode-ac4-bitstream/src/oamd/` | common/object/payload 语法、跨帧状态和描述适配 |
 | `macindecode-ac4-bitstream/src/presentation_substream.rs` | presentation selection、响度、DRC、group/associated gain、custom downmix、loudness correction 原值及解析所需状态 |
-| `macindecode-ac4-bitstream/src/audio_substream.rs`、`audio_substream/` | 有界 audio metadata、dialogue-enhancement 原始/有效参数与按物理 substream 隔离的解析状态 |
+| `macindecode-ac4-bitstream/src/audio_substream.rs` | 有界 audio metadata、dialogue-enhancement presence/configuration 与原始 body view |
 | `macindecode-ac4-bitstream/src/emdf.rs` | EMDF 配置、路由/时序 envelope 与不解释 datatype 的 opaque payload view |
 | `macindecode-ac4-bitstream/src/substream/` | channel/object/group substream 声明与共享读取逻辑 |
 | `macindecode-ac4-bitstream/src/topology/` | 拓扑解析、引用验证和随机访问状态机 |
-| `macindecode-ac4-bitstream/build_support/` | 数学表、QMF、规范 C 表/Huffman 与 SHA-256；`build.rs` 只调度 |
+| `macindecode-ac4-decode/src/{asf,aspx,ajoc}/` | ASF/A-SPX/A-JOC 的语法消费、数值重建、QMF 与对象处理 |
+| `macindecode-ac4-decode/src/dialog_enhancement/`、`drc_gains.rs` | 消费规范 Huffman 表的 DE/DRC data 解码与跨帧有效状态 |
+| `macindecode-ac4-decode/src/{audio_data,channel,full_ajoc,...}` | 音频元素驱动、表 188 对齐与统一 Full A-JOC engine |
+| `macindecode-ac4-decode/build_support/` | 数学表、QMF、规范 C 表/Huffman 与 SHA-256；`build.rs` 只调度 |
 | `macindecode-ac4-scene/src/model.rs` | timeline、presentation、bed/object PCM、group 级 OAMD common、逐对象更新、presentation metadata 侧车及借用输出模型 |
 | `macindecode-ac4-scene/src/session.rs` | Session 控制面、presentation/mode 选择、processing-metadata 跨帧状态与 payload 存储、Core/Full A-JOC 拓扑门禁及 engine 所有权 |
 | `macindecode-ac4-scene/src/full_engine.rs` | 同一 AU 候选到 A-JOC engine 的事务输入及结构化错误投影 |
@@ -90,19 +94,6 @@ bitstream，Scene 语义映射留在 scene，direct-object 完成后才重新评
 当前 crate 依赖图（`A -> B` 表示 A 依赖 B）：
 
 ```text
-macindecode-ac4-cli -> macindecode-ac4-inspect -> macindecode-ac4-mp4
-macindecode-ac4-cli ---------------------------> macindecode-ac4-mp4
-macindecode-ac4-cli ---------------------------> macindecode-ac4-bitstream
-macindecode-ac4-cli -> macindecode-ac4-scene --> macindecode-ac4-bitstream
-macindecode-ac4-inspect ------------------------> macindecode-ac4-bitstream
-macindecode-ac4-mp4 ----------------------------> macindecode-ac4-bitstream
-macindecode-ac4-perf -> macindecode-ac4-scene --> macindecode-ac4-bitstream
-macindecode-ac4-perf -> macindecode-ac4-mp4 ----> macindecode-ac4-bitstream
-```
-
-重整后的目标依赖方向如下；`macindecode-ac4-decode` 与 FFI 尚未建立：
-
-```text
 macindecode-ac4-decode  -> macindecode-ac4-bitstream
 macindecode-ac4-scene   -> macindecode-ac4-decode
 macindecode-ac4-scene   -> macindecode-ac4-bitstream
@@ -110,7 +101,7 @@ macindecode-ac4-mp4     -> macindecode-ac4-bitstream
 macindecode-ac4-inspect -> macindecode-ac4-mp4 + macindecode-ac4-bitstream
 macindecode-ac4-cli     -> inspect + mp4 + scene + bitstream/decode
 macindecode-ac4-perf    -> mp4 + scene + bitstream/decode
-macindecode-ac4-ffi     -> scene
+macindecode-ac4-ffi     -> scene  （尚未建立）
 ```
 
 当前 `macindecode-ac4-scene` 已定义容器无关的数据模型和 Session 控制面；`decode_access_unit` 只接收调用方定界的 access unit 与已经换算为整数采样的位置，不读取或解释 MP4 字节。`macindecode-ac4-mp4` 只负责 access unit、AC-4 轨定位与时间线，不解释音频工具语义；`macindecode-ac4-inspect` 消费 MP4 与 bitstream typed API，形成文件级只读报告，不进入 Scene 或音频处理。CLI 的 `scene_batch` 消费 MP4 与 Scene，并在 Scene 返回以后执行 WAVE 兼容所需的 edit 与尺度投影。调用方可以把 DSI 等系统层选择信息保留在泛型 `PresentationSelectionMetadata<T>` 中，再由已选 `ScenePresentation` 按双方唯一的 effective ID 取得只读关联；数组下标不作为身份，身份不可用的 opaque 项会令关联保持 `Indeterminate`，metadata 不进入解码配置，也不形成 Scene 到 MP4 的依赖。presentation 处理前 Scene、选择、时间、所有权、normalized PCM 与 raw OAMD 的正式边界见 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md)。
@@ -138,7 +129,9 @@ macindecode-ac4-ffi     -> scene
 
 ### 4.1 Presentation/metadata 解析状态所有权
 
-M4.5 的 presentation processing metadata 由 `macindecode-ac4-bitstream` 负责严格解析；
+M4.5 的 presentation processing metadata envelope 由 `macindecode-ac4-bitstream` 负责严格
+定界和解析；需要规范 Huffman 表的 DRC gains 与 dialogue-enhancement data 由
+`macindecode-ac4-decode` 的扩展 trait 解码。
 `Ac4DecoderSession` 现为所选 presentation 持有 DRC/group-gain 历史和已验证 payload 副本，
 并通过 `DecodedAccessUnit::presentation_metadata` 发布 AU 级借用侧车。它没有变成
 `Ac4SceneFrame` 字段，也不执行处理。audio-substream dialogue enhancement、alternative OAMD

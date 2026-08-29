@@ -102,7 +102,12 @@ impl<'a> BitReader<'a> {
     ///
     /// 该构造器用于解析长度 envelope 内部的非字节对齐语法。读取错误仍报告相对原始输入的
     /// bit offset，但 [`remaining_bits`](Self::remaining_bits) 不会越过 `bit_len` 声明的边界。
-    pub(crate) fn new_bounded(data: &'a [u8], bit_position: u64, bit_len: u64) -> Result<Self> {
+    ///
+    /// # Errors
+    ///
+    /// 起点或长度越过输入末尾时返回 [`ReadError::OutOfBounds`]；末尾偏移无法表示时返回
+    /// [`ReadError::ValueOverflow`]。
+    pub fn new_bounded(data: &'a [u8], bit_position: u64, bit_len: u64) -> Result<Self> {
         let total_bits = (data.len() as u64).saturating_mul(8);
         let available = total_bits.saturating_sub(bit_position);
         if bit_position > total_bits || bit_len > available {
@@ -326,12 +331,12 @@ impl<'a> BitReader<'a> {
     }
 
     /// 读取变长扩展并计算 `base + extension * 2^shift`，全过程检查溢出。
-    pub(crate) fn variable_bits_scaled_u32(
-        &mut self,
-        n_bits: u32,
-        base: u32,
-        shift: u32,
-    ) -> Result<u32> {
+    ///
+    /// # Errors
+    ///
+    /// 码字截断时返回读取错误；移位或计算溢出、结果超出 `u32` 时返回
+    /// [`ReadError::ValueOverflow`]。
+    pub fn variable_bits_scaled_u32(&mut self, n_bits: u32, base: u32, shift: u32) -> Result<u32> {
         let start = self.bit_position;
         let extension = self.variable_bits(n_bits)?;
         let scale = 1u64.checked_shl(shift).ok_or(ReadError::ValueOverflow {

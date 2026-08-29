@@ -73,11 +73,11 @@ impl OamdDyndataSingle {
         )
     }
 
-    /// 与 [`Self::parse`] 相同，但把已验证的逐对象 block 同步交给 crate 内调用方。
+    /// 与 [`Self::parse`] 相同，但把已验证的逐对象 block 同步交给调用方。
     ///
     /// `audio_data_ajoc()` 需要在一次解析中既保留 alternative dataset 边界，又填充
     /// 既有 OAMD 状态工作区；observer 避免为此重复读取完整元素。
-    pub(crate) fn parse_with_block_observer(
+    pub fn parse_with_block_observer(
         reader: &mut BitReader<'_>,
         objects: &[ObjectDescriptor],
         num_obj_info_blocks: u8,

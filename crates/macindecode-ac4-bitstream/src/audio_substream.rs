@@ -24,8 +24,8 @@
 //! `tools_metadata_size` 另以比特数严格定界 DRC 与 dialogue enhancement。当前
 //! `sus_ver >= 1` 路径解析 `b_de_data_present`、I/dependent configuration gate 与
 //! `de_config()`，并把 `de_data()`/simulcast body 保留为零拷贝 bit view；启用
-//! `audio-decode` 后可显式熵解码完整帧内 data 语法，并以调用方按物理 substream 隔离的状态
-//! 还原有效参数索引；仍不反量化或执行 dialogue enhancement。
+//! `macindecode-ac4-decode/audio-decode` 后可显式熵解码完整帧内 data 语法，并以调用方按物理
+//! substream 隔离的状态还原有效参数索引；仍不反量化或执行 dialogue enhancement。
 
 use crate::emdf::{EmdfError, EmdfPayloadsSubstream};
 use crate::oamd::{
@@ -309,6 +309,16 @@ impl<'a> AudioToolsMetadataBits<'a> {
         self.bit_len == 0
     }
 
+    /// 在该视图边界内创建保留原 payload 全局偏移的读取器。
+    ///
+    /// # Errors
+    ///
+    /// 视图边界不再落在原 payload 内时返回 [`ReadError`]。通过本 crate 解析得到的视图
+    /// 已经验证过边界；该错误只可能来自损坏的手工构造值。
+    pub fn reader(self) -> Result<BitReader<'a>, ReadError> {
+        BitReader::new_bounded(self.source, self.bit_offset, u64::from(self.bit_len))
+    }
+
     /// 读取一个原始 bit。
     #[must_use]
     pub fn get(self, index: u32) -> Option<bool> {
@@ -394,8 +404,8 @@ impl Iterator for AudioToolsMetadataBitIter<'_> {
 
 /// `de_config()` 的三个原始码值。
 ///
-/// 配置用于继续定界 `de_data()`，并在 `audio-decode` 状态层选择参数形状；本类型不换算最大
-/// 增益，也不执行 dialogue enhancement。
+/// 配置用于继续定界 `de_data()`，并由 `macindecode-ac4-decode/audio-decode` 状态层选择参数
+/// 形状；本类型不换算最大增益，也不执行 dialogue enhancement。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DialogEnhancementConfiguration {
     /// 2 比特 `de_method`。
@@ -427,8 +437,9 @@ pub enum DialogEnhancementConfigurationUpdate {
 
 /// `dialog_enhancement()` 的 presence、configuration 与活动 data body。
 ///
-/// 默认构建以原始 bit view 保留 `de_data()`；启用 `audio-decode` 后可显式解码帧内语法，或交给
-/// `DialogEnhancementState` 延续有效索引。本类型不执行 dialogue enhancement。
+/// 本 crate 以原始 bit view 保留 `de_data()`；启用 `macindecode-ac4-decode/audio-decode` 后可
+/// 显式解码帧内语法，或交给 `DialogEnhancementState` 延续有效索引。本类型不执行 dialogue
+/// enhancement。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DialogEnhancementMetadata {
     /// `b_de_data_present`。
@@ -442,6 +453,32 @@ pub struct DialogEnhancementMetadata {
 }
 
 impl DialogEnhancementMetadata {
+    /// 从已定界的原始字段构造 metadata。
+    ///
+    /// 普通调用方应优先使用 [`Ac4AudioSubstream::parse`]；本入口供无损协议适配和测试夹具
+    /// 重建同一表示。它只验证 body 的 bit range，字段间语义一致性由下游解码器检查；范围
+    /// 越过 `payload` 时返回 `None`。
+    #[must_use]
+    pub fn from_raw_parts(
+        payload: &[u8],
+        data_present: bool,
+        configuration: DialogEnhancementConfigurationUpdate,
+        unparsed_body_bit_offset: u64,
+        unparsed_body_bits: u32,
+        frame_iframe: Option<bool>,
+        simulcast_gate: bool,
+    ) -> Option<Self> {
+        AudioToolsMetadataBits::new(payload, unparsed_body_bit_offset, unparsed_body_bits)?;
+        Some(Self {
+            data_present,
+            configuration,
+            unparsed_body_bit_offset,
+            unparsed_body_bits,
+            frame_iframe,
+            simulcast_gate,
+        })
+    }
+
     /// 前置 info 为当前物理 substream 提供的 `b_audio_ndot`/`b_iframe`。
     ///
     /// 一个 info 覆盖多个物理 substream 且无法恢复逐一 ndot 时为 `None`。活动 DE 的帧内解析
@@ -455,6 +492,18 @@ impl DialogEnhancementMetadata {
     #[must_use]
     pub const fn unparsed_body_len_bits(self) -> u32 {
         self.unparsed_body_bits
+    }
+
+    /// 已解析 configuration 之后尚未解释 body 的原 payload 比特偏移。
+    #[must_use]
+    pub const fn unparsed_body_bit_offset(self) -> u64 {
+        self.unparsed_body_bit_offset
+    }
+
+    /// 当前 channel mode 是否传输 separate core/simulcast presence gate。
+    #[must_use]
+    pub const fn simulcast_gate(self) -> bool {
+        self.simulcast_gate
     }
 
     /// 从解析时使用的同一 substream payload 取得尚未解释的 `de_data()`/simulcast body。
