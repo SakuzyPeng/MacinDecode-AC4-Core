@@ -27,12 +27,202 @@ pub(crate) fn success(command: &str, stdout: &[u8]) -> Value {
     assert_closed(&value, &schema, "$");
 
     let result = &value["result"];
-    if command == "trace" {
-        assert_trace_shape(result, &schema);
-    } else {
-        assert_export_shape(command, result, &schema);
+    match command {
+        "trace" => assert_trace_shape(result, &schema),
+        "inspect" => assert_inspect_shape(result, &schema),
+        _ => assert_export_shape(command, result, &schema),
     }
     value
+}
+
+fn assert_inspect_shape(result: &Value, schema: &Value) {
+    assert_exact(result, definition(schema, "inspectWireResult"), "$.result");
+    let report = &result["inspectResult"];
+    assert_exact(
+        report,
+        definition(schema, "inspectResult"),
+        "$.result.inspectResult",
+    );
+
+    let source = &report["source"];
+    assert_exact(
+        source,
+        definition(schema, "inspectSource"),
+        "$.result.inspectResult.source",
+    );
+    for name in ["track_index", "duration"] {
+        assert_reported(
+            &source[name],
+            schema,
+            &format!("$.result.inspectResult.source.{name}"),
+        );
+    }
+
+    let stream = &report["stream"];
+    assert_exact(
+        stream,
+        definition(schema, "inspectStream"),
+        "$.result.inspectResult.stream",
+    );
+    for name in [
+        "bit_rate",
+        "estimated_average_bit_rate",
+        "bitstream_version",
+        "frame_rate",
+        "sample_rate",
+        "i_frame",
+        "i_frame_interval",
+        "sync_word",
+        "crc_errors",
+    ] {
+        assert_reported(
+            &stream[name],
+            schema,
+            &format!("$.result.inspectResult.stream.{name}"),
+        );
+    }
+
+    for (index, presentation) in report["presentations"]
+        .as_array()
+        .expect("presentations 应为数组")
+        .iter()
+        .enumerate()
+    {
+        let path = format!("$.result.inspectResult.presentations[{index}]");
+        assert_exact(
+            presentation,
+            definition(schema, "inspectPresentation"),
+            &path,
+        );
+        for name in [
+            "presentation_id",
+            "summary",
+            "presentation_type",
+            "minimal_compatibility_level",
+            "dialogue_normalization",
+            "language",
+            "multi_pid",
+            "bit_rate",
+            "metadata_authentication_id",
+        ] {
+            assert_reported(&presentation[name], schema, &format!("{path}.{name}"));
+        }
+        for (name, definition_name) in [
+            ("loudness", "inspectLoudness"),
+            ("dynamic_range_control", "inspectDrc"),
+            ("mixing_metadata", "inspectMixing"),
+            ("downmix", "inspectDownmix"),
+        ] {
+            let nested = &presentation[name];
+            assert_exact(
+                nested,
+                definition(schema, definition_name),
+                &format!("{path}.{name}"),
+            );
+            for field in nested
+                .as_object()
+                .expect("inspect metadata section 应为对象")
+                .keys()
+            {
+                assert_reported(&nested[field], schema, &format!("{path}.{name}.{field}"));
+            }
+        }
+    }
+
+    for (index, substream) in report["audio_substreams"]
+        .as_array()
+        .expect("audio_substreams 应为数组")
+        .iter()
+        .enumerate()
+    {
+        let path = format!("$.result.inspectResult.audio_substreams[{index}]");
+        assert_exact(
+            substream,
+            definition(schema, "inspectAudioSubstream"),
+            &path,
+        );
+        for name in [
+            "summary",
+            "channel_configuration",
+            "channel_layout",
+            "object_coded",
+            "bit_rate",
+        ] {
+            assert_reported(&substream[name], schema, &format!("{path}.{name}"));
+        }
+        for (name, definition_name) in [
+            ("preprocessing", "inspectPreprocessing"),
+            ("dialogue_enhancement", "inspectDialogueEnhancement"),
+        ] {
+            let nested = &substream[name];
+            assert_exact(
+                nested,
+                definition(schema, definition_name),
+                &format!("{path}.{name}"),
+            );
+            for field in nested
+                .as_object()
+                .expect("inspect substream section 应为对象")
+                .keys()
+            {
+                assert_reported(&nested[field], schema, &format!("{path}.{name}.{field}"));
+            }
+        }
+    }
+
+    for (index, issue) in report["issues"]
+        .as_array()
+        .expect("issues 应为数组")
+        .iter()
+        .enumerate()
+    {
+        assert_exact(
+            issue,
+            definition(schema, "inspectIssue"),
+            &format!("$.result.inspectResult.issues[{index}]"),
+        );
+    }
+}
+
+fn assert_reported(value: &Value, schema: &Value, path: &str) {
+    assert_closed(value, definition(schema, "reportedField"), path);
+    let object = value
+        .as_object()
+        .unwrap_or_else(|| panic!("{path} 应为 reported field 对象"));
+    match value["status"].as_str() {
+        Some("present") => {
+            assert!(
+                object.contains_key("value"),
+                "{path} present 必须携带 value"
+            );
+            assert!(
+                !object.contains_key("reason"),
+                "{path} present 不得携带 reason"
+            );
+        }
+        Some("not_present" | "not_applicable") => {
+            assert_eq!(
+                object.len(),
+                1,
+                "{path} not_present/not_applicable 只能携带 status"
+            );
+        }
+        Some("unknown" | "unsupported") => {
+            assert!(
+                object.get("reason").and_then(Value::as_str).is_some(),
+                "{path} unknown/unsupported 必须携带字符串 reason"
+            );
+            assert!(
+                !object.contains_key("value"),
+                "{path} unavailable 不得携带 value"
+            );
+            assert!(
+                !object.contains_key("unit"),
+                "{path} unavailable 不得携带 unit"
+            );
+        }
+        other => panic!("{path}.status 应为五种稳定状态之一，实际为 {other:?}"),
+    }
 }
 
 fn assert_trace_shape(result: &Value, schema: &Value) {

@@ -10,17 +10,19 @@
 
 ## 1. 进程与流
 
-- `trace`、`export-damf`、`export-full-damf`、`export-adm-bwf`、
+- `trace`、`inspect --format json`、`export-damf`、`export-full-damf`、`export-adm-bwf`、
   `export-full-adm-bwf`、`export-core-caf`、`export-core-pcm`、`export-aspx-pcm`、
   `export-objects-pcm` 成功时，stdout
   只包含一份两空格缩进的 JSON，末尾恰有换行。
+- `inspect` 与 `inspect --format text` 是成功 stdout 的显式例外：输出无颜色的英文纯文本，
+  固定章节/字段顺序，末尾恰有一个换行。它们不使用成功 JSON envelope。
 - warning 和 error 写入 stderr，每条诊断是一行紧凑 JSON；不得跨行，也不得混入
   普通日志。
 - 失败时 stdout 为空。运行期失败返回 1，Clap 参数错误返回 2。
 - 显式 `--help`、`--version` 仍在 stdout 输出普通文本并返回 0。
 - v1 直接替换旧的未版本化 JSON，不提供 legacy 开关。
 
-所有成功响应使用同一 envelope：
+所有 JSON 成功响应使用同一 envelope：
 
 ```json
 {
@@ -123,6 +125,62 @@ schema 的严格程度是分层的，消费者应据此判断可以依赖到哪�
 这条界线由 `crates/macindecode-ac4-cli/tests/common/result_schema.rs` 的 `success` 固定。
 八种导出 wire 投影均由无媒体单元测试经过它；有可用输入时，端到端集成测试也复用同一
 检查。必需键从本 schema 文件读出，两侧任一单方面改动都会让测试失败。
+
+### 2.1 `inspect` 结果
+
+`inspect --format json` 的 envelope 固定为：
+
+```json
+{
+  "schema": "macinac4.cli-result",
+  "version": 1,
+  "command": "inspect",
+  "result": {
+    "inspectResult": {
+      "source": {},
+      "stream": {},
+      "presentations": [],
+      "audio_substreams": [],
+      "issues": []
+    }
+  }
+}
+```
+
+`inspectResult` 及其所有 typed 子结构均为 closed object；字段集合由成功响应 schema 的
+`inspect*` definitions 固定。可选语义字段统一使用以下 tagged 形状：
+
+```json
+{"status":"present","value":23.438,"unit":"fps","raw_code":13}
+{"status":"not_present"}
+{"status":"not_applicable"}
+{"status":"unknown","raw_code":7,"reason":"reserved code"}
+{"status":"unsupported","reason":"no confirmed ETSI mapping"}
+```
+
+- `present` 必带 typed `value`，可带 `unit` 和 `raw_code`；源语法存在码值时保留
+  `raw_code`。保留码不猜测语义，使用 `unknown` 并保留原码。
+- `not_present` 表示相应 presence gate 未传输；`not_applicable` 表示来源或拓扑不适用；
+  `unknown` 表示已观察但无法稳定/规范地解释；`unsupported` 表示已知但首版没有可信映射。
+- `source` 记录 `mp4`/`annex_g`、输入、轨下标、帧数和时长；`stream` 记录实测源码率、
+  DSI 码率范围、bitstream version、精确帧率、采样率、首帧 I-frame、I-frame 间隔、
+  sync/CRC 及 presentation/audio-substream 数。
+- `presentations` 按 effective presentation ID 隔离状态，并报告类型、兼容级别、语言、
+  码率、响度、DRC、mixing 和 downmix；不得按 DSI/TOC 数组位置强行关联。
+- `audio_substreams` 只列唯一物理 audio substream，报告 object/channel/IMS 拓扑、有效
+  presence-layout、preprocessing 原码/换算和 Dialogue Enhancement 配置。它不应用这些工具。
+- `issues` 中每项固定含 `code`、`severity`、`message`、`frame_index`、
+  `presentation_id`、`substream_index`；无对应上下文时使用 JSON `null`。
+
+聚合以首个完整 independent 配置为基准。后续配置或稳定字段变化会把相关字段置为
+`unknown` 并产生 issue，不沿用上一配置代次的 DRC/group-gain/DE parser state。CRC 错误、
+保留码和已知未支持分支属于可报告 issue；结构损坏、截断、容器越界及没有 AC-4 帧仍使用
+第 4 节诊断并返回非零状态。
+
+默认 text 只是同一 typed 结果的确定性英文渲染，章节依次为 `Audio`、各
+`Presentation`、各 `Substream`、`Issues`，缺席字段也必须输出。它只承诺类似 DRP 的可读
+信息，不承诺 DRP 私有字段或估算算法。`Metadata authentication ID` 首版为
+`unsupported`，不得推断为 `Dolby`。
 
 ## 3. 导出结果
 

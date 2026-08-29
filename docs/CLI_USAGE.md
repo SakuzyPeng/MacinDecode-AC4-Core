@@ -5,7 +5,9 @@
 
 ## 通用约定
 
-- 业务命令成功时 stdout 是带 `schema`/`version` 的 JSON v1 envelope；warning 与 error 是 stderr 上逐行的 JSONL。
+- 除 `inspect` 默认的英文 text 报告外，业务命令成功时 stdout 是带
+  `schema`/`version` 的 JSON v1 envelope；`inspect --format json` 同样使用该 envelope。
+  warning 与 error 是 stderr 上逐行的 JSONL。
 - 参数错误返回 2，运行期错误返回 1，失败时 stdout 为空。
 - 显式 `--help`、`--version` 仍在 stdout 输出普通文本并返回 0。
 - 字段与旧 JSONPath 的完整迁移见 [CLI 输出契约 v1](CLI_OUTPUT_CONTRACT.md)。
@@ -18,6 +20,7 @@
 ```bash
 cargo test --workspace
 cargo run --bin macinac4 -- trace path/to/input.m4a
+cargo run --bin macinac4 -- inspect path/to/input.m4a
 ```
 
 完整音频语法测试需要从官方 ETSI PDF 本地生成 Rust 表，并获取随附 C 表：
@@ -45,6 +48,43 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 | 参数 | 必需 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `<INPUT>` | 是 | — | MP4/M4A 或裸 AC-4 输入。 |
+
+### `inspect`
+
+单遍扫描 MP4/M4A 或 Annex G raw AC-4，输出类似 DRP/MediaInfo 的只读比特流元数据报告。
+该命令不需要 `audio-decode` feature，不解析 `trace` JSON，也不执行响度、DRC、Dialogue
+Enhancement、downmix 或 PCM 处理。
+
+```bash
+# 默认：固定章节和字段顺序的英文纯文本
+cargo run --bin macinac4 -- inspect path/to/input.m4a
+cargo run --bin macinac4 -- inspect path/to/input.ac4 --format text
+
+# 自动化：CLI result v1 JSON envelope
+cargo run --bin macinac4 -- inspect path/to/input.m4a --format json
+```
+
+| 参数 | 必需 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `<INPUT>` | 是 | — | MP4/M4A 或 Annex G raw AC-4 输入。 |
+| `--format <FORMAT>` | 否 | `text` | `text` 或 `json`；失败诊断始终是 stderr 上的 JSONL。 |
+
+text 章节固定依次为 `Audio`、各 `Presentation`、各 `Substream`、`Issues`；所有字段都会
+明确显示值或 `Not present`、`Not applicable`、`Unknown`、`Unsupported`，输出无颜色且末尾
+恰有一个换行。JSON 的 `result.inspectResult` 固定包含 `source`、`stream`、
+`presentations`、`audio_substreams`、`issues`；有码值的语义字段同时保留 `raw_code`。
+
+报告以首个完整 independent 配置为基准；相同配置继续聚合。拓扑或稳定元数据改变时，
+相关字段变为 `unknown`，并在 `issues` 中记录帧下标。presentation 解析状态按 effective ID
+隔离，重复引用的物理 audio substream 只计一次。MP4 的 sync word/CRC 为
+`not_applicable`；raw 报告 sync word、CRC 覆盖帧数与错误数。结构损坏、截断和无 AC-4 帧
+仍返回非零状态与结构化诊断；CRC 错误、保留码和已知未支持语法则尽可能生成可用报告与
+issue。
+
+术语和换算依据 ETSI，目标只是提供“类似 DRP 的可读信息”，不复刻或推断 DRP 私有字段与
+算法。`Metadata authentication ID` 首版固定为 `unsupported`，因为尚无已确认的 ETSI
+等价字段；不会根据编码器或品牌猜测为 `Dolby`。MediaInfo 可用于公开字段交叉核对，但不是
+规范 oracle。
 
 ### `export-core-pcm`
 导出 A-JOC 下混信号的核心带 PCM。

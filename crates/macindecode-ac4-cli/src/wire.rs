@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 
+use crate::inspect::InspectReport;
+
 pub(crate) const RESULT_SCHEMA: &str = "macinac4.cli-result";
 pub(crate) const DIAGNOSTIC_SCHEMA: &str = "macinac4.cli-diagnostic";
 pub(crate) const VERSION: u8 = 1;
@@ -136,7 +138,14 @@ struct SuccessEnvelope<'a> {
 #[serde(untagged)]
 enum SuccessResult {
     Trace(Box<TraceResult>),
+    Inspect(Box<InspectWireResult>),
     Export(Box<ExportResult>),
+}
+
+#[derive(Serialize)]
+struct InspectWireResult {
+    #[serde(rename = "inspectResult")]
+    inspect_result: InspectReport,
 }
 
 pub(crate) struct PreparedSuccess {
@@ -303,6 +312,17 @@ pub(crate) fn prepare(command: &str, legacy: &str) -> Result<PreparedSuccess, Cl
         command: command.to_owned(),
         result,
         warnings,
+    })
+}
+
+/// 将 typed inspect 报告包装进 CLI v1 成功 envelope。
+pub(crate) fn prepare_inspect(report: InspectReport) -> Result<PreparedSuccess, CliError> {
+    Ok(PreparedSuccess {
+        command: "inspect".to_owned(),
+        result: SuccessResult::Inspect(Box::new(InspectWireResult {
+            inspect_result: report,
+        })),
+        warnings: Vec::new(),
     })
 }
 
@@ -1233,6 +1253,7 @@ mod tests {
             schema.pointer("/properties/command/enum"),
             Some(&json!([
                 "trace",
+                "inspect",
                 "export-damf",
                 "export-full-damf",
                 "export-adm-bwf",

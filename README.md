@@ -51,6 +51,13 @@ cargo test --workspace
 cargo run --bin macinac4 -- trace path/to/input.m4a
 ```
 
+### 查看人读比特流报告
+
+```bash
+cargo run --bin macinac4 -- inspect path/to/input.m4a
+cargo run --bin macinac4 -- inspect path/to/input.m4a --format json
+```
+
 ### 完整音频解码
 
 从源码构建时，完整音频功能需要从官方 ETSI 规范在用户本地生成静态表，
@@ -69,7 +76,7 @@ cargo test -p macindecode-ac4-cli --features audio-decode -- --ignored
 
 ## 基础用法
 
-以下是最常用的三个命令。完整的 10 个子命令参考见 [CLI 用法指南](docs/CLI_USAGE.md)。
+以下是最常用的命令。完整的 10 个子命令参考见 [CLI 用法指南](docs/CLI_USAGE.md)。
 
 **检视码流**——输出容器、拓扑与语法的结构化 JSON：
 
@@ -106,7 +113,7 @@ macindecode-ac4-scene ───────────────────�
 | [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | 比特流解析、TOC/OAMD/EMDF、ASF/A-SPX/A-JOC 音频重建 | ✅ |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` 数据契约及 A-JOC Core/Full 流式 Rust API | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF box、`dac4`、sample table、edit/priming 时间线 | ✅ |
-| [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` 工具：trace、PCM/ADM/DAMF/CAF 导出 | — |
+| [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` 工具：inspect、trace、PCM/ADM/DAMF/CAF 导出 | — |
 
 ## 数据流
 

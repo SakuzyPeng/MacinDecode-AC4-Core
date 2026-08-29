@@ -952,6 +952,57 @@ impl FurtherLoudnessInfo {
     }
 }
 
+/// `basic_metadata()` 中 sus_ver 0 的 stereo downmix 预处理原始码值。
+///
+/// 所有字段只保存码流值，不换算或应用 downmix、响度校正或 LFE gain。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct StereoDownmixPreprocessingMetadata {
+    /// 3 比特 `loro_centre_mixgain`。
+    pub loro_centre_mixgain: u8,
+    /// 3 比特 `loro_surround_mixgain`。
+    pub loro_surround_mixgain: u8,
+    /// 5 比特 `loro_dmx_loud_corr`；presence 为假时不传输。
+    pub loro_dmx_loud_corr: Option<u8>,
+    /// 3 比特 `ltrt_centre_mixgain`；Lt/Rt 字段缺席时不传输。
+    pub ltrt_centre_mixgain: Option<u8>,
+    /// 3 比特 `ltrt_surround_mixgain`；Lt/Rt 字段缺席时不传输。
+    pub ltrt_surround_mixgain: Option<u8>,
+    /// 5 比特 `ltrt_dmx_loud_corr`；presence 为假时不传输。
+    pub ltrt_dmx_loud_corr: Option<u8>,
+    /// 5 比特 `lfe_mixgain`；无 LFE 或 presence 为假时不传输。
+    pub lfe_mixgain: Option<u8>,
+    /// 2 比特 `preferred_dmx_method`。
+    pub preferred_dmx_method: u8,
+}
+
+/// `basic_metadata()` 中的预处理与历史 mix/upmix 原始码值。
+///
+/// `Option` 精确保留语法 presence 或声道模式条件；本结构不执行相位滤波、衰减、
+/// downmix 或 upmix。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PreprocessingMetadata {
+    /// 3 比特 `pre_dmixtyp_2ch`。
+    pub previous_downmix_type_2ch: Option<u8>,
+    /// 2 比特 `phase90_info_2ch`。
+    pub phase90_info_2ch: Option<u8>,
+    /// sus_ver 0 的完整 stereo downmix 预处理字段。
+    pub stereo_downmix: Option<StereoDownmixPreprocessingMetadata>,
+    /// 3 比特 `pre_dmixtyp_5ch`。
+    pub previous_downmix_type_5ch: Option<u8>,
+    /// 4 比特 `pre_upmixtyp_5ch`。
+    pub previous_upmix_type_5ch: Option<u8>,
+    /// 2 比特 `pre_upmixtyp_3_4`。
+    pub previous_upmix_type_3_4: Option<u8>,
+    /// 1 比特 `pre_upmixtyp_3_2_2`。
+    pub previous_upmix_type_3_2_2: Option<bool>,
+    /// 2 比特 `phase90_info_mc`。
+    pub phase90_info_multichannel: Option<u8>,
+    /// `surround_attenuation_known`。
+    pub surround_attenuation_known: Option<bool>,
+    /// `lfe_attenuation_known`。
+    pub lfe_attenuation_known: Option<bool>,
+}
+
 /// `basic_metadata()`，见 `6.2.7.2`。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BasicMetadata {
@@ -963,6 +1014,8 @@ pub struct BasicMetadata {
     pub substream_loudness_bits: Option<u8>,
     /// 进一步的响度信息。
     pub further_loudness: Option<FurtherLoudnessInfo>,
+    /// 预处理、历史 downmix/upmix、相位与衰减原始码值。
+    pub preprocessing: Option<PreprocessingMetadata>,
     /// `dc_block_on`；`b_dc_blocking` 为假时不传输。
     pub dc_block_on: Option<bool>,
 }
@@ -1000,55 +1053,87 @@ impl BasicMetadata {
 
         // channel_mode 未设定时按负值处理，所有声道模式条件均不成立
         //（6.2.2.2 NOTE 2），但末尾的 DC blocking 仍然传输。
+        let mut preprocessing = PreprocessingMetadata::default();
         if let Some(ch_mode) = context.channel_mode {
             if ch_mode == 1 && reader.read_flag()? {
-                let _pre_dmixtyp_2ch = reader.read_bits(3)?;
-                let _phase90_info_2ch = reader.read_bits(2)?;
+                preprocessing.previous_downmix_type_2ch =
+                    Some(u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX));
+                preprocessing.phase90_info_2ch =
+                    Some(u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX));
             }
 
             if ch_mode > 1 {
                 // sus_ver == 0 沿用 Part 1 的完整 stereo downmix 信息；IMS 的
                 // bitstream_version=2 取 sus_ver=1，因此不会进入本段。
                 if context.sus_ver == 0 && reader.read_flag()? {
-                    let _loro_centre_mixgain = reader.read_bits(3)?;
-                    let _loro_surround_mixgain = reader.read_bits(3)?;
-                    if reader.read_flag()? {
-                        let _loro_dmx_loud_corr = reader.read_bits(5)?;
-                    }
-                    if reader.read_flag()? {
-                        let _ltrt_centre_mixgain = reader.read_bits(3)?;
-                        let _ltrt_surround_mixgain = reader.read_bits(3)?;
-                    }
-                    if reader.read_flag()? {
-                        let _ltrt_dmx_loud_corr = reader.read_bits(5)?;
-                    }
-                    if channel_mode_contains_lfe(ch_mode) && reader.read_flag()? {
-                        let _lfe_mixgain = reader.read_bits(5)?;
-                    }
-                    let _preferred_dmx_method = reader.read_bits(2)?;
+                    let loro_centre_mixgain = u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX);
+                    let loro_surround_mixgain =
+                        u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX);
+                    let loro_dmx_loud_corr = reader
+                        .read_flag()?
+                        .then(|| reader.read_bits(5))
+                        .transpose()?
+                        .map(|value| u8::try_from(value).unwrap_or(u8::MAX));
+                    let (ltrt_centre_mixgain, ltrt_surround_mixgain) = if reader.read_flag()? {
+                        (
+                            Some(u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX)),
+                            Some(u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX)),
+                        )
+                    } else {
+                        (None, None)
+                    };
+                    let ltrt_dmx_loud_corr = reader
+                        .read_flag()?
+                        .then(|| reader.read_bits(5))
+                        .transpose()?
+                        .map(|value| u8::try_from(value).unwrap_or(u8::MAX));
+                    let lfe_mixgain = if channel_mode_contains_lfe(ch_mode) && reader.read_flag()? {
+                        Some(u8::try_from(reader.read_bits(5)?).unwrap_or(u8::MAX))
+                    } else {
+                        None
+                    };
+                    let preferred_dmx_method =
+                        u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX);
+                    preprocessing.stereo_downmix = Some(StereoDownmixPreprocessingMetadata {
+                        loro_centre_mixgain,
+                        loro_surround_mixgain,
+                        loro_dmx_loud_corr,
+                        ltrt_centre_mixgain,
+                        ltrt_surround_mixgain,
+                        ltrt_dmx_loud_corr,
+                        lfe_mixgain,
+                        preferred_dmx_method,
+                    });
                 }
 
                 if channel_mode_is_five_x(ch_mode) {
                     if reader.read_flag()? {
-                        let _pre_dmixtyp_5ch = reader.read_bits(3)?;
+                        preprocessing.previous_downmix_type_5ch =
+                            Some(u8::try_from(reader.read_bits(3)?).unwrap_or(u8::MAX));
                     }
                     if reader.read_flag()? {
-                        let _pre_upmixtyp_5ch = reader.read_bits(4)?;
+                        preprocessing.previous_upmix_type_5ch =
+                            Some(u8::try_from(reader.read_bits(4)?).unwrap_or(u8::MAX));
                     }
                 }
 
                 if channel_mode_is_seven_x(ch_mode) && reader.read_flag()? {
                     if matches!(ch_mode, 5 | 6) {
-                        let _pre_upmixtyp_3_4 = reader.read_bits(2)?;
+                        preprocessing.previous_upmix_type_3_4 =
+                            Some(u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX));
                     } else if matches!(ch_mode, 9 | 10) {
-                        let _pre_upmixtyp_3_2_2 = reader.read_flag()?;
+                        preprocessing.previous_upmix_type_3_2_2 = Some(reader.read_flag()?);
                     }
                 }
 
-                let _phase90_info_mc = reader.read_bits(2)?;
-                let _surround_attenuation_known = reader.read_flag()?;
-                let _lfe_attenuation_known = reader.read_flag()?;
+                preprocessing.phase90_info_multichannel =
+                    Some(u8::try_from(reader.read_bits(2)?).unwrap_or(u8::MAX));
+                preprocessing.surround_attenuation_known = Some(reader.read_flag()?);
+                preprocessing.lfe_attenuation_known = Some(reader.read_flag()?);
             }
+        }
+        if preprocessing != PreprocessingMetadata::default() {
+            out.preprocessing = Some(preprocessing);
         }
 
         if reader.read_flag()? {
@@ -2129,10 +2214,268 @@ mod tests {
         );
         let parsed = Ac4AudioSubstream::parse(&bits[..len], context).unwrap();
 
+        assert_eq!(
+            parsed.basic.preprocessing,
+            Some(PreprocessingMetadata {
+                previous_upmix_type_3_4: Some(0b10),
+                phase90_info_multichannel: Some(0b01),
+                surround_attenuation_known: Some(true),
+                lfe_attenuation_known: Some(false),
+                ..PreprocessingMetadata::default()
+            })
+        );
         assert_eq!(parsed.basic.dc_block_on, Some(true));
         assert!(parsed.extended.channels_classifier);
         assert_eq!(parsed.extended.event_probability, Some(0b1010));
         assert_eq!(parsed.metadata_bytes, 5);
+    }
+
+    #[test]
+    fn basic_metadata_preserves_stereo_and_five_channel_preprocessing_codes() {
+        let stereo = SubstreamContext {
+            channel_mode: Some(1),
+            ajoc: false,
+            ..AJOC
+        };
+        let (bits, _) = pack("1 0 1 111 01 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, stereo).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                previous_downmix_type_2ch: Some(0b111),
+                phase90_info_2ch: Some(0b01),
+                ..PreprocessingMetadata::default()
+            }),
+            "reserved raw codes must be preserved for the inspect layer"
+        );
+
+        let five_one = SubstreamContext {
+            channel_mode: Some(4),
+            ajoc: false,
+            ..AJOC
+        };
+        let (bits, _) = pack("1 0 1 101 1 1101 11 1 1 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, five_one).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                previous_downmix_type_5ch: Some(0b101),
+                previous_upmix_type_5ch: Some(0b1101),
+                phase90_info_multichannel: Some(0b11),
+                surround_attenuation_known: Some(true),
+                lfe_attenuation_known: Some(true),
+                ..PreprocessingMetadata::default()
+            })
+        );
+    }
+
+    #[test]
+    fn basic_metadata_preserves_both_seven_channel_upmix_families_and_absence() {
+        let seven_one = SubstreamContext {
+            channel_mode: Some(6),
+            ajoc: false,
+            ..AJOC
+        };
+        let (bits, _) = pack("1 0 1 10 01 1 0 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, seven_one).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                previous_upmix_type_3_4: Some(0b10),
+                phase90_info_multichannel: Some(0b01),
+                surround_attenuation_known: Some(true),
+                lfe_attenuation_known: Some(false),
+                ..PreprocessingMetadata::default()
+            })
+        );
+
+        let seven_one_alt = SubstreamContext {
+            channel_mode: Some(10),
+            ..seven_one
+        };
+        let (bits, _) = pack("1 0 1 1 10 0 1 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, seven_one_alt).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                previous_upmix_type_3_2_2: Some(true),
+                phase90_info_multichannel: Some(0b10),
+                surround_attenuation_known: Some(false),
+                lfe_attenuation_known: Some(true),
+                ..PreprocessingMetadata::default()
+            })
+        );
+
+        let (bits, _) = pack("1 0 0 00 0 0 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, seven_one).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                phase90_info_multichannel: Some(0),
+                surround_attenuation_known: Some(false),
+                lfe_attenuation_known: Some(false),
+                ..PreprocessingMetadata::default()
+            })
+        );
+    }
+
+    #[test]
+    fn legacy_basic_metadata_preserves_full_stereo_downmix_and_rejects_truncation() {
+        let legacy = SubstreamContext {
+            sus_ver: 0,
+            channel_mode: Some(4),
+            ajoc: false,
+            ..AJOC
+        };
+        let (bits, len) = pack(
+            "1010101 1 0 \
+             1 100 110 1 10001 1 011 101 1 01001 1 01100 10 \
+             0 0 10 0 1 0",
+        );
+        let mut reader = BitReader::new(&bits[..len]);
+        let parsed = BasicMetadata::parse(&mut reader, legacy).unwrap();
+        assert_eq!(parsed.dialnorm_bits, Some(0b1010101));
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                stereo_downmix: Some(StereoDownmixPreprocessingMetadata {
+                    loro_centre_mixgain: 0b100,
+                    loro_surround_mixgain: 0b110,
+                    loro_dmx_loud_corr: Some(0b10001),
+                    ltrt_centre_mixgain: Some(0b011),
+                    ltrt_surround_mixgain: Some(0b101),
+                    ltrt_dmx_loud_corr: Some(0b01001),
+                    lfe_mixgain: Some(0b01100),
+                    preferred_dmx_method: 0b10,
+                }),
+                phase90_info_multichannel: Some(0b10),
+                surround_attenuation_known: Some(false),
+                lfe_attenuation_known: Some(true),
+                ..PreprocessingMetadata::default()
+            })
+        );
+
+        let mut reader = BitReader::new(&bits[..len.saturating_sub(1)]);
+        assert!(matches!(
+            BasicMetadata::parse(&mut reader, legacy),
+            Err(AudioSubstreamError::Read(ReadError::OutOfBounds { .. }))
+        ));
+    }
+
+    #[test]
+    fn legacy_preprocessing_preserves_absent_optional_downmix_fields() {
+        let legacy_five_zero = SubstreamContext {
+            sus_ver: 0,
+            channel_mode: Some(3),
+            ajoc: false,
+            ..AJOC
+        };
+        let (bits, _) = pack(
+            "0000001 1 0 \
+             1 010 010 0 0 0 01 \
+             0 0 00 0 0 0",
+        );
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, legacy_five_zero).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                stereo_downmix: Some(StereoDownmixPreprocessingMetadata {
+                    loro_centre_mixgain: 0b010,
+                    loro_surround_mixgain: 0b010,
+                    loro_dmx_loud_corr: None,
+                    ltrt_centre_mixgain: None,
+                    ltrt_surround_mixgain: None,
+                    ltrt_dmx_loud_corr: None,
+                    lfe_mixgain: None,
+                    preferred_dmx_method: 0b01,
+                }),
+                phase90_info_multichannel: Some(0),
+                surround_attenuation_known: Some(false),
+                lfe_attenuation_known: Some(false),
+                ..PreprocessingMetadata::default()
+            })
+        );
+
+        let (bits, _) = pack("0000001 1 0 0 0 0 00 0 0 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, legacy_five_zero).unwrap();
+        assert_eq!(
+            parsed.preprocessing,
+            Some(PreprocessingMetadata {
+                phase90_info_multichannel: Some(0),
+                surround_attenuation_known: Some(false),
+                lfe_attenuation_known: Some(false),
+                ..PreprocessingMetadata::default()
+            })
+        );
+    }
+
+    #[test]
+    fn absent_stereo_preprocessing_remains_not_present() {
+        let stereo = SubstreamContext {
+            channel_mode: Some(1),
+            ajoc: false,
+            ..AJOC
+        };
+        let (bits, _) = pack("1 0 0 0");
+        let mut reader = BitReader::new(&bits);
+        let parsed = BasicMetadata::parse(&mut reader, stereo).unwrap();
+        assert_eq!(parsed.preprocessing, None);
+    }
+
+    #[test]
+    fn preprocessing_branches_reject_truncated_bitstreams() {
+        let cases = [
+            (
+                SubstreamContext {
+                    channel_mode: Some(1),
+                    ajoc: false,
+                    ..AJOC
+                },
+                "1 0 1 111 01 0",
+            ),
+            (
+                SubstreamContext {
+                    channel_mode: Some(4),
+                    ajoc: false,
+                    ..AJOC
+                },
+                "1 0 1 101 1 1101 11 1 1 0",
+            ),
+            (
+                SubstreamContext {
+                    channel_mode: Some(6),
+                    ajoc: false,
+                    ..AJOC
+                },
+                "1 0 1 10 01 1 0 0",
+            ),
+            (
+                SubstreamContext {
+                    channel_mode: Some(10),
+                    ajoc: false,
+                    ..AJOC
+                },
+                "1 0 1 1 10 0 1 0",
+            ),
+        ];
+        for (context, bit_string) in cases {
+            let (bits, len) = pack(bit_string);
+            let mut reader = BitReader::new(&bits[..len.saturating_sub(1)]);
+            assert!(
+                matches!(
+                    BasicMetadata::parse(&mut reader, context),
+                    Err(AudioSubstreamError::Read(ReadError::OutOfBounds { .. }))
+                ),
+                "preprocessing context {context:?} must reject truncation"
+            );
+        }
     }
 
     #[test]

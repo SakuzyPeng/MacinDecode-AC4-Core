@@ -13,7 +13,7 @@
       "const": 1
     },
     "command": {
-      "enum": ["trace", "export-damf", "export-full-damf", "export-adm-bwf", "export-full-adm-bwf", "export-core-caf", "export-core-pcm", "export-aspx-pcm", "export-objects-pcm"]
+      "enum": ["trace", "inspect", "export-damf", "export-full-damf", "export-adm-bwf", "export-full-adm-bwf", "export-core-caf", "export-core-pcm", "export-aspx-pcm", "export-objects-pcm"]
     },
     "result": {
       "type": "object"
@@ -32,6 +32,22 @@
         "properties": {
           "result": {
             "$ref": "#/$defs/traceResult"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "inspect"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/inspectWireResult"
           }
         }
       }
@@ -372,6 +388,318 @@
         "observations": {
           "type": "object"
         }
+      }
+    },
+    "inspectWireResult": {
+      "type": "object",
+      "required": ["inspectResult"],
+      "additionalProperties": false,
+      "properties": {
+        "inspectResult": {
+          "$ref": "#/$defs/inspectResult"
+        }
+      }
+    },
+    "inspectResult": {
+      "type": "object",
+      "required": ["source", "stream", "presentations", "audio_substreams", "issues"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/inspectSource"
+        },
+        "stream": {
+          "$ref": "#/$defs/inspectStream"
+        },
+        "presentations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inspectPresentation"
+          }
+        },
+        "audio_substreams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inspectAudioSubstream"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inspectIssue"
+          }
+        }
+      }
+    },
+    "reportedField": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": ["present", "not_present", "not_applicable", "unknown", "unsupported"]
+        },
+        "value": {},
+        "unit": {
+          "type": "string"
+        },
+        "raw_code": {},
+        "reason": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "present" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["value"],
+            "not": { "required": ["reason"] }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["not_present", "not_applicable"] } },
+            "required": ["status"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["value"] },
+                { "required": ["unit"] },
+                { "required": ["raw_code"] },
+                { "required": ["reason"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["unknown", "unsupported"] } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["reason"],
+            "not": {
+              "anyOf": [
+                { "required": ["value"] },
+                { "required": ["unit"] }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "inspectSource": {
+      "type": "object",
+      "required": ["kind", "input", "track_index", "frame_count", "duration"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": ["mp4", "annex_g"]
+        },
+        "input": {
+          "type": "string"
+        },
+        "track_index": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration": {
+          "$ref": "#/$defs/reportedField"
+        }
+      }
+    },
+    "inspectStream": {
+      "type": "object",
+      "required": ["codec", "bit_rate", "estimated_average_bit_rate", "bitstream_version", "frame_rate", "sample_rate", "i_frame", "i_frame_interval", "sync_word", "crc_errors", "number_of_presentations", "number_of_audio_substreams"],
+      "additionalProperties": false,
+      "properties": {
+        "codec": {
+          "const": "Dolby AC-4"
+        },
+        "bit_rate": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "estimated_average_bit_rate": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "bitstream_version": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "frame_rate": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "sample_rate": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "i_frame": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "i_frame_interval": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "sync_word": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "crc_errors": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "number_of_presentations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "number_of_audio_substreams": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "inspectLoudness": {
+      "type": "object",
+      "required": ["loudness", "version", "regulation_type", "correction_type", "dialogue_intelligence", "integrated_speech_gated", "integrated_level_gated", "maximum_true_peak", "maximum_momentary_loudness", "loudness_range"],
+      "additionalProperties": false,
+      "properties": {
+        "loudness": { "$ref": "#/$defs/reportedField" },
+        "version": { "$ref": "#/$defs/reportedField" },
+        "regulation_type": { "$ref": "#/$defs/reportedField" },
+        "correction_type": { "$ref": "#/$defs/reportedField" },
+        "dialogue_intelligence": { "$ref": "#/$defs/reportedField" },
+        "integrated_speech_gated": { "$ref": "#/$defs/reportedField" },
+        "integrated_level_gated": { "$ref": "#/$defs/reportedField" },
+        "maximum_true_peak": { "$ref": "#/$defs/reportedField" },
+        "maximum_momentary_loudness": { "$ref": "#/$defs/reportedField" },
+        "loudness_range": { "$ref": "#/$defs/reportedField" }
+      }
+    },
+    "inspectDrc": {
+      "type": "object",
+      "required": ["enhanced_ac3_profile", "home_theater_avr", "flat_panel_tv", "portable_speakers", "portable_headphones"],
+      "additionalProperties": false,
+      "properties": {
+        "enhanced_ac3_profile": { "$ref": "#/$defs/reportedField" },
+        "home_theater_avr": { "$ref": "#/$defs/reportedField" },
+        "flat_panel_tv": { "$ref": "#/$defs/reportedField" },
+        "portable_speakers": { "$ref": "#/$defs/reportedField" },
+        "portable_headphones": { "$ref": "#/$defs/reportedField" }
+      }
+    },
+    "inspectMixing": {
+      "type": "object",
+      "required": ["main_audio_ducking_level", "main_audio_ducking_level_center", "main_audio_ducking_level_front"],
+      "additionalProperties": false,
+      "properties": {
+        "main_audio_ducking_level": { "$ref": "#/$defs/reportedField" },
+        "main_audio_ducking_level_center": { "$ref": "#/$defs/reportedField" },
+        "main_audio_ducking_level_front": { "$ref": "#/$defs/reportedField" }
+      }
+    },
+    "inspectDownmix": {
+      "type": "object",
+      "required": ["loro_center_mix_gain", "loro_surround_mix_gain", "ltrt_center_mix_gain", "ltrt_surround_mix_gain", "lfe_mix_info", "lfe_mix_gain", "preferred_downmix"],
+      "additionalProperties": false,
+      "properties": {
+        "loro_center_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "loro_surround_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "ltrt_center_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "ltrt_surround_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "lfe_mix_info": { "$ref": "#/$defs/reportedField" },
+        "lfe_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "preferred_downmix": { "$ref": "#/$defs/reportedField" }
+      }
+    },
+    "inspectPresentation": {
+      "type": "object",
+      "required": ["index", "presentation_id", "summary", "presentation_type", "minimal_compatibility_level", "dialogue_normalization", "language", "multi_pid", "bit_rate", "audio_substreams", "metadata_authentication_id", "loudness", "dynamic_range_control", "mixing_metadata", "downmix"],
+      "additionalProperties": false,
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "presentation_id": { "$ref": "#/$defs/reportedField" },
+        "summary": { "$ref": "#/$defs/reportedField" },
+        "presentation_type": { "$ref": "#/$defs/reportedField" },
+        "minimal_compatibility_level": { "$ref": "#/$defs/reportedField" },
+        "dialogue_normalization": { "$ref": "#/$defs/reportedField" },
+        "language": { "$ref": "#/$defs/reportedField" },
+        "multi_pid": { "$ref": "#/$defs/reportedField" },
+        "bit_rate": { "$ref": "#/$defs/reportedField" },
+        "audio_substreams": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "uniqueItems": true
+        },
+        "metadata_authentication_id": { "$ref": "#/$defs/reportedField" },
+        "loudness": { "$ref": "#/$defs/inspectLoudness" },
+        "dynamic_range_control": { "$ref": "#/$defs/inspectDrc" },
+        "mixing_metadata": { "$ref": "#/$defs/inspectMixing" },
+        "downmix": { "$ref": "#/$defs/inspectDownmix" }
+      }
+    },
+    "inspectPreprocessing": {
+      "type": "object",
+      "required": ["previous_mix_type_2channel", "phase90_filter_info_2channel", "loro_center_mix_gain", "loro_surround_mix_gain", "loro_downmix_loudness_correction", "ltrt_center_mix_gain", "ltrt_surround_mix_gain", "ltrt_downmix_loudness_correction", "lfe_mix_gain", "preferred_downmix", "previous_downmix_type_5channel", "previous_upmix_type_5channel", "previous_upmix_type_3_4", "previous_upmix_type_3_2_2", "phase90_filter_info", "surround_attenuation_known", "lfe_attenuation_known"],
+      "additionalProperties": false,
+      "properties": {
+        "previous_mix_type_2channel": { "$ref": "#/$defs/reportedField" },
+        "phase90_filter_info_2channel": { "$ref": "#/$defs/reportedField" },
+        "loro_center_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "loro_surround_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "loro_downmix_loudness_correction": { "$ref": "#/$defs/reportedField" },
+        "ltrt_center_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "ltrt_surround_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "ltrt_downmix_loudness_correction": { "$ref": "#/$defs/reportedField" },
+        "lfe_mix_gain": { "$ref": "#/$defs/reportedField" },
+        "preferred_downmix": { "$ref": "#/$defs/reportedField" },
+        "previous_downmix_type_5channel": { "$ref": "#/$defs/reportedField" },
+        "previous_upmix_type_5channel": { "$ref": "#/$defs/reportedField" },
+        "previous_upmix_type_3_4": { "$ref": "#/$defs/reportedField" },
+        "previous_upmix_type_3_2_2": { "$ref": "#/$defs/reportedField" },
+        "phase90_filter_info": { "$ref": "#/$defs/reportedField" },
+        "surround_attenuation_known": { "$ref": "#/$defs/reportedField" },
+        "lfe_attenuation_known": { "$ref": "#/$defs/reportedField" }
+      }
+    },
+    "inspectDialogueEnhancement": {
+      "type": "object",
+      "required": ["enabled", "method", "max_gain", "channel_configuration"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "$ref": "#/$defs/reportedField" },
+        "method": { "$ref": "#/$defs/reportedField" },
+        "max_gain": { "$ref": "#/$defs/reportedField" },
+        "channel_configuration": { "$ref": "#/$defs/reportedField" }
+      }
+    },
+    "inspectAudioSubstream": {
+      "type": "object",
+      "required": ["index", "summary", "channel_configuration", "channel_layout", "object_coded", "bit_rate", "preprocessing", "dialogue_enhancement"],
+      "additionalProperties": false,
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "summary": { "$ref": "#/$defs/reportedField" },
+        "channel_configuration": { "$ref": "#/$defs/reportedField" },
+        "channel_layout": { "$ref": "#/$defs/reportedField" },
+        "object_coded": { "$ref": "#/$defs/reportedField" },
+        "bit_rate": { "$ref": "#/$defs/reportedField" },
+        "preprocessing": { "$ref": "#/$defs/inspectPreprocessing" },
+        "dialogue_enhancement": { "$ref": "#/$defs/inspectDialogueEnhancement" }
+      }
+    },
+    "inspectIssue": {
+      "type": "object",
+      "required": ["code", "severity", "message", "frame_index", "presentation_id", "substream_index"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["warning"] },
+        "message": { "type": "string", "minLength": 1 },
+        "frame_index": { "type": ["integer", "null"], "minimum": 0 },
+        "presentation_id": { "type": ["integer", "null"], "minimum": 0 },
+        "substream_index": { "type": ["integer", "null"], "minimum": 0 }
       }
     },
     "range": {

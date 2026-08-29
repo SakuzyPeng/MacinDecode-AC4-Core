@@ -1,0 +1,88 @@
+Audio:
+    Codec: Dolby AC-4
+    Source: annex_g
+    Track index: Not applicable
+    Frames: 1
+    Duration: 0.043 seconds
+    Bit rate: 4 kbps
+    Estimated average bit rate: Not present
+    Bitstream version: 2 (raw: 2)
+    Frame rate: 23.438 fps (raw: {"frame_length_base":2048,"frame_rate_index":13})
+    Sample rate: 48000 Hz (raw: 1)
+    I-frame: True (raw: True)
+    I-frame interval: Not present
+    Sync word: 0xAC40 (raw: 44096)
+    CRC errors: Not present
+    Number of presentations: 1
+    Number of audio substreams: 1
+Presentation 0:
+    Presentation ID: Not present
+    Summary: stereo main (single_group)
+    Type: Main
+    Minimal compatibility level: 0 (raw: 0)
+    Dialogue normalization: -21.25 dBFS (raw: 85)
+    Language: Not present
+    Multi-PID: Not present
+    Bit rate: 1 kbps
+    Audio substreams: 1
+    Metadata authentication ID: Unsupported: no confirmed ETSI field maps to the proprietary label
+    Loudness:
+        Loudness: -21.25 LKFS (raw: 85)
+        Version: Not present
+        Regulation type: Not present
+        Correction type: Not present
+        Dialogue Intelligence: Not present
+        Integrated loudness (speech-gated): Not present
+        Integrated loudness (level-gated): Not present
+        Maximum true peak: Not present
+        Maximum momentary loudness: Not present
+        Loudness range: Not present
+    Dynamic range control:
+        Enhanced AC-3 profile: Not present
+        Home theater AVR: Not present
+        Flat-panel TV: Not present
+        Portable speakers: Not present
+        Portable headphones: Not present
+    Mixing metadata:
+        Main audio ducking level: Not present
+        Main audio ducking level, Center: Not present
+        Main audio ducking level, Front: Not present
+    Downmix:
+        Lo/Ro Center mix gain: Not present
+        Lo/Ro Surround mix gain: Not present
+        Lt/Rt Center mix gain: Not present
+        Lt/Rt Surround mix gain: Not present
+        LFE mix info: Not present
+        LFE mix gain: Not present
+        Preferred downmix: Not present
+Substream 1:
+    Summary: Main
+    Channel configuration: stereo (raw: 1)
+    Channel layout: stereo (raw: {"centre_present":null,"channel_mode":1,"four_back_channels_present":null,"top_channels_present":null})
+    Object coded: False (raw: False)
+    Bit rate: 1 kbps
+    Preprocessing:
+        Previous mix type 2-channel: Not present
+        Phase 90 filter info 2-channel: Not present
+        Lo/Ro Center mix gain: Not present
+        Lo/Ro Surround mix gain: Not present
+        Lo/Ro downmix loudness correction: Not present
+        Lt/Rt Center mix gain: Not present
+        Lt/Rt Surround mix gain: Not present
+        Lt/Rt downmix loudness correction: Not present
+        LFE mix gain: Not present
+        Preferred downmix: Not present
+        Previous downmix type 5-channel: Not present
+        Previous upmix type 5-channel: Not present
+        Previous upmix type 3/4: Not present
+        Previous upmix type 3/2/2: Not present
+        Phase 90 filter info: Not present
+        Surround attenuation known: Not present
+        LFE attenuation known: Not present
+    Dialogue Enhancement:
+        Dialogue Enhancement enabled: False (raw: False)
+        Method: Not present
+        Max Dialogue Enhancement gain: Not present
+        Dialogue Enhancement channel configuration: Not present
+Issues:
+    None

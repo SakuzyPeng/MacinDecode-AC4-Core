@@ -64,7 +64,8 @@ pub use audio_substream::{
     Ac4AudioSubstream, AlternativeOamdContext, AudioSubstreamError, AudioToolsMetadata,
     AudioToolsMetadataBits, BasicMetadata, DialogEnhancementConfiguration,
     DialogEnhancementConfigurationUpdate, DialogEnhancementMetadata, ExtendedMetadata,
-    FurtherLoudnessInfo, LoudnessExtensionBits, LoudnessProgrammeBoundary, SubstreamContext,
+    FurtherLoudnessInfo, LoudnessExtensionBits, LoudnessProgrammeBoundary, PreprocessingMetadata,
+    StereoDownmixPreprocessingMetadata, SubstreamContext,
 };
 #[cfg(feature = "audio-decode")]
 pub use audio_substream::{

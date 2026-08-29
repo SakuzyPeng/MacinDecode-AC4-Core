@@ -70,6 +70,9 @@ pub const MAX_PRESENTATION_DRC_DECODER_MODES: usize = 8;
 /// `drc_version` 与所有已知版本必需的首个 `drc_gain_val` 总位数。
 const MIN_KNOWN_DRC_GAIN_SET_BITS: u32 = 2 + 7;
 
+/// 已验证的 independent object/A-JOC presentation DRC 兼容尾字节。
+const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 2] = [0x00, 0x80];
+
 /// presentation substream 前缀中超出固定容量的结构。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationSubstreamCapacity {
@@ -2158,6 +2161,52 @@ impl<'a> Ac4PresentationSubstream<'a> {
         let mut parsed = Self::parse(payload, context)?;
         state.resolve(&mut parsed, context.presentation_is_independent())?;
         Ok(parsed)
+    }
+
+    /// 解析完整 presentation payload，并接纳一种窄限定的生产链兼容尾部。
+    ///
+    /// 首先调用与 [`parse_with_drc_state`](Self::parse_with_drc_state) 相同的严格路径。仅当
+    /// 严格路径恰好剩余 8 比特、presentation 为 independent object/A-JOC，末字节为
+    /// `0x00` 或 `0x80`，且去除该字节后解析结果实际携带 DRC configuration 时，才把该
+    /// 字节认作非规范兼容尾部。其他尾部继续返回原始严格解析错误。
+    ///
+    /// 返回值第二项是规范 syntax payload 消耗的字节数；严格输入等于 `payload.len()`，
+    /// 兼容输入则少一个字节。任何失败都不会修改 `state`。
+    ///
+    /// 该兼容形态不是 `TS103190-2:v1.3.1:6.2.2.3` 的字段；调用方应保留原 bounded
+    /// payload，并仅用返回的字节数区分 syntax 与兼容尾部。
+    pub fn parse_with_drc_state_compat(
+        payload: &'a [u8],
+        context: PresentationSubstreamContext,
+        state: &mut PresentationDrcState,
+    ) -> Result<(Self, usize), PresentationSubstreamError> {
+        let initial_state = *state;
+        let mut candidate_state = initial_state;
+        match Self::parse_with_drc_state(payload, context, &mut candidate_state) {
+            Ok(parsed) => {
+                *state = candidate_state;
+                Ok((parsed, payload.len()))
+            }
+            Err(error @ PresentationSubstreamError::TrailingBits { remaining_bits: 8 })
+                if context.presentation_is_independent() && context.pres_ch_mode_undefined() =>
+            {
+                let Some((&compatibility_byte, syntax_payload)) = payload.split_last() else {
+                    return Err(error);
+                };
+                if !INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES.contains(&compatibility_byte) {
+                    return Err(error);
+                }
+                let mut compatibility_state = initial_state;
+                let parsed =
+                    Self::parse_with_drc_state(syntax_payload, context, &mut compatibility_state)?;
+                if !parsed.drc_present || parsed.drc_configuration.is_none() {
+                    return Err(error);
+                }
+                *state = compatibility_state;
+                Ok((parsed, syntax_payload.len()))
+            }
+            Err(error) => Err(error),
+        }
     }
 }
 
@@ -4569,6 +4618,134 @@ mod tests {
 
         state.reset();
         assert_eq!(state, PresentationDrcState::new());
+    }
+
+    #[test]
+    fn compatibility_parser_accepts_only_known_independent_object_drc_tail_bytes() {
+        const STRICT: [u8; 4] = [0x00, 0x3d, 0x01, 0x00];
+        let context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            PresentationChannelContext::UNDEFINED,
+        );
+
+        let mut strict_state = PresentationDrcState::new();
+        let strict =
+            Ac4PresentationSubstream::parse_with_drc_state(&STRICT, context, &mut strict_state)
+                .unwrap();
+        assert!(strict.drc_present);
+        assert!(strict.drc_configuration.is_some());
+
+        let mut compat_state = PresentationDrcState::new();
+        let (_, syntax_len) = Ac4PresentationSubstream::parse_with_drc_state_compat(
+            &STRICT,
+            context,
+            &mut compat_state,
+        )
+        .unwrap();
+        assert_eq!(syntax_len, STRICT.len());
+        assert_eq!(compat_state, strict_state);
+
+        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+            let payload = [
+                STRICT[0],
+                STRICT[1],
+                STRICT[2],
+                STRICT[3],
+                compatibility_byte,
+            ];
+            let mut strict_rejected = PresentationDrcState::new();
+            assert_eq!(
+                Ac4PresentationSubstream::parse_with_drc_state(
+                    &payload,
+                    context,
+                    &mut strict_rejected,
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+            );
+            assert_eq!(strict_rejected, PresentationDrcState::new());
+
+            let mut accepted = PresentationDrcState::new();
+            let (parsed, syntax_len) = Ac4PresentationSubstream::parse_with_drc_state_compat(
+                &payload,
+                context,
+                &mut accepted,
+            )
+            .unwrap();
+            assert_eq!(syntax_len, STRICT.len());
+            assert!(parsed.drc_configuration.is_some());
+            assert_eq!(accepted, strict_state);
+        }
+    }
+
+    #[test]
+    fn compatibility_parser_rejects_other_tails_and_rolls_back_state() {
+        const STRICT: [u8; 4] = [0x00, 0x3d, 0x01, 0x00];
+        let object_context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            PresentationChannelContext::UNDEFINED,
+        );
+        let channel_context = PresentationSubstreamContext::new(
+            false,
+            true,
+            1,
+            1,
+            PresentationChannelContext::new(Some(0), None, false, 0, false),
+        );
+
+        let mut state = PresentationDrcState::new();
+        Ac4PresentationSubstream::parse_with_drc_state(&STRICT, object_context, &mut state)
+            .unwrap();
+        let before = state;
+        let wrong_tail = [STRICT[0], STRICT[1], STRICT[2], STRICT[3], 0x81];
+        assert_eq!(
+            Ac4PresentationSubstream::parse_with_drc_state_compat(
+                &wrong_tail,
+                object_context,
+                &mut state,
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+        );
+        assert_eq!(state, before);
+
+        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+            let payload = [
+                STRICT[0],
+                STRICT[1],
+                STRICT[2],
+                STRICT[3],
+                compatibility_byte,
+            ];
+            assert_eq!(
+                Ac4PresentationSubstream::parse_with_drc_state_compat(
+                    &payload,
+                    channel_context,
+                    &mut state,
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+            );
+            assert_eq!(state, before);
+        }
+
+        let no_drc_with_tail = [0x55, 0x04, 0x00, 0x80];
+        assert_eq!(
+            Ac4PresentationSubstream::parse_with_drc_state_compat(
+                &no_drc_with_tail,
+                object_context,
+                &mut state,
+            )
+            .unwrap_err(),
+            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+        );
+        assert_eq!(state, before);
     }
 
     #[test]

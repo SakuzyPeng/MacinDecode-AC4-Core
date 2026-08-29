@@ -81,6 +81,7 @@ fn every_help_page_is_english_only() {
     for command in [
         None,
         Some("trace"),
+        Some("inspect"),
         Some("export-damf"),
         Some("export-full-damf"),
         Some("export-adm-bwf"),

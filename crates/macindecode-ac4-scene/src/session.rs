@@ -4,7 +4,7 @@
 use alloc::vec::Vec;
 use macindecode_ac4_bitstream::{
     Ac4PresentationSubstream, Ac4PresentationV1Info, PresentationDrcState,
-    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainState,
+    PresentationSubstreamGroupGainState,
     substream::{ObjectAssignment, SubstreamInfo, SubstreamInfoAjoc},
     topology::{
         Ac4Topology, DecoderAction, MAX_PRESENTATIONS, MAX_SUBSTREAMS, ResetReason, TopologyError,
@@ -12,6 +12,8 @@ use macindecode_ac4_bitstream::{
         validate_substream_references,
     },
 };
+#[cfg(test)]
+use macindecode_ac4_bitstream::{PresentationSubstreamContext, PresentationSubstreamError};
 
 #[cfg(feature = "audio-decode")]
 use crate::DecodeStatus;
@@ -39,6 +41,7 @@ const PRESENTATION_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info";
 const GROUP_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info/ac4_substream_group_info";
 const PRESENTATION_SUBSTREAM_SYNTAX: &str = "raw_ac4_frame/ac4_presentation_substream";
 /// object/A-JOC 生产链在 independent DRC 帧规范语法之后写入的已观测尾字节。
+#[cfg(test)]
 const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 2] = [0x00, 0x80];
 
 /// 所选 presentation 的解析历史与当前 AU 可见存储。
@@ -418,17 +421,20 @@ impl Ac4DecoderSession {
             self.presentation_metadata.drc
         };
         let mut next_drc_state = replay_drc_state;
-        let (parsed, syntax_payload_len) =
-            parse_presentation_substream_for_scene(payload, parse_context, &mut next_drc_state)
-                .map_err(|error| {
-                    DecodeError::from_presentation_substream(
-                        error,
-                        access_unit_context.index(),
-                        presentation.index,
-                        presentation.id,
-                        substream.substream_index,
-                    )
-                })?;
+        let (parsed, syntax_payload_len) = Ac4PresentationSubstream::parse_with_drc_state_compat(
+            payload,
+            parse_context,
+            &mut next_drc_state,
+        )
+        .map_err(|error| {
+            DecodeError::from_presentation_substream(
+                error,
+                access_unit_context.index(),
+                presentation.index,
+                presentation.id,
+                substream.substream_index,
+            )
+        })?;
 
         let mut next_group_gain_state = if reset_history {
             PresentationSubstreamGroupGainState::new()
@@ -669,49 +675,6 @@ impl Ac4DecoderSession {
             self.core_band_pcm.clear_samples();
         }
         self.topology.mark_discontinuity(reason);
-    }
-}
-
-/// 保持 bitstream parser 的规范严格边界，同时接纳回放端已验证的一种窄兼容形态。
-///
-/// 多条 object/A-JOC 生产链只在携带 DRC configuration 的 independent frame 中，于完整
-/// `ac4_presentation_substream()` 之后追加单字节 `0x00` 或 `0x80`。它们不是
-/// `TS103190-2:v1.3.1:6.2.2.3` 的字段；Scene 保留完整 bounded payload，但只把前缀交给
-/// 严格 parser。任何其他尾部仍原样报错。
-fn parse_presentation_substream_for_scene<'payload>(
-    payload: &'payload [u8],
-    context: PresentationSubstreamContext,
-    state: &mut PresentationDrcState,
-) -> Result<(Ac4PresentationSubstream<'payload>, usize), PresentationSubstreamError> {
-    let initial_state = *state;
-    let mut candidate_state = initial_state;
-    match Ac4PresentationSubstream::parse_with_drc_state(payload, context, &mut candidate_state) {
-        Ok(parsed) => {
-            *state = candidate_state;
-            Ok((parsed, payload.len()))
-        }
-        Err(error @ PresentationSubstreamError::TrailingBits { remaining_bits: 8 })
-            if context.presentation_is_independent() && context.pres_ch_mode_undefined() =>
-        {
-            let Some((&compatibility_byte, syntax_payload)) = payload.split_last() else {
-                return Err(error);
-            };
-            if !INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES.contains(&compatibility_byte) {
-                return Err(error);
-            }
-            let mut compatibility_state = initial_state;
-            let parsed = Ac4PresentationSubstream::parse_with_drc_state(
-                syntax_payload,
-                context,
-                &mut compatibility_state,
-            )?;
-            if !parsed.drc_present || parsed.drc_configuration.is_none() {
-                return Err(error);
-            }
-            *state = compatibility_state;
-            Ok((parsed, syntax_payload.len()))
-        }
-        Err(error) => Err(error),
     }
 }
 
@@ -2125,8 +2088,10 @@ mod tests {
             payload[4] = compatibility_byte;
             let mut state = PresentationDrcState::new();
             let (parsed, syntax_payload_len) =
-                parse_presentation_substream_for_scene(&payload, context, &mut state)
-                    .expect("已验证的 independent object DRC 尾部应进入窄兼容路径");
+                Ac4PresentationSubstream::parse_with_drc_state_compat(
+                    &payload, context, &mut state,
+                )
+                .expect("已验证的 independent object DRC 尾部应进入窄兼容路径");
             assert_eq!(syntax_payload_len, 4);
             assert!(parsed.drc_present);
             assert!(parsed.drc_configuration.is_some());
@@ -2137,8 +2102,12 @@ mod tests {
         wrong_byte[4] = 0x81;
         let mut rejected_state = PresentationDrcState::new();
         assert_eq!(
-            parse_presentation_substream_for_scene(&wrong_byte, context, &mut rejected_state)
-                .unwrap_err(),
+            Ac4PresentationSubstream::parse_with_drc_state_compat(
+                &wrong_byte,
+                context,
+                &mut rejected_state,
+            )
+            .unwrap_err(),
             PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
         );
         assert_eq!(rejected_state, PresentationDrcState::new());
@@ -2146,7 +2115,7 @@ mod tests {
         for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
             let absent_drc_with_tail = [0x55, 0x04, 0x00, compatibility_byte];
             assert_eq!(
-                parse_presentation_substream_for_scene(
+                Ac4PresentationSubstream::parse_with_drc_state_compat(
                     &absent_drc_with_tail,
                     context,
                     &mut rejected_state,
@@ -2174,7 +2143,7 @@ mod tests {
             let mut payload = INDEPENDENT_DRC_PRESENTATION_PAYLOAD;
             payload[4] = compatibility_byte;
             assert_eq!(
-                parse_presentation_substream_for_scene(
+                Ac4PresentationSubstream::parse_with_drc_state_compat(
                     &payload,
                     channel_context,
                     &mut rejected_state,

@@ -7,6 +7,7 @@ mod container;
 mod corecaf;
 mod corepcm;
 mod damf;
+mod inspect;
 #[cfg(feature = "audio-decode")]
 mod metadata_batch;
 #[cfg(feature = "audio-decode")]
@@ -39,6 +40,14 @@ enum Command {
         /// MP4/M4A or raw AC-4 input.
         input: PathBuf,
     },
+    /// Print a human-readable AC-4 bitstream metadata report.
+    Inspect {
+        /// MP4/M4A or raw AC-4 input.
+        input: PathBuf,
+        /// Success-output format; diagnostics remain JSON Lines on standard error.
+        #[arg(long, value_enum, default_value_t = InspectFormat::Text)]
+        format: InspectFormat,
+    },
     /// Generate a DAMF audition probe from synthetic pink noise and OAMD metadata.
     ExportDamf(ExportDamfArgs),
     /// Export full A-JOC objects, full OAMD, and optional LFE as a DAMF package.
@@ -55,6 +64,12 @@ enum Command {
     ExportAspxPcm(ExportAspxPcmArgs),
     /// Export final PCM for full A-JOC objects with LFE reinserted.
     ExportObjectsPcm(ExportObjectsPcmArgs),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum InspectFormat {
+    Text,
+    Json,
 }
 
 /// Arguments for `export-objects-pcm`.
@@ -372,8 +387,25 @@ fn main() -> ExitCode {
         }
     };
 
+    if let Command::Inspect { input, format } = cli.command {
+        let result = inspect::run(&input).and_then(|report| match format {
+            InspectFormat::Text => report.write_text(),
+            InspectFormat::Json => {
+                wire::prepare_inspect(report).and_then(|success| success.write())
+            }
+        });
+        return match result {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                wire::write_error(&error);
+                ExitCode::FAILURE
+            }
+        };
+    }
+
     let (command, result) = match cli.command {
         Command::Trace { input } => ("trace", run_trace(&input)),
+        Command::Inspect { .. } => unreachable!("inspect is handled before legacy JSON commands"),
         Command::ExportDamf(args) => ("export-damf", damf::run(args)),
         Command::ExportFullDamf(args) => ("export-full-damf", damf::run_full(args)),
         Command::ExportAdmBwf(args) => ("export-adm-bwf", adm::run(args)),
