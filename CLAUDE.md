@@ -30,9 +30,9 @@ CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 
 
 三层，不要混为一谈：
 
-- **目标侧零依赖**——`macindecode-ac4-bitstream` 与 `macindecode-ac4-mp4` 不依赖任何外部 crate（后者只依赖前者），`no_std` 依赖图不受影响。
-- **构建期**只允许精确锁版本的 `libm = "=0.2.16"`，且只出现在 `[build-dependencies]`。
-- **CLI 是宿主工具**，有 clap / serde / serde_json / quick-xml。它不受目标侧约束。
+- **目标侧零依赖**——`macindecode-ac4-bitstream`、`macindecode-ac4-mp4` 与 `macindecode-ac4-scene` 都是 `#![no_std]` 且不依赖任何外部 crate（后两者各自只依赖 bitstream），`no_std` 依赖图不受影响。CI 的 `cargo check -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features` 守着这条。
+- **构建期**只允许精确锁版本的 `libm = "=0.2.16"`，且只出现在 bitstream 的 `[build-dependencies]`。
+- **宿主侧工具不受目标侧约束**——CLI 有 clap / quick-xml / serde / serde_json（`audio-decode` 下另加 `renamore`）；`macindecode-ac4-inspect` 只有 serde / serde_json；`macindecode-ac4-perf` 有 clap / serde / serde_json（`allocation-stats` 下另加 `stats_alloc`），且 `publish = false`，只在仓库内部使用。
 
 `core` 不提供超越函数，`sqrt` 起就不在其中。运行期需要的实数函数在 `macindecode-ac4-bitstream/src/math.rs` 自实现（ADR-0005），**不使用 `f64::mul_add`**——它不在 `core`，且在有无 FMA 的目标上舍入次数不同。
 
@@ -134,6 +134,17 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 - ADR-0005 目标侧的实数函数
 - ADR-0006 Core PCM/QMF 增益边界
 - ADR-0007 预处理前 Scene Rust API 边界
+- ADR-0008 QMF 合成的成对调制
+- ADR-0009 QMF 分析的镜像子带成对调制
+- ADR-0010 固定 Rust 1.98.0 并提升 MSRV
+- ADR-0011 按语法、解码与场景重整职责边界
+
+**动架构之前先读 ADR-0011。** 长期依赖方向是 syntax → decode/engine → scene：先在现有 crate 内
+建立这三层模块边界并保留兼容 re-export，用测试与依赖门禁证明边界之后，才评估物理提取单一的
+`macindecode-ac4-decode`；OAMD 暂不独立成 crate，FFI 继续延后。它同时作废了 `ARCHITECTURE.md`
+早期那张 `audio-core` / `ajoc` / `oamd` 三路拆包草图。**拆分不得混入数值或输出行为变更**——每个
+迁移增量都要分别过默认与 `audio-decode` 测试、`no_std` 检查、三层 PCM 基线、Scene/CLI 契约和
+规范分发门禁。
 
 ## 当前边界
 
@@ -149,9 +160,21 @@ OAMD-derived `headTrackMode` 必须相同。旧 `export-damf` 仍是粉红噪声
 字节不得因共用 writer 重构而改变。
 这些出口以及 core/A-SPX/诊断适配都已经过 `Ac4SceneFrame`；CLI 旧 collection、三层 PCM
 sink、parser workspace 与第二套 DSP 已删除。M5 仍不因 direct-object 未验证路径而宣称完整；
-公共 C ABI（M7）尚未开始。
+M7 已落地 ARM64 解码性能基线与两轮 QMF 优化（ADR-0008、ADR-0009；三层 PCM 逐位不变，稳态零
+分配），但公共 C ABI 尚未开始，按 ADR-0011 也要等 Scene API、direct-object 与真实宿主所有权
+需求都稳定后才建立；自动性能门禁、x86-64 实测、fuzz 与长期稳定性同样未完成。
 真实音频出口现在包括三层 WAVE，以及受限子集的
 `export-full-adm-bwf`、`export-full-damf`、`export-core-caf`。
+
+只读出口另有 `macindecode-ac4-inspect`：`inspect_path` / `inspect_bytes` 返回与 CLI `inspect`
+同一份报告，`serde_json::to_value(&report)` 就是 envelope 里的 `result.inspectResult`，
+`render_text()` 是稳定的英文文本渲染（CLI 默认输出 text，是 JSON envelope 的显式例外）。它不进
+DSP，也不需要 `audio-decode`。
+
+`FieldStatus` 的五个状态**不可互相顶替**：`NotPresent` / `NotApplicable` 是关于码流的陈述，
+构造时不带 `reason`；`Unknown` / `Unsupported` 由 `MetadataFailure` 映射而来，是「解析没能形成
+typed metadata」，构造时必须带 `reason`。把解析失败报成 `NotPresent` 等于宣称码流里没有这个
+字段——和值算错同级的谎报。
 
 未覆盖路径一律 **fail-closed**，不静默降级：`b_static_dmx = 1`、channel-based、direct-object/mixed、SIMPLE、1 024 及以下短帧、活动 companding、FIC/TIC 交织、活动 core DE 全部显式拒绝。README 的支持矩阵是这份清单的权威版本，写着「未观察到」的行只描述当前工具与素材，不等于规范不支持。
 
