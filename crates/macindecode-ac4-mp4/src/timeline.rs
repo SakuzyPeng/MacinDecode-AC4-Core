@@ -44,6 +44,11 @@ pub enum TimelineError {
         /// 文件中的原始值。
         value: i64,
     },
+    /// 多个媒体编辑无法由单一仿射平移或连续区间表示。
+    MultipleMediaEdits {
+        /// edit list 中引用媒体的条目数。
+        count: usize,
+    },
     /// 时间换算结果超出公开整数类型的范围。
     TimeOverflow,
 }
@@ -89,6 +94,10 @@ impl fmt::Display for TimelineError {
             TimelineError::InvalidMediaTime { value } => {
                 write!(f, "Edit-list media_time {value} is undefined")
             }
+            TimelineError::MultipleMediaEdits { count } => write!(
+                f,
+                "Edit list contains {count} media edits and has no single affine projection"
+            ),
             TimelineError::TimeOverflow => write!(f, "Container time conversion overflow"),
         }
     }
@@ -556,6 +565,9 @@ pub fn presentation_media_span(
     movie_timescale: u32,
     edits: &[EditListEntry],
 ) -> Result<Option<PresentationSampleSpan>, TimelineError> {
+    if sample_rate == 0 || media_timescale == 0 || movie_timescale == 0 {
+        return Err(TimelineError::ZeroTimescale);
+    }
     let mut cursor = 0u64;
     let mut media_span = None;
     for &entry in edits {
@@ -825,6 +837,24 @@ mod tests {
         assert_eq!(
             presentation_media_span(48_000, 1_000, 1_000, &edits[..1]).unwrap(),
             None
+        );
+    }
+
+    #[test]
+    fn media_span_rejects_zero_scales_without_a_media_segment() {
+        assert_eq!(
+            presentation_media_span(48_000, 0, 48_000, &[]),
+            Err(TimelineError::ZeroTimescale)
+        );
+
+        let empty = [EditListEntry {
+            segment_duration: 1_000,
+            media_time: -1,
+            media_rate: (1, 0),
+        }];
+        assert_eq!(
+            presentation_media_span(0, 48_000, 48_000, &empty),
+            Err(TimelineError::ZeroTimescale)
         );
     }
 

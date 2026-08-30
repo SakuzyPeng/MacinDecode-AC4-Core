@@ -371,6 +371,14 @@ impl<const EDITS: usize> Ac4Mp4Timeline<EDITS> {
             .count()
     }
 
+    fn require_affine_projection(&self) -> Result<(), TimelineError> {
+        let count = self.media_edit_count();
+        if count > 1 {
+            return Err(TimelineError::MultipleMediaEdits { count });
+        }
+        Ok(())
+    }
+
     /// Convert a media PTS to the edited presentation timeline in media ticks.
     ///
     /// # Errors
@@ -402,11 +410,13 @@ impl<const EDITS: usize> Ac4Mp4Timeline<EDITS> {
     ///
     /// # Errors
     ///
-    /// Returns [`TimelineError`] for invalid edit state or arithmetic overflow.
+    /// Returns [`TimelineError`] when multiple media edits prevent one affine
+    /// mapping, the edit state is invalid, or arithmetic overflows.
     pub fn presentation_sample_shift(
         &self,
         sample_rate: u32,
     ) -> Result<Option<i64>, TimelineError> {
+        self.require_affine_projection()?;
         presentation_sample_shift(
             sample_rate,
             self.media.timescale,
@@ -444,11 +454,13 @@ impl<const EDITS: usize> Ac4Mp4Timeline<EDITS> {
     ///
     /// # Errors
     ///
-    /// Returns [`TimelineError`] for invalid edit state or arithmetic overflow.
+    /// Returns [`TimelineError`] when multiple media edits prevent one continuous
+    /// span, the edit state is invalid, or arithmetic overflows.
     pub fn media_span_samples(
         &self,
         sample_rate: u32,
     ) -> Result<Option<PresentationSampleSpan>, TimelineError> {
+        self.require_affine_projection()?;
         if self.edits().is_empty() {
             return Ok(Some(PresentationSampleSpan {
                 start_sample: 0,
@@ -615,5 +627,48 @@ mod tests {
                 SampleBoundsError::RangeExceedsInput { .. }
             ))
         ));
+    }
+
+    #[test]
+    fn timeline_rejects_affine_helpers_for_multiple_media_edits() {
+        let edits = [
+            EditListEntry {
+                segment_duration: 1_000,
+                media_time: 0,
+                media_rate: (1, 0),
+            },
+            EditListEntry {
+                segment_duration: 500,
+                media_time: -1,
+                media_rate: (1, 0),
+            },
+            EditListEntry {
+                segment_duration: 1_000,
+                media_time: 2_000,
+                media_rate: (1, 0),
+            },
+        ];
+        let media = HeaderTiming {
+            timescale: 1_000,
+            duration: 3_000,
+        };
+        let timeline = Ac4Mp4Timeline {
+            movie: HeaderTiming {
+                timescale: 1_000,
+                duration: 2_500,
+            },
+            media,
+            edits,
+            edit_count: edits.len(),
+            presentation: presentation_timing(media, 1_000, &edits).unwrap(),
+        };
+        assert_eq!(
+            timeline.presentation_sample_shift(1_000).unwrap_err(),
+            TimelineError::MultipleMediaEdits { count: 2 }
+        );
+        assert_eq!(
+            timeline.media_span_samples(1_000).unwrap_err(),
+            TimelineError::MultipleMediaEdits { count: 2 }
+        );
     }
 }
