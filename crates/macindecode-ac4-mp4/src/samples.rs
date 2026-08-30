@@ -6,7 +6,47 @@
 //! 单个 sample。此处以游标推进的方式产出，不做任何分配，也不预先展开成
 //! 数组：sample 数量由文件声明，展开会让损坏输入直接决定内存用量。
 
-use core::fmt;
+use core::{fmt, ops::Range};
+
+/// A sample's declared file range cannot be represented or does not fit in the input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SampleBoundsError {
+    /// The 64-bit chunk/sample offset cannot be represented by the target's `usize`.
+    OffsetExceedsUsize,
+    /// The 32-bit sample size cannot be represented by the target's `usize`.
+    SizeExceedsUsize,
+    /// Adding the converted offset and size overflows `usize`.
+    RangeOverflow,
+    /// The represented range extends beyond the complete input buffer.
+    RangeExceedsInput {
+        /// Inclusive byte offset at which the sample starts.
+        start: usize,
+        /// Exclusive byte offset at which the sample ends.
+        end: usize,
+        /// Complete input length used for validation.
+        input_len: usize,
+    },
+}
+
+impl fmt::Display for SampleBoundsError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::OffsetExceedsUsize => write!(formatter, "MP4 sample offset exceeds usize"),
+            Self::SizeExceedsUsize => write!(formatter, "MP4 sample size exceeds usize"),
+            Self::RangeOverflow => write!(formatter, "MP4 sample range overflows usize"),
+            Self::RangeExceedsInput {
+                start,
+                end,
+                input_len,
+            } => write!(
+                formatter,
+                "MP4 sample range {start}..{end} exceeds input length {input_len}"
+            ),
+        }
+    }
+}
+
+impl core::error::Error for SampleBoundsError {}
 
 /// sample table 解析失败的原因。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,6 +174,31 @@ pub struct SampleInfo {
     ///
     /// 没有 `stss` 时全部 sample 均为同步样本，见 ISO/IEC 14496-12。
     pub is_sync: bool,
+}
+
+impl SampleInfo {
+    /// Convert and validate this sample's byte range against a complete input buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SampleBoundsError`] if either integer cannot be represented, the
+    /// range addition overflows, or the declared sample extends past `input_len`.
+    pub fn checked_range(self, input_len: usize) -> Result<Range<usize>, SampleBoundsError> {
+        let start =
+            usize::try_from(self.offset).map_err(|_| SampleBoundsError::OffsetExceedsUsize)?;
+        let size = usize::try_from(self.size).map_err(|_| SampleBoundsError::SizeExceedsUsize)?;
+        let end = start
+            .checked_add(size)
+            .ok_or(SampleBoundsError::RangeOverflow)?;
+        if end > input_len {
+            return Err(SampleBoundsError::RangeExceedsInput {
+                start,
+                end,
+                input_len,
+            });
+        }
+        Ok(start..end)
+    }
 }
 
 /// `stbl` 中与定位相关的各表。
@@ -270,9 +335,9 @@ impl<'a> SampleTable<'a> {
 
     /// 按序遍历全部 sample。
     #[must_use]
-    pub fn iter(&'a self) -> SampleIter<'a> {
+    pub fn iter(&self) -> SampleIter<'a> {
         SampleIter {
-            table: self,
+            table: self.clone(),
             index: 0,
             decode_time: 0,
             stts_entry: 0,
@@ -296,7 +361,7 @@ impl<'a> SampleTable<'a> {
 /// 逐个产出 sample 位置与时间。
 #[derive(Debug, Clone)]
 pub struct SampleIter<'a> {
-    table: &'a SampleTable<'a>,
+    table: SampleTable<'a>,
     index: u32,
     decode_time: u64,
     stts_entry: u32,
@@ -643,6 +708,39 @@ mod tests {
         let table = SampleTable::parse(&data).unwrap();
         assert_eq!(table.sample_count(), 0);
         assert_eq!(table.iter().count(), 0);
+    }
+
+    #[test]
+    fn sample_ranges_are_checked_once_against_the_complete_input() {
+        let mut info = SampleInfo {
+            index: 3,
+            offset: 4,
+            size: 3,
+            sample_description_index: 1,
+            decode_time: 0,
+            composition_time: 0,
+            duration: 2_048,
+            is_sync: true,
+        };
+        assert_eq!(info.checked_range(8).unwrap(), 4..7);
+
+        info.offset = 7;
+        info.size = 2;
+        assert_eq!(
+            info.checked_range(8).unwrap_err(),
+            SampleBoundsError::RangeExceedsInput {
+                start: 7,
+                end: 9,
+                input_len: 8,
+            }
+        );
+
+        info.offset = u64::MAX;
+        info.size = 1;
+        assert!(matches!(
+            info.checked_range(usize::MAX),
+            Err(SampleBoundsError::OffsetExceedsUsize | SampleBoundsError::RangeOverflow)
+        ));
     }
 
     /// sample 数量超出 stsz 声明的条目时必须报错而非回绕

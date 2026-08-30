@@ -5,12 +5,13 @@
 //! 选择。事件通过配置代次内稳定的 `SceneElementId` 关联元素，码流下标只作为
 //! artifact 标签保留。
 
-use crate::container::{scale_i64_round, scale_u64_round};
 use macindecode_ac4_bitstream::oamd::{
     AdditionalObjectMetadata, OamdCommonData, ObjectBasicState, ObjectGainState,
     ObjectMetadataState, ObjectPriorityState, ObjectRenderState, OtherPropertiesUpdate,
     PositionCoding, QuantizedPosition, ZoneUpdate,
 };
+pub(crate) use macindecode_ac4_mp4::PresentationSampleSpan as MediaSpan;
+use macindecode_ac4_mp4::{rescale_i64_round, rescale_u64_round};
 use macindecode_ac4_scene::{DecodeMode, SceneElementId};
 
 /// 写出批次中保留的 Scene 元素标识。
@@ -66,14 +67,6 @@ pub(crate) struct MetadataEvent {
     pub additional: AdditionalObjectMetadata,
 }
 
-/// 呈现时间轴中真正引用媒体的连续区间。
-#[cfg(feature = "audio-decode")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct MediaSpan {
-    pub start_sample: u64,
-    pub end_sample: u64,
-}
-
 /// 一份输入中可导出的完整场景时间线。
 #[cfg(feature = "audio-decode")]
 #[derive(Debug)]
@@ -114,16 +107,15 @@ pub(crate) fn project_metadata_events(
         return Err("Media-edit visible range exceeds the presentation timeline".to_owned());
     }
 
-    let visible_start = scale_u64_round(
+    let visible_start = rescale_u64_round(
         media_span.start_sample,
-        u64::from(output_sample_rate),
-        u64::from(batch.sample_rate),
-    )?;
-    let visible_end = scale_u64_round(
-        media_span.end_sample,
-        u64::from(output_sample_rate),
-        u64::from(batch.sample_rate),
-    )?;
+        batch.sample_rate,
+        output_sample_rate,
+    )
+    .map_err(|error| error.to_string())?;
+    let visible_end =
+        rescale_u64_round(media_span.end_sample, batch.sample_rate, output_sample_rate)
+            .map_err(|error| error.to_string())?;
     if visible_start > visible_end || visible_end > duration {
         return Err("Media-edit visible range exceeds the export duration".to_owned());
     }
@@ -146,20 +138,15 @@ pub(crate) fn project_metadata_events(
     let mut at_start = None;
     let mut inside: Vec<OutputMetadataEvent> = Vec::new();
     for event in source {
-        let sample = scale_i64_round(
-            event.sample_position,
-            i64::from(output_sample_rate),
-            i64::from(batch.sample_rate),
-        )?;
+        let sample =
+            rescale_i64_round(event.sample_position, batch.sample_rate, output_sample_rate)
+                .map_err(|error| error.to_string())?;
         let source_end = event
             .sample_position
             .checked_add(i64::from(event.ramp_samples))
             .ok_or("Event-ramp end-position overflow")?;
-        let end = scale_i64_round(
-            source_end,
-            i64::from(output_sample_rate),
-            i64::from(batch.sample_rate),
-        )?;
+        let end = rescale_i64_round(source_end, batch.sample_rate, output_sample_rate)
+            .map_err(|error| error.to_string())?;
         let ramp = u64::try_from(end.saturating_sub(sample)).unwrap_or(0);
         if sample < visible_start_i64 {
             before = Some((event, end));

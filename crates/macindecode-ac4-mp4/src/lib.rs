@@ -10,6 +10,7 @@
 pub mod boxes;
 pub mod dsi;
 pub mod samples;
+pub mod source;
 pub mod timeline;
 pub mod track;
 
@@ -24,10 +25,14 @@ pub use dsi::{
     Ac4DsiSubstreamGroupIter, Ac4DsiSubstreamIter, Ac4DsiV1, Ac4ProgramId, BaseSamplingFrequency,
     DsiError, FrameRate, MediaTimeline, SampleDelta,
 };
-pub use samples::{SampleInfo, SampleIter, SampleTable, SampleTableError};
+pub use samples::{SampleBoundsError, SampleInfo, SampleIter, SampleTable, SampleTableError};
+pub use source::{
+    Ac4AccessUnit, Ac4AccessUnitIter, Ac4Mp4, Ac4Mp4Error, Ac4Mp4Timeline, Ac4SampleInfoIter,
+};
 pub use timeline::{
-    EditListEntry, HeaderTiming, PresentationTiming, TimelineError, media_time_to_presentation,
-    parse_edit_list, parse_header_timing, presentation_timing,
+    EditListEntry, HeaderTiming, PresentationSampleSpan, PresentationTiming, TimelineError,
+    media_time_to_presentation, parse_edit_list, parse_header_timing, presentation_media_span,
+    presentation_sample_shift, presentation_timing, rescale_i64_round, rescale_u64_round,
 };
 pub use track::{
     AUDIO_SAMPLE_ENTRY_LEN, Ac4SampleEntry, Ac4Track, TrackError, find_ac4_sample_entry,

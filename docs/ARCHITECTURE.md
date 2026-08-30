@@ -77,10 +77,11 @@ MP4、inspection、FFI、CLI 或 perf 都不得成为解码核心的反向依赖
 | `macindecode-ac4-scene/src/session.rs` | Session 控制面、presentation/mode 选择、processing-metadata 跨帧状态与 payload 存储、Core/Full A-JOC 拓扑门禁及 engine 所有权 |
 | `macindecode-ac4-scene/src/full_engine.rs` | 同一 AU 候选到 A-JOC engine 的事务输入及结构化错误投影 |
 | `macindecode-ac4-scene/src/error.rs` | 可重试截断、选择、unsupported、码流与不变量错误及 AU/语法上下文 |
-| `macindecode-ac4-mp4/src/track.rs` | 首个 AC-4 轨、sample entry 与 `dac4` 的公共容器定位入口 |
+| `macindecode-ac4-mp4/src/track.rs` | 首个 AC-4 轨、sample entry 与 `dac4` 的底层容器定位原语 |
+| `macindecode-ac4-mp4/src/source.rs`、`timeline.rs` | `Ac4Mp4` 公共入口、sample-description/文件范围双重定界，以及按需 movie/edit 时间线、整数 sample 换算与 media span |
 | `macindecode-ac4-inspect/src/lib.rs` | MP4/raw 单遍聚合、五状态报告 DTO、语义展示换算与稳定 text renderer |
 | `macindecode-ac4-cli/src/trace/` | MP4/raw trace、普通音频统计，以及对统一 Full engine observation 的 A-JOC census 聚合 |
-| `macindecode-ac4-cli/src/container.rs` | Scene batch 与导出使用的 sample table 辅助及 MP4 edit 时间投影 |
+| `macindecode-ac4-cli/src/container.rs` | 公共 MP4 时间线到整批 artifact PCM 的最终投影；不再定位轨、切 sample 或实现时间换算 |
 | `macindecode-ac4-cli/src/scene_batch.rs`、`pcm_batch.rs`、`metadata_batch.rs` | bounded raw/MP4 AU 到 Session 的 batch 适配、Scene 外历史 PCM 量级/轨序适配、OAMD 整文件桥接与 edit 投影 |
 | `macindecode-ac4-cli/src/scene_export/` | core CAF 与 full artifact 选择、OAMD 与 PCM 配对、节目级 S24LE full PCM 交织、确定性探针信号 |
 | `macindecode-ac4-cli/src/adm/`、`damf/` | 格式专属 metadata、容器与原子提交 |
@@ -106,7 +107,7 @@ macindecode-ac4-perf    -> mp4 + scene + bitstream/decode
 macindecode-ac4-ffi     -> scene  （尚未建立）
 ```
 
-当前 `macindecode-ac4-scene` 已定义容器无关的数据模型和 Session 控制面；`decode_access_unit` 只接收调用方定界的 access unit 与已经换算为整数采样的位置，不读取或解释 MP4 字节。`macindecode-ac4-mp4` 只负责 access unit、AC-4 轨定位与时间线，不解释音频工具语义；`macindecode-ac4-inspect` 消费 MP4 与 bitstream typed API，形成文件级只读报告，不进入 Scene 或音频处理。CLI 的 `scene_batch` 消费 MP4 与 Scene，并在 Scene 返回以后执行 WAVE 兼容所需的 edit 与尺度投影。调用方可以把 DSI 等系统层选择信息保留在泛型 `PresentationSelectionMetadata<T>` 中，再由已选 `ScenePresentation` 按双方唯一的 effective ID 取得只读关联；数组下标不作为身份，身份不可用的 opaque 项会令关联保持 `Indeterminate`，metadata 不进入解码配置，也不形成 Scene 到 MP4 的依赖。presentation 处理前 Scene、选择、时间、所有权、normalized PCM 与 raw OAMD 的正式边界见 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md)。
+当前 `macindecode-ac4-scene` 已定义容器无关的数据模型和 Session 控制面；`decode_access_unit` 只接收调用方定界的 access unit 与已经换算为整数采样的位置，不读取或解释 MP4 字节。`macindecode-ac4-mp4` 只负责 access unit、AC-4 轨定位与时间线，不解释音频工具语义；其 `Ac4Mp4` 两级入口先统一轨、DSI、sample-description 与文件范围，再由需要导出的调用方按需解析 movie/edit 时间线。`macindecode-ac4-inspect` 只消费前一级和 bitstream typed API，形成文件级只读报告，不进入 Scene 或音频处理；CLI 与 perf 消费同一 bounded AU 和整数 sample 换算，CLI 仅在 Scene 返回以后执行 WAVE 兼容所需的最终 edit/尺度投影。调用方可以把 DSI 等系统层选择信息保留在泛型 `PresentationSelectionMetadata<T>` 中，再由已选 `ScenePresentation` 按双方唯一的 effective ID 取得只读关联；数组下标不作为身份，身份不可用的 opaque 项会令关联保持 `Indeterminate`，metadata 不进入解码配置，也不形成 Scene 到 MP4 的依赖。presentation 处理前 Scene、选择、时间、所有权、normalized PCM 与 raw OAMD 的正式边界见 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md)。
 
 ## 4. 目标解码会话
 

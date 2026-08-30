@@ -137,7 +137,7 @@ macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream (internal)
 | [`macindecode-ac4-decode`](crates/macindecode-ac4-decode) | ASF/A-SPX/A-JOC reconstruction, QMF, Table 188 alignment, and the Full engine | ✅ |
 | [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | File-level MP4/raw AC-4 aggregation, JSON DTOs, and stable text rendering | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` contract and streaming Rust API for A-JOC Core/Full | ✅ |
-| [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF boxes, `dac4`, sample table, edit/priming timeline | ✅ |
+| [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF boxes, `dac4`, bounded AUs, sample table, and edit/priming timeline | ✅ |
 | [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` tool: inspect, trace, PCM/ADM/DAMF/CAF export | — |
 | `macindecode-ac4-perf` | Unpublished Session timing, allocation, and hotspot-sampling harness | — |
 

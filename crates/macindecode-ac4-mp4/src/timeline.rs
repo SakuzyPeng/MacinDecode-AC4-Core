@@ -275,6 +275,95 @@ pub struct PresentationTiming {
     pub priming: u64,
 }
 
+/// A continuous media-backed interval on the presentation sample timeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PresentationSampleSpan {
+    /// First visible sample, inclusive.
+    pub start_sample: u64,
+    /// End of the visible interval, exclusive.
+    pub end_sample: u64,
+}
+
+/// Rescale an unsigned time value and round to the nearest destination tick.
+///
+/// Exact half-way values are rounded upwards. Both time scales must be non-zero.
+///
+/// # Errors
+///
+/// Returns [`TimelineError::ZeroTimescale`] for a zero scale and
+/// [`TimelineError::TimeOverflow`] if the intermediate or result does not fit.
+pub fn rescale_u64_round(
+    value: u64,
+    source_timescale: u32,
+    target_timescale: u32,
+) -> Result<u64, TimelineError> {
+    if source_timescale == 0 || target_timescale == 0 {
+        return Err(TimelineError::ZeroTimescale);
+    }
+    let denominator = u128::from(source_timescale);
+    let rounded = u128::from(value)
+        .checked_mul(u128::from(target_timescale))
+        .ok_or(TimelineError::TimeOverflow)?
+        .checked_add(denominator / 2)
+        .ok_or(TimelineError::TimeOverflow)?
+        .checked_div(denominator)
+        .ok_or(TimelineError::ZeroTimescale)?;
+    u64::try_from(rounded).map_err(|_| TimelineError::TimeOverflow)
+}
+
+/// Rescale a signed time value and round to the nearest destination tick.
+///
+/// Exact half-way values are rounded away from zero. Both time scales must be
+/// non-zero.
+///
+/// # Errors
+///
+/// Returns [`TimelineError::ZeroTimescale`] for a zero scale and
+/// [`TimelineError::TimeOverflow`] if the intermediate or result does not fit.
+pub fn rescale_i64_round(
+    value: i64,
+    source_timescale: u32,
+    target_timescale: u32,
+) -> Result<i64, TimelineError> {
+    if source_timescale == 0 || target_timescale == 0 {
+        return Err(TimelineError::ZeroTimescale);
+    }
+    let denominator = i128::from(source_timescale);
+    let scaled = i128::from(value)
+        .checked_mul(i128::from(target_timescale))
+        .ok_or(TimelineError::TimeOverflow)?;
+    let half = denominator / 2;
+    let rounded_numerator = if scaled >= 0 {
+        scaled
+            .checked_add(half)
+            .ok_or(TimelineError::TimeOverflow)?
+    } else {
+        scaled
+            .checked_sub(half)
+            .ok_or(TimelineError::TimeOverflow)?
+    };
+    let rounded = rounded_numerator
+        .checked_div(denominator)
+        .ok_or(TimelineError::ZeroTimescale)?;
+    i64::try_from(rounded).map_err(|_| TimelineError::TimeOverflow)
+}
+
+fn rescale_u64_floor(
+    value: u64,
+    source_timescale: u32,
+    target_timescale: u32,
+) -> Result<u64, TimelineError> {
+    if source_timescale == 0 || target_timescale == 0 {
+        return Err(TimelineError::ZeroTimescale);
+    }
+    let scaled = u128::from(value)
+        .checked_mul(u128::from(target_timescale))
+        .ok_or(TimelineError::TimeOverflow)?
+        .checked_div(u128::from(source_timescale))
+        .ok_or(TimelineError::ZeroTimescale)?;
+    u64::try_from(scaled).map_err(|_| TimelineError::TimeOverflow)
+}
+
 /// 根据 movie 与 media 时间刻度，把编辑段折算为呈现时间线。
 ///
 /// 无编辑时呈现时长等于媒体时长，priming 为 0：此时容器未声明任何补偿，
@@ -284,15 +373,7 @@ fn scaled_duration(
     media_timescale: u32,
     movie_timescale: u32,
 ) -> Result<u64, TimelineError> {
-    if media_timescale == 0 || movie_timescale == 0 {
-        return Err(TimelineError::ZeroTimescale);
-    }
-    let scaled = u128::from(segment_duration)
-        .checked_mul(u128::from(media_timescale))
-        .ok_or(TimelineError::TimeOverflow)?
-        .checked_div(u128::from(movie_timescale))
-        .ok_or(TimelineError::ZeroTimescale)?;
-    u64::try_from(scaled).map_err(|_| TimelineError::TimeOverflow)
+    rescale_u64_floor(segment_duration, movie_timescale, media_timescale)
 }
 
 fn validate_edit(entry: EditListEntry) -> Result<(), TimelineError> {
@@ -433,6 +514,65 @@ pub fn media_time_to_presentation(
     i64::try_from(mapped)
         .map(Some)
         .map_err(|_| TimelineError::TimeOverflow)
+}
+
+/// Convert the presentation's affine media-time shift to an integer sample shift.
+///
+/// This is intended for callers that have already rejected multiple discontiguous
+/// media edits. Converting the shift once preserves sub-media-tick offsets in later
+/// per-event sample arithmetic.
+///
+/// # Errors
+///
+/// Returns [`TimelineError`] if the edit list is invalid or either conversion
+/// overflows.
+pub fn presentation_sample_shift(
+    sample_rate: u32,
+    media_timescale: u32,
+    movie_timescale: u32,
+    edits: &[EditListEntry],
+) -> Result<Option<i64>, TimelineError> {
+    let Some(presentation_zero) =
+        media_time_to_presentation(0, media_timescale, movie_timescale, edits)?
+    else {
+        return Ok(None);
+    };
+    rescale_i64_round(presentation_zero, media_timescale, sample_rate).map(Some)
+}
+
+/// Project the media-backed edit segment onto an integer presentation sample timeline.
+///
+/// Empty edits advance the presentation cursor but do not create a returned span.
+/// When multiple media edits are supplied, the last span is returned; consumers that
+/// require one affine mapping must reject that topology before calling this helper.
+///
+/// # Errors
+///
+/// Returns [`TimelineError`] for invalid edits, zero time scales, or conversion
+/// overflow.
+pub fn presentation_media_span(
+    sample_rate: u32,
+    media_timescale: u32,
+    movie_timescale: u32,
+    edits: &[EditListEntry],
+) -> Result<Option<PresentationSampleSpan>, TimelineError> {
+    let mut cursor = 0u64;
+    let mut media_span = None;
+    for &entry in edits {
+        validate_edit(entry)?;
+        let duration = scaled_duration(entry.segment_duration, media_timescale, movie_timescale)?;
+        let end = cursor
+            .checked_add(duration)
+            .ok_or(TimelineError::TimeOverflow)?;
+        if !entry.is_empty_edit() {
+            media_span = Some(PresentationSampleSpan {
+                start_sample: rescale_u64_round(cursor, media_timescale, sample_rate)?,
+                end_sample: rescale_u64_round(end, media_timescale, sample_rate)?,
+            });
+        }
+        cursor = end;
+    }
+    Ok(media_span)
 }
 
 #[cfg(test)]
@@ -624,6 +764,78 @@ mod tests {
         assert_eq!(
             media_time_to_presentation(4_096, 48_000, 48_000, &edits).unwrap(),
             Some(2_048)
+        );
+    }
+
+    #[test]
+    fn sample_shift_preserves_sub_media_tick_offsets() {
+        assert_eq!(
+            presentation_sample_shift(48_000, 1_000, 1_000, &[]).unwrap(),
+            Some(0)
+        );
+
+        let edit = [EditListEntry {
+            segment_duration: 1_000,
+            media_time: 1,
+            media_rate: (1, 0),
+        }];
+        let shift = presentation_sample_shift(48_000, 1_000, 1_000, &edit)
+            .unwrap()
+            .expect("one media edit has an affine shift");
+        assert_eq!(shift, -48);
+        assert_eq!(24i64.checked_add(shift), Some(-24));
+
+        let empty = [EditListEntry {
+            segment_duration: 1_000,
+            media_time: -1,
+            media_rate: (1, 0),
+        }];
+        assert_eq!(
+            presentation_sample_shift(48_000, 1_000, 1_000, &empty).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn media_span_excludes_leading_and_trailing_empty_edits() {
+        let edits = [
+            EditListEntry {
+                segment_duration: 1_000,
+                media_time: -1,
+                media_rate: (1, 0),
+            },
+            EditListEntry {
+                segment_duration: 2_000,
+                media_time: 2_048,
+                media_rate: (1, 0),
+            },
+            EditListEntry {
+                segment_duration: 500,
+                media_time: -1,
+                media_rate: (1, 0),
+            },
+        ];
+        assert_eq!(
+            presentation_media_span(48_000, 1_000, 1_000, &edits).unwrap(),
+            Some(PresentationSampleSpan {
+                start_sample: 48_000,
+                end_sample: 144_000,
+            })
+        );
+        assert_eq!(
+            presentation_media_span(48_000, 1_000, 1_000, &edits[..1]).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn rational_rescaling_uses_one_shared_rounding_rule() {
+        assert_eq!(rescale_u64_round(44_100, 44_100, 48_000), Ok(48_000));
+        assert_eq!(rescale_i64_round(1, 1_000, 48_000), Ok(48));
+        assert_eq!(rescale_i64_round(-1, 1_000, 48_000), Ok(-48));
+        assert_eq!(
+            rescale_u64_round(1, 0, 48_000),
+            Err(TimelineError::ZeroTimescale)
         );
     }
 

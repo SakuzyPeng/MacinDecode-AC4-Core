@@ -1,10 +1,8 @@
 //! MP4 与 Annex G trace 报告渲染。
 
 use super::{
-    Ac4Dsi, Ac4Toc, Ac4Topology, Ac4Track, BoxIter, EditListEntry, SampleDelta, SampleTable,
-    SequenceTransition, SyncFrameIter, TopologyTrace, dac4, find_ac4_track, find_box, find_path,
-    media_time_to_presentation, parse_edit_list, parse_header_timing, parse_stsz,
-    presentation_timing,
+    Ac4Mp4, Ac4Mp4Error, Ac4Mp4Timeline, Ac4Toc, Ac4Topology, BoxIter, SampleDelta,
+    SequenceTransition, SyncFrameIter, TopologyTrace, dac4,
 };
 
 /// 顶层 box 列表，用于确认容器整体结构。
@@ -32,6 +30,7 @@ fn top_level_summary(data: &[u8]) -> String {
 /// 同 ac4_toc 一致（表 E.5），因此不一致即为容器与码流失配。
 struct FrameTrace {
     frames: u32,
+    sample_bytes: u64,
     presented_frames: u32,
     sync_frames: u32,
     parse_failures: u32,
@@ -47,20 +46,15 @@ struct FrameTrace {
     topology: TopologyTrace,
 }
 
-fn trace_frames(
-    data: &[u8],
-    track: &Ac4Track<'_>,
-    dsi: &Ac4Dsi<'_>,
-    media_timescale: u32,
-    movie_timescale: u32,
-    edits: &[EditListEntry],
-    presented_duration: u64,
+fn trace_frames<const EDITS: usize>(
+    source: &Ac4Mp4<'_>,
+    timeline: &Ac4Mp4Timeline<EDITS>,
 ) -> Result<FrameTrace, String> {
-    let table = SampleTable::parse(track.stbl.payload).map_err(|e| e.to_string())?;
-    let presented_end = i64::try_from(presented_duration)
+    let presented_end = i64::try_from(timeline.presentation_timing().presented_duration)
         .map_err(|_| "Presentation duration exceeds the signed timeline range")?;
     let mut trace = FrameTrace {
         frames: 0,
+        sample_bytes: 0,
         presented_frames: 0,
         sync_frames: 0,
         parse_failures: 0,
@@ -77,27 +71,23 @@ fn trace_frames(
     };
     let mut previous_sequence: Option<u16> = None;
 
-    for item in table.iter() {
+    for item in source.sample_infos() {
         let info = item.map_err(|e| e.to_string())?;
-        track
-            .sample_entry
-            .validate_sample(&info)
-            .map_err(|error| error.to_string())?;
         trace.frames = trace.frames.saturating_add(1);
-        let presentation_start = media_time_to_presentation(
-            info.composition_time,
-            media_timescale,
-            movie_timescale,
-            edits,
-        )
-        .map_err(|error| error.to_string())?;
+        trace.sample_bytes = trace
+            .sample_bytes
+            .checked_add(u64::from(info.size))
+            .ok_or("MP4 sample-byte total overflow")?;
+        let presentation_start = timeline
+            .presentation_time(info.composition_time)
+            .map_err(|error| error.to_string())?;
         let media_end = info
             .composition_time
             .checked_add(i64::from(info.duration))
             .ok_or("Sample PTS end-position overflow")?;
-        let presentation_end =
-            media_time_to_presentation(media_end, media_timescale, movie_timescale, edits)
-                .map_err(|error| error.to_string())?;
+        let presentation_end = timeline
+            .presentation_time(media_end)
+            .map_err(|error| error.to_string())?;
         if matches!(
             (presentation_start, presentation_end),
             (Some(start), Some(end))
@@ -109,18 +99,22 @@ fn trace_frames(
             trace.sync_frames = trace.sync_frames.saturating_add(1);
         }
 
-        let start = usize::try_from(info.offset).unwrap_or(usize::MAX);
-        let end = start.saturating_add(usize::try_from(info.size).unwrap_or(0));
-        let Some(frame) = data.get(start..end) else {
-            trace.parse_failures = trace.parse_failures.saturating_add(1);
-            if info.index == 0 {
-                trace.first_topology_error = Some("Sample range exceeds the file size".to_owned());
+        let access_unit = match source.access_unit(info) {
+            Ok(access_unit) => access_unit,
+            Err(Ac4Mp4Error::SampleBounds(_)) => {
+                trace.parse_failures = trace.parse_failures.saturating_add(1);
+                if info.index == 0 {
+                    trace.first_topology_error =
+                        Some("Sample range exceeds the file size".to_owned());
+                }
+                trace
+                    .topology
+                    .record_parse_failure(info.index, "Sample range exceeds the file size");
+                continue;
             }
-            trace
-                .topology
-                .record_parse_failure(info.index, "Sample range exceeds the file size");
-            continue;
+            Err(error) => return Err(error.to_string()),
         };
+        let frame = access_unit.payload;
         if info.index == 0 {
             match Ac4Topology::parse(frame) {
                 Ok(topology) => trace.first_topology = Some(topology),
@@ -143,9 +137,9 @@ fn trace_frames(
             trace.sync_flag_mismatches = trace.sync_flag_mismatches.saturating_add(1);
         }
 
-        if toc.bitstream_version != u32::from(dsi.bitstream_version)
-            || toc.fs_index != dsi.fs_index
-            || toc.frame_rate_index != dsi.frame_rate_index
+        if toc.bitstream_version != u32::from(source.dsi().bitstream_version)
+            || toc.fs_index != source.dsi().fs_index
+            || toc.frame_rate_index != source.dsi().frame_rate_index
         {
             trace.mismatches = trace.mismatches.saturating_add(1);
         }
@@ -327,62 +321,24 @@ fn trace_topology() -> TopologyTrace {
 }
 
 pub(super) fn trace(data: &[u8]) -> Result<String, String> {
-    let moov = find_box(data, b"moov").ok_or("moov box not found")?;
-    let mvhd = find_box(moov.payload, b"mvhd").ok_or("mvhd box not found")?;
-    let movie = parse_header_timing(*b"mvhd", mvhd.payload).map_err(|e| e.to_string())?;
-
-    let track = find_ac4_track(moov.payload)
-        .map_err(|error| error.to_string())?
-        .ok_or("No track with an ac-4 sample entry was found")?;
-    let track_index = track.index;
-    let trak = &track.trak;
-    let mdia = &track.mdia;
-    let stbl = &track.stbl;
-    let mdhd = find_box(mdia.payload, b"mdhd").ok_or("mdhd box not found")?;
-    let media = parse_header_timing(*b"mdhd", mdhd.payload).map_err(|e| e.to_string())?;
+    let source = Ac4Mp4::parse(data).map_err(|error| error.to_string())?;
+    let container_timeline = source
+        .presentation_timeline::<8>()
+        .map_err(|error| error.to_string())?;
+    let media = source.media_timing();
     let timescale = media.timescale;
     let duration = media.duration;
-
-    // edit list 声明容器侧可见的区段；缺失时呈现时长等于媒体时长
-    let mut edit_storage = [EditListEntry {
-        segment_duration: 0,
-        media_time: 0,
-        media_rate: (0, 0),
-    }; 8];
-    let edit_count = find_path(trak.payload, &[*b"edts", *b"elst"])
-        .map(|elst| parse_edit_list(elst.payload, &mut edit_storage))
-        .transpose()
-        .map_err(|e: macindecode_ac4_mp4::TimelineError| e.to_string())?
-        .unwrap_or(0);
-    let edits = edit_storage.get(..edit_count).unwrap_or(&[]);
-    let presentation =
-        presentation_timing(media, movie.timescale, edits).map_err(|error| error.to_string())?;
-
-    let specific = track.dac4().ok_or("ac-4 sample entry has no dac4 box")?;
-    let dsi = Ac4Dsi::parse(specific.payload).map_err(|error| error.to_string())?;
-
-    let trace = trace_frames(
-        data,
-        &track,
-        &dsi,
-        media.timescale,
-        movie.timescale,
-        edits,
-        presentation.presented_duration,
-    )?;
+    let presentation = container_timeline.presentation_timing();
+    let trace = trace_frames(&source, &container_timeline)?;
     let dac4_json = dac4::describe(
-        &dsi,
-        specific.payload.len(),
+        source.dsi(),
+        source.dac4().payload.len(),
         trace.first_topology.as_ref(),
         trace.first_topology_error.as_deref(),
     )?;
 
-    let (sample_count, sample_bytes) = find_box(stbl.payload, b"stsz")
-        .and_then(|stsz| parse_stsz(stsz.payload))
-        .unwrap_or((0, 0));
-
-    let frame_rate = dsi.frame_rate();
-    let timeline = dsi.media_timeline();
+    let frame_rate = source.dsi().frame_rate();
+    let dsi_timeline = source.dsi().media_timeline();
 
     let frame_rate_json = frame_rate.map_or_else(
         || "null".to_owned(),
@@ -393,7 +349,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
             )
         },
     );
-    let timeline_json = timeline.map_or_else(
+    let timeline_json = dsi_timeline.map_or_else(
         || "null".to_owned(),
         |line| {
             let delta = match line.sample_delta {
@@ -420,7 +376,7 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
     let presented_seconds = seconds(presentation.presented_duration);
 
     let mut edits_json = String::from("[");
-    for (index, entry) in edits.iter().enumerate() {
+    for (index, entry) in container_timeline.edits().iter().enumerate() {
         if index > 0 {
             edits_json.push_str(", ");
         }
@@ -474,13 +430,13 @@ pub(super) fn trace(data: &[u8]) -> Result<String, String> {
             "}}"
         ),
         top_level_summary(data),
-        track_index,
+        source.track().index,
         timescale,
         duration,
         duration_seconds,
-        sample_count,
-        sample_bytes,
-        movie.timescale,
+        trace.frames,
+        trace.sample_bytes,
+        container_timeline.movie_timing().timescale,
         edits_json,
         presentation.priming,
         presentation.presented_duration,

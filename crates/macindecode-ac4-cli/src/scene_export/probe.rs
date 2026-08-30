@@ -68,13 +68,9 @@ pub(crate) fn rescale_u64(value: u64, source_rate: u32, target_rate: u32) -> Res
     if source_rate == 0 {
         return Err("Source sample rate is zero".to_owned());
     }
-    let numerator = u128::from(value)
-        .checked_mul(u128::from(target_rate))
-        .ok_or("Time-rescaling multiplication overflow")?
-        .checked_add(u128::from(source_rate / 2))
-        .ok_or("Time-rescaling rounding overflow")?;
-    let scaled = numerator
-        .checked_div(u128::from(source_rate))
-        .ok_or("Source sample rate is zero")?;
-    u64::try_from(scaled).map_err(|_| "Time-rescaling result overflow".to_owned())
+    if target_rate == 0 {
+        return Ok(0);
+    }
+    macindecode_ac4_mp4::rescale_u64_round(value, source_rate, target_rate)
+        .map_err(|_| "Time-rescaling result overflow".to_owned())
 }

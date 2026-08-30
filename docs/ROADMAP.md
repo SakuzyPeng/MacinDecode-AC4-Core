@@ -10,15 +10,15 @@
 direct-object 因缺少真实素材而**无限期搁置**（见
 [ADR-0012](decisions/0012-defer-direct-object.md)），M5 因此保持开放但不再列为在推进的方向；
 M7 已按 ADR-0011/0013 完成 syntax/decode/scene 物理拆包，ARM64 性能基线和两轮 QMF 优化也已
-落地，公共 ABI、fuzz、x86-64 实测和长期稳定性门禁仍未完成。
+落地；共享 MP4 sample 定界与时间换算也已收口到 `macindecode-ac4-mp4::Ac4Mp4`，公共 ABI、
+fuzz、x86-64 实测和长期稳定性门禁仍未完成。
 
 下一阶段按以下顺序推进：
 
 1. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
    [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →
    scene 单向边界；后续重构不得混入数值变化。
-2. 集中共享的 MP4 sample 与时间换算入口，继续消除 CLI 外层的重复适配。
-3. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。ADR-0012 已
+2. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。ADR-0012 已
    把 direct-object 从 ABI 的前置条件中移除，它不再阻塞这一项。
 
 direct-object **不在**上述列表里，这是决定而不是遗漏：编码链不产出该路径，至今没有真实样本，
@@ -468,7 +468,12 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 core / A-SPX / objects 三段各十二条逐位 PCM 基线在提取后全部保持一致，三个构建配置的
 clippy / test、`no_std` 目标、层门禁与规范分发门禁均通过，详见
 [ADR-0013](decisions/0013-extract-decode-crate.md) 的验证证据。同一轮把 `spec-tables` 补进
-CI，使第三个构建配置首次拥有独立 CI 门禁。只有 Scene API 稳定并
+CI，使第三个构建配置首次拥有独立 CI 门禁。随后 `Ac4Mp4` 两级公共入口把首个 AC-4 轨、
+`mdhd`/`dac4`、sample table、sample-description 与完整文件范围收口为单一 bounded AU
+迭代器；`presentation_timeline()` 再按需拥有固定容量 edit list，并统一有符号/无符号整数
+sample 换算、presentation shift 和 media span。inspect 只消费基础入口，CLI/trace/perf
+消费同一时间线，三处原有的范围切片与时间数学已删除；默认与 `audio-decode` 输出契约保持不变。
+只有 Scene API 稳定并
 取得真实宿主所有权需求后才冻结 C ABI，direct-object 已按 ADR-0012 从前置条件中移除。2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
 release 构建覆盖 12 条真实 A-JOC 向量的 Core/Full 共 24 个组合，当前 Core 为
 `11.64x`–`23.10x` 实时、Full 为 `5.22x`–`7.22x` 实时且均无 deadline miss；上一版数据捕获过

@@ -8,10 +8,7 @@
 //! 元数据批次。合成诊断渲染只保留场景元数据，不累积已由 Session 解码并完成控制
 //! 对齐的 PCM。
 
-use crate::container::{
-    find_ac4_track, presentation_media_span, presentation_sample_shift,
-    project_pcm_batch_to_presentation, scale_i64_round, scale_u64_round,
-};
+use crate::container::project_pcm_batch_to_presentation;
 use crate::metadata_batch::{
     MediaSpan, MetadataBatch, MetadataElement, MetadataElementId, MetadataElementKind,
     MetadataEvent,
@@ -19,10 +16,7 @@ use crate::metadata_batch::{
 use crate::pcm_batch::{PcmBatch, PcmTrack, PcmTrackSource};
 use macindecode_ac4_bitstream::oamd::OamdCommonData;
 use macindecode_ac4_bitstream::{Ac4Toc, SyncFrameIter};
-use macindecode_ac4_mp4::{
-    Ac4Dsi, EditListEntry, SampleTable, find_box, find_path, parse_edit_list, parse_header_timing,
-    presentation_timing,
-};
+use macindecode_ac4_mp4::{Ac4Mp4, Ac4Mp4Error};
 use macindecode_ac4_scene::{
     Ac4DecoderConfig, Ac4DecoderSession, Ac4SceneFrame, AccessUnit, AccessUnitContext,
     CoreBandPcmFrame, DecodeError, DecodeErrorKind, DecodeMode, DecodeStage, DecodeStatus,
@@ -30,6 +24,8 @@ use macindecode_ac4_scene::{
     SceneElementSource, ScenePath, SpeakerLabel, UnsupportedReason,
 };
 use std::collections::{BTreeMap, BTreeSet};
+
+const MAX_MP4_EDIT_ENTRIES: usize = 8;
 
 /// CLI 经 Scene Session 批量采集时的稳定失败分类。
 #[derive(Debug, PartialEq, Eq)]
@@ -326,67 +322,29 @@ fn collect_mp4(
     collect_metadata: bool,
     collect_core_band_pcm: bool,
 ) -> Result<CollectedBatch, SceneBatchError> {
-    let moov = find_box(data, b"moov")
-        .ok_or_else(|| SceneBatchError::Failed("moov box not found".to_owned()))?;
-    let mvhd = find_box(moov.payload, b"mvhd")
-        .ok_or_else(|| SceneBatchError::Failed("mvhd box not found".to_owned()))?;
-    let movie = parse_header_timing(*b"mvhd", mvhd.payload)
+    let source = Ac4Mp4::parse(data).map_err(|error| SceneBatchError::Failed(error.to_string()))?;
+    let timeline = source
+        .presentation_timeline::<MAX_MP4_EDIT_ENTRIES>()
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-    let track = find_ac4_track(moov.payload)
-        .map_err(|error| SceneBatchError::Failed(error.to_string()))?
-        .ok_or_else(|| {
-            SceneBatchError::Failed("No track with an ac-4 sample entry was found".to_owned())
-        })?;
-    let mdhd = find_box(track.mdia.payload, b"mdhd")
-        .ok_or_else(|| SceneBatchError::Failed("mdhd box not found".to_owned()))?;
-    let media = parse_header_timing(*b"mdhd", mdhd.payload)
-        .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-
-    let mut edit_storage = [EditListEntry {
-        segment_duration: 0,
-        media_time: 0,
-        media_rate: (0, 0),
-    }; 8];
-    let edit_count = find_path(track.trak.payload, &[*b"edts", *b"elst"])
-        .map(|elst| parse_edit_list(elst.payload, &mut edit_storage))
-        .transpose()
-        .map_err(|error| SceneBatchError::Failed(error.to_string()))?
-        .unwrap_or(0);
-    let edits = edit_storage.get(..edit_count).unwrap_or(&[]);
-    if edits.iter().filter(|entry| !entry.is_empty_edit()).count() > 1 {
+    if timeline.media_edit_count() > 1 {
         return Err(SceneBatchError::unsupported(
             "This scene-export version does not support multiple discontiguous media edits",
         ));
     }
-    let presentation = presentation_timing(media, movie.timescale, edits)
-        .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
 
-    let specific = track
-        .dac4()
-        .ok_or_else(|| SceneBatchError::Failed("ac-4 sample entry has no dac4 box".to_owned()))?;
-    let dsi = Ac4Dsi::parse(specific.payload)
+    let sample_rate = source.dsi().base_sampling_frequency.hz();
+    let output_duration = timeline
+        .presentation_duration_samples(sample_rate)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-    let sample_rate = dsi.base_sampling_frequency.hz();
-    let table = SampleTable::parse(track.stbl.payload)
+    let priming = timeline
+        .priming_samples(sample_rate)
         .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-    let output_duration = scale_u64_round(
-        presentation.presented_duration,
-        u64::from(sample_rate),
-        u64::from(media.timescale),
-    )
-    .map_err(SceneBatchError::Failed)?;
-    let priming = scale_u64_round(
-        presentation.priming,
-        u64::from(sample_rate),
-        u64::from(media.timescale),
-    )
-    .map_err(SceneBatchError::Failed)?;
     let capacity_hint = output_duration
         .checked_add(priming)
         .and_then(|samples| usize::try_from(samples).ok());
-    let presentation_shift =
-        presentation_sample_shift(sample_rate, media.timescale, movie.timescale, edits)
-            .map_err(SceneBatchError::Failed)?;
+    let presentation_shift = timeline
+        .presentation_sample_shift(sample_rate)
+        .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
 
     let mut session = Ac4DecoderSession::new(
         Ac4DecoderConfig::new(selection)
@@ -400,23 +358,17 @@ fn collect_mp4(
         collect_metadata,
         collect_core_band_pcm,
     );
-    for item in table.iter() {
-        let info = item.map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-        track
-            .sample_entry
-            .validate_sample(&info)
-            .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
-        let start = usize::try_from(info.offset).unwrap_or(usize::MAX);
-        let end = start.saturating_add(usize::try_from(info.size).unwrap_or(0));
-        let frame = data.get(start..end).ok_or_else(|| {
-            SceneBatchError::Failed("AC-4 sample range exceeds the file size".to_owned())
+    for item in source.access_units() {
+        let access_unit = item.map_err(|error| match error {
+            Ac4Mp4Error::SampleBounds(_) => {
+                SceneBatchError::Failed("AC-4 sample range exceeds the file size".to_owned())
+            }
+            other => SceneBatchError::Failed(other.to_string()),
         })?;
-        let source_start = scale_i64_round(
-            info.composition_time,
-            i64::from(sample_rate),
-            i64::from(media.timescale),
-        )
-        .map_err(SceneBatchError::Failed)?;
+        let info = access_unit.info;
+        let source_start = timeline
+            .media_time_samples(info.composition_time, sample_rate)
+            .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
         let mut context = AccessUnitContext::new(u64::from(info.index))
             .with_source_sample_start(source_start)
             .with_priming_samples(priming)
@@ -430,18 +382,12 @@ fn collect_mp4(
             })?;
             context = context.with_presentation_sample_start(presentation_start);
         }
-        decode_into(&mut session, &mut accumulator, frame, context)?;
+        decode_into(&mut session, &mut accumulator, access_unit.payload, context)?;
     }
 
-    let media_span = if edits.is_empty() {
-        Some(MediaSpan {
-            start_sample: 0,
-            end_sample: output_duration,
-        })
-    } else {
-        presentation_media_span(sample_rate, media.timescale, movie.timescale, edits)
-            .map_err(SceneBatchError::Failed)?
-    };
+    let media_span = timeline
+        .media_span_samples(sample_rate)
+        .map_err(|error| SceneBatchError::Failed(error.to_string()))?;
     let mut batch =
         accumulator.finish(sample_rate, output_duration, media_span, presentation_shift)?;
     batch.pcm = project_batch_pcm(

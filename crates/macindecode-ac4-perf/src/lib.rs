@@ -4,10 +4,7 @@
 //! 以及生成可复核的性能 JSON。容器读取、JSON 和报告整理都不进入计时区。
 
 use macindecode_ac4_bitstream::Ac4Toc;
-use macindecode_ac4_mp4::{
-    Ac4Dsi, EditListEntry, SampleTable, find_ac4_track, find_box, find_path,
-    media_time_to_presentation, parse_edit_list, parse_header_timing, presentation_timing,
-};
+use macindecode_ac4_mp4::{Ac4Mp4, Ac4Mp4Error};
 use macindecode_ac4_scene::{
     Ac4DecoderConfig, Ac4DecoderSession, AccessUnit, AccessUnitContext, DecodeMode, DecodeStatus,
     DecodedAccessUnit, PresentationSelection,
@@ -1045,67 +1042,50 @@ fn command_output(program: &str, args: &[&str]) -> Option<String> {
 }
 
 fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescriptor>)> {
-    let moov = find_box(data, b"moov").ok_or_else(|| "MP4 has no moov box".to_owned())?;
-    let mvhd = find_box(moov.payload, b"mvhd").ok_or_else(|| "MP4 has no mvhd box".to_owned())?;
-    let movie = parse_header_timing(*b"mvhd", mvhd.payload)
-        .map_err(|error| format!("invalid MP4 mvhd: {error}"))?;
-    let track = find_ac4_track(moov.payload)
-        .map_err(|error| format!("invalid MP4 sample description: {error}"))?
-        .ok_or_else(|| "MP4 has no AC-4 track".to_owned())?;
-    let mdhd = find_box(track.mdia.payload, b"mdhd")
-        .ok_or_else(|| "AC-4 track has no mdhd box".to_owned())?;
-    let media = parse_header_timing(*b"mdhd", mdhd.payload)
-        .map_err(|error| format!("invalid MP4 mdhd: {error}"))?;
-
-    let mut edit_storage = [EditListEntry {
-        segment_duration: 0,
-        media_time: 0,
-        media_rate: (0, 0),
-    }; MAX_EDIT_ENTRIES];
-    let edit_count = find_path(track.trak.payload, &[*b"edts", *b"elst"])
-        .map(|item| parse_edit_list(item.payload, &mut edit_storage))
-        .transpose()
-        .map_err(|error| format!("invalid MP4 edit list: {error}"))?
-        .unwrap_or(0);
-    let edits = edit_storage
-        .get(..edit_count)
-        .ok_or_else(|| "MP4 edit count escaped fixed storage".to_owned())?;
-    if edits.iter().filter(|entry| !entry.is_empty_edit()).count() > 1 {
+    let source = Ac4Mp4::parse(data).map_err(|error| match error {
+        Ac4Mp4Error::MissingBox { box_type } if box_type == *b"moov" => {
+            "MP4 has no moov box".to_owned()
+        }
+        Ac4Mp4Error::MissingBox { box_type } if box_type == *b"mdhd" => {
+            "AC-4 track has no mdhd box".to_owned()
+        }
+        Ac4Mp4Error::MissingBox { box_type } if box_type == *b"dac4" => {
+            "AC-4 sample entry has no dac4 box".to_owned()
+        }
+        Ac4Mp4Error::NoAc4Track => "MP4 has no AC-4 track".to_owned(),
+        Ac4Mp4Error::Track(source) => {
+            format!("invalid MP4 sample description: {source}")
+        }
+        Ac4Mp4Error::Dsi(source) => format!("invalid MP4 dac4: {source}"),
+        Ac4Mp4Error::SampleTable(source) => format!("invalid MP4 sample table: {source}"),
+        Ac4Mp4Error::Timeline(source) => format!("invalid MP4 mdhd: {source}"),
+        other => other.to_string(),
+    })?;
+    let timeline = source
+        .presentation_timeline::<MAX_EDIT_ENTRIES>()
+        .map_err(|error| error.to_string())?;
+    if timeline.media_edit_count() > 1 {
         return Err("benchmark input has multiple discontiguous media edits".to_owned());
     }
-    let presentation = presentation_timing(media, movie.timescale, edits)
-        .map_err(|error| format!("invalid MP4 presentation timing: {error}"))?;
 
-    let specific = track
-        .dac4()
-        .ok_or_else(|| "AC-4 sample entry has no dac4 box".to_owned())?;
-    let dsi =
-        Ac4Dsi::parse(specific.payload).map_err(|error| format!("invalid MP4 dac4: {error}"))?;
-    let sample_rate = dsi.base_sampling_frequency.hz();
-    let table = SampleTable::parse(track.stbl.payload)
-        .map_err(|error| format!("invalid MP4 sample table: {error}"))?;
-    let priming = scale_u64_round(
-        presentation.priming,
-        u64::from(sample_rate),
-        u64::from(media.timescale),
-    )?;
-    let presentation_shift =
-        presentation_sample_shift(sample_rate, media.timescale, movie.timescale, edits)?;
+    let sample_rate = source.dsi().base_sampling_frequency.hz();
+    let priming = timeline
+        .priming_samples(sample_rate)
+        .map_err(|error| error.to_string())?;
+    let presentation_shift = timeline
+        .presentation_sample_shift(sample_rate)
+        .map_err(|error| error.to_string())?;
 
-    let capacity = usize::try_from(table.sample_count())
+    let capacity = usize::try_from(source.sample_count())
         .map_err(|_| "MP4 sample count exceeds usize".to_owned())?;
     let mut access_units = Vec::with_capacity(capacity);
-    for item in table.iter() {
-        let info = item.map_err(|error| format!("invalid MP4 sample: {error}"))?;
-        track
-            .sample_entry
-            .validate_sample(&info)
-            .map_err(|error| format!("invalid MP4 sample: {error}"))?;
-        let range = checked_sample_range(info.offset, info.size, data.len())?;
-        let raw_frame = data
-            .get(range.clone())
-            .ok_or_else(|| "checked MP4 sample range became invalid".to_owned())?;
-        let toc = Ac4Toc::parse(raw_frame)
+    for item in source.access_units() {
+        let access_unit = item.map_err(|error| match error {
+            Ac4Mp4Error::SampleBounds(_) => error.to_string(),
+            other => format!("invalid MP4 sample: {other}"),
+        })?;
+        let info = access_unit.info;
+        let toc = Ac4Toc::parse(access_unit.payload)
             .map_err(|error| format!("cannot parse AC-4 TOC for sample {}: {error}", info.index))?;
         let codec_samples = toc.codec_frame_len_base(1).ok_or_else(|| {
             format!(
@@ -1113,11 +1093,9 @@ fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescrip
                 info.index
             )
         })?;
-        let source_start = scale_i64_round(
-            info.composition_time,
-            i64::from(sample_rate),
-            i64::from(media.timescale),
-        )?;
+        let source_start = timeline
+            .media_time_samples(info.composition_time, sample_rate)
+            .map_err(|error| error.to_string())?;
         let mut context = AccessUnitContext::new(u64::from(info.index))
             .with_source_sample_start(source_start)
             .with_priming_samples(priming)
@@ -1129,85 +1107,12 @@ fn parse_mp4_access_units(data: &[u8]) -> PerfResult<(u32, Vec<AccessUnitDescrip
             context = context.with_presentation_sample_start(presentation_start);
         }
         access_units.push(AccessUnitDescriptor {
-            range,
+            range: access_unit.range,
             context,
             codec_samples: u32::from(codec_samples),
         });
     }
     Ok((sample_rate, access_units))
-}
-
-pub fn checked_sample_range(offset: u64, size: u32, input_len: usize) -> PerfResult<Range<usize>> {
-    let start =
-        usize::try_from(offset).map_err(|_| "MP4 sample offset exceeds usize".to_owned())?;
-    let size = usize::try_from(size).map_err(|_| "MP4 sample size exceeds usize".to_owned())?;
-    let end = start
-        .checked_add(size)
-        .ok_or_else(|| "MP4 sample range overflows usize".to_owned())?;
-    if end > input_len {
-        return Err(format!(
-            "MP4 sample range {start}..{end} exceeds input length {input_len}"
-        ));
-    }
-    Ok(start..end)
-}
-
-fn presentation_sample_shift(
-    sample_rate: u32,
-    media_timescale: u32,
-    movie_timescale: u32,
-    edits: &[EditListEntry],
-) -> PerfResult<Option<i64>> {
-    let Some(presentation_zero) =
-        media_time_to_presentation(0, media_timescale, movie_timescale, edits)
-            .map_err(|error| format!("cannot map MP4 presentation zero: {error}"))?
-    else {
-        return Ok(None);
-    };
-    scale_i64_round(
-        presentation_zero,
-        i64::from(sample_rate),
-        i64::from(media_timescale),
-    )
-    .map(Some)
-}
-
-fn scale_i64_round(value: i64, numerator: i64, denominator: i64) -> PerfResult<i64> {
-    if numerator <= 0 || denominator <= 0 {
-        return Err("timeline ratio must be positive".to_owned());
-    }
-    let scaled = i128::from(value)
-        .checked_mul(i128::from(numerator))
-        .ok_or_else(|| "timeline multiplication overflows".to_owned())?;
-    let half = i128::from(denominator) / 2;
-    let rounded_numerator = if scaled >= 0 {
-        scaled
-            .checked_add(half)
-            .ok_or_else(|| "timeline rounding overflows".to_owned())?
-    } else {
-        scaled
-            .checked_sub(half)
-            .ok_or_else(|| "timeline rounding overflows".to_owned())?
-    };
-    let rounded = rounded_numerator
-        .checked_div(i128::from(denominator))
-        .ok_or_else(|| "timeline divisor is zero".to_owned())?;
-    i64::try_from(rounded).map_err(|_| "timeline value exceeds i64".to_owned())
-}
-
-fn scale_u64_round(value: u64, numerator: u64, denominator: u64) -> PerfResult<u64> {
-    if numerator == 0 || denominator == 0 {
-        return Err("timeline ratio must be positive".to_owned());
-    }
-    let scaled = u128::from(value)
-        .checked_mul(u128::from(numerator))
-        .ok_or_else(|| "timeline multiplication overflows".to_owned())?;
-    let rounded = scaled
-        .checked_add(u128::from(denominator / 2))
-        .ok_or_else(|| "timeline rounding overflows".to_owned())?
-        .checked_div(u128::from(denominator))
-        .ok_or_else(|| "timeline divisor is zero".to_owned())?;
-    u64::try_from(rounded).map_err(|_| "timeline value exceeds u64".to_owned())
 }
 
 #[cfg(test)]
@@ -1247,13 +1152,6 @@ mod tests {
             cases.first().expect("one case").presentation,
             PresentationSelection::Index(3)
         );
-    }
-
-    #[test]
-    fn checked_mp4_sample_range_rejects_overflow_and_truncation() {
-        assert_eq!(checked_sample_range(4, 3, 8).unwrap(), 4..7);
-        assert!(checked_sample_range(7, 2, 8).is_err());
-        assert!(checked_sample_range(u64::MAX, 1, 8).is_err());
     }
 
     #[test]

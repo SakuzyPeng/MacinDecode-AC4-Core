@@ -25,8 +25,8 @@ use macindecode_ac4_bitstream::{
     topology::{Ac4Topology, ConfigFingerprint, RandomAccess, TopologyError},
 };
 use macindecode_ac4_mp4::{
-    Ac4BitrateDsi, Ac4Dsi, Ac4DsiPresentationIndicators, BaseSamplingFrequency, SampleTable,
-    dsi::frame_rate, find_ac4_track, find_box, parse_header_timing,
+    Ac4BitrateDsi, Ac4Dsi, Ac4DsiPresentationIndicators, Ac4Mp4, Ac4Mp4Error,
+    BaseSamplingFrequency, SampleBoundsError, dsi::frame_rate,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -860,47 +860,36 @@ fn inspect_raw(data: &[u8], input: &str) -> Result<InspectReport, String> {
 }
 
 fn inspect_mp4(data: &[u8], input: &str) -> Result<InspectReport, String> {
-    let moov = find_box(data, b"moov").ok_or("moov box not found")?;
-    let track = find_ac4_track(moov.payload)
-        .map_err(|error| error.to_string())?
-        .ok_or("No track with an ac-4 sample entry was found")?;
-    let mdhd = find_box(track.mdia.payload, b"mdhd").ok_or("mdhd box not found")?;
-    let media = parse_header_timing(*b"mdhd", mdhd.payload).map_err(|error| error.to_string())?;
-    let specific = track.dac4().ok_or("ac-4 sample entry has no dac4 box")?;
-    let dsi = Ac4Dsi::parse(specific.payload).map_err(|error| error.to_string())?;
-    let dsi_summary = collect_dsi_summary(&dsi)?;
-    let table = SampleTable::parse(track.stbl.payload).map_err(|error| error.to_string())?;
+    let source = Ac4Mp4::parse(data).map_err(|error| error.to_string())?;
+    let dsi_summary = collect_dsi_summary(source.dsi())?;
 
     let mut aggregate = Aggregator::default();
     let mut total_sample_bytes = 0u128;
     let mut duration_ticks = 0u128;
-    for item in table.iter() {
-        let info = item.map_err(|error| error.to_string())?;
-        track
-            .sample_entry
-            .validate_sample(&info)
-            .map_err(|error| error.to_string())?;
-        let start = usize::try_from(info.offset).unwrap_or(usize::MAX);
-        let len = usize::try_from(info.size).unwrap_or(usize::MAX);
-        let end = start.checked_add(len).ok_or("MP4 sample range overflow")?;
-        let sample = data
-            .get(start..end)
-            .ok_or("MP4 AC-4 sample range exceeds the file size")?;
+    for item in source.access_units() {
+        let access_unit = item.map_err(|error| match error {
+            Ac4Mp4Error::SampleBounds(SampleBoundsError::RangeExceedsInput { .. }) => {
+                "MP4 AC-4 sample range exceeds the file size".to_owned()
+            }
+            Ac4Mp4Error::SampleBounds(_) => "MP4 sample range overflow".to_owned(),
+            other => other.to_string(),
+        })?;
+        let info = access_unit.info;
         total_sample_bytes = total_sample_bytes.saturating_add(u128::from(info.size));
         duration_ticks = duration_ticks.saturating_add(u128::from(info.duration));
-        aggregate.observe(sample, u64::from(info.index))?;
+        aggregate.observe(access_unit.payload, u64::from(info.index))?;
     }
     if aggregate.frame_count == 0 {
         return Err("AC-4 sample table contains no samples".to_owned());
     }
     let duration = DurationRatio {
         numerator: duration_ticks,
-        denominator: u128::from(media.timescale),
+        denominator: u128::from(source.media_timing().timescale),
     };
     aggregate.finish(
         input,
         InspectSourceKind::Mp4,
-        ReportedField::present(track.index),
+        ReportedField::present(source.track().index),
         Some(duration),
         total_sample_bytes,
         Some(dsi_summary),

@@ -135,7 +135,7 @@ macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream（内部）
 | [`macindecode-ac4-decode`](crates/macindecode-ac4-decode) | ASF/A-SPX/A-JOC 数值重建、QMF、表 188 对齐与 Full engine | ✅ |
 | [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | MP4/raw AC-4 文件级聚合报告、JSON DTO 与英文 text renderer | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` 数据契约及 A-JOC Core/Full 流式 Rust API | ✅ |
-| [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF box、`dac4`、sample table、edit/priming 时间线 | ✅ |
+| [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF box、`dac4`、bounded AU、sample table 与 edit/priming 时间线 | ✅ |
 | [`macindecode-ac4-cli`](crates/macindecode-ac4-cli) | `macinac4` 工具：inspect、trace、PCM/ADM/DAMF/CAF 导出 | — |
 | `macindecode-ac4-perf` | 不发布的 Session timing、allocation 与热点采样 harness | — |
 
