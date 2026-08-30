@@ -6,18 +6,24 @@
 
 ## 当前活动方向
 
-截至 2026-08-30，M0–M4、受限 M4.5 与 M6 已完成；M5 已建立 A-JOC Core/Full Scene API，
-direct-object 仍待完成；M7 已按 ADR-0011/0013 完成 syntax/decode/scene 物理拆包，ARM64 性能
-基线和两轮 QMF 优化也已落地，公共 ABI、fuzz、x86-64 实测和长期稳定性门禁仍未完成。
+截至 2026-08-30，M0–M4、受限 M4.5 与 M6 已完成；M5 已交付 A-JOC Core/Full Scene API，
+direct-object 因缺少真实素材而**无限期搁置**（见
+[ADR-0012](decisions/0012-defer-direct-object.md)），M5 因此保持开放但不再列为在推进的方向；
+M7 已按 ADR-0011/0013 完成 syntax/decode/scene 物理拆包，ARM64 性能基线和两轮 QMF 优化也已
+落地，公共 ABI、fuzz、x86-64 实测和长期稳定性门禁仍未完成。
 
 下一阶段按以下顺序推进：
 
 1. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
    [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →
    scene 单向边界；后续重构不得混入数值变化。
-2. 完成 direct-object 的真实输入、Scene identity/OAMD 语义与公共输出门禁，关闭 M5 剩余范围。
-3. 集中共享的 MP4 sample 与时间换算入口，继续消除 CLI 外层的重复适配。
-4. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。
+2. 集中共享的 MP4 sample 与时间换算入口，继续消除 CLI 外层的重复适配。
+3. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。ADR-0012 已
+   把 direct-object 从 ABI 的前置条件中移除，它不再阻塞这一项。
+
+direct-object **不在**上述列表里，这是决定而不是遗漏：编码链不产出该路径，至今没有真实样本，
+按 ADR-0012 无限期搁置。重启条件与它对 ADR-0011 各条款的重新锚定都记在那份 ADR 里；在此之前
+该路径继续 fail-closed 拒绝。
 
 ## M0：文档与工具链冻结
 
@@ -415,7 +421,7 @@ M3 的逐对象位置与逐块更新至此解锁：两处 `oamd_dyndata_single()
 
 退出条件：direct-object 测试流能够生成完整、时间对齐的渲染前场景。
 
-**状态：进行中；A-JOC Core/Full 子集的场景数据契约与公开流式 Rust 入口已建立，正式边界由 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 冻结，真实 direct-object 验证仍受样本能力阻塞。** `macindecode-ac4-scene` 已定义容器无关的 timeline、presentation、bed/object PCM、group 级 OAMD common、帧内更新与诊断借用视图，并由 `decode_access_unit` 实现 `AutoUnique`/`Index`/`Id` 选择、Core/Full A-JOC 拓扑门禁、完整有界 AU 的 engine 失败策略以及带 AU/语法位置的结构化错误。`DecodeMode::Core` 使用同一 engine 的 `RequireCore` 出口取得 A-SPX PCM 与 downmix OAMD，并在控制入队前拒绝活动 dialogue enhancement；`DecodeMode::Full` 使用重建出口和 upmix OAMD。两者的 PCM/control 都随同一表 188 槽到期。公开 PCM 固定乘精确的 `2^-15`、不削波，独立报告 metadata active 与信号活动；事件保留 control source AU、raw timing/ramp 与 changed mask，按 `(offset, 码流顺序)` 排列并跨帧排队。只有 offset 0 更新进入帧起点状态；逐对象绝对生效时间相对码流顺序倒退时失败关闭。稳定配置复用 element/plane/common/metadata 容量，reset 清空状态与队列，显式 reset 换发且不复用 `SceneElementId`。M2 已判定现有编码链不产生 direct-object，该结论未被 IMS profile 的发现动摇——那批产物是 channel-based，同样不含 direct-object。
+**状态：开放，但已停止推进；A-JOC Core/Full 子集的场景数据契约与公开流式 Rust 入口已交付，正式边界由 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md) 冻结，direct-object 因缺少真实素材而按 [ADR-0012](decisions/0012-defer-direct-object.md) 无限期搁置。退出条件确实未满足，故不宣称完成；重启条件见 ADR-0012。** `macindecode-ac4-scene` 已定义容器无关的 timeline、presentation、bed/object PCM、group 级 OAMD common、帧内更新与诊断借用视图，并由 `decode_access_unit` 实现 `AutoUnique`/`Index`/`Id` 选择、Core/Full A-JOC 拓扑门禁、完整有界 AU 的 engine 失败策略以及带 AU/语法位置的结构化错误。`DecodeMode::Core` 使用同一 engine 的 `RequireCore` 出口取得 A-SPX PCM 与 downmix OAMD，并在控制入队前拒绝活动 dialogue enhancement；`DecodeMode::Full` 使用重建出口和 upmix OAMD。两者的 PCM/control 都随同一表 188 槽到期。公开 PCM 固定乘精确的 `2^-15`、不削波，独立报告 metadata active 与信号活动；事件保留 control source AU、raw timing/ramp 与 changed mask，按 `(offset, 码流顺序)` 排列并跨帧排队。只有 offset 0 更新进入帧起点状态；逐对象绝对生效时间相对码流顺序倒退时失败关闭。稳定配置复用 element/plane/common/metadata 容量，reset 清空状态与队列，显式 reset 换发且不复用 `SceneElementId`。M2 已判定现有编码链不产生 direct-object，该结论未被 IMS profile 的发现动摇——那批产物是 channel-based，同样不含 direct-object。
 
 **后续方向：** 未定界字节流若要直接增量送入，应增加独立 sync/framing 或 incremental
 ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 generation/element remap。
@@ -426,7 +432,7 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 
 因此按原定条款执行：**本阶段不得伪装成已覆盖 direct-object。** 该路径的缺口保留在支持矩阵中，重建工作直接进入 M6；解析侧的分支已由构造码流的单元测试覆盖，但那只是分支覆盖，不构成对真实 direct-object 码流的验证。
 
-不依赖 direct-object 的交付物中，`Ac4SceneFrame` 数据契约与公开 `decode_access_unit` 已经建立，Session 也已自持并驱动借用输出的 A-JOC engine；Core 对象、Full 空间对象组、各模式原生 LFE、到期 group common、帧内 downmix/upmix OAMD 更新与跨帧更新队列均进入 Session 自有存储。CLI batch adapter 已把 `export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 迁到 Session，并在 Scene 外完成 sync/MP4 AU 适配与 edit 投影；需要 PCM 的出口另恢复旧 `±32768` 尺度及核心带/Core 诊断/Pseudocode 15 轨序，合成 ADM/DAMF 诊断渲染器则只保留已完整解码并完成控制对齐的场景元数据，不累积无用的整文件 PCM。core/full artifact 出口把所选 presentation 的对象描述、common、首份 warm-up 基线和 OAMD 更新时间线桥接给既有 writer，Core dialogue enhancement 仍在 Session 边界结构化拒绝。由于 direct-object 退出条件仍未满足，本阶段目前不能视为完成。
+不依赖 direct-object 的交付物中，`Ac4SceneFrame` 数据契约与公开 `decode_access_unit` 已经建立，Session 也已自持并驱动借用输出的 A-JOC engine；Core 对象、Full 空间对象组、各模式原生 LFE、到期 group common、帧内 downmix/upmix OAMD 更新与跨帧更新队列均进入 Session 自有存储。CLI batch adapter 已把 `export-core-pcm`、`export-aspx-pcm`、`export-core-caf`、`export-adm-bwf`、`export-damf`、`export-objects-pcm`、`export-full-adm-bwf` 与 `export-full-damf` 迁到 Session，并在 Scene 外完成 sync/MP4 AU 适配与 edit 投影；需要 PCM 的出口另恢复旧 `±32768` 尺度及核心带/Core 诊断/Pseudocode 15 轨序，合成 ADM/DAMF 诊断渲染器则只保留已完整解码并完成控制对齐的场景元数据，不累积无用的整文件 PCM。core/full artifact 出口把所选 presentation 的对象描述、common、首份 warm-up 基线和 OAMD 更新时间线桥接给既有 writer，Core dialogue enhancement 仍在 Session 边界结构化拒绝。由于 direct-object 退出条件仍未满足，本阶段不能视为完成；按 [ADR-0012](decisions/0012-defer-direct-object.md) 它也不再是在推进的方向。
 
 ## M6：A-JOC full reconstruction
 
@@ -458,8 +464,8 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 
 退出条件：实时预算、内存上限、错误恢复和 ABI 生命周期均有自动测试；标量实现仍可作为独立参考路径运行。
 
-**状态：进行中。** 2026-08-30 已完成 `macindecode-ac4-decode` 物理提取；direct-object 与真实
-宿主所有权需求稳定前仍不冻结 C ABI。2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
+**状态：进行中。** 2026-08-30 已完成 `macindecode-ac4-decode` 物理提取；只有 Scene API 稳定并
+取得真实宿主所有权需求后才冻结 C ABI，direct-object 已按 ADR-0012 从前置条件中移除。2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
 release 构建覆盖 12 条真实 A-JOC 向量的 Core/Full 共 24 个组合，当前 Core 为
 `11.64x`–`23.10x` 实时、Full 为 `5.22x`–`7.22x` 实时且均无 deadline miss；上一版数据捕获过
 1 次 56.114 ms 的 Full 单 AU miss，新增观测已开始保留最差事件的 pass/AU 索引。完整预热后

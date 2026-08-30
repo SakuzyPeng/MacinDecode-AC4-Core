@@ -140,6 +140,7 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 - ADR-0009 QMF 分析的镜像子带成对调制
 - ADR-0010 固定 Rust 1.98.0 并提升 MSRV
 - ADR-0011 按语法、解码与场景重整职责边界
+- ADR-0012 搁置 direct-object，并重新锚定挂在它上面的条款
 - ADR-0013 提取 `macindecode-ac4-decode` crate
 
 **动架构之前先读 ADR-0011 与 ADR-0013。** 长期依赖方向是 syntax → decode/engine → scene；
@@ -161,10 +162,12 @@ batch 把全部 full 对象、LFE 与 full OAMD 配成真实 ADM。
 OAMD-derived `headTrackMode` 必须相同。旧 `export-damf` 仍是粉红噪声试听探针，三件套
 字节不得因共用 writer 重构而改变。
 这些出口以及 core/A-SPX/诊断适配都已经过 `Ac4SceneFrame`；CLI 旧 collection、三层 PCM
-sink、parser workspace 与第二套 DSP 已删除。M5 仍不因 direct-object 未验证路径而宣称完整；
+sink、parser workspace 与第二套 DSP 已删除。M5 仍不因 direct-object 未验证路径而宣称完整——
+该路径因缺少真实素材已按 ADR-0012 无限期搁置，M5 保持开放但不再推进；
 M7 已落地 ARM64 解码性能基线与两轮 QMF 优化（ADR-0008、ADR-0009；三层 PCM 逐位不变，稳态零
-分配），但公共 C ABI 尚未开始，按 ADR-0011 也要等 Scene API、direct-object 与真实宿主所有权
-需求都稳定后才建立；自动性能门禁、x86-64 实测、fuzz 与长期稳定性同样未完成。
+分配），但公共 C ABI 尚未开始——它要等 Scene API 稳定与真实宿主所有权需求出现后才建立；
+ADR-0012 已把 direct-object 从这道门槛里移除，不再让一个可能永不到来的素材条件阻塞 ABI。
+自动性能门禁、x86-64 实测、fuzz 与长期稳定性同样未完成。
 真实音频出口现在包括三层 WAVE，以及受限子集的
 `export-full-adm-bwf`、`export-full-damf`、`export-core-caf`。
 

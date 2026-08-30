@@ -165,7 +165,7 @@ MP4 / raw AC-4
 | M3 OAMD & timeline | ✅ | Cross-frame state, intra-frame updates, post-seek integrity |
 | M4 Audio core baseline | ✅ | Dequant→IMDCT→A-SPX, 12 A-JOC media bit-exact core/A-SPX baselines frozen |
 | M4.5 Presentation/Metadata | ✅ (limited) | Read-only parsing and DE/EMDF real-media gates complete; alternative, non-empty DE bodies, and other EMDF types still await samples |
-| M5 Scene API | 🚧 | A-JOC Core/Full borrowed Rust API, core/A-SPX baselines, CoreCAF, ADM/DAMF diagnostic renderers, and Full batch exports integrated; direct-object support pending |
+| M5 Scene API | 🚧 (deferred) | A-JOC Core/Full borrowed Rust API, core/A-SPX baselines, CoreCAF, ADM/DAMF diagnostic renderers, and Full batch exports integrated; direct-object deferred indefinitely for lack of real material, so the milestone stays open rather than complete |
 | M6 Full A-JOC reconstruction | ✅ | Object matrix/wet/LFE/terminal QMF synthesis, third bit-exact baseline frozen |
 | M7 Architecture, ABI & robustness | 🚧 | syntax/decode/scene extraction, ARM64 performance baselines, and QMF optimizations complete; C ABI, fuzzing, and x86-64 measurements pending |
 

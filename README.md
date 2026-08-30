@@ -163,7 +163,7 @@ MP4 / raw AC-4
 | M3 OAMD 与时间线 | ✅ | 跨帧状态、帧内更新、seek 后完整性 |
 | M4 音频核心基线 | ✅ | 反量化→IMDCT→A-SPX，12 条 A-JOC 媒体 core/A-SPX 逐位基线冻结 |
 | M4.5 Presentation/Metadata | ✅（受限） | 只读解析与 DE/EMDF 真实媒体门禁完成；alternative、非零 DE body 与其他 EMDF 类型仍待样本 |
-| M5 场景 API | 🚧 | A-JOC Core/Full 借用 Rust API、core/A-SPX 基线、CoreCAF、ADM/DAMF 诊断渲染器与 Full batch 出口已接入；direct-object 待完成 |
+| M5 场景 API | 🚧（搁置） | A-JOC Core/Full 借用 Rust API、core/A-SPX 基线、CoreCAF、ADM/DAMF 诊断渲染器与 Full batch 出口已接入；direct-object 因缺少真实素材无限期搁置，退出条件未满足故不宣称完成 |
 | M6 Full A-JOC 重建 | ✅ | 对象矩阵/wet/LFE/QMF 终端合成，第三份逐位基线冻结 |
 | M7 架构、ABI 与健壮性 | 🚧 | syntax/decode/scene 拆包、ARM64 性能基线与 QMF 优化已落地；C ABI、fuzz、x86-64 实测待完成 |
 

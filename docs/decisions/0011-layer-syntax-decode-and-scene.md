@@ -1,6 +1,9 @@
 # ADR-0011：按语法、解码与场景重整职责边界
 
-- 状态：Accepted
+- 状态：Accepted，第 4、6 条与「影响」「未采用的方向」中以 direct-object 完成为前提的表述由
+  [ADR-0012](0012-defer-direct-object.md) 重新锚定；第 2 步要求的 re-export facade 阶段由
+  [ADR-0013](0013-extract-decode-crate.md) 以「发布前无兼容负担」为由跳过，边界改由层门禁
+  直接证明
 - 日期：2026-08-29
 - 关系：替代 `ARCHITECTURE.md` 中尚未实施的 `audio-core` / `ajoc` / `oamd`
   三路拆包草图；保持 [ADR-0007](0007-preprocessed-scene-rust-api-boundary.md) 的

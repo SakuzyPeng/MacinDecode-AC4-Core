@@ -52,7 +52,9 @@ control source AU、raw timing、ramp、完整更新后状态与 changed mask，
 | `macindecode-ac4-ffi` | 延后评估 | Rust Scene API 稳定且有真实宿主需求后建立的版本化 C ABI |
 
 旧的 `audio-core` / `ajoc` / `oamd` 三路规划不再作为目标包结构；raw OAMD 留在 bitstream，
-Scene 语义映射留在 scene，direct-object 完成后才重新评估是否存在无环的独立 OAMD 中间层。
+Scene 语义映射留在 scene；独立的无环 OAMD 中间层要等取得真实 direct-object 素材后再评估
+（[ADR-0012](decisions/0012-defer-direct-object.md)），而 `oamd ↔ substream` 的互递归目前
+本身就使它无法在不制造环的前提下单独提取。
 MP4、inspection、FFI、CLI 或 perf 都不得成为解码核心的反向依赖。
 
 ### 2.1 当前源码内职责边界
