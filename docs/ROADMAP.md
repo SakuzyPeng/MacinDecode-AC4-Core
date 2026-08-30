@@ -464,7 +464,11 @@ ingestion API；跨配置代次若要延续应用侧 identity，应增加显式 
 
 退出条件：实时预算、内存上限、错误恢复和 ABI 生命周期均有自动测试；标量实现仍可作为独立参考路径运行。
 
-**状态：进行中。** 2026-08-30 已完成 `macindecode-ac4-decode` 物理提取；只有 Scene API 稳定并
+**状态：进行中。** 2026-08-30 已完成 `macindecode-ac4-decode` 物理提取，并已收口为纯搬运：
+core / A-SPX / objects 三段各十二条逐位 PCM 基线在提取后全部保持一致，三个构建配置的
+clippy / test、`no_std` 目标、层门禁与规范分发门禁均通过，详见
+[ADR-0013](decisions/0013-extract-decode-crate.md) 的验证证据。同一轮把 `spec-tables` 补进
+CI，使第三个构建配置首次拥有独立 CI 门禁。只有 Scene API 稳定并
 取得真实宿主所有权需求后才冻结 C ABI，direct-object 已按 ADR-0012 从前置条件中移除。2026-08-25 已完成 Apple M4 Pro ARM64 首份解码性能基线：普通 portable
 release 构建覆盖 12 条真实 A-JOC 向量的 Core/Full 共 24 个组合，当前 Core 为
 `11.64x`–`23.10x` 实时、Full 为 `5.22x`–`7.22x` 实时且均无 deadline miss；上一版数据捕获过

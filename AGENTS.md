@@ -10,6 +10,7 @@ This Rust 2024 workspace has an MSRV of 1.98. Workspace crates live under `crate
 cargo build --workspace                         # compile every crate
 cargo test --workspace                          # run tests without licensed tables
 cargo test --workspace --features audio-decode  # licensed-table regressions; real vectors stay ignored
+cargo test -p macindecode-ac4-decode --features spec-tables  # PDF-derived tables only, no Huffman codebooks
 cargo test -p macindecode-ac4-cli --features audio-decode -- --ignored  # require local real vectors
 cargo fmt --all -- --check                      # verify rustfmt output
 cargo clippy --workspace --all-targets --features audio-decode -- -D warnings
@@ -17,7 +18,7 @@ cargo run --bin macinac4 -- trace path/to/input.m4a
 ./scripts/cross_check.sh path/to/input.m4a       # compare trace fields with installed tools
 ./scripts/audio_check.sh path/to/input.m4a       # require full A-JOC parsing to land exactly
 ./scripts/trajectory_check.py vectors/<case_id>  # compare decoded object tracks with case.json
-./scripts/decode_check.py                        # local bit-exact PCM baselines (core + A-SPX stages)
+./scripts/decode_check.py                        # local bit-exact PCM baselines (core, A-SPX, and object stages)
 ./scripts/dme_native_check.py                    # verify local DME channel/IMS topology and DE
 ./scripts/emdf_census.py                         # verify local presentation EMDF signatures
 python3 -m unittest scripts/test_check_layers.py scripts/test_trajectory_check.py scripts/test_decode_check.py scripts/test_ajoc_census.py scripts/test_emdf_census.py scripts/test_check_patch_tables.py scripts/test_dme_ac4.py scripts/test_dme_native.py scripts/test_dee_ims.py

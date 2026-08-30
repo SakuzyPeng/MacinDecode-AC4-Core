@@ -6,25 +6,30 @@ Dolby AC-4 对象音频解码核心（Rust 2024、`no_std`、MSRV 1.98），输�
 
 `AGENTS.md` 已给出命令清单、代码风格、测试与提交约定，本文不重复，只补它没有的架构大图与易踩的坑。
 
-## 两个构建配置
+## 三个构建配置
 
-`audio-decode` **不是可选功能，是版权隔离**。附录 A 的 Huffman 码本只以 ETSI 随附 C 文件给出，那些文件不可重分发，因此依赖它们的谱解析与重建被关在这个 feature 后面。关闭时容器、TOC、拓扑、OAMD、metadata 仍然完整可解。
+三个配置逐层包含。默认配置不读取任何规范文件，构建脚本只生成反量化表；容器、TOC、拓扑、OAMD 与 metadata 仍然完整可解。`spec-tables` 读取你从官方 PDF 本地生成的静态表，并据其中的变换长度与 KBD alpha 生成 IFFT 根、IMDCT 旋转和 KBD 窗；A-SPX/ASF/A-JOC 的 PDF 表驱动推导层由此可用。
 
-**任何改动都要在两个配置下各过一遍 fmt / clippy / test。** 只测一个配置是这个仓库最常见的失误：`cargo clippy --fix` 会在两个配置之间来回删 import（默认配置下未使用的，正是 `audio-decode` 需要的），`#[cfg]` 加在内容混合的整个模块上也会在另一配置下断裂。
+`audio-decode = ["spec-tables"]`，在此基础上额外生成 QMF 调制相位，并从 ETSI 随附 C 表生成 Huffman 码本、QMF 原型窗与 A-SPX 噪声表。附录 A 的 Huffman 码本只在那些不可重分发的随附文件中给出，因此这个 feature **不是可选功能，而是版权隔离**。只有 `macindecode-ac4-decode` 声明 `spec-tables`（scene/cli 只转发 `audio-decode`）；CI 当前按 decode 包测试这个配置，这是最精确的范围，但 Cargo 也支持在 workspace 命令中使用包限定的 feature。单独开启时 `spec_tables` 模块在场而 `huffman` 不在，**这是唯一能证明推导层不依赖码本的组合**；动到推导层与解码层之间的 seam 时要单独跑一遍。
+
+**任何改动都要在默认与 `audio-decode` 下各过一遍 fmt / clippy / test。** 只测一个配置是这个仓库最常见的失误：`cargo clippy --fix` 会在两个配置之间来回删 import（默认配置下未使用的，正是 `audio-decode` 需要的），`#[cfg]` 加在内容混合的整个模块上也会在另一配置下断裂。
 
 ```bash
-./scripts/fetch_specs.py                       # 启用 audio-decode 前必须先取表
+./scripts/fetch_specs.py                       # 启用 spec-tables / audio-decode 前必须先取表
+./scripts/generate_spec_tables.py              # spec-tables 另需由 PDF 生成静态表
 cargo test --workspace
 cargo test --workspace --features audio-decode
+cargo test -p macindecode-ac4-decode --features spec-tables       # 推导层，无码本
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --workspace --all-targets --features audio-decode -- -D warnings
+cargo clippy -p macindecode-ac4-decode --all-targets --features spec-tables -- -D warnings
 
 # 单个测试：按名称子串过滤
 cargo test -p macindecode-ac4-decode --features audio-decode aspx::dequant
 cargo test -p macindecode-ac4-cli --features audio-decode -- --exact wire::tests::nonfinite_numbers_become_json_null
 ```
 
-CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 中配置的无 PDF Python 审计和检查器测试；`audio-decode` 跑该 feature 的 clippy / test，`msrv` 在锁定的 1.98.0 上独立复验 `--features audio-decode`。PDF 支持的 SFB/A-SPX/A-JOC 审计仍需本地运行。**`fmt` 只在第一个 job 检查，MSRV 只在开启 feature 时验证**——本地只跑一个配置时这两处最容易漏。
+CI 分三个 job，但覆盖三个配置：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 中配置的无 PDF Python 审计和检查器测试；名为 `audio-decode` 的 job 先跑 `spec-tables` 再跑 `audio-decode` 的 clippy / test（**job 名少了一个配置，别照名字推断覆盖面**）；`msrv` 在锁定的 1.98.0 上独立复验 `--features audio-decode`。PDF 支持的 SFB/A-SPX/A-JOC 审计仍需本地运行。**`fmt` 只在第一个 job 检查，MSRV 只在开启 feature 时验证**——本地只跑一个配置时这两处最容易漏。
 
 ## 依赖边界（ADR-0003）
 
@@ -38,17 +43,18 @@ CI 分三个 job：`quality` 只跑默认配置的 fmt / clippy / test，加 CI 
 
 ## 构建期表与冻结摘要
 
-decode 的 `build.rs` 只调度，实现在同 crate 的 `build_support/`。两类表的条件不同：
+decode 的 `build.rs` 只调度，实现在同 crate 的 `build_support/`。三种配置生成的内容不同：
 
-- **纯数学表**（反量化、IFFT 根、IMDCT 前后旋转、KBD 窗、QMF 调制相位）在**任何**配置下生成，与 ETSI 附件无关。
-- **Huffman 码本**只在 `audio-decode` 下从 `spec/*.c` 解析，构建期校验 Kraft 等式与前缀无关性，任一不成立即中止构建。
+- **默认配置**只生成不依赖规范文件的反量化表。
+- **`spec-tables`**读取本地 PDF 静态表，并根据其中的变换长度与 KBD alpha 生成 IFFT 根、IMDCT 前后旋转和 KBD 窗。
+- **`audio-decode`**再生成 QMF 调制相位，并从 `spec/*.c` 解析 Huffman 码本、QMF 原型窗与 A-SPX 噪声表；构建期会校验 Huffman 码本的 Kraft 等式与前缀无关性，任一不成立即中止构建。
 
 表值由冻结的 SHA-256 闭锁，`scripts/check_transform_tables.py` 用标准库独立复算。**改动 `build_support/` 后表值变化会让构建失败，这是设计意图**，不是要绕开的障碍——须重做高精度审计后再更新摘要。
 
 ## A-SPX 是现在最大的子系统
 
 `aspx/` 是 decode 里最大的单一子系统（约二十个模块），逐节对应 `5.7.6.3`–`5.7.6.5`。
-**模块索引在 `aspx/mod.rs` 的文件头**，按「推导层（不需要 Huffman，任何配置下都在）／解码层
+**模块索引在 `aspx/mod.rs` 的文件头**，按「推导层（不需要 Huffman，位于 `spec-tables`）／解码层
 （只在 `audio-decode` 下存在）」分栏列全，不要靠目录名猜哪个模块管哪一节。
 
 `pipeline.rs` 是编排点，文件头那张四段通路表里藏着这个子系统的判据方法论：**`Y ≡ 0` 时 `Q_out` 就是延迟后的输入**，所以在 `5.7.6.4.5` 的组装接上之前，中间每加一段都**不改变输出**——而「输出没变」对一条全错的接线同样成立。因此每一段必须自带**不看输出也能生效**的判据（延迟线互校、时隙对齐、跨帧状态逐个隔离观察、逐包络的组数与量化档），直到最后一段落地才收口成「`Q_out` 减去旁路输出逐位等于本帧的 `Y`」。加新段时照这个套路走，别指望终点判据。
@@ -110,6 +116,7 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 - **放宽的 lint 会盖住真实缺陷**：模块顶部 `#![allow(clippy::arithmetic_side_effects)]` 是为了让规范的下标算式贴近原文，代价是它同时吞掉了一处真实的加法溢出。allow 的范围越大，越要自己补回被盖住的那类检查。
 - **借来的枚举范围不等于穷尽**：判定「这类注入不可能被观察到」时扫了 904 组配置，得出「是冗余的纵深防御」。但那个 sweep 是为 patch/limiter 表建的，`AspxBandTables::derive` 的五个参数里它只跑四个——`aspx_noise_sbg` 被固定为 0，**恰恰因为它不影响那两张表**，而这正是它能造出「patch 相同、频带不同」反例的原因。丢掉它的理由和它相关的理由是同一条。**声称穷尽某个空间之前，核对枚举的自由度是不是被判定对象的自由度**，别复用为另一个问题划的边界。
 - **按符号的拼写检索，而不是按它约束的东西**：`5_X`/`7_X` 在两份 PDF 里只出现在两行 `if` 里，据此写下「规范没有任何一处给出定义，取值是判读」。但 P1 表 67 的 `basic_metadata()` 把同一段语法写成 `if (5 ≤ ch_mode ≤ 10)`，连内层 5–6 / 9–10 的拆分都在——它根本不提那个符号，全文检索原理上就找不到。规范会用等价条款重述同一约束，**要查的是「哪些条款约束这个字段」，不是「哪些页出现这个词」**。这是上一条的检索版本：枚举的自由度（含某字符串的页）又一次不是判定对象的自由度（约束该字段的条款）。
+- **门禁守的文件被排除在触发条件外**：CI 的 `paths` 过滤曾同时排除 `LICENSE` 与 `.gitignore`，而 `quality` job 的 `cmp LICENSE crates/*/LICENSE` 守的正是前者、`check_spec_distribution.py` 的「生成物必须被 `.gitignore` 覆盖」读的正是后者。判据本身没写错，但改动它裁决的那个文件不会让它跑起来——两道门禁对各自唯一的触发方式永久失效。这是「判据挂在可选输入后面」的 CI 版本：那次卡在夹具，这次卡在触发条件。**给某个文件加门禁时，回头确认改那个文件真的会让门禁跑。**
 
 一条错的「已验证穷尽」比没有结论坏得多：上面那次不只是没找到，还把结论写进函数文档与追踪矩阵（「注入它不会有判据响，这不是判据缺口」），等于留下路标叫后来者别查。没有结论时下一个人还会去看，有了假结论他就绕开了。**不确定就写不确定**，不要为省事把「我没找到」写成「不存在」。
 
@@ -146,8 +153,9 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 **动架构之前先读 ADR-0011 与 ADR-0013。** 长期依赖方向是 syntax → decode/engine → scene；
 `macindecode-ac4-decode` 已完成物理提取，OAMD 暂不独立成 crate，FFI 继续延后。两份 ADR 同时
 作废了 `ARCHITECTURE.md` 早期那张 `audio-core` / `ajoc` / `oamd` 三路拆包草图。**拆分不得混入
-数值或输出行为变更**——每个迁移增量都要分别过默认与 `audio-decode` 测试、`no_std` 检查、
-三层 PCM 基线、Scene/CLI 契约和规范分发门禁。
+数值或输出行为变更**——每个迁移增量都要分别过默认、`spec-tables` 与 `audio-decode` 三个配置的
+测试、`no_std` 检查、三层 PCM 基线、Scene/CLI 契约和规范分发门禁。ADR-0013 那次的证据见该
+ADR 的「验证证据」一节。
 
 ## 当前边界
 

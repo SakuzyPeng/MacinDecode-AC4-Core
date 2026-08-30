@@ -48,6 +48,20 @@ view，而 bitstream 解析不需要任何 PCM、QMF 或对象重建类型。现
   crate DSP 接口。
 - 扩展 trait 清楚标示“语法视图 + 可选规范表解码”的边界，同时让调用形式保持接近原 API。
 
+## 验证证据
+
+决策 7 的迁移门禁已全部收口：
+
+- **三段逐位 PCM 基线全部一致。** `scripts/decode_check.py` 的 `core`、`aspx`、`objects`
+  三段各十二条真实向量摘要与提取前完全相同。这是「纯搬运」这句话唯一的直接证据——编译与
+  单元测试只证明代码还能跑，证明不了 PCM 没变。
+- **三个构建配置的 clippy / test 全绿。** 默认与 `audio-decode` 自提取起保持通过；
+  `spec-tables` 在补齐覆盖后首次作为独立 CI 门禁通过。提取时它尚未纳入持续集成裁决。
+- **`no_std` 目标未回归。** thumbv7em-none-eabi 上默认 Scene API 与完整 decoder 两条检查均
+  通过，MSRV 1.98.0 独立复验 `--features audio-decode`。
+- **边界与分发门禁通过。** `check_layers.py` 的逐 crate 方向、`check_spec_distribution.py`
+  的规范分发边界与 `cargo package --workspace` 的打包检查均在新布局下通过。
+
 ## 影响
 
 workspace 现在包含七个 crate，其中六个公开发布。内部发布顺序增加一层：
