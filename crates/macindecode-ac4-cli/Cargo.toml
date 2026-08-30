@@ -18,7 +18,7 @@ path = "src/main.rs"
 
 [features]
 default = []
-# 解析 A-JOC substream 的音频数据。转发到 bitstream crate 的同名 feature，
+# 解析 A-JOC substream 的音频数据。转发到 decode 与 scene crate 的同名 feature，
 # 关闭时 trace 的 `ajoc_audio` 字段为 null，其余输出不变。
 audio-decode = [
     "dep:macindecode-ac4-decode",
