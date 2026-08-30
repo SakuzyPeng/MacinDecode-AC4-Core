@@ -8,8 +8,6 @@ on:
       - "**"
       - "!**/*.md"
       - "!docs/experiments/**"
-      - "!.gitignore"
-      - "!LICENSE"
       # check_transform_tables.py 直接读取该 ADR，不能按纯文档跳过。
       - "docs/decisions/0003-trigonometric-tables-for-the-transform.md"
   pull_request:
@@ -136,6 +134,15 @@ jobs:
         env:
           RUSTDOCFLAGS: "-D warnings"
         run: cargo doc --locked --workspace --no-deps --features audio-decode
+
+      # `spec-tables` 是 `audio-decode` 之外的第三个配置：A-SPX/ASF/A-JOC 的推导层需要
+      # 本地生成的 PDF 表，但不需要规范随附的 Huffman 码本。只有 decode 声明该 feature，
+      # 因此按包而非按 workspace 检查。没有这一步，推导层与解码层之间的 seam 无人验证。
+      - name: Lint spec-tables feature
+        run: cargo clippy --locked -p macindecode-ac4-decode --all-targets --features spec-tables -- -D warnings
+
+      - name: Test spec-tables feature
+        run: cargo test --locked -p macindecode-ac4-decode --features spec-tables
 
       - name: Lint audio-decode feature
         run: cargo clippy --locked --workspace --all-targets --features audio-decode -- -D warnings
