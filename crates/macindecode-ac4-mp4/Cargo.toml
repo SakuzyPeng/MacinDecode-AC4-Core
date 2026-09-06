@@ -15,5 +15,9 @@ include = ["src/**", "README.md", "LICENSE"]
 [dependencies]
 macindecode-ac4-bitstream.workspace = true
 
+[features]
+default = []
+std = []
+
 [lints]
 workspace = true

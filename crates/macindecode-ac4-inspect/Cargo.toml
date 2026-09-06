@@ -14,7 +14,7 @@ include = ["src/**", "tests/**", "README.md", "LICENSE"]
 
 [dependencies]
 macindecode-ac4-bitstream.workspace = true
-macindecode-ac4-mp4.workspace = true
+macindecode-ac4-mp4 = { workspace = true, features = ["std"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

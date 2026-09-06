@@ -31,6 +31,9 @@ use macindecode_ac4_mp4::{
 use serde::Serialize;
 use serde_json::{Value, json};
 
+mod stream;
+pub use stream::{inspect_mp4_reader, inspect_raw_reader, inspect_reader};
+
 /// How [`inspect_bytes`] should interpret its input.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum InspectInputFormat {
@@ -739,15 +742,19 @@ struct Aggregator {
 /// Read and inspect an MP4/M4A or Annex G AC-4 file.
 ///
 /// Format detection matches [`InspectInputFormat::Auto`]. The complete file is
-/// read before parsing, and no audio reconstruction tables are required.
+/// inspected with bounded packet buffers; no audio reconstruction tables are required.
 pub fn inspect_path(path: impl AsRef<Path>) -> Result<InspectReport, InspectError> {
     let path = path.as_ref();
-    let data = std::fs::read(path).map_err(|source| InspectError::Read {
+    let file = std::fs::File::open(path).map_err(|source| InspectError::Read {
         path: path.to_path_buf(),
         source,
     })?;
     let input = path.display().to_string();
-    inspect_named_bytes(&data, &input, InspectInputFormat::Auto)
+    let mut reader = io::BufReader::with_capacity(256 * 1024, file);
+    inspect_reader(
+        &mut reader,
+        InspectSourceHint::new(Some(&input), InspectInputFormat::Auto),
+    )
 }
 
 /// Inspect MP4/M4A or Annex G AC-4 bytes already held by the caller.

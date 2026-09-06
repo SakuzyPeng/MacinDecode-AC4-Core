@@ -7,6 +7,12 @@
 
 #![no_std]
 
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "std")]
+pub mod reader;
+
 pub mod boxes;
 pub mod dsi;
 pub mod samples;
@@ -27,7 +33,8 @@ pub use dsi::{
 };
 pub use samples::{SampleBoundsError, SampleInfo, SampleIter, SampleTable, SampleTableError};
 pub use source::{
-    Ac4AccessUnit, Ac4AccessUnitIter, Ac4Mp4, Ac4Mp4Error, Ac4Mp4Timeline, Ac4SampleInfoIter,
+    Ac4AccessUnit, Ac4AccessUnitIter, Ac4Mp4, Ac4Mp4Error, Ac4Mp4Metadata, Ac4Mp4Timeline,
+    Ac4SampleInfoIter,
 };
 pub use timeline::{
     EditListEntry, HeaderTiming, PresentationSampleSpan, PresentationTiming, TimelineError,

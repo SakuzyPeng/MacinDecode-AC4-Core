@@ -22,6 +22,16 @@ OAMD 和重建原语由 `macindecode-ac4-bitstream` 提供。
 底层的 `find_ac4_track`、`SampleTable` 与时间函数继续公开，供需要自行组合 ISO BMFF
 结构的调用方使用；高层入口不会解释 AC-4 音频工具语义。
 
+长媒体可使用 `Ac4Mp4Metadata::parse()` 只借用完整 `moov`，保留同一套轨道、sample
+description 与时间线校验，而不持有 `mdat`。该视图只产出描述符，不暴露完整文件的 payload 访问器。
+
+可选 `std` feature 提供 `reader::read_mp4_metadata`、`read_access_unit` 与
+`read_sync_frame`。它们接受标准 `Read` / `Seek`，支持末尾 `moov`、extended-size box、
+64 位文件偏移和复用 packet 缓冲；`BufReader` 可复用相邻 AU 与缓冲内跳转。
+元数据读取预算由调用方指定（默认常量 64 MiB），单个 packet 上限约 16 MiB；截断、越界和超限
+返回 `MediaReadError`。Annex G 的传输语法仍由 bitstream crate 的 `SyncFrameIter` 校验。
+默认仍为不依赖 `std` 的解析库。
+
 `dac4` DSI v1 额外提供无分配的只读选择信令：program/bitrate、presentation、
 substream group、direct-object/A-JOC 分类与 alternative 名称/目标。未知 presentation
 版本及规范的 `skip_area` 保持有界不透明；channel group 掩码只表示容器信令，不代表

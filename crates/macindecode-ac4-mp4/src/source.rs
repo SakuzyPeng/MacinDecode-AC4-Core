@@ -243,6 +243,67 @@ impl<'a> Ac4Mp4<'a> {
     }
 }
 
+/// 仅借用完整 `moov` box 的轨道、DSI、sample table 和时间线视图。
+///
+/// 与 [`Ac4Mp4`] 共用同一套解析与校验，但不暴露 payload 访问器。sample 的
+/// offset 仍是原文件中的绝对位置，由调用方按需读取并校验文件边界。
+#[derive(Debug, Clone)]
+pub struct Ac4Mp4Metadata<'a> {
+    inner: Ac4Mp4<'a>,
+}
+
+impl<'a> Ac4Mp4Metadata<'a> {
+    /// 从包含完整 `moov` box 的字节构建元数据视图，不需要 `mdat`。
+    ///
+    /// # Errors
+    /// 与 [`Ac4Mp4::parse`] 相同：缺失或无效的轨道、DSI、sample table 会报错。
+    pub fn parse(moov: &'a [u8]) -> Result<Self, Ac4Mp4Error> {
+        Ok(Self {
+            inner: Ac4Mp4::parse(moov)?,
+        })
+    }
+
+    /// 选定的 AC-4 轨道。
+    #[must_use]
+    pub const fn track(&self) -> &Ac4Track<'a> {
+        self.inner.track()
+    }
+
+    /// 选定轨道的媒体时钟。
+    #[must_use]
+    pub const fn media_timing(&self) -> HeaderTiming {
+        self.inner.media_timing()
+    }
+
+    /// 选定轨道的 DSI。
+    #[must_use]
+    pub const fn dsi(&self) -> &Ac4Dsi<'a> {
+        self.inner.dsi()
+    }
+
+    /// sample table 声明的帧数。
+    #[must_use]
+    pub const fn sample_count(&self) -> u32 {
+        self.inner.sample_count()
+    }
+
+    /// 逐帧描述符；校验所选 sample description，但不读取音频 payload。
+    #[must_use]
+    pub fn sample_infos(&self) -> Ac4SampleInfoIter<'a> {
+        self.inner.sample_infos()
+    }
+
+    /// 与完整文件视图相同的呈现时间线。
+    ///
+    /// # Errors
+    /// `mvhd`、edit list 或派生时间线无效时返回 [`Ac4Mp4Error`]。
+    pub fn presentation_timeline<const EDITS: usize>(
+        &self,
+    ) -> Result<Ac4Mp4Timeline<EDITS>, Ac4Mp4Error> {
+        self.inner.presentation_timeline()
+    }
+}
+
 /// One validated and file-bounded AC-4 access unit.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ac4AccessUnit<'a> {

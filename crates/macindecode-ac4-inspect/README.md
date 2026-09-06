@@ -13,6 +13,10 @@ serde_json = "1"
 
 检查文件：
 
+`inspect_path` 使用有界缓冲逐帧读取，不载入整份媒体。`inspect_reader` 接受可定位输入流；
+已有共享 `moov` 的应用可使用 `inspect_mp4_reader`，裸 AC-4 可使用 `inspect_raw_reader`。
+流式报告最多保留 1024 条逐帧问题明细，并报告省略数量；聚合计数仍覆盖完整输入。
+
 ```rust
 use macindecode_ac4_inspect::inspect_path;
 

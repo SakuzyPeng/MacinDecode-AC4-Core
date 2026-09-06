@@ -262,3 +262,62 @@ fn empty_and_missing_inputs_keep_structured_error_context() {
         Err(InspectError::Read { path: failed, .. }) if failed == path
     ));
 }
+
+#[test]
+fn streamed_mp4_and_raw_reports_match_memory_reports_with_short_reads() {
+    struct ShortReader(std::io::Cursor<Vec<u8>>);
+    impl std::io::Read for ShortReader {
+        fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+            let count = output.len().min(1);
+            std::io::Read::read(&mut self.0, &mut output[..count])
+        }
+    }
+    impl std::io::Seek for ShortReader {
+        fn seek(&mut self, offset: std::io::SeekFrom) -> std::io::Result<u64> {
+            std::io::Seek::seek(&mut self.0, offset)
+        }
+    }
+    let frames = [
+        topology_frame(0, true),
+        topology_frame(1, false),
+        topology_frame(2, true),
+    ];
+    for data in [minimal_mp4(&frames), annex_g(&frames)] {
+        let hint = InspectSourceHint::new(Some("same-source"), InspectInputFormat::Auto);
+        let expected = inspect_bytes(&data, hint).unwrap();
+        let actual = macindecode_ac4_inspect::inspect_reader(
+            &mut ShortReader(std::io::Cursor::new(data)),
+            hint,
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(&actual).unwrap(),
+            serde_json::to_value(&expected).unwrap()
+        );
+    }
+}
+
+#[test]
+fn streaming_crc_issue_storage_is_bounded_without_losing_frame_counts() {
+    let mut data = Vec::new();
+    for index in 0..1200u16 {
+        let frame = topology_frame(index % 1024, true);
+        data.extend_from_slice(&[0xac, 0x41]);
+        data.extend_from_slice(&u16::try_from(frame.len()).unwrap().to_be_bytes());
+        data.extend_from_slice(&frame);
+        data.extend_from_slice(&[0, 0]);
+    }
+    let report = macindecode_ac4_inspect::inspect_reader(
+        &mut std::io::Cursor::new(data),
+        InspectSourceHint::default(),
+    )
+    .unwrap();
+    assert_eq!(report.source.frame_count, 1200);
+    assert!(report.issues.len() <= 1026);
+    assert!(
+        report
+            .issues
+            .iter()
+            .any(|issue| issue.code == "issues_truncated")
+    );
+}
