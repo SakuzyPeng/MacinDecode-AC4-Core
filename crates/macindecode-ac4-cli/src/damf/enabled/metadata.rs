@@ -1,6 +1,8 @@
 //! DAMF 对象 metadata 生成。
 
 use super::*;
+use crate::metadata_batch::{project_damf_object_events, project_headphone_events};
+use macindecode_ac4_scene::{HeadTrackingPolicy, HeadphonePolicyState, HeadphoneRenderMode};
 
 pub(super) fn build_metadata(
     metadata: &MetadataBatch,
@@ -29,9 +31,45 @@ pub(super) fn build_metadata(
 
     for object in selected {
         let selector = scene_selector(&object.scene);
-        let events = output_events(metadata, object, duration)?;
-        for event in events {
-            append_object_event(&mut lines, object, event, &selector, warnings)?;
+        let mut events = output_events(metadata, object, duration)?
+            .into_iter()
+            .peekable();
+        let mut policies =
+            project_headphone_events(metadata, &object.scene, OUTPUT_SAMPLE_RATE, duration)?
+                .into_iter()
+                .peekable();
+        let mut policy = HeadphonePolicyState::Unspecified;
+        let mut previous_fields = None;
+        loop {
+            let sample = match (events.peek(), policies.peek()) {
+                (Some(event), Some(headphone)) => event.sample.min(headphone.sample),
+                (Some(event), None) => event.sample,
+                (None, Some(headphone)) => headphone.sample,
+                (None, None) => break,
+            };
+            while policies.peek().is_some_and(|event| event.sample == sample) {
+                policy = policies.next().ok_or("Missing headphone event")?.policy;
+            }
+            let fields = headphone_fields(policy)
+                .map_err(|error| format!("Object {selector} at sample {sample}: {error}"))?;
+            if events.peek().is_some_and(|event| event.sample == sample) {
+                let event = events.next().ok_or("Missing object event")?;
+                append_object_event(&mut lines, object, event, policy, &selector, warnings)?;
+            } else if previous_fields != Some(fields) {
+                headphone_warning(policy, &selector, sample, warnings);
+                lines.extend([
+                    format!("  - ID: {}", object.damf_id),
+                    format!("    samplePos: {sample}"),
+                ]);
+                if previous_fields.is_none_or(|previous: (&str, &str)| previous.0 != fields.0) {
+                    lines.push(format!("    headTrackMode: {}", fields.0));
+                }
+                if previous_fields.is_none_or(|previous| previous.1 != fields.1) {
+                    lines.push(format!("    binauralRenderMode: {}", fields.1));
+                }
+                // 局部事件不写 rampLength、位置或增益；未改变字段继续原来的 ramp。
+            }
+            previous_fields = Some(fields);
         }
     }
     Ok(finish_yaml_lines(lines))
@@ -42,7 +80,7 @@ pub(super) fn output_events(
     selected: &SelectedObject,
     duration: u64,
 ) -> Result<Vec<OutputEvent>, String> {
-    project_metadata_events(metadata, &selected.scene, OUTPUT_SAMPLE_RATE, duration)
+    project_damf_object_events(metadata, &selected.scene, OUTPUT_SAMPLE_RATE, duration)
 }
 
 #[cfg(test)]
@@ -54,6 +92,7 @@ pub(super) fn append_object_event(
     lines: &mut Vec<String>,
     object: &SelectedObject,
     event: OutputEvent,
+    policy: HeadphonePolicyState,
     selector: &str,
     warnings: &mut WarningSet,
 ) -> Result<(), String> {
@@ -122,19 +161,9 @@ pub(super) fn append_object_event(
         ObjectPriorityState::Minimum => 0.0,
         ObjectPriorityState::Quantized(code) => f64::from(code) / 31.0,
     };
-    if event
-        .additional
-        .headphone
-        .is_some_and(|headphone| headphone.render_mode == 3)
-    {
-        warnings.push(
-            selector,
-            i64::try_from(event.sample).ok(),
-            "binaural_render_mode",
-            "DAMF 0.5.1 does not accept AC-4 Mid headphone mode; falling back to undefined",
-        );
-    }
-    let (head_track, binaural) = headphone_fields(event.additional, object.scene.common);
+    headphone_warning(policy, selector, event.sample, warnings);
+    let (head_track, binaural) = headphone_fields(policy)
+        .map_err(|error| format!("Object {selector} at sample {}: {error}", event.sample))?;
 
     lines.extend([
         format!("  - ID: {}", object.damf_id),
@@ -211,42 +240,42 @@ pub(super) fn zone_fields(
 }
 
 pub(super) fn headphone_fields(
-    additional: AdditionalObjectMetadata,
-    common: Option<macindecode_ac4_bitstream::oamd::OamdCommonData>,
-) -> (&'static str, &'static str) {
-    if let Some(headphone) = additional.headphone {
-        return (
-            if headphone.head_tracking_disabled {
-                "head relative"
-            } else {
-                "scene relative"
-            },
-            match headphone.render_mode {
-                0 => "off",
-                1 => "near",
-                2 => "far",
-                3 => "undefined",
-                _ => "undefined",
-            },
+    policy: HeadphonePolicyState,
+) -> Result<(&'static str, &'static str), String> {
+    let policy = match policy {
+        HeadphonePolicyState::Resolved(policy) => policy,
+        HeadphonePolicyState::Unspecified => return Ok(("scene relative", "undefined")),
+        HeadphonePolicyState::Unsupported(issue) => return Err(issue.to_string()),
+        _ => return Err("Unsupported headphone policy state".to_owned()),
+    };
+    let tracking = match policy.head_tracking() {
+        HeadTrackingPolicy::SceneRelative => "scene relative",
+        HeadTrackingPolicy::HeadRelative => "head relative",
+        _ => return Err("Unsupported head-tracking policy".to_owned()),
+    };
+    let render = match policy.render_mode() {
+        HeadphoneRenderMode::Bypass => "off",
+        HeadphoneRenderMode::Near => "near",
+        HeadphoneRenderMode::Far => "far",
+        HeadphoneRenderMode::Mid => "undefined",
+        _ => return Err("Unsupported headphone render mode".to_owned()),
+    };
+    Ok((tracking, render))
+}
+
+fn headphone_warning(
+    policy: HeadphonePolicyState,
+    selector: &str,
+    sample: u64,
+    warnings: &mut WarningSet,
+) {
+    if matches!(policy, HeadphonePolicyState::Resolved(policy) if policy.render_mode() == HeadphoneRenderMode::Mid)
+    {
+        warnings.push(
+            selector,
+            i64::try_from(sample).ok(),
+            "binaural_render_mode",
+            "DAMF does not accept AC-4 Mid headphone mode; falling back to undefined",
         );
     }
-    let Some(headphone) = common
-        .map(|common| common.headphone)
-        .filter(|item| item.present)
-    else {
-        return ("scene relative", "undefined");
-    };
-    (
-        if headphone.head_track_disable_all == Some(true) {
-            "head relative"
-        } else {
-            "scene relative"
-        },
-        match headphone.hp_operation_mode {
-            0 => "off",
-            1 => "near",
-            2 => "far",
-            _ => "undefined",
-        },
-    )
 }

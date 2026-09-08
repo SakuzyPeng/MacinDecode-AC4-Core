@@ -14,9 +14,7 @@ use yaml::{finish_lines as finish_yaml_lines, quote as yaml_scalar};
 use super::*;
 #[cfg(test)]
 use crate::metadata_batch::default_output_metadata_event;
-use crate::metadata_batch::{
-    MetadataBatch, MetadataElement, OutputMetadataEvent, project_metadata_events,
-};
+use crate::metadata_batch::{MetadataBatch, MetadataElement, OutputMetadataEvent};
 use crate::scene_batch::{DiagnosticSceneBatch, SceneBatchError, collect_diagnostic_scene_batch};
 #[cfg(test)]
 use crate::scene_export::parse_scene_selector;
@@ -27,11 +25,13 @@ use crate::scene_export::{
 };
 use crate::wire::{CliError, DiagnosticCode};
 use crate::{DamfPresentationType, DecodeMode};
-use macindecode_ac4_bitstream::oamd::{
-    AdditionalObjectMetadata, ObjectGainState, ObjectPriorityState, WidthUpdate, ZoneUpdate,
-};
 #[cfg(test)]
-use macindecode_ac4_bitstream::oamd::{PositionCoding, QuantizedPosition};
+use macindecode_ac4_bitstream::oamd::{
+    AdditionalObjectMetadata, PositionCoding, QuantizedPosition,
+};
+use macindecode_ac4_bitstream::oamd::{
+    ObjectGainState, ObjectPriorityState, WidthUpdate, ZoneUpdate,
+};
 use macindecode_ac4_scene::{DecodeMode as SceneSessionDecodeMode, PresentationSelection};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
@@ -338,6 +338,9 @@ mod tests {
     use macindecode_ac4_bitstream::oamd::{
         ObjectBasicState, ObjectMetadataState, ObjectRenderState, OtherPropertiesUpdate,
     };
+    use macindecode_ac4_scene::{
+        HeadTrackingPolicy, HeadphonePolicy, HeadphonePolicyState, HeadphoneRenderMode,
+    };
 
     fn test_scene(substream: u32, object: u8) -> MetadataElement {
         MetadataElement {
@@ -356,6 +359,8 @@ mod tests {
 
     fn test_batch(elements: Vec<MetadataElement>) -> MetadataBatch {
         MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 48_000,
             media_span: Some(MediaSpan {
@@ -365,6 +370,298 @@ mod tests {
             decode_mode: SceneSessionDecodeMode::Full,
             elements,
             events: Vec::new(),
+        }
+    }
+
+    mod headphone_export {
+        use super::*;
+        use crate::metadata_batch::{HeadphoneMetadataEvent, project_headphone_events};
+        use macindecode_ac4_scene::HeadphonePolicyIssue;
+        use std::collections::BTreeMap;
+
+        fn policy(head_relative: bool, far: bool) -> HeadphonePolicyState {
+            HeadphonePolicyState::Resolved(HeadphonePolicy::new(
+                if far {
+                    HeadphoneRenderMode::Far
+                } else {
+                    HeadphoneRenderMode::Near
+                },
+                if head_relative {
+                    HeadTrackingPolicy::HeadRelative
+                } else {
+                    HeadTrackingPolicy::SceneRelative
+                },
+            ))
+        }
+
+        fn batch() -> (MetadataBatch, SelectedObject) {
+            let scene = test_scene(2, 1);
+            let mut batch = test_batch(vec![scene]);
+            for (sample, x, gain, ramp, order) in [(0, 0, 42, 0, 0), (1000, 62, 30, 1000, 1)] {
+                let mut state = default_inactive_event().state;
+                state.active = true;
+                state.render.as_mut().unwrap().position.x = x;
+                state.basic.as_mut().unwrap().gain = ObjectGainState::Quantized(gain);
+                batch.events.push(MetadataEvent {
+                    sample_position: sample,
+                    element_id: scene.element_id,
+                    stream_order: order,
+                    ramp_samples: ramp,
+                    state,
+                    additional: Default::default(),
+                });
+            }
+            batch.headphone_events.push(HeadphoneMetadataEvent {
+                sample_position: 0,
+                element_id: scene.element_id,
+                stream_order: 0,
+                policy: policy(false, false),
+            });
+            (batch, SelectedObject { scene, damf_id: 10 })
+        }
+
+        /// 独立读取输出的字段事件，不复用 writer 的状态或投影代码。
+        fn object_records(text: &str) -> Vec<BTreeMap<String, String>> {
+            let mut records = Vec::<BTreeMap<String, String>>::new();
+            for line in text.lines() {
+                if let Some(id) = line.strip_prefix("  - ID: ") {
+                    let mut record = BTreeMap::new();
+                    record.insert("ID".to_owned(), id.to_owned());
+                    records.push(record);
+                } else if let Some((key, value)) = line.trim().split_once(": ")
+                    && let Some(record) = records.last_mut()
+                {
+                    record.insert(key.to_owned(), value.to_owned());
+                }
+            }
+            records
+                .into_iter()
+                .filter(|record| record.get("ID").is_some_and(|id| id == "10"))
+                .collect()
+        }
+
+        fn continuous_curve(records: &[BTreeMap<String, String>], key: &str) -> Vec<f64> {
+            let mut curve = Vec::new();
+            for sample in 0..=3000 {
+                let (mut start, mut length, mut from, mut target) = (0u64, 0u64, 0.0, 0.0);
+                for record in records {
+                    let time = record["samplePos"].parse::<u64>().unwrap();
+                    if time > sample {
+                        break;
+                    }
+                    let Some(value) = record.get(key) else {
+                        continue;
+                    };
+                    let elapsed = time.saturating_sub(start);
+                    let current = if length == 0 || elapsed >= length {
+                        target
+                    } else {
+                        from + (target - from) * elapsed as f64 / length as f64
+                    };
+                    from = current;
+                    target = if key == "pos" {
+                        value
+                            .trim_start_matches('[')
+                            .split(',')
+                            .next()
+                            .unwrap()
+                            .parse()
+                            .unwrap()
+                    } else {
+                        value.parse().unwrap()
+                    };
+                    start = time;
+                    length = record["rampLength"].parse().unwrap();
+                }
+                let elapsed = sample.saturating_sub(start);
+                curve.push(if length == 0 || elapsed >= length {
+                    target
+                } else {
+                    from + (target - from) * elapsed as f64 / length as f64
+                });
+            }
+            curve
+        }
+
+        #[test]
+        fn discrete_changes_at_ramp_start_middle_and_end_preserve_position_and_gain() {
+            let (mut batch, selected) = batch();
+            let baseline =
+                build_metadata(&batch, &[selected], 48_000, &mut WarningSet::default()).unwrap();
+            for (sample, head, far, order) in [
+                (1000, true, false, 2),
+                (1250, false, false, 3),
+                (1500, true, true, 4),
+                (1500, false, true, 5),
+                (1750, false, true, 6),
+                (2000, true, true, 7),
+            ] {
+                batch.headphone_events.push(HeadphoneMetadataEvent {
+                    sample_position: sample,
+                    element_id: selected.scene.element_id,
+                    stream_order: order,
+                    policy: policy(head, far),
+                });
+            }
+            let output =
+                build_metadata(&batch, &[selected], 48_000, &mut WarningSet::default()).unwrap();
+            let baseline = object_records(&baseline);
+            let output = object_records(&output);
+            assert_eq!(output.len(), 5, "同刻更新应合并，重复策略不应产生记录");
+            for sample in [1250, 1500, 2000] {
+                let record = output
+                    .iter()
+                    .find(|record| record["samplePos"] == sample.to_string())
+                    .unwrap();
+                assert_eq!(
+                    record.len(),
+                    3,
+                    "局部事件只应包含 ID、samplePos 与一个已改变的字段"
+                );
+                assert!(!record.contains_key("rampLength"));
+                assert!(!record.contains_key("pos"));
+                assert!(!record.contains_key("gain"));
+            }
+            assert_eq!(
+                continuous_curve(&baseline, "pos"),
+                continuous_curve(&output, "pos")
+            );
+            assert_eq!(
+                continuous_curve(&baseline, "gain"),
+                continuous_curve(&output, "gain")
+            );
+            assert_eq!(continuous_curve(&output, "pos").get(1500), Some(&0.0));
+            assert_eq!(continuous_curve(&output, "gain").get(1500), Some(&-22.0));
+            let combined = output
+                .iter()
+                .find(|record| record["samplePos"] == "1000")
+                .unwrap();
+            assert_eq!(combined["rampLength"], "1000");
+            assert_eq!(combined["headTrackMode"], "head relative");
+        }
+
+        #[test]
+        fn object_headphone_only_updates_do_not_retarget_an_existing_ramp() {
+            let (mut batch, selected) = batch();
+            let mut repeated = *batch.events.get(1).unwrap();
+            repeated.sample_position = 1500;
+            repeated.stream_order = 9;
+            batch.events.push(repeated);
+            batch.headphone_only_orders.insert(9);
+            batch.headphone_events.push(HeadphoneMetadataEvent {
+                sample_position: 1500,
+                element_id: selected.scene.element_id,
+                stream_order: 9,
+                policy: policy(true, false),
+            });
+            let output =
+                build_metadata(&batch, &[selected], 48_000, &mut WarningSet::default()).unwrap();
+            let records = object_records(&output);
+            let patch = records
+                .iter()
+                .find(|record| record["samplePos"] == "1500")
+                .unwrap();
+            assert_eq!(patch.len(), 3);
+            assert_eq!(continuous_curve(&records, "pos").get(1750), Some(&0.5));
+        }
+
+        #[test]
+        fn policy_projection_preserves_preroll_and_uses_last_same_sample_value() {
+            let (mut batch, selected) = batch();
+            batch.media_span = Some(MediaSpan {
+                start_sample: 2000,
+                end_sample: 3500,
+            });
+            batch.headphone_events = vec![
+                HeadphoneMetadataEvent {
+                    sample_position: -100,
+                    element_id: selected.scene.element_id,
+                    stream_order: 0,
+                    policy: policy(true, false),
+                },
+                HeadphoneMetadataEvent {
+                    sample_position: 2500,
+                    element_id: selected.scene.element_id,
+                    stream_order: 1,
+                    policy: policy(false, false),
+                },
+                HeadphoneMetadataEvent {
+                    sample_position: 2500,
+                    element_id: selected.scene.element_id,
+                    stream_order: 2,
+                    policy: policy(true, true),
+                },
+            ];
+            let events = project_headphone_events(&batch, &selected.scene, 48_000, 48_000).unwrap();
+            assert_eq!(
+                events
+                    .iter()
+                    .map(|event| (event.sample, event.policy))
+                    .collect::<Vec<_>>(),
+                vec![
+                    (0, HeadphonePolicyState::Unspecified),
+                    (2000, policy(true, false)),
+                    (2500, policy(true, true)),
+                    (3500, HeadphonePolicyState::Unspecified),
+                ]
+            );
+        }
+
+        #[test]
+        fn discrete_projection_rescales_absolute_samples_and_rejects_bad_bounds() {
+            let (mut batch, selected) = batch();
+            batch.sample_rate = 44_100;
+            batch.duration_samples = 4410;
+            batch.media_span = Some(MediaSpan {
+                start_sample: 441,
+                end_sample: 3528,
+            });
+            batch.headphone_events.push(HeadphoneMetadataEvent {
+                sample_position: 882,
+                element_id: selected.scene.element_id,
+                stream_order: 1,
+                policy: policy(true, true),
+            });
+            let events = project_headphone_events(&batch, &selected.scene, 48_000, 4800).unwrap();
+            assert_eq!(
+                events.iter().map(|event| event.sample).collect::<Vec<_>>(),
+                vec![0, 480, 960, 3840]
+            );
+            assert!(project_headphone_events(&batch, &selected.scene, 48_000, 3800).is_err());
+            batch.sample_rate = 0;
+            assert!(project_headphone_events(&batch, &selected.scene, 48_000, 4800).is_err());
+        }
+
+        #[test]
+        fn unsupported_policy_fails_and_mid_warning_depends_on_effective_policy() {
+            let (mut batch, selected) = batch();
+            batch.headphone_events.first_mut().unwrap().policy =
+                HeadphonePolicyState::Unsupported(HeadphonePolicyIssue::ConflictingGroups);
+            assert!(
+                build_metadata(&batch, &[selected], 48_000, &mut WarningSet::default())
+                    .unwrap_err()
+                    .contains("conflicting headphone")
+            );
+            batch.headphone_events.first_mut().unwrap().policy = HeadphonePolicyState::Resolved(
+                HeadphonePolicy::new(HeadphoneRenderMode::Mid, HeadTrackingPolicy::SceneRelative),
+            );
+            let mut warnings = WarningSet::default();
+            let output = build_metadata(&batch, &[selected], 48_000, &mut warnings).unwrap();
+            assert!(output.contains("binauralRenderMode: undefined"));
+            assert!(!warnings.items.is_empty());
+            batch.headphone_events.first_mut().unwrap().policy = policy(false, false);
+            batch.events.first_mut().unwrap().additional.headphone =
+                Some(macindecode_ac4_bitstream::oamd::ObjectHeadphone {
+                    render_mode: 3,
+                    head_tracking_disabled: true,
+                });
+            let mut warnings = WarningSet::default();
+            let output = build_metadata(&batch, &[selected], 48_000, &mut warnings).unwrap();
+            assert!(output.contains("binauralRenderMode: near"));
+            assert!(
+                warnings.items.is_empty(),
+                "未采用的 raw Mid 不应触发 DAMF warning"
+            );
         }
     }
 
@@ -428,6 +725,8 @@ mod tests {
             additional: AdditionalObjectMetadata::default(),
         };
         let batch = MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 10_000,
             media_span: Some(MediaSpan {
@@ -460,6 +759,8 @@ mod tests {
             additional: AdditionalObjectMetadata::default(),
         };
         let batch = MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 1_000,
             media_span: Some(MediaSpan {
@@ -568,8 +869,18 @@ mod tests {
         };
         let mut lines = Vec::new();
         let mut warnings = WarningSet::default();
-        append_object_event(&mut lines, &selected, event, "2:1", &mut warnings)
-            .expect("字段应可映射");
+        append_object_event(
+            &mut lines,
+            &selected,
+            event,
+            HeadphonePolicyState::Resolved(HeadphonePolicy::new(
+                HeadphoneRenderMode::Mid,
+                HeadTrackingPolicy::HeadRelative,
+            )),
+            "2:1",
+            &mut warnings,
+        )
+        .expect("字段应可映射");
         let metadata = lines.join("\n");
         for expected in [
             "samplePos: 123",
@@ -617,6 +928,14 @@ mod tests {
                 &mut lines,
                 &selected,
                 event(disabled),
+                HeadphonePolicyState::Resolved(HeadphonePolicy::new(
+                    HeadphoneRenderMode::Near,
+                    if disabled {
+                        HeadTrackingPolicy::HeadRelative
+                    } else {
+                        HeadTrackingPolicy::SceneRelative
+                    },
+                )),
                 "2:1",
                 &mut WarningSet::default(),
             )

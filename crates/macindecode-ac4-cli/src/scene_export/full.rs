@@ -398,6 +398,8 @@ mod tests {
 
     fn batch(elements: Vec<MetadataElement>) -> MetadataBatch {
         MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 2,
             media_span: Some(MediaSpan {

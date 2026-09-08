@@ -73,7 +73,8 @@ MP4、inspection、FFI、CLI 或 perf 都不得成为解码核心的反向依赖
 | `macindecode-ac4-decode/src/dialog_enhancement/`、`drc_gains.rs` | 消费规范 Huffman 表的 DE/DRC data 解码与跨帧有效状态 |
 | `macindecode-ac4-decode/src/{audio_data,channel,full_ajoc,...}` | 音频元素驱动、表 188 对齐与统一 Full A-JOC engine |
 | `macindecode-ac4-decode/build_support/` | 数学表、QMF、规范 C 表/Huffman 与 SHA-256；`build.rs` 只调度 |
-| `macindecode-ac4-scene/src/model.rs` | timeline、presentation、bed/object PCM、group 级 OAMD common、逐对象更新、presentation metadata 侧车及借用输出模型 |
+| `macindecode-ac4-scene/src/model.rs` | timeline、presentation、bed/object PCM、group 级 OAMD common、对象/common 来源更新、presentation metadata 侧车及借用输出模型 |
+| `macindecode-ac4-scene/src/headphone.rs` | 模式驱动的有效耳机内容策略；全局/逐对象控制和共享 group 一致性，不执行设备策略或双耳渲染 |
 | `macindecode-ac4-scene/src/session.rs` | Session 控制面、presentation/mode 选择、processing-metadata 跨帧状态与 payload 存储、Core/Full A-JOC 拓扑门禁及 engine 所有权 |
 | `macindecode-ac4-scene/src/full_engine.rs` | 同一 AU 候选到 A-JOC engine 的事务输入及结构化错误投影 |
 | `macindecode-ac4-scene/src/error.rs` | 可重试截断、选择、unsupported、码流与不变量错误及 AU/语法上下文 |

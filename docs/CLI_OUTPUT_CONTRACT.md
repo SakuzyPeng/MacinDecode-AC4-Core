@@ -446,6 +446,13 @@ artifact 顺序固定为 manifest、metadata、CAF；`audio.format = "caf_s24le"
 `{"version":"0.5.1","type":"home","stem_artifacts":3}`，3DoF 则只把前两项改为
 `0.6.0`/`3dof`。两种类型的 metadata、CAF、对象列表、轨序和 `scale` 必须相同。
 
+`export-damf` 与 `export-full-damf` 的 metadata 允许局部耳机事件：只含 `ID`、`samplePos` 及
+改变的 `headTrackMode`/`binauralRenderMode`，未出现的字段继承前态。这类事件不写位置、增益
+或 `rampLength`，不会中断正在进行的连续属性 ramp；初始事件保持完整，同刻更新合并写出。
+字段值来自 Scene 有效策略。未指定策略使用 `scene relative`/`undefined`；有效 Mid 产生映射
+warning，严格模式拒绝；无法确定的策略在输出包创建前以 `mapping.unsupported` 失败。
+上述变化不增加 JSON envelope 字段，也不改变 CAF、对象 ID、轨序或 home/3DoF 的等价要求。
+
 ### 5.9 `export-adm-bwf`
 
 | 旧 JSONPath | v1 JSONPath |

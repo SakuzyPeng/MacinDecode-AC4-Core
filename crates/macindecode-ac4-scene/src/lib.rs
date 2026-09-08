@@ -13,6 +13,9 @@
 //! downmix/upmix 逐对象更新组装到同一份表 188 到期时间线。更新保留完整状态、raw
 //! timing、changed mask、control source AU 与跨帧队列；只有 offset 0 更新进入帧
 //! 起点状态，逐对象绝对时间倒退会失败关闭。
+//! `SceneObjectState::headphone_policy` 已按操作模式合并全局与逐对象耳机策略；全局
+//! 变化也能产生 `HEADPHONE_POLICY` 更新，其 raw 对象块可为空，common 来源独立保留。
+//! 策略是内容要求，不执行头姿旋转或双耳化；未知语义不丢弃成功重建的 PCM。
 //! 公开 `decode_access_unit` 返回 Session 自有存储的借用视图；等待随机访问点时返回
 //! 空帧序列，解析或 DSP 失败时不会发布半成品视图。
 //!
@@ -35,6 +38,7 @@ mod error;
 #[cfg(feature = "audio-decode")]
 mod full_engine;
 mod group_oamd;
+mod headphone;
 mod model;
 mod session;
 
@@ -43,20 +47,26 @@ pub use error::{
     PresentationSelectionError, UnsupportedReason,
 };
 
+pub use headphone::{
+    HeadTrackingPolicy, HeadphonePolicy, HeadphonePolicyIssue, HeadphonePolicyState,
+    HeadphoneRenderMode,
+};
+
 pub use macindecode_ac4_bitstream::{
     Ac4PresentationSubstream, PresentationDrcConfiguration, PresentationSubstreamCapacity,
     PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
 };
 pub use model::{
     Ac4DecoderConfig, Ac4SceneFrame, AccessUnit, AccessUnitContext, BedKind, CartesianPosition,
-    CodecDelay, DecodeMode, DecodeStatus, DecodedAccessUnit, FrameDiagnostics, HeadphoneMode,
-    HeadphoneState, MetadataFields, ObjectExtent, ObjectKind, PcmLayout, PcmPlane, PcmSampleFormat,
-    PlanarPcm, PresentationSelection, PresentationSelectionMetadata,
-    PresentationSelectionMetadataIdentity, PresentationSelectionMetadataMatch,
-    PresentationSelectionMetadataMatchBasis, PresentationSubstreamMetadata, RawOamdCommonState,
-    RawOamdState, RawOamdTiming, RawOamdUpdate, ResetKind, SceneBed, SceneBedComponent,
-    SceneElementId, SceneElementSource, SceneFrameIter, SceneMetadataUpdate, SceneObject,
-    SceneObjectState, ScenePath, ScenePresentation, SceneTimeline, SpeakerLabel, ZoneState,
+    CodecDelay, CommonMetadataUpdateOrigin, DecodeMode, DecodeStatus, DecodedAccessUnit,
+    FrameDiagnostics, HeadphoneMode, HeadphoneState, MetadataFields, ObjectExtent, ObjectKind,
+    PcmLayout, PcmPlane, PcmSampleFormat, PlanarPcm, PresentationSelection,
+    PresentationSelectionMetadata, PresentationSelectionMetadataIdentity,
+    PresentationSelectionMetadataMatch, PresentationSelectionMetadataMatchBasis,
+    PresentationSubstreamMetadata, RawOamdCommonState, RawOamdState, RawOamdTiming, RawOamdUpdate,
+    ResetKind, SceneBed, SceneBedComponent, SceneElementId, SceneElementSource, SceneFrameIter,
+    SceneMetadataUpdate, SceneObject, SceneObjectState, ScenePath, ScenePresentation,
+    SceneTimeline, SpeakerLabel, ZoneState,
 };
 #[cfg(feature = "audio-decode")]
 pub use model::{CoreBandPcmChannel, CoreBandPcmFrame};

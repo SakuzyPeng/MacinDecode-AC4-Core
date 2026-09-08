@@ -204,6 +204,29 @@ cmdline_atmos_conversion_tool \
 
 默认 `--presentation-type home` 写 `version: 0.5.1`/`type: home`；选择 `3dof` 只把 manifest 改为 `version: 0.6.0`/`type: 3dof`。两种 package 的 metadata、CAF、对象顺序、增益和时间线完全相同，逐对象 `headTrackMode` 仍由 full OAMD 决定，并不因 3DoF 被强制改写。`--fps` 只写 manifest，默认 24；启用 `--strict-mapping` 后，发现无法映射的字段会在创建输出目录前使命令失败。
 
+DAMF 耳机字段消费 Scene 的有效策略，按操作模式选择全局或逐对象控制，不再采用“有逐对象字段
+就覆盖 common”的规则。初始事件完整写出；仅耳机策略变化时，后续事件只写 `ID`、`samplePos`
+和改变的 `headTrackMode`/`binauralRenderMode`。这些局部事件不写 `rampLength`、位置或增益，
+因此可落在正在进行的 ramp 中；同刻连续属性更新保留原来的 ramp。读取 DAMF metadata 的程序
+必须遵守字段继承，不能假设每条 YAML event 都是完整状态。
+
+合法未指定策略使用 DAMF 默认值 `scene relative`/`undefined`。保留值或组歧义在创建输出包前失败；
+有效 Mid 模式降为 `undefined` 并产生 warning，`--strict-mapping` 将它升级为失败。
+其他 common 字段的静态冲突门禁不变，耳机策略的合法时间变化不再误报为整段 common 冲突。
+
+显式检查本地官方工具对局部事件的接受性及原生 DAMF 往返：
+
+```bash
+python3 scripts/check_damf_headphone.py \
+  --input vectors/probe_axes_single_object/source/master.atmos \
+  --atmos-info /path/to/atmos_info \
+  --conversion-tool /path/to/cmdline_atmos_conversion_tool
+```
+
+检查器使用临时包，验证 home/3DoF 输入、原生 DAMF 连续字段命令及策略采样时刻；不修改 canonical
+向量。官方工具转 ADM 会改写 ramp 时长，不作为本检查的保真判据。无需本地工具的 checker 回归为
+`python3 -m unittest scripts/test_check_damf_headphone.py`。
+
 ### `export-adm-bwf`
 直接生成包含粉红噪声试听探针的 ADM BWF 或 RF64。
 

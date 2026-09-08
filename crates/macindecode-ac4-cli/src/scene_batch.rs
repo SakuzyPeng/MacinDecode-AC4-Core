@@ -10,8 +10,8 @@
 
 use crate::container::project_pcm_batch_to_presentation;
 use crate::metadata_batch::{
-    MediaSpan, MetadataBatch, MetadataElement, MetadataElementId, MetadataElementKind,
-    MetadataEvent,
+    HeadphoneMetadataEvent, MediaSpan, MetadataBatch, MetadataElement, MetadataElementId,
+    MetadataElementKind, MetadataEvent,
 };
 use crate::pcm_batch::{PcmBatch, PcmTrack, PcmTrackSource};
 use macindecode_ac4_bitstream::oamd::OamdCommonData;
@@ -20,7 +20,7 @@ use macindecode_ac4_mp4::{Ac4Mp4, Ac4Mp4Error};
 use macindecode_ac4_scene::{
     Ac4DecoderConfig, Ac4DecoderSession, Ac4SceneFrame, AccessUnit, AccessUnitContext,
     CoreBandPcmFrame, DecodeError, DecodeErrorKind, DecodeMode, DecodeStage, DecodeStatus,
-    PcmLayout, PcmSampleFormat, PresentationSelection, ResetKind, SceneElementId,
+    MetadataFields, PcmLayout, PcmSampleFormat, PresentationSelection, ResetKind, SceneElementId,
     SceneElementSource, ScenePath, SpeakerLabel, UnsupportedReason,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -650,6 +650,8 @@ struct MetadataAccumulator {
     mode: DecodeMode,
     elements: Vec<MetadataElement>,
     events: Vec<MetadataEvent>,
+    headphone_events: Vec<HeadphoneMetadataEvent>,
+    headphone_only_orders: BTreeSet<u64>,
     bindings: Vec<SceneElementBinding>,
     source_starts: BTreeMap<u64, i64>,
     baseline_control_sources: BTreeMap<u32, u64>,
@@ -663,6 +665,8 @@ impl MetadataAccumulator {
             mode,
             elements: Vec::new(),
             events: Vec::new(),
+            headphone_events: Vec::new(),
+            headphone_only_orders: BTreeSet::new(),
             bindings: Vec::new(),
             source_starts: BTreeMap::new(),
             baseline_control_sources: BTreeMap::new(),
@@ -793,14 +797,6 @@ impl MetadataAccumulator {
                         update.element_id().get()
                     ))
                 })?;
-            let raw = update.raw();
-            if raw.block().object_index != binding.object || binding.substream != substream {
-                return Err(SceneBatchError::Invariant(
-                    "OAMD update raw object index is inconsistent with the scene-element source"
-                        .to_owned(),
-                ));
-            }
-            let state = update.state().raw();
             let sample_position = source_start
                 .checked_add(i64::from(update.offset_samples()))
                 .ok_or_else(|| {
@@ -808,7 +804,29 @@ impl MetadataAccumulator {
                         "OAMD update absolute-sample-position overflow".to_owned(),
                     )
                 })?;
-            let control_source = update.control_source_access_unit_index();
+            if update
+                .changed_fields()
+                .contains(MetadataFields::HEADPHONE_POLICY)
+            {
+                let stream_order = self.take_stream_order()?;
+                self.headphone_events.push(HeadphoneMetadataEvent {
+                    sample_position,
+                    element_id: update.element_id().into(),
+                    stream_order,
+                    policy: update.state().headphone_policy(),
+                });
+            }
+            let Some(raw) = update.raw() else {
+                continue;
+            };
+            if raw.block().object_index != binding.object || binding.substream != substream {
+                return Err(SceneBatchError::Invariant(
+                    "OAMD update raw object index is inconsistent with the scene-element source"
+                        .to_owned(),
+                ));
+            }
+            let state = update.state().raw();
+            let control_source = raw.control_source_access_unit_index();
             if raw.block().block_index == 0
                 && self.baseline_control_sources.get(&substream) == Some(&control_source)
                 && self.emitted_baselines.insert(update.element_id())
@@ -831,8 +849,30 @@ impl MetadataAccumulator {
                     state: state.effective(),
                     additional: state.additional(),
                 });
+                self.headphone_events.push(HeadphoneMetadataEvent {
+                    sample_position: baseline_start,
+                    element_id: update.element_id().into(),
+                    stream_order,
+                    policy: update.state().headphone_policy(),
+                });
             }
             let stream_order = self.take_stream_order()?;
+            let info = raw.block().info;
+            let headphone_bits = MetadataFields::HEADPHONE
+                .union(MetadataFields::HEADPHONE_POLICY)
+                .bits();
+            if update.changed_fields().bits() & !headphone_bits == 0
+                && matches!(
+                    info.basic_info_status,
+                    macindecode_ac4_bitstream::oamd::InfoStatus::Reuse
+                )
+                && matches!(
+                    info.render_info_status,
+                    macindecode_ac4_bitstream::oamd::InfoStatus::Reuse
+                )
+            {
+                self.headphone_only_orders.insert(stream_order);
+            }
             self.events.push(MetadataEvent {
                 sample_position,
                 element_id: MetadataElementId::from(update.element_id()),
@@ -906,7 +946,7 @@ impl MetadataAccumulator {
             }
             existing.common_conflict |= common_conflict;
             match (existing.common, common) {
-                (Some(current), Some(next)) if current != next => {
+                (Some(current), Some(next)) if !same_non_headphone_common(current, next) => {
                     existing.common_conflict = true;
                 }
                 (None, Some(next)) => existing.common = Some(next),
@@ -941,12 +981,23 @@ impl MetadataAccumulator {
                         )
                     })?;
             }
+            for event in &mut self.headphone_events {
+                event.sample_position =
+                    event.sample_position.checked_add(shift).ok_or_else(|| {
+                        SceneBatchError::Failed(
+                            "Headphone-event position overflow after applying MP4 edits".to_owned(),
+                        )
+                    })?;
+            }
         } else {
             self.events.clear();
+            self.headphone_events.clear();
         }
         self.elements
             .sort_by_key(|item| (item.substream_index, item.object_index));
         self.events
+            .sort_by_key(|item| (item.sample_position, item.stream_order));
+        self.headphone_events
             .sort_by_key(|item| (item.sample_position, item.stream_order));
         Ok(MetadataBatch {
             sample_rate,
@@ -955,6 +1006,8 @@ impl MetadataAccumulator {
             decode_mode: self.mode,
             elements: self.elements,
             events: self.events,
+            headphone_events: self.headphone_events,
+            headphone_only_orders: self.headphone_only_orders,
         })
     }
 }
@@ -968,12 +1021,18 @@ fn frame_common(frame: &Ac4SceneFrame<'_>) -> (Option<OamdCommonData>, bool) {
         .filter_map(|state| state.effective())
     {
         match common {
-            Some(current) if current != next => conflict = true,
+            Some(current) if !same_non_headphone_common(current, next) => conflict = true,
             None => common = Some(next),
             _ => {}
         }
     }
     (common, conflict)
+}
+
+fn same_non_headphone_common(mut first: OamdCommonData, mut second: OamdCommonData) -> bool {
+    first.headphone = Default::default();
+    second.headphone = Default::default();
+    first == second
 }
 
 #[derive(Debug, Clone, Copy)]

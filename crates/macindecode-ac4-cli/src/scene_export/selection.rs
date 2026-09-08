@@ -14,7 +14,6 @@ pub(crate) enum SelectionError {
     Ambiguous { selector: String, choices: String },
     Duplicate(String),
     ReservedGlobalTrim { selector: String, value: u8 },
-    ReservedHeadphoneMode { selector: String, value: u8 },
 }
 
 impl fmt::Display for SelectionError {
@@ -40,10 +39,6 @@ impl fmt::Display for SelectionError {
             Self::ReservedGlobalTrim { selector, value } => write!(
                 formatter,
                 "OAMD common for object {selector} uses reserved global_trim_mode {value}"
-            ),
-            Self::ReservedHeadphoneMode { selector, value } => write!(
-                formatter,
-                "OAMD common for object {selector} uses reserved hp_operation_mode {value}"
             ),
         }
     }
@@ -140,12 +135,6 @@ pub(crate) fn validate_selected_common(selected: &[MetadataElement]) -> Result<(
             return Err(SelectionError::ReservedGlobalTrim {
                 selector,
                 value: common.trim.global_trim_mode,
-            });
-        }
-        if common.headphone.present && common.headphone.hp_operation_mode > 3 {
-            return Err(SelectionError::ReservedHeadphoneMode {
-                selector,
-                value: common.headphone.hp_operation_mode,
             });
         }
     }

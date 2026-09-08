@@ -38,14 +38,17 @@ use crate::{
     SceneElementId, SceneElementSource, SceneMetadataUpdate, SceneObject, ScenePath,
     ScenePresentation, SceneTimeline, SpeakerLabel, session::ResolvedPresentation,
 };
+#[cfg(feature = "audio-decode")]
+use crate::{CommonMetadataUpdateOrigin, HeadphonePolicyState, headphone::HeadphoneContext};
 
 /// OAMD 更新起点最大为 `31 + 63 * 32 = 2_047` 个样本；表 188 支持的最短
 /// codec frame 为 384 个样本，因此同一输出帧最多汇合六批 raw AU 更新。
 #[cfg(feature = "audio-decode")]
 const MAX_METADATA_FRAME_SPAN: usize = 6;
 #[cfg(feature = "audio-decode")]
-const MAX_SCENE_METADATA_UPDATES: usize =
-    MAX_OAMD_METADATA_BLOCKS.saturating_mul(MAX_METADATA_FRAME_SPAN);
+const MAX_SCENE_METADATA_UPDATES: usize = MAX_OAMD_METADATA_BLOCKS
+    .saturating_mul(MAX_METADATA_FRAME_SPAN)
+    .saturating_add(MAX_OAMD_OBJECTS);
 #[cfg(feature = "audio-decode")]
 type OamdElementIds = [Option<SceneElementId>; MAX_OAMD_OBJECTS];
 #[cfg(feature = "audio-decode")]
@@ -294,6 +297,7 @@ pub(crate) struct SceneAssembler {
     configured_substream: Option<u32>,
     codec_sample_cursor: i64,
     oamd_states: OamdSceneStates,
+    headphone_context: HeadphoneContext,
     last_metadata_update_samples: OamdUpdateSamples,
     next_metadata_order: u64,
     pending_metadata_updates: Vec<SceneMetadataUpdate>,
@@ -309,6 +313,7 @@ impl SceneAssembler {
             configured_substream: None,
             codec_sample_cursor: 0,
             oamd_states: [None; MAX_OAMD_OBJECTS],
+            headphone_context: HeadphoneContext::EMPTY,
             last_metadata_update_samples: [None; MAX_OAMD_OBJECTS],
             next_metadata_order: 0,
             pending_metadata_updates: Vec::new(),
@@ -614,6 +619,23 @@ impl SceneAssembler {
             .metadata_updates
             .sort_unstable_by_key(|update| (update.offset_samples(), update.stream_order()));
 
+        let headphone_context = frame_headphone_context(frame, input)?;
+        let changed_groups = headphone_context.changed_groups(self.headphone_context);
+        let common_origin = frame
+            .timeline
+            .control_source_access_unit_index()
+            .filter(|_| changed_groups != 0)
+            .map(|source| CommonMetadataUpdateOrigin::new(changed_groups, source));
+        resolve_headphone_updates(
+            &mut frame.metadata_updates,
+            &element_ids,
+            self.oamd_states,
+            headphone_context,
+            common_origin,
+            &mut next_order,
+        )
+        .map_err(|path| assembly_error(input, path))?;
+
         let (initial_states, end_states) =
             metadata_frame_states(self.oamd_states, &element_ids, &frame.metadata_updates)
                 .map_err(|path| assembly_error(input, path))?;
@@ -645,6 +667,7 @@ impl SceneAssembler {
                 .all(|update| update.state().semantic_complete());
 
         self.oamd_states = end_states;
+        self.headphone_context = headphone_context;
         self.last_metadata_update_samples = last_metadata_update_samples;
         self.next_metadata_order = next_order;
         core::mem::swap(
@@ -669,6 +692,7 @@ impl SceneAssembler {
 
     fn clear_metadata_history(&mut self) {
         self.oamd_states.fill(None);
+        self.headphone_context = HeadphoneContext::EMPTY;
         self.last_metadata_update_samples.fill(None);
         self.next_metadata_order = 0;
         self.pending_metadata_updates.clear();
@@ -745,6 +769,133 @@ fn register_oamd_element(
 }
 
 #[cfg(feature = "audio-decode")]
+fn frame_headphone_context(
+    frame: &SceneFrameStorage,
+    input: FullPcmAssemblyInput<'_>,
+) -> Result<HeadphoneContext, DecodeError> {
+    let mut context = HeadphoneContext::EMPTY;
+    for state in &frame.oamd_common_states {
+        let index = usize::try_from(state.group_index())
+            .map_err(|_| assembly_error(input, "Ac4SceneFrame/headphone_policy/group"))?;
+        let group = input
+            .topology
+            .groups()
+            .get(index)
+            .ok_or_else(|| assembly_error(input, "Ac4SceneFrame/headphone_policy/group"))?;
+        if !group.substreams().iter().any(|substream| {
+            substream.substream_index() == Some(input.presentation.substream_index)
+        }) {
+            continue;
+        }
+        let bit = 1u8
+            .checked_shl(state.group_index())
+            .ok_or_else(|| assembly_error(input, "Ac4SceneFrame/headphone_policy/group"))?;
+        context.group_mask |= bit;
+        *context
+            .groups
+            .get_mut(index)
+            .ok_or_else(|| assembly_error(input, "Ac4SceneFrame/headphone_policy/group"))? =
+            state.effective().map(|common| common.headphone);
+    }
+    Ok(context)
+}
+
+/// 在更新实际到期后才解析策略。同一采样时刻只发布最终策略，raw 块顺序不变。
+#[cfg(feature = "audio-decode")]
+fn resolve_headphone_updates(
+    updates: &mut Vec<SceneMetadataUpdate>,
+    element_ids: &OamdElementIds,
+    inherited: OamdSceneStates,
+    context: HeadphoneContext,
+    common_origin: Option<CommonMetadataUpdateOrigin>,
+    next_order: &mut u64,
+) -> Result<(), &'static str> {
+    const ERROR: &str = "Ac4SceneFrame/headphone_policy/updates";
+    // 有 offset 0 对象块的元素由最后一个同刻对象块承载合并后的策略变化。
+    for (id, state) in element_ids.iter().zip(inherited) {
+        let (Some(id), Some(state)) = (*id, state) else {
+            continue;
+        };
+        if updates
+            .iter()
+            .any(|update| update.element_id() == id && update.offset_samples() == 0)
+        {
+            continue;
+        }
+        let policy = context.resolve(state.raw().additional());
+        if policy == state.headphone_policy() {
+            continue;
+        }
+        if updates.len() >= MAX_SCENE_METADATA_UPDATES {
+            return Err(ERROR);
+        }
+        let origin = common_origin.ok_or(ERROR)?;
+        let following = next_order.checked_add(1).ok_or(ERROR)?;
+        updates.push(SceneMetadataUpdate::common_policy_update(
+            id,
+            state.with_headphone_policy(policy),
+            origin,
+            *next_order,
+        ));
+        *next_order = following;
+    }
+    updates.sort_unstable_by_key(|update| (update.offset_samples(), update.stream_order()));
+    let mut states = inherited;
+    let mut start = 0usize;
+    while let Some(first) = updates.get(start) {
+        let offset = first.offset_samples();
+        let mut end = start;
+        while updates
+            .get(end)
+            .is_some_and(|update| update.offset_samples() == offset)
+        {
+            end = end.checked_add(1).ok_or(ERROR)?;
+        }
+        let mut last = [None; MAX_OAMD_OBJECTS];
+        for (relative, update) in updates.get(start..end).ok_or(ERROR)?.iter().enumerate() {
+            let index = element_ids
+                .iter()
+                .position(|id| *id == Some(update.element_id()))
+                .ok_or(ERROR)?;
+            let slot = states.get_mut(index).ok_or(ERROR)?;
+            let prior_policy = slot.map_or(HeadphonePolicyState::Unspecified, |state| {
+                state.headphone_policy()
+            });
+            *slot = Some(update.state().with_headphone_policy(prior_policy));
+            *last.get_mut(index).ok_or(ERROR)? = Some(start.checked_add(relative).ok_or(ERROR)?);
+        }
+        for (index, final_update) in last.iter().enumerate() {
+            let Some(final_update) = *final_update else {
+                continue;
+            };
+            let slot = states.get_mut(index).ok_or(ERROR)?;
+            let state = slot.ok_or(ERROR)?;
+            let policy = context.resolve(state.raw().additional());
+            let changed = state.headphone_policy() != policy;
+            *slot = Some(state.with_headphone_policy(policy));
+            let id = element_ids.get(index).copied().flatten().ok_or(ERROR)?;
+            for (relative, update) in updates
+                .get_mut(start..end)
+                .ok_or(ERROR)?
+                .iter_mut()
+                .enumerate()
+            {
+                if update.element_id() != id {
+                    continue;
+                }
+                update.resolve_headphone_policy(
+                    policy,
+                    changed && start.checked_add(relative).ok_or(ERROR)? == final_update,
+                    if offset == 0 { common_origin } else { None },
+                );
+            }
+        }
+        start = end;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "audio-decode")]
 fn metadata_frame_states(
     inherited: OamdSceneStates,
     element_ids: &OamdElementIds,
@@ -753,7 +904,10 @@ fn metadata_frame_states(
     let mut initial = inherited;
     let mut end = inherited;
     for update in updates {
-        let object_index = usize::from(update.raw().block().object_index);
+        let object_index = element_ids
+            .iter()
+            .position(|id| *id == Some(update.element_id()))
+            .ok_or("Ac4SceneFrame/metadata_updates/element_id")?;
         let expected_id = element_ids
             .get(object_index)
             .copied()
@@ -1609,6 +1763,261 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "audio-decode")]
+    #[allow(clippy::indexing_slicing, reason = "固定容量测试夹具使用已知下标")]
+    mod headphone_timeline {
+        use super::*;
+        use crate::{HeadTrackingPolicy, HeadphonePolicyIssue};
+        use macindecode_ac4_bitstream::oamd::Headphone;
+
+        fn context(mode: u8, disabled: bool) -> HeadphoneContext {
+            let mut result = HeadphoneContext::EMPTY;
+            result.group_mask = 1;
+            result.groups[0] = Some(Headphone {
+                present: true,
+                hp_operation_mode: mode,
+                head_track_disable_all: matches!(mode, 1 | 2).then_some(disabled),
+            });
+            result
+        }
+
+        fn initial(context: HeadphoneContext) -> (OamdElementIds, OamdSceneStates) {
+            let mut ids = [None; MAX_OAMD_OBJECTS];
+            let mut states = [None; MAX_OAMD_OBJECTS];
+            let base = queued_update(0, 0);
+            ids[0] = Some(base.element_id());
+            states[0] = Some(
+                base.state()
+                    .with_headphone_policy(context.resolve(base.state().raw().additional())),
+            );
+            (ids, states)
+        }
+
+        fn object_update(offset: u32, disabled: bool, order: u64) -> SceneMetadataUpdate {
+            let base = queued_update(offset, order);
+            let additional = AdditionalObjectMetadata {
+                headphone: Some(ObjectHeadphone {
+                    render_mode: 1,
+                    head_tracking_disabled: disabled,
+                }),
+                ..Default::default()
+            };
+            let state = map_oamd_object_state(base.state().raw().effective(), additional);
+            let raw = base.raw().expect("对象 raw");
+            let mut block = raw.block();
+            block.info.additional_metadata = Some(additional);
+            SceneMetadataUpdate::new(
+                base.element_id(),
+                offset,
+                base.ramp_duration_samples(),
+                MetadataFields::HEADPHONE,
+                state,
+                RawOamdUpdate::new(block, raw.timing(), raw.control_source_access_unit_index()),
+                order,
+            )
+        }
+
+        #[test]
+        fn common_only_change_updates_snapshot_without_fabricating_an_object_block() {
+            let (ids, states) = initial(context(1, false));
+            let mut updates = Vec::with_capacity(MAX_SCENE_METADATA_UPDATES);
+            resolve_headphone_updates(
+                &mut updates,
+                &ids,
+                states,
+                context(1, true),
+                Some(CommonMetadataUpdateOrigin::new(1, 90)),
+                &mut 0,
+            )
+            .unwrap();
+            assert_eq!(updates.len(), 1);
+            let update = updates[0];
+            assert_eq!(update.raw(), None);
+            assert_eq!(update.common_origin().unwrap().group_mask(), 1);
+            assert_eq!(update.control_source_access_unit_index(), Some(90));
+            assert_eq!(update.ramp_duration_samples(), 0);
+            assert_eq!(update.changed_fields(), MetadataFields::HEADPHONE_POLICY);
+            let (start, end) = metadata_frame_states(states, &ids, &updates).unwrap();
+            assert_eq!(start, end);
+            assert_eq!(start[0].unwrap().position(), states[0].unwrap().position());
+            assert!(
+                matches!(start[0].unwrap().headphone_policy(), HeadphonePolicyState::Resolved(policy) if policy.head_tracking() == HeadTrackingPolicy::HeadRelative)
+            );
+        }
+
+        #[test]
+        fn equivalent_global_to_manual_expression_does_not_publish_policy_change() {
+            let (ids, states) = initial(context(1, false));
+            let mut updates = vec![object_update(0, false, 1)];
+            resolve_headphone_updates(
+                &mut updates,
+                &ids,
+                states,
+                context(3, false),
+                Some(CommonMetadataUpdateOrigin::new(1, 90)),
+                &mut 2,
+            )
+            .unwrap();
+            assert_eq!(updates.len(), 1);
+            assert_eq!(updates[0].changed_fields(), MetadataFields::HEADPHONE);
+            assert_eq!(
+                updates[0].state().headphone_policy(),
+                states[0].unwrap().headphone_policy()
+            );
+            assert!(updates[0].raw().is_some());
+        }
+
+        #[test]
+        fn simultaneous_sources_keep_distinct_access_units_and_only_the_final_policy() {
+            let (ids, states) = initial(context(1, false));
+            let mut updates = vec![object_update(0, false, 1), object_update(0, true, 2)];
+            resolve_headphone_updates(
+                &mut updates,
+                &ids,
+                states,
+                context(3, false),
+                Some(CommonMetadataUpdateOrigin::new(1, 90)),
+                &mut 3,
+            )
+            .unwrap();
+            assert!(
+                !updates[0]
+                    .changed_fields()
+                    .contains(MetadataFields::HEADPHONE_POLICY)
+            );
+            assert!(
+                updates[1]
+                    .changed_fields()
+                    .contains(MetadataFields::HEADPHONE_POLICY)
+            );
+            assert_eq!(
+                updates[0].state().headphone_policy(),
+                updates[1].state().headphone_policy()
+            );
+            assert_eq!(updates[1].control_source_access_unit_index(), None);
+            assert_eq!(
+                updates[1].raw().unwrap().control_source_access_unit_index(),
+                41
+            );
+            assert_eq!(
+                updates[1]
+                    .common_origin()
+                    .unwrap()
+                    .control_source_access_unit_index(),
+                90
+            );
+            assert_eq!(updates[1].ramp_duration_samples(), 1_536);
+        }
+
+        #[test]
+        fn pending_object_policy_is_resolved_against_common_at_its_due_sample() {
+            let (ids, states) = initial(context(1, false));
+            let update = object_update(600, false, 1);
+            let mut current = Vec::with_capacity(MAX_SCENE_METADATA_UPDATES);
+            let mut future = Vec::with_capacity(MAX_SCENE_METADATA_UPDATES);
+            partition_metadata_update(&mut current, &mut future, update, 384).unwrap();
+            assert!(current.is_empty());
+            assert_eq!(future[0].offset_samples(), 216);
+            // 到期帧进入全局 FAR/head-relative：不能沿用排队时的逐对象 Near/scene-relative。
+            resolve_headphone_updates(
+                &mut future,
+                &ids,
+                states,
+                context(2, true),
+                Some(CommonMetadataUpdateOrigin::new(1, 42)),
+                &mut 2,
+            )
+            .unwrap();
+            assert_eq!(future.len(), 2);
+            assert_eq!(future[0].offset_samples(), 0);
+            assert!(future[0].raw().is_none());
+            assert_eq!(future[1].offset_samples(), 216);
+            assert_eq!(
+                future[1].raw().unwrap().control_source_access_unit_index(),
+                41
+            );
+            assert!(
+                !future[1]
+                    .changed_fields()
+                    .contains(MetadataFields::HEADPHONE_POLICY)
+            );
+            assert_eq!(
+                future[0].state().headphone_policy(),
+                future[1].state().headphone_policy()
+            );
+        }
+
+        #[test]
+        fn warmup_reset_and_repeated_common_changes_keep_bounded_storage() {
+            let (ids, mut states) = initial(context(1, false));
+            let mut updates = Vec::with_capacity(MAX_SCENE_METADATA_UPDATES);
+            let address = updates.as_ptr();
+            let capacity = updates.capacity();
+            let mut order = 0;
+            resolve_headphone_updates(
+                &mut updates,
+                &ids,
+                [None; MAX_OAMD_OBJECTS],
+                context(1, true),
+                Some(CommonMetadataUpdateOrigin::new(1, 1)),
+                &mut order,
+            )
+            .unwrap();
+            assert!(updates.is_empty());
+            for source in 1..=12 {
+                updates.clear();
+                resolve_headphone_updates(
+                    &mut updates,
+                    &ids,
+                    states,
+                    context(1, source % 2 != 0),
+                    Some(CommonMetadataUpdateOrigin::new(1, source)),
+                    &mut order,
+                )
+                .unwrap();
+                states = metadata_frame_states(states, &ids, &updates).unwrap().1;
+                assert_eq!(updates.as_ptr(), address);
+                assert_eq!(updates.capacity(), capacity);
+            }
+            let mut assembler = SceneAssembler::new();
+            assembler.oamd_states = states;
+            assembler.headphone_context = context(1, true);
+            assembler.mark_discontinuity();
+            assert!(assembler.oamd_states.iter().all(Option::is_none));
+            assert_eq!(assembler.headphone_context, HeadphoneContext::EMPTY);
+            assembler.headphone_context = context(2, true);
+            assembler.reset();
+            assert_eq!(assembler.headphone_context, HeadphoneContext::EMPTY);
+        }
+
+        #[test]
+        fn unsupported_policy_marks_semantics_without_destroying_raw_state() {
+            let (ids, states) = initial(context(1, false));
+            let mut updates = Vec::new();
+            resolve_headphone_updates(
+                &mut updates,
+                &ids,
+                states,
+                context(7, false),
+                Some(CommonMetadataUpdateOrigin::new(1, 99)),
+                &mut 0,
+            )
+            .unwrap();
+            let state = updates[0].state();
+            assert_eq!(
+                state.headphone_policy(),
+                HeadphonePolicyState::Unsupported(HeadphonePolicyIssue::ReservedOperationMode(7))
+            );
+            assert!(!state.semantic_complete());
+            assert_eq!(state.raw(), states[0].unwrap().raw());
+            assert!(
+                state
+                    .with_headphone_policy(HeadphonePolicyState::Unspecified)
+                    .semantic_complete()
+            );
+        }
+    }
+
     #[test]
     fn maps_verified_scene_semantics_and_keeps_quantized_state() {
         let effective = complete_state(
@@ -1846,7 +2255,7 @@ mod tests {
         assert_eq!(due.offset_samples(), 32);
         assert_eq!(due.ramp_duration_samples(), 1_536);
         assert_eq!(due.raw(), update.raw());
-        assert_eq!(due.control_source_access_unit_index(), 41);
+        assert_eq!(due.control_source_access_unit_index(), Some(41));
         assert_eq!(due.stream_order(), 3);
         assert!(pending.is_empty());
     }

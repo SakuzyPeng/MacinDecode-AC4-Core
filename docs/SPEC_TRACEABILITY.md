@@ -92,6 +92,7 @@ metadata 解码位于 `macindecode-ac4-decode`；Scene 语义组装位于
 | OAMD → ADM BWF 试听探针 | P2 `6.3.9` 语义；ITU-R BS.2076-2、BS.2088-2；EBU Tech 3285 Supplement 6；Dolby Atmos Master ADM Profile v1.0 | `macindecode-ac4-cli::{trace,adm}` | 标准配置强制 `BW64`，Logic 配置强制 `RF64`、五位时钟及逐段校验 `dbmd`；两者首块均为 `ds64`；`chna`/`axml` 图一致性；48 kHz/24-bit PCM；MP4/raw 时间线与无半成品；EBU EAR 解析和 0+5+0 渲染接受 |
 | full/core decode | Part 2 | `macindecode-ac4-scene` | 同一码流的模式差异 |
 | 渲染前输出边界 | Part 2/附录，待核对 | `macindecode-ac4-scene` | `Ac4SceneFrame` 契约测试 |
+| 有效耳机策略与离散更新 | P2 `6.3.9.10a`–`6.3.9.11`、表 120b；表 188 控制对齐 | `macindecode-ac4-scene::{headphone,assembly}`；CLI DAMF adapter | Core/Full 真实语法位翻转按到期帧发布且 PCM 相同；共享 group 策略一致性；common-only/共同来源与跨帧队列；局部 DAMF 事件不重启位置/增益 ramp；`check_damf_headphone.py` 原生往返与独立字段命令检查，ADM 转换不作 ramp 判据 |
 | MP4 `dac4` | P1 `E.4`（DSI v0）；P2 `E.5`–`E.12`（DSI/presentation v1） | `macindecode-ac4-mp4` | `pres_bytes`/skip area 定界；object/A-JOC/direct-object/alternative 构造分支；真实 MP4 与 TOC/Bento4 交叉 |
 
 ## 4. 实现要求

@@ -1,5 +1,6 @@
 //! 场景 API 的所有权无关数据模型。
 
+use crate::HeadphonePolicyState;
 use alloc::vec::Vec;
 use core::iter::FusedIterator;
 use macindecode_ac4_bitstream::{
@@ -1036,6 +1037,7 @@ pub struct SceneObjectState {
     depth_factor: Option<f32>,
     trim_disabled: bool,
     headphone: Option<HeadphoneState>,
+    headphone_policy: HeadphonePolicyState,
     semantic_complete: bool,
     raw: RawOamdState,
 }
@@ -1070,6 +1072,7 @@ impl SceneObjectState {
             depth_factor: parts.depth_factor,
             trim_disabled: parts.trim_disabled,
             headphone: parts.headphone,
+            headphone_policy: HeadphonePolicyState::Unspecified,
             semantic_complete: parts.semantic_complete,
             raw: parts.raw,
         }
@@ -1125,10 +1128,23 @@ impl SceneObjectState {
         self.headphone
     }
 
+    /// 当前采样时刻合并所有适用 group 与逐对象控制后的内容策略。
+    #[must_use]
+    pub const fn headphone_policy(&self) -> HeadphonePolicyState {
+        self.headphone_policy
+    }
+
+    #[cfg(any(feature = "audio-decode", test))]
+    pub(crate) const fn with_headphone_policy(mut self, policy: HeadphonePolicyState) -> Self {
+        self.headphone_policy = policy;
+        self
+    }
+
     /// 所有原始字段是否都有经过验证的通用场景映射。
     #[must_use]
     pub const fn semantic_complete(&self) -> bool {
         self.semantic_complete
+            && !matches!(self.headphone_policy, HeadphonePolicyState::Unsupported(_))
     }
 
     #[must_use]
@@ -1154,6 +1170,8 @@ impl MetadataFields {
     pub const DIVERGENCE: Self = Self(1 << 9);
     pub const TRIM: Self = Self(1 << 10);
     pub const HEADPHONE: Self = Self(1 << 11);
+    /// 有效耳机策略实际变化；与逐对象原始耳机状态的 `HEADPHONE` 独立。
+    pub const HEADPHONE_POLICY: Self = Self(1 << 12);
 
     #[must_use]
     pub const fn empty() -> Self {
@@ -1176,7 +1194,35 @@ impl MetadataFields {
     }
 }
 
-/// 一个帧内元数据更新。
+/// group common 引发的语义更新来源，与对象块自己的来源 AU 独立。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CommonMetadataUpdateOrigin {
+    group_mask: u8,
+    control_source_access_unit_index: u64,
+}
+
+impl CommonMetadataUpdateOrigin {
+    #[cfg(any(feature = "audio-decode", test))]
+    pub(crate) const fn new(group_mask: u8, control_source_access_unit_index: u64) -> Self {
+        Self {
+            group_mask,
+            control_source_access_unit_index,
+        }
+    }
+
+    /// 对应 group_index 的位集合。
+    #[must_use]
+    pub const fn group_mask(&self) -> u8 {
+        self.group_mask
+    }
+
+    #[must_use]
+    pub const fn control_source_access_unit_index(&self) -> u64 {
+        self.control_source_access_unit_index
+    }
+}
+
+/// 一个帧内元数据更新。对象与 common 来源可以同时存在。
 #[derive(Debug, Clone, Copy)]
 pub struct SceneMetadataUpdate {
     element_id: SceneElementId,
@@ -1184,7 +1230,8 @@ pub struct SceneMetadataUpdate {
     ramp_duration_samples: u32,
     changed_fields: MetadataFields,
     state: SceneObjectState,
-    raw: RawOamdUpdate,
+    raw: Option<RawOamdUpdate>,
+    common_origin: Option<CommonMetadataUpdateOrigin>,
     /// 仅用于 Session 内无分配排序；不属于首版公共语义字段。
     stream_order: u64,
 }
@@ -1197,6 +1244,7 @@ impl PartialEq for SceneMetadataUpdate {
             && self.changed_fields == other.changed_fields
             && self.state == other.state
             && self.raw == other.raw
+            && self.common_origin == other.common_origin
     }
 }
 
@@ -1220,7 +1268,8 @@ impl SceneMetadataUpdate {
             ramp_duration_samples,
             changed_fields,
             state,
-            raw,
+            raw: Some(raw),
+            common_origin: None,
             stream_order,
         }
     }
@@ -1268,14 +1317,67 @@ impl SceneMetadataUpdate {
     }
 
     #[must_use]
-    pub const fn raw(&self) -> RawOamdUpdate {
+    pub const fn raw(&self) -> Option<RawOamdUpdate> {
         self.raw
     }
 
-    /// 产生本更新的 control source access unit；跨帧排队不会改写该来源。
+    /// common 来源；不使用虚构的逐对象块来表达全局策略变化。
     #[must_use]
-    pub const fn control_source_access_unit_index(&self) -> u64 {
-        self.raw.control_source_access_unit_index()
+    pub const fn common_origin(&self) -> Option<CommonMetadataUpdateOrigin> {
+        self.common_origin
+    }
+
+    /// 唯一来源 AU；对象/common 同时参与且来源不同则为 `None`。
+    /// 完整来源分别保留在 `raw()` 与 `common_origin()`。
+    #[must_use]
+    pub const fn control_source_access_unit_index(&self) -> Option<u64> {
+        match (self.raw, self.common_origin) {
+            (Some(raw), Some(common))
+                if raw.control_source_access_unit_index()
+                    != common.control_source_access_unit_index =>
+            {
+                None
+            }
+            (Some(raw), _) => Some(raw.control_source_access_unit_index()),
+            (_, Some(common)) => Some(common.control_source_access_unit_index),
+            _ => None,
+        }
+    }
+
+    #[cfg(any(feature = "audio-decode", test))]
+    pub(crate) const fn common_policy_update(
+        element_id: SceneElementId,
+        state: SceneObjectState,
+        origin: CommonMetadataUpdateOrigin,
+        stream_order: u64,
+    ) -> Self {
+        Self {
+            element_id,
+            offset_samples: 0,
+            ramp_duration_samples: 0,
+            changed_fields: MetadataFields::HEADPHONE_POLICY,
+            state,
+            raw: None,
+            common_origin: Some(origin),
+            stream_order,
+        }
+    }
+
+    #[cfg(any(feature = "audio-decode", test))]
+    pub(crate) fn resolve_headphone_policy(
+        &mut self,
+        policy: HeadphonePolicyState,
+        changed: bool,
+        common_origin: Option<CommonMetadataUpdateOrigin>,
+    ) {
+        self.state = self.state.with_headphone_policy(policy);
+        self.changed_fields.0 &= !MetadataFields::HEADPHONE_POLICY.0;
+        if changed {
+            self.changed_fields = self.changed_fields.union(MetadataFields::HEADPHONE_POLICY);
+            if common_origin.is_some() {
+                self.common_origin = common_origin;
+            }
+        }
     }
 }
 

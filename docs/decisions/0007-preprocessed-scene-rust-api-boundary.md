@@ -120,13 +120,29 @@ Core 输出标记为 A-JOC Core object，Full 输出标记为 spatial object gro
 
 每个对象公开帧起点的完整有效状态；控制尚未到期的 warm-up 帧使用
 `state_complete = false`，不合成默认对象状态。每次更新携带 element ID、帧内 offset、ramp、
-完整更新后状态、`MetadataFields` changed mask、control source AU 及原始 OAMD 更新。更新按
+完整更新后状态、`MetadataFields` changed mask、独立的对象/common 来源及可选原始 OAMD 更新。更新按
 `(offset, 码流顺序)` 稳定排列，越过帧尾的事件进入有界跨帧队列；reset 后不得继承旧状态。
 
 Scene-owned 语义值使用 `f32`，只覆盖已经由规范公式和测试验证的 Cartesian position、linear
 gain、importance、size、zone、screen/depth、trim 与 headphone。`RawOamdState` 和
 `RawOamdUpdate` 完整保留量化码值、presence、timing 与更新来源；distance、divergence 等尚无
 可靠通用映射的字段只保留 raw，不伪造语义值。
+
+耳机策略按 `TS103190-2:v1.3.1:6.3.9.10a–11` 在 Scene 内统一解析：Stereo、默认 Near/Far、
+Manual 分别使用规范指定的控制源。`headphone_policy()` 返回 Resolved、Unspecified 或
+Unsupported；合法未指定不代表禁用头追，保留值/组歧义降低语义完整性但不丢弃成功解码的 PCM。
+同一音频子流关联多个 group 时，全部有效结果一致才合并，包括未指定状态在内，不按读取顺序选组。
+
+common 在表 188 对齐后的帧起点生效；跨帧对象控制在真正到期时结合当前 common 解析。
+同一对象同一采样时刻只发布最终策略变化，`HEADPHONE_POLICY` 不因等价编码或来源变化触发。
+`HEADPHONE` 仍只描述逐对象字段。策略离散切换，不参与位置/增益 ramp，也不改变原始坐标。
+common-only 事件的 `raw()` 为 None，`common_origin()` 保留 group mask 与来源 AU；对象与
+common 共同参与时分别保留来源，单一 AU 查询仅在来源唯一时返回 Some。状态关联使用
+SceneElementId，不再依赖 raw 块才能定位对象。稳定配置预留每元素一次派生事件的有界容量。
+
+本次允许破坏性调整事件 API，仓内消费者同步迁移；外部迁移及可编译调度示例见 Scene crate README。
+DAMF adapter 独立保存离散策略时间线，纯耳机变化写局部字段事件，不重发连续属性和 rampLength。
+Scene 仍不执行渲染、设备策略或 presentation processing。
 
 未来 EMDF 采用相同原则：先验证有界 envelope、路由和时间，未知或私有 datatype 以 opaque
 bytes 无损保留；没有注册表依据时不得发明 Scene 语义。

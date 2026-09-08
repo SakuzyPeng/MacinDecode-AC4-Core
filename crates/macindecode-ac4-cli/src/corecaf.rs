@@ -887,6 +887,8 @@ mod enabled {
 
         fn speaker_batch(events: Vec<MetadataEvent>) -> MetadataBatch {
             MetadataBatch {
+                headphone_events: Vec::new(),
+                headphone_only_orders: Default::default(),
                 sample_rate: 48_000,
                 duration_samples: 1_000,
                 media_span: Some(MediaSpan {

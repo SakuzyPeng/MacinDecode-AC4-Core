@@ -12,7 +12,8 @@ use macindecode_ac4_bitstream::oamd::{
 };
 pub(crate) use macindecode_ac4_mp4::PresentationSampleSpan as MediaSpan;
 use macindecode_ac4_mp4::{rescale_i64_round, rescale_u64_round};
-use macindecode_ac4_scene::{DecodeMode, SceneElementId};
+use macindecode_ac4_scene::{DecodeMode, HeadphonePolicyState, SceneElementId};
+use std::collections::BTreeSet;
 
 /// 写出批次中保留的 Scene 元素标识。
 ///
@@ -77,6 +78,25 @@ pub(crate) struct MetadataBatch {
     pub decode_mode: DecodeMode,
     pub elements: Vec<MetadataElement>,
     pub events: Vec<MetadataEvent>,
+    pub headphone_events: Vec<HeadphoneMetadataEvent>,
+    /// 原对象块只更新耳机属性；DAMF 不应因此重发位置或重启 ramp。
+    pub headphone_only_orders: BTreeSet<u64>,
+}
+
+#[cfg(feature = "audio-decode")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct HeadphoneMetadataEvent {
+    pub sample_position: i64,
+    pub element_id: MetadataElementId,
+    pub stream_order: u64,
+    pub policy: HeadphonePolicyState,
+}
+
+#[cfg(feature = "audio-decode")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct OutputHeadphoneEvent {
+    pub sample: u64,
+    pub policy: HeadphonePolicyState,
 }
 
 /// 已换算到导出采样率的完整对象事件。
@@ -96,6 +116,27 @@ pub(crate) fn project_metadata_events(
     selected: &MetadataElement,
     output_sample_rate: u32,
     duration: u64,
+) -> Result<Vec<OutputMetadataEvent>, String> {
+    project_object_events(batch, selected, output_sample_rate, duration, false)
+}
+
+#[cfg(feature = "audio-decode")]
+pub(crate) fn project_damf_object_events(
+    batch: &MetadataBatch,
+    selected: &MetadataElement,
+    output_sample_rate: u32,
+    duration: u64,
+) -> Result<Vec<OutputMetadataEvent>, String> {
+    project_object_events(batch, selected, output_sample_rate, duration, true)
+}
+
+#[cfg(feature = "audio-decode")]
+fn project_object_events(
+    batch: &MetadataBatch,
+    selected: &MetadataElement,
+    output_sample_rate: u32,
+    duration: u64,
+    damf: bool,
 ) -> Result<Vec<OutputMetadataEvent>, String> {
     let inactive = default_output_metadata_event();
     let Some(media_span) = batch.media_span else {
@@ -131,6 +172,7 @@ pub(crate) fn project_metadata_events(
         .iter()
         .copied()
         .filter(|event| event.element_id == selected.element_id)
+        .filter(|event| !damf || !batch.headphone_only_orders.contains(&event.stream_order))
         .collect::<Vec<_>>();
     source.sort_by_key(|event| (event.sample_position, event.stream_order));
 
@@ -219,6 +261,89 @@ pub(crate) fn project_metadata_events(
     Ok(output)
 }
 
+/// 离散策略独立投影，不参与连续属性 ramp 的截取或重建。
+#[cfg(feature = "audio-decode")]
+pub(crate) fn project_headphone_events(
+    batch: &MetadataBatch,
+    selected: &MetadataElement,
+    output_sample_rate: u32,
+    duration: u64,
+) -> Result<Vec<OutputHeadphoneEvent>, String> {
+    let unspecified = OutputHeadphoneEvent {
+        sample: 0,
+        policy: HeadphonePolicyState::Unspecified,
+    };
+    let Some(span) = batch.media_span else {
+        return Ok(vec![unspecified]);
+    };
+    if span.start_sample > span.end_sample || span.end_sample > batch.duration_samples {
+        return Err("Media-edit visible range exceeds the presentation timeline".to_owned());
+    }
+    let start = rescale_u64_round(span.start_sample, batch.sample_rate, output_sample_rate)
+        .map_err(|error| error.to_string())?;
+    let end = rescale_u64_round(span.end_sample, batch.sample_rate, output_sample_rate)
+        .map_err(|error| error.to_string())?;
+    if end > duration || start > end {
+        return Err("Media-edit visible range exceeds the export duration".to_owned());
+    }
+    if start == end {
+        return Ok(vec![unspecified]);
+    }
+    let start_i64 = i64::try_from(start).map_err(|_| "Headphone timeline exceeds i64")?;
+    let end_i64 = i64::try_from(end).map_err(|_| "Headphone timeline exceeds i64")?;
+    let mut source = batch
+        .headphone_events
+        .iter()
+        .filter(|event| event.element_id == selected.element_id)
+        .copied()
+        .collect::<Vec<_>>();
+    source.sort_by_key(|event| (event.sample_position, event.stream_order));
+    let mut initial = HeadphonePolicyState::Unspecified;
+    let mut inside: Vec<OutputHeadphoneEvent> = Vec::new();
+    for event in source {
+        let sample =
+            rescale_i64_round(event.sample_position, batch.sample_rate, output_sample_rate)
+                .map_err(|error| error.to_string())?;
+        if sample <= start_i64 {
+            initial = event.policy;
+            continue;
+        }
+        if sample >= end_i64 {
+            continue;
+        }
+        let sample = u64::try_from(sample).map_err(|_| "Headphone event sample is negative")?;
+        let mapped = OutputHeadphoneEvent {
+            sample,
+            policy: event.policy,
+        };
+        if let Some(previous) = inside
+            .last_mut()
+            .filter(|previous| previous.sample == sample)
+        {
+            *previous = mapped;
+        } else {
+            inside.push(mapped);
+        }
+    }
+    let mut output = vec![unspecified];
+    if start == 0 {
+        output.clear();
+    }
+    output.push(OutputHeadphoneEvent {
+        sample: start,
+        policy: initial,
+    });
+    output.extend(inside);
+    if end < duration {
+        output.push(OutputHeadphoneEvent {
+            sample: end,
+            policy: HeadphonePolicyState::Unspecified,
+        });
+    }
+    output.dedup_by(|next, previous| next.policy == previous.policy);
+    Ok(output)
+}
+
 #[cfg(feature = "audio-decode")]
 pub(crate) fn default_output_metadata_event() -> OutputMetadataEvent {
     OutputMetadataEvent {
@@ -270,6 +395,8 @@ mod tests {
     fn metadata_projection_keeps_empty_edits_inactive() {
         let scene = output_test_scene();
         let batch = MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 4_000,
             media_span: Some(MediaSpan {
@@ -295,6 +422,8 @@ mod tests {
     fn metadata_projection_rejects_edit_boundaries_inside_ramps() {
         let scene = output_test_scene();
         let batch = MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 4_000,
             media_span: Some(MediaSpan {
@@ -316,6 +445,8 @@ mod tests {
     fn metadata_projection_preserves_a_ramp_cut_off_by_the_media_end() {
         let scene = output_test_scene();
         let batch = MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 4_000,
             media_span: Some(MediaSpan {
@@ -352,6 +483,8 @@ mod tests {
         earlier.stream_order = 1;
         earlier.state.render.as_mut().unwrap().position.x = 0;
         let batch = MetadataBatch {
+            headphone_events: Vec::new(),
+            headphone_only_orders: Default::default(),
             sample_rate: 48_000,
             duration_samples: 1_000,
             media_span: Some(MediaSpan {

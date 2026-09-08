@@ -2009,7 +2009,7 @@ mod tests {
         assert!(!frame.diagnostics().warmup());
         assert!(frame.diagnostics().state_complete());
         assert_eq!(metadata.element_id(), element_id);
-        assert_eq!(metadata.control_source_access_unit_index(), 100);
+        assert_eq!(metadata.control_source_access_unit_index(), Some(100));
     }
 
     #[cfg(feature = "audio-decode")]
@@ -2315,8 +2315,15 @@ mod tests {
         assert!(!frame.diagnostics().warmup());
         assert!(frame.diagnostics().state_complete());
         assert_eq!(metadata.element_id(), element_id);
-        assert_eq!(metadata.raw().block().object_index, 0);
-        assert_eq!(metadata.control_source_access_unit_index(), 200);
+        assert_eq!(
+            metadata
+                .raw()
+                .expect("对象更新应有 raw 块")
+                .block()
+                .object_index,
+            0
+        );
+        assert_eq!(metadata.control_source_access_unit_index(), Some(200));
     }
 
     #[cfg(feature = "audio-decode")]
@@ -2901,14 +2908,28 @@ mod tests {
         assert_eq!(second_storage.metadata_updates.len(), 1);
         assert_eq!(metadata_update.element_id(), first_id);
         assert_eq!(metadata_update.state(), initial_state);
-        assert_eq!(metadata_update.control_source_access_unit_index(), 50);
+        assert_eq!(metadata_update.control_source_access_unit_index(), Some(50));
         assert_ne!(
             metadata_update.changed_fields(),
             crate::MetadataFields::empty()
         );
-        assert_eq!(metadata_update.raw().block().object_index, 0);
-        assert_eq!(metadata_update.raw().block().block_index, 0);
-        let raw_timing = metadata_update.raw().timing();
+        assert_eq!(
+            metadata_update
+                .raw()
+                .expect("对象更新应有 raw 块")
+                .block()
+                .object_index,
+            0
+        );
+        assert_eq!(
+            metadata_update
+                .raw()
+                .expect("对象更新应有 raw 块")
+                .block()
+                .block_index,
+            0
+        );
+        let raw_timing = metadata_update.raw().expect("对象更新应有 raw 块").timing();
         assert_eq!(raw_timing.num_obj_info_blocks(), 1);
         assert!(raw_timing.updated_in_source_access_unit());
         assert_eq!(
@@ -3054,6 +3075,103 @@ mod tests {
         assert!(diagnostics.configuration_changed());
         assert!(!diagnostics.discontinuity());
         session.commit_prepared(recovered);
+    }
+
+    #[cfg(feature = "audio-decode")]
+    #[test]
+    fn public_decode_exposes_global_headphone_bit_changes_on_the_due_frame() {
+        use crate::{HeadTrackingPolicy, HeadphonePolicyState, MetadataFields};
+        // common: default screen、无 bed distribute、1 字节附加表；
+        // trim=0、bed_render=0、headphone=1/NEAR/disable，末尾 1 bit padding。
+        let group = |disabled: bool| {
+            format!(
+                "1 0 1 0 0 1 0 0 0000 1 1 1 0 1 0 0 0 1 001 {} 0 0000 1 0 0 1 01 0",
+                u8::from(disabled)
+            )
+        };
+        for mode in [DecodeMode::Core, DecodeMode::Full] {
+            let mut pcm_runs = Vec::new();
+            for initial_disabled in [false, true] {
+                let mut session =
+                    Ac4DecoderSession::new(Ac4DecoderConfig::default().with_decode_mode(mode));
+                let mut pcm = Vec::new();
+                for (index, (toc, group)) in [
+                    (FULL_AUDIO_TOC_PREFIX, group(initial_disabled)),
+                    (FULL_AUDIO_TOC_PREFIX_SEQUENCE_1, group(!initial_disabled)),
+                    (
+                        FULL_AUDIO_TOC_PREFIX_SEQUENCE_2,
+                        alloc::string::String::from(FULL_AUDIO_GROUP),
+                    ),
+                ]
+                .iter()
+                .enumerate()
+                {
+                    let bytes = frame_with_minimal_full_topology_group(
+                        toc,
+                        FULL_AUDIO_PRESENTATION,
+                        group,
+                        &MINIMAL_FULL_AUDIO_PAYLOAD,
+                    );
+                    let decoded = session
+                        .decode_access_unit(AccessUnit::new(
+                            &bytes,
+                            AccessUnitContext::new(100 + u64::try_from(index).unwrap()),
+                        ))
+                        .unwrap();
+                    let frame = decoded.frames().next().unwrap();
+                    let object = frame.objects().first().unwrap();
+                    pcm.extend(
+                        object
+                            .pcm()
+                            .planes()
+                            .first()
+                            .unwrap()
+                            .samples()
+                            .iter()
+                            .map(|sample| sample.to_bits()),
+                    );
+                    if index == 0 {
+                        assert!(object.initial_state().is_none());
+                        continue;
+                    }
+                    assert!(!frame.diagnostics().configuration_changed());
+                    let state = object.initial_state().unwrap();
+                    assert!(state.headphone().is_none(), "夹具不携带逐对象耳机字段");
+                    let disabled = if index == 1 {
+                        initial_disabled
+                    } else {
+                        !initial_disabled
+                    };
+                    assert!(
+                        matches!(state.headphone_policy(), HeadphonePolicyState::Resolved(policy)
+                    if policy.head_tracking() == if disabled { HeadTrackingPolicy::HeadRelative } else { HeadTrackingPolicy::SceneRelative })
+                    );
+                    let changed = frame
+                        .metadata_updates()
+                        .iter()
+                        .find(|update| {
+                            update
+                                .changed_fields()
+                                .contains(MetadataFields::HEADPHONE_POLICY)
+                        })
+                        .unwrap();
+                    assert_eq!(
+                        changed
+                            .common_origin()
+                            .unwrap()
+                            .control_source_access_unit_index(),
+                        if index == 1 { 100 } else { 101 }
+                    );
+                    assert_eq!(changed.state().headphone_policy(), state.headphone_policy());
+                }
+                pcm_runs.push(pcm);
+            }
+            assert_eq!(
+                pcm_runs.first(),
+                pcm_runs.get(1),
+                "只改变跟踪位不得改变 PCM"
+            );
+        }
     }
 
     #[cfg(feature = "audio-decode")]

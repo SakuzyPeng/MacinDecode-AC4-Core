@@ -102,6 +102,9 @@ jobs:
       - name: Test DME native job configuration
         run: python3 -m unittest scripts/test_dme_native.py
 
+      - name: Test DAMF headphone timeline checker
+        run: python3 -m unittest scripts/test_check_damf_headphone.py
+
   audio_decode:
     name: audio-decode
     runs-on: ubuntu-latest
