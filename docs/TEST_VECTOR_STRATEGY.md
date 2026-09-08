@@ -824,6 +824,25 @@ P2 `6.2.2.3` 的末尾 `byte_align` 后多一个 `0x00`，5 条多一个 `0x80`�
 且唯一尾字节属于 `{0x00, 0x80}` 时剥离并原样保留它。`0x81`、DRC absent 与其他上下文均有
 构造拒绝门禁；三层 `decode_check.py` 对全部 12 条 A-JOC 仍逐位命中原基线。
 
+2026-09-08 的本地音乐回放回归补充第三种单字节兼容尾部 `0xd8`。样本 SHA-256 为
+`d59b96ae125fdb16077608d611d7e64730880478a7e918c350760056be906d48`，48 kHz、
+1.5 Mbit/s、6009 个 AU、呈现长度 12,302,000 个采样。全部 252 个 independent object/A-JOC
+presentation 都在完整 DRC configuration 和 `loud_corr()` 之后、bit offset 128 处结束规范
+语法，并在 16 字节前缀之后携带唯一 `0xd8`；其余 5757 帧无尾部且按延续的 DRC 状态严格解析。
+完整音频 trace 的 6009 帧均解析成功，6008 帧完成 Full 重建，1 帧为初始化预热，未出现
+重建错误或非有限样本。原先仅限 `{0x00, 0x80}` 的兼容入口会在 AU 0 拒绝整个播放会话。
+
+兼容集合现扩为 `{0x00, 0x80, 0xd8}`，仍要求 independent、object/A-JOC、本帧 DRC
+configuration 和唯一尾字节；严格 parser 不变。构造测试独立枚举三个接受值，核对规范前缀与
+DRC 状态不变，并遍历其余 253 个字节验证拒绝与状态回滚；双字节尾部、DRC absent、channel
+上下文继续拒绝。Scene 公共 AU 入口验证完整 payload、syntax prefix 与 opaque tail 的保留。
+客户音频及其原始 payload 不入库。
+
+修复后该样本的完整 `inspect` 报告无 issue，`export-full-damf` 成功输出 48 kHz、
+12,302,000 个采样、20 个对象和 LFE。DAMF 出口仍报告既有 trim 与 Mid headphone mode
+无法等价映射的警告。默认 workspace 测试、`audio-decode` workspace 测试、Clippy 和
+三层既有 PCM 逐位基线全部通过；本次未执行与 DRP 的逐样本音质比较。
+
 ### 9.3 参考解码器的能力边界
 
 **曾经的结论：参考解码器在纯命令行路径下不提供位置元数据。** 对探针码流的 143 帧 × 21 对象共 3003 个组合逐一检视，元数据容器全部可获取，但其中仅 1 个非空，最大项数为 1。原因是那条路径只在存在元数据写入方时才输出位置命令，而写入方必须由音频端点提供。

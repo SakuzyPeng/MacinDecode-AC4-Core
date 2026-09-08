@@ -62,7 +62,10 @@ pub const MAX_PRESENTATION_DRC_DECODER_MODES: usize = 8;
 const MIN_KNOWN_DRC_GAIN_SET_BITS: u32 = 2 + 7;
 
 /// 已验证的 independent object/A-JOC presentation DRC 兼容尾字节。
-const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 2] = [0x00, 0x80];
+///
+/// 0xd8 来自 2026-09-08 本地样本的全部 252 个 independent 帧；前缀均严格耗尽，
+/// 见 docs/TEST_VECTOR_STRATEGY.md。它不属于 TS103190-2:v1.3.1:6.2.2.3 的字段。
+const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 3] = [0x00, 0x80, 0xd8];
 
 /// presentation substream 前缀中超出固定容量的结构。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2189,7 +2192,7 @@ impl<'a> Ac4PresentationSubstream<'a> {
     ///
     /// 首先调用与 [`parse_with_drc_state`](Self::parse_with_drc_state) 相同的严格路径。仅当
     /// 严格路径恰好剩余 8 比特、presentation 为 independent object/A-JOC，末字节为
-    /// `0x00` 或 `0x80`，且去除该字节后解析结果实际携带 DRC configuration 时，才把该
+    /// `0x00`、`0x80` 或 `0xd8`，且去除该字节后解析结果实际携带 DRC configuration 时，才把该
     /// 字节认作非规范兼容尾部。其他尾部继续返回原始严格解析错误。
     ///
     /// 返回值第二项是规范 syntax payload 消耗的字节数；严格输入等于 `payload.len()`，
@@ -4670,7 +4673,10 @@ mod tests {
         assert_eq!(syntax_len, STRICT.len());
         assert_eq!(compat_state, strict_state);
 
-        for compatibility_byte in INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES {
+        // 2026-09-08 本地回放回归：252 个 independent DRC 帧均携带 0xd8；
+        // 规范前缀恰好按字节结束，尾字节不得进入 loud_corr 或 DRC 视图。
+        assert_eq!(strict.alignment_bits, 0);
+        for compatibility_byte in [0x00, 0x80, 0xd8] {
             let payload = [
                 STRICT[0],
                 STRICT[1],
@@ -4698,6 +4704,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(syntax_len, STRICT.len());
+            assert_eq!(parsed, strict);
             assert!(parsed.drc_configuration.is_some());
             assert_eq!(accepted, strict_state);
         }
@@ -4725,15 +4732,32 @@ mod tests {
         Ac4PresentationSubstream::parse_with_drc_state(&STRICT, object_context, &mut state)
             .unwrap();
         let before = state;
-        let wrong_tail = [STRICT[0], STRICT[1], STRICT[2], STRICT[3], 0x81];
+        for byte in 0..=u8::MAX {
+            if [0x00, 0x80, 0xd8].contains(&byte) {
+                continue;
+            }
+            let wrong_tail = [STRICT[0], STRICT[1], STRICT[2], STRICT[3], byte];
+            assert_eq!(
+                Ac4PresentationSubstream::parse_with_drc_state_compat(
+                    &wrong_tail,
+                    object_context,
+                    &mut state,
+                )
+                .unwrap_err(),
+                PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+            );
+            assert_eq!(state, before);
+        }
+
+        let two_byte_tail = [STRICT[0], STRICT[1], STRICT[2], STRICT[3], 0xd8, 0x00];
         assert_eq!(
             Ac4PresentationSubstream::parse_with_drc_state_compat(
-                &wrong_tail,
+                &two_byte_tail,
                 object_context,
                 &mut state,
             )
             .unwrap_err(),
-            PresentationSubstreamError::TrailingBits { remaining_bits: 8 }
+            PresentationSubstreamError::TrailingBits { remaining_bits: 16 }
         );
         assert_eq!(state, before);
 

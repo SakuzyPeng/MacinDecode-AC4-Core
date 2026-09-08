@@ -557,7 +557,7 @@ gain 与 preferred method；P1 表 149a 的 surround 保留码 `0/1` 失败关�
 与 5 比特 correction 原值保持可区分，core LoRo/LtRt 共用 gate，object 分支接续 9.X.4；
 码值 `31` 合法保留。解析最后消费 `byte_align` 并要求恰好落在 presentation payload 末尾。
 Scene 回放入口另对已验证的 independent object/A-JOC、本帧 DRC configuration、唯一
-`0x00`/`0x80` 尾字节组合做窄兼容，完整 payload 与规范前缀分别公开，其他尾部仍失败关闭。
+`0x00`/`0x80`/`0xd8` 尾字节组合做窄兼容，完整 payload 与规范前缀分别公开，其他尾部仍失败关闭。
 两层都不执行响度归一化、DRC、group/associated gain、pan、advanced DE、custom downmix 或
 任何 gain。
 

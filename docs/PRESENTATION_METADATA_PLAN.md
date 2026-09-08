@@ -109,8 +109,8 @@ output config 和 stereo surround 保留码失败关闭。custom/stereo/LFE 的 
 correction 原值；core LoRo/LtRt 共用 presence，object correction 分支包含 9.X.4，规范解释为
 0 dB 的码值 `31` 仍合法保留。末尾 `byte_align` 的填充值不解释，但对齐后必须恰好耗尽有界
 payload，额外整字节失败关闭。Scene 回放入口另有一个不改变 bitstream parser 的窄兼容层：仅在
-independent object/A-JOC 帧、本帧确实携带 DRC configuration 且唯一尾字节为 `0x00` 或
-`0x80` 时，把该字节作为 opaque compatibility tail 保留。这里不执行 gain、dB 换算、角度换算、
+independent object/A-JOC 帧、本帧确实携带 DRC configuration 且唯一尾字节为 `0x00`、
+`0x80` 或 `0xd8` 时，把该字节作为 opaque compatibility tail 保留。这里不执行 gain、dB 换算、角度换算、
 pan 或 downmix。
 
 当前无状态 API 已显式接收 TOC/拓扑上下文并解析 I-frame 配置及其 data envelope；stateful API

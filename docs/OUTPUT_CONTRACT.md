@@ -129,9 +129,9 @@ audio-substream dialogue enhancement、alternative OAMD 与 opaque EMDF 目前�
   `parsed_substream` 从同一份已验证存储重建完整只读语法视图。`effective_drc_configuration`
   与 `effective_group_gain_codes` 另外报告当前 AU 成功后有效的状态，不能与
   `Ac4PresentationSubstream` 中“本帧是否传输配置”及 absent/keep/new 原始更新形态混为一谈。
-- 已观测的 object/A-JOC independent DRC 帧会在规范语法后追加单字节 `0x00` 或 `0x80`。
+- 已观测的 object/A-JOC independent DRC 帧会在规范语法后追加单字节 `0x00`、`0x80` 或 `0xd8`。
   Scene 兼容入口只接受“independent、object/A-JOC 上下文、本帧携带 DRC configuration、唯一
-  尾字节属于 `{0x00, 0x80}`”这一精确组合；`syntax_payload` 排除该字节，
+  尾字节属于 `{0x00, 0x80, 0xd8}`”这一精确组合；`syntax_payload` 排除该字节，
   `compatibility_tail` 原样返回它且不赋予处理语义。bitstream parser 继续严格拒绝尾随，其他
   尾部也全部失败关闭。
 

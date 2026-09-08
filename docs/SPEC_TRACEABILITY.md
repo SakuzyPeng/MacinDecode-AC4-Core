@@ -1744,7 +1744,7 @@ LoRo/LtRt pair；object correction 还控制 9.X.4。所有 correction 均保留
 `31` 按规范合法保留而不错误拒绝。末尾 `byte_align` 的填充值不赋予语义，但成功解析必须恰好
 落在 presentation payload 末尾，额外完整字节失败关闭。Scene 回放入口不放宽该 bitstream
 API，只对已验证的 independent object/A-JOC + 本帧 DRC configuration 组合剥离唯一一个
-`0x00`/`0x80` opaque compatibility tail，并在侧车中原样公开；其他尾部仍失败关闭。API 不做
+`0x00`/`0x80`/`0xd8` opaque compatibility tail，并在侧车中原样公开；其他尾部仍失败关闭。API 不做
 dB 换算或应用任何 downmix/gain。
 alternative presentation/dataset 与 direct-object 均无真实编码样本；
 本节不关闭其外部向量待验证状态。Channel-based PCM、renderer、设备接入和额外音频处理仍不在

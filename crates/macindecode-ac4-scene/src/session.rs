@@ -42,7 +42,7 @@ const GROUP_SYNTAX: &str = "raw_ac4_frame/ac4_toc/ac4_presentation_info/ac4_subs
 const PRESENTATION_SUBSTREAM_SYNTAX: &str = "raw_ac4_frame/ac4_presentation_substream";
 /// object/A-JOC 生产链在 independent DRC 帧规范语法之后写入的已观测尾字节。
 #[cfg(test)]
-const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 2] = [0x00, 0x80];
+const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 3] = [0x00, 0x80, 0xd8];
 
 /// 所选 presentation 的解析历史与当前 AU 可见存储。
 #[derive(Debug, Default)]
