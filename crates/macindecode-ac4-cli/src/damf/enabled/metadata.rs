@@ -55,19 +55,22 @@ pub(super) fn build_metadata(
             if events.peek().is_some_and(|event| event.sample == sample) {
                 let event = events.next().ok_or("Missing object event")?;
                 append_object_event(&mut lines, object, event, policy, &selector, warnings)?;
-            } else if previous_fields != Some(fields) {
+            } else {
+                // 有效策略即使映射为相同字段，也可能有损；警告不能随字段一起去重。
                 headphone_warning(policy, &selector, sample, warnings);
-                lines.extend([
-                    format!("  - ID: {}", object.damf_id),
-                    format!("    samplePos: {sample}"),
-                ]);
-                if previous_fields.is_none_or(|previous: (&str, &str)| previous.0 != fields.0) {
-                    lines.push(format!("    headTrackMode: {}", fields.0));
+                if previous_fields != Some(fields) {
+                    lines.extend([
+                        format!("  - ID: {}", object.damf_id),
+                        format!("    samplePos: {sample}"),
+                    ]);
+                    if previous_fields.is_none_or(|previous: (&str, &str)| previous.0 != fields.0) {
+                        lines.push(format!("    headTrackMode: {}", fields.0));
+                    }
+                    if previous_fields.is_none_or(|previous| previous.1 != fields.1) {
+                        lines.push(format!("    binauralRenderMode: {}", fields.1));
+                    }
+                    // 局部事件不写 rampLength、位置或增益；未改变字段继续原来的 ramp。
                 }
-                if previous_fields.is_none_or(|previous| previous.1 != fields.1) {
-                    lines.push(format!("    binauralRenderMode: {}", fields.1));
-                }
-                // 局部事件不写 rampLength、位置或增益；未改变字段继续原来的 ramp。
             }
             previous_fields = Some(fields);
         }

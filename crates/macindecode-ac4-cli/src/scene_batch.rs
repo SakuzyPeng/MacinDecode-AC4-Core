@@ -1030,6 +1030,9 @@ fn frame_common(frame: &Ac4SceneFrame<'_>) -> (Option<OamdCommonData>, bool) {
 }
 
 fn same_non_headphone_common(mut first: OamdCommonData, mut second: OamdCommonData) -> bool {
+    // 附加数据长度可能只因耳机字段或保留填充改变，不代表其他 common 语义变化。
+    first.add_data_bytes = None;
+    second.add_data_bytes = None;
     first.headphone = Default::default();
     second.headphone = Default::default();
     first == second
@@ -1536,6 +1539,70 @@ mod tests {
 
     fn sync_stream() -> Vec<u8> {
         sync_stream_frames(1)
+    }
+
+    #[test]
+    fn headphone_payload_length_changes_only_conflict_on_retained_common_semantics() {
+        use macindecode_ac4_scene::{HeadphonePolicyState, HeadphoneRenderMode};
+
+        // common 默认屏幕比例、无 bed distribute，且没有 add_data。
+        const WITHOUT_HEADPHONE: &str = "1 0 0";
+        // 1 字节 add_data：trim/bed_render 缺省，耳机为 NEAR/scene-relative。
+        const WITH_HEADPHONE: &str = "1 0 1 0 0 0 1 001 0 0";
+        const WITH_HEADPHONE_AND_BED_DISTRIBUTE: &str = "1 1 1 0 0 0 1 001 0 0";
+
+        for (common, expected_conflict) in [
+            (WITH_HEADPHONE, false),
+            (WITH_HEADPHONE_AND_BED_DISTRIBUTE, true),
+        ] {
+            let mut data = Vec::new();
+            // 最后一帧使恢复为无耳机数据的 common 按表 188 到期。
+            for (index, common) in [
+                WITHOUT_HEADPHONE,
+                common,
+                WITHOUT_HEADPHONE,
+                WITHOUT_HEADPHONE,
+            ]
+            .iter()
+            .enumerate()
+            {
+                let group = format!("1 0 1 0 0 1 0 0 0000 1 1 {common} 0000 1 0 0 1 01 0");
+                let size = format!("{size:010b}", size = MINIMAL_FULL_AUDIO_PAYLOAD.len());
+                let table = ["10 0 0000000011 0 ", &size].concat();
+                let sequence = u16::try_from(index).expect("测试帧数应适合序列计数器");
+                let toc = format!("10 {sequence:010b} {FULL_AUDIO_TOC_SUFFIX}");
+                let mut raw = pack_bits(&[&toc, FULL_AUDIO_PRESENTATION, &group, &table]);
+                raw.extend_from_slice(&[0x55, 0x04, 0x00]);
+                raw.extend_from_slice(&MINIMAL_FULL_AUDIO_PAYLOAD);
+                data.extend_from_slice(&[0xac, 0x40]);
+                let size = u16::try_from(raw.len()).expect("最小夹具应使用短 frame_size");
+                data.extend_from_slice(&size.to_be_bytes());
+                data.extend_from_slice(&raw);
+            }
+            let batch = collect_diagnostic_scene_batch(
+                &data,
+                PresentationSelection::AutoUnique,
+                DecodeMode::Full,
+            )
+            .expect("耳机和 common 变化应保持可解码")
+            .metadata;
+            assert!(batch.headphone_events.iter().any(|event| {
+                matches!(event.policy, HeadphonePolicyState::Resolved(policy)
+                    if policy.render_mode() == HeadphoneRenderMode::Near)
+            }));
+            assert_eq!(
+                batch.headphone_events.last().unwrap().policy,
+                HeadphonePolicyState::Unspecified,
+                "移除附加数据后应恢复未指定耳机策略"
+            );
+            let [element] = batch.elements.as_slice() else {
+                panic!("最小夹具应输出唯一对象");
+            };
+            assert_eq!(
+                element.common_conflict, expected_conflict,
+                "仅 add_data 长度和耳机变化不应产生冲突，bed distribute 变化仍应报告"
+            );
+        }
     }
 
     #[test]

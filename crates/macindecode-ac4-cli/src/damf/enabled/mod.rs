@@ -633,6 +633,42 @@ mod tests {
         }
 
         #[test]
+        fn deduplicated_mid_policy_still_reports_lossy_mapping() {
+            let (mut batch, selected) = batch();
+            batch.headphone_events.first_mut().unwrap().policy = HeadphonePolicyState::Unspecified;
+            let baseline =
+                build_metadata(&batch, &[selected], 48_000, &mut WarningSet::default()).unwrap();
+            // Mid 短暂生效期间没有完整对象事件；输出字段与 Unspecified 相同。
+            for (sample, policy, order) in [
+                (
+                    1500,
+                    HeadphonePolicyState::Resolved(HeadphonePolicy::new(
+                        HeadphoneRenderMode::Mid,
+                        HeadTrackingPolicy::SceneRelative,
+                    )),
+                    2,
+                ),
+                (1750, HeadphonePolicyState::Unspecified, 3),
+            ] {
+                batch.headphone_events.push(HeadphoneMetadataEvent {
+                    sample_position: sample,
+                    element_id: selected.scene.element_id,
+                    stream_order: order,
+                    policy,
+                });
+            }
+            let mut warnings = WarningSet::default();
+            let output = build_metadata(&batch, &[selected], 48_000, &mut warnings).unwrap();
+            assert_eq!(output, baseline, "字段去重应保留原有连续属性命令");
+            let [warning] = warnings.items.as_slice() else {
+                panic!("有损 Mid 策略必须产生一项警告，供 strict mapping 拒绝导出");
+            };
+            assert_eq!(warning.selector, "2:1");
+            assert_eq!(warning.field, "binaural_render_mode");
+            assert_eq!(warning.sample, Some(1500));
+        }
+
+        #[test]
         fn unsupported_policy_fails_and_mid_warning_depends_on_effective_policy() {
             let (mut batch, selected) = batch();
             batch.headphone_events.first_mut().unwrap().policy =
