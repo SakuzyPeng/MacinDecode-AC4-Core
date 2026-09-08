@@ -38,6 +38,25 @@ pub struct PresentationDrcGainsContext {
 }
 
 impl PresentationDrcGainsContext {
+    /// 从明确的 channel mode 与 codec 帧长推导 gain 形状。
+    /// `TS103190-1:v1.4.1:4.3.13.7`、`TS103190-2:v1.3.1:6.3.3.1.21`。
+    /// 表 168/69 未明确覆盖的模式保留为未知，不从对象数猜测声道组数。
+    #[must_use]
+    pub fn derive(channel_mode: Option<u8>, frame_length: u16) -> Option<Self> {
+        let channels = match channel_mode? {
+            0 | 1 => 1,
+            4 | 6 | 8 | 10 => 3,
+            11..=15 => 4,
+            _ => return None,
+        };
+        let subframes = match frame_length {
+            384 => 1,
+            960 | 1920 => u8::try_from(frame_length.checked_div(320)?).ok()?,
+            512 | 768 | 1024 | 1536 | 2048 => u8::try_from(frame_length.checked_div(256)?).ok()?,
+            _ => return None,
+        };
+        Self::new(channels, subframes)
+    }
     /// 构造已经按规范派生的 gain 形状。
     ///
     /// `nr_drc_channels` 必须是表 168 与 P2 表 69 定义的 `1, 3, 4` 之一；
@@ -404,6 +423,40 @@ mod tests {
     extern crate std;
 
     use super::*;
+
+    #[test]
+    fn derives_normative_channel_groups_and_codec_subframes() {
+        for (length, subframes) in [
+            (384, 1),
+            (512, 2),
+            (768, 3),
+            (960, 3),
+            (1024, 4),
+            (1536, 6),
+            (1920, 6),
+            (2048, 8),
+        ] {
+            for (mode, channels) in [
+                (0, 1),
+                (1, 1),
+                (4, 3),
+                (6, 3),
+                (8, 3),
+                (10, 3),
+                (11, 4),
+                (12, 4),
+                (13, 4),
+                (14, 4),
+                (15, 4),
+            ] {
+                let context = PresentationDrcGainsContext::derive(Some(mode), length).unwrap();
+                assert_eq!(context.nr_drc_channels(), channels);
+                assert_eq!(context.nr_drc_subframes(), subframes);
+            }
+        }
+        assert!(PresentationDrcGainsContext::derive(None, 1920).is_none());
+        assert!(PresentationDrcGainsContext::derive(Some(1), 1000).is_none());
+    }
     use crate::testutil::BitBuf;
     use macindecode_ac4_bitstream::presentation_substream::PresentationAddDataBits;
 

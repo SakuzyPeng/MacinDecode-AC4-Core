@@ -5,7 +5,6 @@
 //! 下复用同一批缓冲。输入切片耗尽时保留整条物理 substream 的已提交状态，供
 //! 调用方补全后重试；其他失败会使其失效。成功结果只借用到下一次可变调用。
 
-use super::{AspxBlocker, FullAjocBlocker, SupportedAjocFullFrame, SupportedAspxFrame};
 use crate::{
     ajoc::{AjocObjectControl, AjocObjectMatrix},
     aspx::syntax::{AspxConfig, AspxData},
@@ -73,6 +72,11 @@ impl fmt::Display for FullAjocSyntaxBuffer {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FullAjocSyntaxError {
+    /// 配置要求的有界工作区无法分配。
+    AllocationFailure {
+        buffer: FullAjocSyntaxBuffer,
+        needed: usize,
+    },
     /// 物理 substream 下标超出固定 topology 容量。
     SubstreamIndexOutOfRange { index: u32, limit: usize },
     /// `ac4_substream()` 或 `audio_data_ajoc()` 解析失败。
@@ -91,6 +95,9 @@ pub enum FullAjocSyntaxError {
 impl fmt::Display for FullAjocSyntaxError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            Self::AllocationFailure { buffer, needed } => {
+                write!(formatter, "Unable to reserve {needed} entries for {buffer}")
+            }
             Self::SubstreamIndexOutOfRange { index, limit } => {
                 write!(
                     formatter,
@@ -178,6 +185,7 @@ fn read_input_exhausted(error: &ReadError) -> bool {
 /// decoder 工作区拥有。所有切片都精确裁到本帧实际写入的长度。
 #[derive(Debug)]
 pub struct DecodedFullAjocSyntaxFrame<'a> {
+    #[cfg(feature = "audio-decode")]
     state: &'a mut AudioDataState,
     parsed: Ac4SubstreamAjoc,
     context: AjocSubstreamContext,
@@ -188,12 +196,12 @@ pub struct DecodedFullAjocSyntaxFrame<'a> {
     matrices: &'a [AjocObjectMatrix],
     dmx_blocks: &'a [OamdMetadataBlock],
     umx_blocks: &'a [OamdMetadataBlock],
-    aspx_support: Result<SupportedAspxFrame, AspxBlocker>,
-    full_support: Result<SupportedAjocFullFrame, FullAjocBlocker>,
+    physical_substreams: usize,
 }
 
 impl<'a> DecodedFullAjocSyntaxFrame<'a> {
-    pub(super) fn reset_state(&mut self) {
+    #[cfg(feature = "audio-decode")]
+    pub(crate) fn reset_state(&mut self) {
         *self.state = AudioDataState::new();
     }
 
@@ -243,19 +251,16 @@ impl<'a> DecodedFullAjocSyntaxFrame<'a> {
         self.umx_blocks
     }
 
-    pub const fn aspx_support(&self) -> Result<SupportedAspxFrame, AspxBlocker> {
-        self.aspx_support
-    }
-
-    pub const fn full_support(&self) -> Result<SupportedAjocFullFrame, FullAjocBlocker> {
-        self.full_support
+    #[must_use]
+    pub const fn physical_substreams(&self) -> usize {
+        self.physical_substreams
     }
 
     /// 取得不含可变语法状态所有权的只读 observation。
     ///
     /// 该视图与当前借用帧具有相同生命周期，可交给只做统计的调用方；需要在
     /// Full 下游失败后读取同一前端时，使用
-    /// [`super::FullAjocDecoder::last_syntax_observation`]。
+    /// `FullAjocDecoder::last_syntax_observation`。
     #[must_use]
     pub const fn observation(&self) -> FullAjocSyntaxObservation<'a> {
         FullAjocSyntaxObservation {
@@ -268,8 +273,7 @@ impl<'a> DecodedFullAjocSyntaxFrame<'a> {
             matrices: self.matrices,
             dmx_blocks: self.dmx_blocks,
             umx_blocks: self.umx_blocks,
-            aspx_support: self.aspx_support,
-            full_support: self.full_support,
+            physical_substreams: self.physical_substreams,
         }
     }
 }
@@ -290,8 +294,7 @@ pub struct FullAjocSyntaxObservation<'a> {
     matrices: &'a [AjocObjectMatrix],
     dmx_blocks: &'a [OamdMetadataBlock],
     umx_blocks: &'a [OamdMetadataBlock],
-    aspx_support: Result<SupportedAspxFrame, AspxBlocker>,
-    full_support: Result<SupportedAjocFullFrame, FullAjocBlocker>,
+    physical_substreams: usize,
 }
 
 impl<'a> FullAjocSyntaxObservation<'a> {
@@ -340,12 +343,9 @@ impl<'a> FullAjocSyntaxObservation<'a> {
         self.umx_blocks
     }
 
-    pub const fn aspx_support(self) -> Result<SupportedAspxFrame, AspxBlocker> {
-        self.aspx_support
-    }
-
-    pub const fn full_support(self) -> Result<SupportedAjocFullFrame, FullAjocBlocker> {
-        self.full_support
+    #[must_use]
+    pub const fn physical_substreams(&self) -> usize {
+        self.physical_substreams
     }
 }
 
@@ -360,8 +360,7 @@ struct FullAjocSyntaxObservationDescriptor {
     control_count: usize,
     dmx_block_count: usize,
     umx_block_count: usize,
-    aspx_support: Result<SupportedAspxFrame, AspxBlocker>,
-    full_support: Result<SupportedAjocFullFrame, FullAjocBlocker>,
+    physical_substreams: usize,
 }
 
 #[derive(Debug)]
@@ -386,7 +385,17 @@ impl FullAjocSyntaxWorkspace {
         }
     }
 
-    fn ensure(&mut self, context: &AjocSubstreamContext) {
+    fn ensure(&mut self, context: &AjocSubstreamContext) -> Result<(), FullAjocSyntaxError> {
+        reserve_syntax(
+            &mut self.elements,
+            MAX_CHANNEL_ELEMENTS,
+            FullAjocSyntaxBuffer::ChannelElements,
+        )?;
+        reserve_syntax(
+            &mut self.aspx,
+            MAX_ASPX_ELEMENTS,
+            FullAjocSyntaxBuffer::AspxElements,
+        )?;
         if self.elements.len() < MAX_CHANNEL_ELEMENTS {
             self.elements
                 .resize_with(MAX_CHANNEL_ELEMENTS, ChannelElement::new);
@@ -402,6 +411,12 @@ impl FullAjocSyntaxWorkspace {
             .as_slice()
             .len()
             .saturating_sub(usize::from(context.params.b_lfe));
+        reserve_syntax(
+            &mut self.controls,
+            controls,
+            FullAjocSyntaxBuffer::ObjectControls,
+        )?;
+        reserve_syntax(&mut self.matrices, controls, FullAjocSyntaxBuffer::Matrices)?;
         if self.controls.len() < controls {
             self.controls
                 .resize_with(controls, AjocObjectControl::default);
@@ -415,6 +430,11 @@ impl FullAjocSyntaxWorkspace {
             .as_slice()
             .len()
             .saturating_mul(MAX_OBJ_INFO_BLOCKS);
+        reserve_syntax(
+            &mut self.dmx_blocks,
+            dmx_blocks,
+            FullAjocSyntaxBuffer::CoreOamdBlocks,
+        )?;
         if self.dmx_blocks.len() < dmx_blocks {
             self.dmx_blocks
                 .resize_with(dmx_blocks, OamdMetadataBlock::default);
@@ -424,10 +444,16 @@ impl FullAjocSyntaxWorkspace {
             .as_slice()
             .len()
             .saturating_mul(MAX_OBJ_INFO_BLOCKS);
+        reserve_syntax(
+            &mut self.umx_blocks,
+            umx_blocks,
+            FullAjocSyntaxBuffer::FullOamdBlocks,
+        )?;
         if self.umx_blocks.len() < umx_blocks {
             self.umx_blocks
                 .resize_with(umx_blocks, OamdMetadataBlock::default);
         }
+        Ok(())
     }
 
     fn borrow(&mut self) -> AjocAudioWorkspace<'_> {
@@ -442,16 +468,16 @@ impl FullAjocSyntaxWorkspace {
     }
 }
 
-/// [`super::FullAjocDecoder`] 内部拥有的音频语法状态与工作区。
+/// 独立的音频语法状态与工作区，不创建任何 PCM 或 DSP 状态。
 #[derive(Debug)]
-pub(super) struct FullAjocSyntaxDecoder {
+pub struct FullAjocSyntaxDecoder {
     states: Vec<AudioDataState>,
     workspace: FullAjocSyntaxWorkspace,
     last_observation: Option<FullAjocSyntaxObservationDescriptor>,
 }
 
 impl FullAjocSyntaxDecoder {
-    pub(super) const fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             states: Vec::new(),
             workspace: FullAjocSyntaxWorkspace::new(),
@@ -459,7 +485,7 @@ impl FullAjocSyntaxDecoder {
         }
     }
 
-    pub(super) fn reset_substream(&mut self, substream_index: u32) {
+    pub fn reset_substream(&mut self, substream_index: u32) {
         if self
             .last_observation
             .is_some_and(|last| last.substream_index == substream_index)
@@ -472,12 +498,12 @@ impl FullAjocSyntaxDecoder {
         }
     }
 
-    pub(super) fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.last_observation = None;
         self.states.fill(AudioDataState::new());
     }
 
-    pub(super) fn last_observation(&self) -> Option<FullAjocSyntaxObservation<'_>> {
+    pub fn last_observation(&self) -> Option<FullAjocSyntaxObservation<'_>> {
         let last = self.last_observation?;
         Some(FullAjocSyntaxObservation {
             parsed: last.parsed,
@@ -489,16 +515,15 @@ impl FullAjocSyntaxDecoder {
             matrices: self.workspace.matrices.get(..last.control_count)?,
             dmx_blocks: self.workspace.dmx_blocks.get(..last.dmx_block_count)?,
             umx_blocks: self.workspace.umx_blocks.get(..last.umx_block_count)?,
-            aspx_support: last.aspx_support,
-            full_support: last.full_support,
+            physical_substreams: last.physical_substreams,
         })
     }
 
-    pub(super) fn clear_observation(&mut self) {
+    pub fn clear_observation(&mut self) {
         self.last_observation = None;
     }
 
-    pub(super) fn prepare_substream(
+    pub fn prepare_substream(
         &mut self,
         substream_index: u32,
         context: &AjocSubstreamContext,
@@ -510,22 +535,28 @@ impl FullAjocSyntaxDecoder {
                 limit: MAX_SUBSTREAMS,
             });
         }
-        self.workspace.ensure(context);
+        self.workspace.ensure(context)?;
         if self.states.len() <= slot {
+            self.states
+                .try_reserve(slot.saturating_add(1).saturating_sub(self.states.len()))
+                .map_err(|_| FullAjocSyntaxError::AllocationFailure {
+                    buffer: FullAjocSyntaxBuffer::ChannelElements,
+                    needed: slot.saturating_add(1),
+                })?;
             self.states
                 .resize(slot.saturating_add(1), AudioDataState::new());
         }
         Ok(())
     }
 
-    pub(super) fn decode_frame<'decoder>(
+    pub fn decode_frame<'decoder>(
         &'decoder mut self,
         input: FullAjocSyntaxFrameInput<'_>,
     ) -> Result<DecodedFullAjocSyntaxFrame<'decoder>, FullAjocSyntaxError> {
         self.decode_frame_with_policy(input, true)
     }
 
-    pub(super) fn decode_complete_frame<'decoder>(
+    pub fn decode_complete_frame<'decoder>(
         &'decoder mut self,
         input: FullAjocSyntaxFrameInput<'_>,
     ) -> Result<DecodedFullAjocSyntaxFrame<'decoder>, FullAjocSyntaxError> {
@@ -611,10 +642,6 @@ impl FullAjocSyntaxDecoder {
             }
         };
 
-        let frame_length = input.context.params.context.frame_len_base;
-        let aspx_support = AspxBlocker::check(&parsed.audio.var_element, frame_length);
-        let full_support =
-            SupportedAjocFullFrame::check(&parsed, &input.context, input.physical_substreams);
         *last_observation = Some(FullAjocSyntaxObservationDescriptor {
             substream_index: input.substream_index,
             parsed,
@@ -625,10 +652,10 @@ impl FullAjocSyntaxDecoder {
             control_count,
             dmx_block_count,
             umx_block_count,
-            aspx_support,
-            full_support,
+            physical_substreams: input.physical_substreams,
         });
         Ok(DecodedFullAjocSyntaxFrame {
+            #[cfg(feature = "audio-decode")]
             state,
             parsed,
             context: input.context,
@@ -639,8 +666,7 @@ impl FullAjocSyntaxDecoder {
             matrices,
             dmx_blocks,
             umx_blocks,
-            aspx_support,
-            full_support,
+            physical_substreams: input.physical_substreams,
         })
     }
 }
@@ -696,7 +722,7 @@ fn workspace_invariant(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "audio-decode"))]
 mod tests {
     use super::*;
     use crate::{huffman::tables::ASF_HCB_1, testutil::BitBuf};
@@ -937,12 +963,12 @@ mod tests {
         payload: &'a [u8],
         context: AjocSubstreamContext,
         lfe_position: Option<u32>,
-    ) -> super::super::FullAjocAudioFrameInput<'a> {
+    ) -> crate::full_ajoc::FullAjocAudioFrameInput<'a> {
         audio_input_with_provenance(
             payload,
             context,
             lfe_position,
-            super::super::FullAjocFrameProvenance::new(0),
+            crate::full_ajoc::FullAjocFrameProvenance::new(0),
         )
     }
 
@@ -950,30 +976,30 @@ mod tests {
         payload: &'a [u8],
         context: AjocSubstreamContext,
         lfe_position: Option<u32>,
-        provenance: super::super::FullAjocFrameProvenance,
-    ) -> super::super::FullAjocAudioFrameInput<'a> {
-        super::super::FullAjocAudioFrameInput {
+        provenance: crate::full_ajoc::FullAjocFrameProvenance,
+    ) -> crate::full_ajoc::FullAjocAudioFrameInput<'a> {
+        crate::full_ajoc::FullAjocAudioFrameInput {
             syntax: input_with_context(payload, context),
             provenance,
             lfe_position,
-            mode: super::super::FullAjocDecodeMode::RequireFull,
+            mode: crate::full_ajoc::FullAjocDecodeMode::RequireFull,
         }
     }
 
-    fn audio_input<'a>(payload: &'a [u8]) -> super::super::FullAjocAudioFrameInput<'a> {
+    fn audio_input<'a>(payload: &'a [u8]) -> crate::full_ajoc::FullAjocAudioFrameInput<'a> {
         audio_input_with_context(payload, context(), None)
     }
 
     type AudioFrameSnapshot = (
-        super::super::FullAjocObservation,
-        Option<super::super::FullAjocFrameProvenance>,
+        crate::full_ajoc::FullAjocObservation,
+        Option<crate::full_ajoc::FullAjocFrameProvenance>,
         Vec<u32>,
         Vec<u32>,
         Vec<u32>,
     );
 
     fn audio_frame_snapshot(
-        decoded: &super::super::DecodedFullAjocAudioFrame<'_>,
+        decoded: &crate::full_ajoc::DecodedFullAjocAudioFrame<'_>,
     ) -> AudioFrameSnapshot {
         let bits = |samples: &[f32]| samples.iter().map(|sample| sample.to_bits()).collect();
         (
@@ -1048,7 +1074,7 @@ mod tests {
     #[test]
     fn decoded_view_exposes_only_this_frames_written_workspaces() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         decoder
             .prepare_syntax_substream(0, &context())
             .expect("配置建立时应能预分配语法工作区");
@@ -1101,7 +1127,7 @@ mod tests {
     #[test]
     fn alternative_oamd_is_observable_but_cannot_issue_a_full_credential() {
         let payload = alternative_payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         let decoded = decoder
             .decode_syntax_frame(input_with_context(
                 payload.as_slice(),
@@ -1111,7 +1137,7 @@ mod tests {
 
         assert_eq!(
             decoded.full_support(),
-            Err(super::super::FullAjocBlocker::AlternativeObjectMetadata)
+            Err(crate::full_ajoc::FullAjocBlocker::AlternativeObjectMetadata)
         );
         assert_eq!(
             decoded
@@ -1139,7 +1165,7 @@ mod tests {
     fn decoded_view_carries_the_aspx_config_into_a_dependent_frame() {
         let iframe = payload_for_frame(true);
         let dependent = payload_for_frame(false);
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
 
         let iframe_config = decoder
             .decode_syntax_frame(input_with_context(iframe.as_slice(), context()))
@@ -1160,7 +1186,7 @@ mod tests {
     #[test]
     fn frontend_combines_syntax_oamd_and_borrowed_asf_pcm() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         decoder
             .prepare_frontend_substream(0, &context())
             .expect("配置建立时应能预分配完整前端");
@@ -1182,7 +1208,7 @@ mod tests {
     #[test]
     fn audio_frame_combines_frontend_table_188_and_full_outputs() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         let decoded = decoder
             .decode_audio_frame(audio_input(payload.as_slice()))
             .expect("完整 Full 音频帧事务应成功");
@@ -1213,7 +1239,7 @@ mod tests {
     #[test]
     fn downstream_failure_keeps_the_same_frontend_observations_until_reset() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         let mut input = audio_input(payload.as_slice());
         input.syntax.physical_substreams = 2;
 
@@ -1222,7 +1248,7 @@ mod tests {
             .expect_err("多个 Full substream 应在前端完成后 fail closed");
         assert!(matches!(
             error,
-            super::super::FullAjocAudioFrameError::Decode(_)
+            crate::full_ajoc::FullAjocAudioFrameError::Decode(_)
         ));
 
         let syntax = decoder
@@ -1253,7 +1279,7 @@ mod tests {
     fn observe_full_blocker_preserves_frontend_history_for_dependent_census() {
         let iframe = payload_for_frame_with_active_companding(true);
         let dependent = payload_for_frame_with_active_companding(false);
-        let reference_pcm = |decoder: &mut super::super::FullAjocDecoder,
+        let reference_pcm = |decoder: &mut crate::full_ajoc::FullAjocDecoder,
                              payload: &[u8],
                              context: AjocSubstreamContext| {
             decoder
@@ -1267,7 +1293,7 @@ mod tests {
                 .map(|sample| sample.to_bits())
                 .collect::<Vec<_>>()
         };
-        let mut reference = super::super::FullAjocDecoder::new();
+        let mut reference = crate::full_ajoc::FullAjocDecoder::new();
         let expected_iframe = reference_pcm(&mut reference, iframe.as_slice(), context());
         let expected_dependent =
             reference_pcm(&mut reference, dependent.as_slice(), dependent_context());
@@ -1276,7 +1302,7 @@ mod tests {
             "反例必须能观察到第二帧的 ASF overlap 延续"
         );
 
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
 
         for (label, payload, context, expected_pcm) in [
             (
@@ -1293,11 +1319,11 @@ mod tests {
             ),
         ] {
             let mut input = audio_input_with_context(payload, context, None);
-            input.mode = super::super::FullAjocDecodeMode::ObserveFull;
+            input.mode = crate::full_ajoc::FullAjocDecodeMode::ObserveFull;
             let error = decoder
                 .decode_audio_frame(input)
                 .expect_err("active companding 必须被 A-SPX 门禁拒绝");
-            let super::super::FullAjocAudioFrameError::Decode(error) = error else {
+            let crate::full_ajoc::FullAjocAudioFrameError::Decode(error) = error else {
                 panic!("{label} 必须先成功解析前端，再由 A-SPX 门禁拒绝")
             };
             assert!(error.detail().contains("companding"));
@@ -1330,7 +1356,7 @@ mod tests {
     #[test]
     fn mutable_preparation_invalidates_frontend_observations_before_workspace_resize() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         decoder
             .decode_audio_frame(audio_input(payload.as_slice()))
             .expect("完整帧应建立两份前端 observation");
@@ -1428,10 +1454,10 @@ mod tests {
     fn audio_frame_input_exhaustion_preserves_all_history_for_retry() {
         let iframe = payload_for_frame_with_spectrum(true, true);
         let dependent = payload_for_frame_with_spectrum(false, true);
-        let iframe_provenance = super::super::FullAjocFrameProvenance::new(70);
-        let dependent_provenance = super::super::FullAjocFrameProvenance::new(71);
+        let iframe_provenance = crate::full_ajoc::FullAjocFrameProvenance::new(70);
+        let dependent_provenance = crate::full_ajoc::FullAjocFrameProvenance::new(71);
 
-        let mut reference = super::super::FullAjocDecoder::new();
+        let mut reference = crate::full_ajoc::FullAjocDecoder::new();
         reference
             .decode_audio_frame(audio_input_with_provenance(
                 iframe.as_slice(),
@@ -1452,7 +1478,7 @@ mod tests {
             audio_frame_snapshot(&decoded)
         };
 
-        let mut retried = super::super::FullAjocDecoder::new();
+        let mut retried = crate::full_ajoc::FullAjocDecoder::new();
         retried
             .decode_audio_frame(audio_input_with_provenance(
                 iframe.as_slice(),
@@ -1502,7 +1528,7 @@ mod tests {
     fn complete_audio_frame_input_exhaustion_discards_all_history() {
         let iframe = payload_for_frame_with_spectrum(true, true);
         let dependent = payload_for_frame_with_spectrum(false, true);
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
 
         decoder
             .decode_complete_audio_frame(audio_input_with_context(
@@ -1536,7 +1562,7 @@ mod tests {
             .expect_err("坏帧后的依赖帧不得沿用此前 I 帧语法配置");
         assert!(matches!(
             next_error,
-            super::super::FullAjocAudioFrameError::Syntax(FullAjocSyntaxError::Decode {
+            crate::full_ajoc::FullAjocAudioFrameError::Syntax(FullAjocSyntaxError::Decode {
                 error: SubstreamAudioError::AudioData(
                     crate::audio_data::AudioDataError::VarElement(
                         crate::var_element::VarElementError::MissingAspxConfig
@@ -1552,7 +1578,7 @@ mod tests {
         let iframe = payload_for_frame_with_spectrum(true, true);
         let short_audio_region = payload_for_frame_with_audio_size_delta(false, true, None, -1);
         let dependent = payload_for_frame_with_spectrum(false, true);
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
 
         decoder
             .decode_audio_frame(audio_input_with_context(iframe.as_slice(), context(), None))
@@ -1568,7 +1594,7 @@ mod tests {
             .expect_err("声明过短的 audio_size 必须在音频区段内失败");
         assert!(matches!(
             &error,
-            super::super::FullAjocAudioFrameError::Syntax(FullAjocSyntaxError::Decode {
+            crate::full_ajoc::FullAjocAudioFrameError::Syntax(FullAjocSyntaxError::Decode {
                 error: SubstreamAudioError::AudioData(_),
                 ..
             })
@@ -1591,7 +1617,7 @@ mod tests {
             .expect_err("坏帧之后的依赖帧不得沿用此前 I 帧配置");
         assert!(matches!(
             next_error,
-            super::super::FullAjocAudioFrameError::Syntax(FullAjocSyntaxError::Decode {
+            crate::full_ajoc::FullAjocAudioFrameError::Syntax(FullAjocSyntaxError::Decode {
                 error: SubstreamAudioError::AudioData(
                     crate::audio_data::AudioDataError::VarElement(
                         crate::var_element::VarElementError::MissingAspxConfig
@@ -1605,7 +1631,7 @@ mod tests {
     #[test]
     fn partial_frame_entries_cut_existing_qmf_and_full_history() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
 
         decoder
             .decode_audio_frame(audio_input(payload.as_slice()))
@@ -1637,16 +1663,16 @@ mod tests {
         let first_payload = payload_for_frame_with_oamd_position(true, false, Some(7));
         let second_payload = payload_for_frame_with_oamd_position(true, false, Some(19));
         let third_payload = payload_for_frame_with_oamd_position(true, false, Some(31));
-        let first_provenance = super::super::FullAjocFrameProvenance::new(40)
+        let first_provenance = crate::full_ajoc::FullAjocFrameProvenance::new(40)
             .with_source_sample_start(-1_920)
             .with_presentation_sample_start(0)
             .with_priming_samples(1_920)
             .with_random_access_hint(true)
             .with_discontinuity(true);
-        let second_provenance = super::super::FullAjocFrameProvenance::new(41)
+        let second_provenance = crate::full_ajoc::FullAjocFrameProvenance::new(41)
             .with_source_sample_start(0)
             .with_presentation_sample_start(1_920);
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
 
         let (first_dmx, first_umx, first_audio) = {
             let decoded = decoder
@@ -1747,7 +1773,7 @@ mod tests {
                     third_payload.as_slice(),
                     context(),
                     None,
-                    super::super::FullAjocFrameProvenance::new(42),
+                    crate::full_ajoc::FullAjocFrameProvenance::new(42),
                 ))
                 .expect("第三帧应能解码");
             let aligned = decoded
@@ -1787,7 +1813,7 @@ mod tests {
                 first_payload.as_slice(),
                 context(),
                 None,
-                super::super::FullAjocFrameProvenance::new(43),
+                crate::full_ajoc::FullAjocFrameProvenance::new(43),
             ))
             .expect("reset 后应能从 warm-up 重起");
         assert!(decoded.output().observation().warmup());
@@ -1800,8 +1826,8 @@ mod tests {
     #[test]
     fn stable_audio_frames_reuse_all_borrowed_output_buffers() {
         let payload = payload();
-        let mut decoder = super::super::FullAjocDecoder::new();
-        let decode_layout = |decoder: &mut super::super::FullAjocDecoder| {
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
+        let decode_layout = |decoder: &mut crate::full_ajoc::FullAjocDecoder| {
             let decoded = decoder
                 .decode_audio_frame(audio_input(payload.as_slice()))
                 .expect("稳定完整帧应能解码");
@@ -1847,7 +1873,7 @@ mod tests {
     fn downstream_failure_rolls_back_syntax_and_asf_frontends() {
         let iframe = payload_for_frame_with_spectrum(true, true);
         let dependent = payload_for_frame(false);
-        let decode_asf = |decoder: &mut super::super::FullAjocDecoder| {
+        let decode_asf = |decoder: &mut crate::full_ajoc::FullAjocDecoder| {
             decoder
                 .decode_audio_frame(audio_input(iframe.as_slice()))
                 .expect("非零完整帧应能解码")
@@ -1861,10 +1887,10 @@ mod tests {
                 .collect::<Vec<_>>()
         };
 
-        let mut reference = super::super::FullAjocDecoder::new();
+        let mut reference = crate::full_ajoc::FullAjocDecoder::new();
         let fresh = decode_asf(&mut reference);
 
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         assert_eq!(decode_asf(&mut decoder), fresh);
         let failure = decoder
             .decode_audio_frame(audio_input_with_context(
@@ -1875,7 +1901,7 @@ mod tests {
             .expect_err("无 LFE 元素不得接受 LFE 插回位置");
         assert!(matches!(
             failure,
-            super::super::FullAjocAudioFrameError::Decode(_)
+            crate::full_ajoc::FullAjocAudioFrameError::Decode(_)
         ));
 
         let failure = decoder
@@ -1887,7 +1913,7 @@ mod tests {
             .expect_err("失败帧解析出的 I 帧配置不得遗留");
         assert!(matches!(
             failure,
-            super::super::FullAjocAudioFrameError::Syntax(_)
+            crate::full_ajoc::FullAjocAudioFrameError::Syntax(_)
         ));
         assert_eq!(
             decode_asf(&mut decoder),
@@ -1899,7 +1925,7 @@ mod tests {
     #[test]
     fn syntax_only_frame_invalidates_existing_asf_overlap() {
         let payload = payload_for_frame_with_spectrum(true, true);
-        let decode_pcm = |decoder: &mut super::super::FullAjocDecoder| {
+        let decode_pcm = |decoder: &mut crate::full_ajoc::FullAjocDecoder| {
             decoder
                 .decode_frontend_frame(input(payload.as_slice()))
                 .expect("非零 ASF 前端应能重建")
@@ -1912,12 +1938,12 @@ mod tests {
                 .collect::<Vec<_>>()
         };
 
-        let mut reference = super::super::FullAjocDecoder::new();
+        let mut reference = crate::full_ajoc::FullAjocDecoder::new();
         let fresh = decode_pcm(&mut reference);
         let continued = decode_pcm(&mut reference);
         assert_ne!(continued, fresh, "夹具必须能观察到 overlap 延续");
 
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         assert_eq!(decode_pcm(&mut decoder), fresh);
         decoder
             .decode_syntax_frame(input(payload.as_slice()))
@@ -1930,7 +1956,7 @@ mod tests {
     fn asf_failure_discards_the_frontends_inherited_syntax_state() {
         let iframe = payload_for_frame(true);
         let dependent = payload_for_frame(false);
-        let mut decoder = super::super::FullAjocDecoder::new();
+        let mut decoder = crate::full_ajoc::FullAjocDecoder::new();
         decoder
             .prepare_asf_substream(0, 2048)
             .expect("测试先绑定一份冲突的 ASF 帧长");
@@ -1940,7 +1966,7 @@ mod tests {
             .expect_err("ASF 帧长冲突必须让组合事务失败");
         assert!(matches!(
             failure,
-            super::super::FullAjocFrontendError::Asf(_)
+            crate::full_ajoc::FullAjocFrontendError::Asf(_)
         ));
 
         let failure = decoder
@@ -1951,7 +1977,7 @@ mod tests {
             .expect_err("前一事务解析出的 I 帧配置不得在失败后遗留");
         assert!(matches!(
             failure,
-            super::super::FullAjocFrontendError::Syntax(_)
+            crate::full_ajoc::FullAjocFrontendError::Syntax(_)
         ));
     }
 
@@ -2030,5 +2056,116 @@ mod tests {
             }
         );
         assert!(decoder.states.is_empty());
+    }
+}
+
+impl Default for FullAjocSyntaxDecoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+fn reserve_syntax<T>(
+    buffer: &mut Vec<T>,
+    needed: usize,
+    kind: FullAjocSyntaxBuffer,
+) -> Result<(), FullAjocSyntaxError> {
+    buffer
+        .try_reserve(needed.saturating_sub(buffer.len()))
+        .map_err(|_| FullAjocSyntaxError::AllocationFailure {
+            buffer: kind,
+            needed,
+        })
+}
+
+#[cfg(test)]
+mod syntax_only_tests {
+    use super::*;
+    use crate::testutil::BitBuf;
+    use macindecode_ac4_bitstream::{substream::SubstreamInfo, topology::Ac4Topology};
+
+    #[test]
+    fn independent_syntax_driver_reads_both_object_domains_and_reuses_buffers() {
+        let mut header = BitBuf::new();
+        for bit in "10 0000000000 0 1 0001 1 1 0 0 1 0 000 0 0 00 000 0 00 00 0 000 0 0 0 1 00 1 0 1 0 0 1 0 0 0000 1 0 0000 1 0 0 1 01 0 10 0 0000000000 0 0000000000".bytes().filter(|b|matches!(b,b'0'|b'1')){header.push(bit==b'1');}
+        let topology = Ac4Topology::parse(header.as_slice()).unwrap();
+        let SubstreamInfo::Ajoc(info) = topology
+            .groups()
+            .first()
+            .unwrap()
+            .substreams()
+            .first()
+            .unwrap()
+        else {
+            panic!("A-JOC fixture")
+        };
+        let context = AjocSubstreamContext::derive(&topology.toc, info, 1, 1, false, None).unwrap();
+        let mut audio = BitBuf::new();
+        audio.push(false);
+        audio.push(true);
+        audio.push_aspx_config();
+        audio.push(false);
+        audio.push(false);
+        audio.push_mono_data(2);
+        audio.push_drivable_aspx_data_1ch_for_frame(true);
+        audio.push(true);
+        audio.push_timing(1);
+        audio.push_absolute_position_block(true, 0, 2, true, 3);
+        audio.push(false);
+        audio.push_minimal_ajoc(1);
+        audio.push_minimal_dmx_de(1);
+        audio.push(false);
+        audio.push(true);
+        audio.push_absolute_position_block(true, 62, 4, true, 5);
+        audio.byte_align();
+        let mut payload = BitBuf::new();
+        payload.push_bits(u32::try_from(audio.as_slice().len()).unwrap(), 15);
+        payload.push(false);
+        payload.push_bytes(audio.as_slice());
+        for _ in 0..4 {
+            payload.push(false);
+        }
+        payload.push_bits(1, 7);
+        payload.push(false);
+        payload.push(false);
+        payload.push(false);
+        payload.byte_align();
+        let mut decoder = FullAjocSyntaxDecoder::new();
+        for _ in 0..2 {
+            let frame = decoder
+                .decode_complete_frame(FullAjocSyntaxFrameInput {
+                    payload: payload.as_slice(),
+                    context,
+                    substream_index: 1,
+                    physical_substreams: 1,
+                })
+                .unwrap();
+            assert_eq!(frame.dmx_blocks().len(), 1);
+            assert_eq!(frame.umx_blocks().len(), 1);
+            assert_eq!(
+                frame.parsed().substream.audio_size,
+                u32::try_from(audio.as_slice().len()).unwrap()
+            );
+        }
+        let address = decoder.workspace.elements.as_ptr();
+        assert!(
+            decoder
+                .decode_complete_frame(FullAjocSyntaxFrameInput {
+                    payload: &[],
+                    context,
+                    substream_index: 1,
+                    physical_substreams: 1
+                })
+                .is_err()
+        );
+        assert!(decoder.last_observation().is_none());
+        decoder
+            .decode_complete_frame(FullAjocSyntaxFrameInput {
+                payload: payload.as_slice(),
+                context,
+                substream_index: 1,
+                physical_substreams: 1,
+            })
+            .unwrap();
+        assert_eq!(decoder.workspace.elements.as_ptr(), address);
     }
 }

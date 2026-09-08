@@ -22,7 +22,7 @@ mod trace;
 mod wire;
 
 use clap::{Args, Parser, Subcommand, ValueEnum, error::ErrorKind};
-use macindecode_ac4_inspect::inspect_path;
+use macindecode_ac4_inspect::{InspectOptions, MetadataDetail, inspect_path_with_options};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -47,6 +47,9 @@ enum Command {
         /// Success-output format; diagnostics remain JSON Lines on standard error.
         #[arg(long, value_enum, default_value_t = InspectFormat::Text)]
         format: InspectFormat,
+        /// Observe all supported metadata, including Core/Full OAMD, without PCM reconstruction.
+        #[arg(long,value_enum,default_value_t=InspectMetadataDetail::Basic)]
+        metadata_detail: InspectMetadataDetail,
     },
     /// Generate a DAMF audition probe from synthetic pink noise and OAMD metadata.
     ExportDamf(ExportDamfArgs),
@@ -70,6 +73,20 @@ enum Command {
 enum InspectFormat {
     Text,
     Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum InspectMetadataDetail {
+    Basic,
+    Full,
+}
+impl From<InspectMetadataDetail> for MetadataDetail {
+    fn from(value: InspectMetadataDetail) -> Self {
+        match value {
+            InspectMetadataDetail::Basic => Self::Basic,
+            InspectMetadataDetail::Full => Self::Full,
+        }
+    }
 }
 
 /// Arguments for `export-objects-pcm`.
@@ -387,15 +404,23 @@ fn main() -> ExitCode {
         }
     };
 
-    if let Command::Inspect { input, format } = cli.command {
-        let result = inspect_path(&input)
-            .map_err(wire::inspect_error)
-            .and_then(|report| match format {
-                InspectFormat::Text => wire::write_inspect_text(&report.render_text()),
-                InspectFormat::Json => {
-                    wire::prepare_inspect(report).and_then(|success| success.write())
-                }
-            });
+    if let Command::Inspect {
+        input,
+        format,
+        metadata_detail,
+    } = cli.command
+    {
+        let result = inspect_path_with_options(
+            &input,
+            InspectOptions::default().with_metadata_detail(metadata_detail.into()),
+        )
+        .map_err(wire::inspect_error)
+        .and_then(|report| match format {
+            InspectFormat::Text => wire::write_inspect_text(&report.render_text()),
+            InspectFormat::Json => {
+                wire::prepare_inspect(report).and_then(|success| success.write())
+            }
+        });
         return match result {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {

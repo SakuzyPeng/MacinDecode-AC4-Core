@@ -31,11 +31,13 @@ mod enabled {
     use crate::scene_batch::{SceneBatchError, collect_core_scene_batch};
     use crate::scene_export::{
         CoreMappedPcm, CoreSceneError, CoreSceneErrorKind, CoreSourceSelection, map_core_pcm,
-        scene_selector, select_core_sources, validate_selected_common, zone_components,
+        scene_selector, select_core_sources, validate_selected_common,
     };
-    use macindecode_ac4_bitstream::oamd::{
-        BedRenderInfo, ObjectGainState, Trim, TrimConfig, TrimConfigMode, WidthUpdate,
-    };
+    use macindecode_ac4_bitstream::oamd::{BedRenderInfo, ObjectGainState, Trim};
+    #[cfg(test)]
+    use macindecode_ac4_bitstream::oamd::{TrimConfig, TrimConfigMode, WidthUpdate};
+    #[cfg(test)]
+    use macindecode_ac4_metadata::layout::neutral_width;
     use macindecode_ac4_scene::PresentationSelection;
     use serde_json::{Value, json};
     use std::fs::{self, File, OpenOptions};
@@ -44,17 +46,8 @@ mod enabled {
     const PCM_SCALE: f32 = 1.0 / 32_768.0;
     const SCALE_DESCRIPTION: &str = "fixed_linear_gain=0.000030517578125;internal_±32768_to_pcm_f32le;normalization=none;limiter=none";
     const WRITE_BLOCK_FRAMES: usize = 1_024;
-    const OBSERVED_ENCODER_TRIM_MODES: [TrimConfigMode; 9] = [
-        TrimConfigMode::Default,
-        TrimConfigMode::Disabled,
-        TrimConfigMode::Disabled,
-        TrimConfigMode::Default,
-        TrimConfigMode::Disabled,
-        TrimConfigMode::Default,
-        TrimConfigMode::Default,
-        TrimConfigMode::Disabled,
-        TrimConfigMode::Default,
-    ];
+    #[cfg(test)]
+    use macindecode_ac4_metadata::layout::OBSERVED_ENCODER_TRIM_MODES;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     enum TrackSource {
@@ -75,40 +68,7 @@ mod enabled {
         tracks: &'static [SpeakerTrack],
     }
 
-    const GRID_5: [(u8, u8, i8); 5] = [(0, 0, 0), (62, 0, 0), (31, 0, 0), (0, 62, 0), (62, 62, 0)];
-    const GRID_7: [(u8, u8, i8); 7] = [
-        (0, 0, 0),
-        (62, 0, 0),
-        (31, 0, 0),
-        (0, 62, 0),
-        (62, 62, 0),
-        (0, 31, 15),
-        (62, 31, 15),
-    ];
-    const GRID_9: [(u8, u8, i8); 9] = [
-        (0, 0, 0),
-        (62, 0, 0),
-        (31, 0, 0),
-        (0, 62, 0),
-        (62, 62, 0),
-        (0, 0, 15),
-        (62, 0, 15),
-        (0, 62, 15),
-        (62, 62, 15),
-    ];
-    const GRID_11: [(u8, u8, i8); 11] = [
-        (0, 0, 0),
-        (62, 0, 0),
-        (31, 0, 0),
-        (0, 31, 0),
-        (62, 31, 0),
-        (0, 0, 15),
-        (62, 0, 15),
-        (0, 62, 15),
-        (62, 62, 15),
-        (0, 62, 0),
-        (62, 62, 0),
-    ];
+    use macindecode_ac4_metadata::layout::{GRID_5, GRID_7, GRID_9, GRID_11};
 
     const TRACKS_51: [SpeakerTrack; 6] = [
         SpeakerTrack::new("L", TrackSource::Q(0)),
@@ -328,40 +288,7 @@ mod enabled {
     }
 
     fn direct_trim_is_supported(trim: Trim) -> bool {
-        if !trim.present {
-            return true;
-        }
-        let no_custom_values = trim.configs.iter().all(trim_config_has_no_custom_values);
-        if !no_custom_values {
-            return false;
-        }
-        let modes = trim.configs.map(|config| config.mode);
-        let mode_is_safe = match trim.global_trim_mode {
-            0 | 1 => modes.iter().all(|mode| *mode == TrimConfigMode::Inherit),
-            2 => modes
-                .iter()
-                .all(|mode| matches!(mode, TrimConfigMode::Default | TrimConfigMode::Disabled)),
-            _ => false,
-        };
-        if !mode_is_safe {
-            return false;
-        }
-        match trim.warp_mode {
-            0 => true,
-            // 当前已验证编码链固定写保留的 0b11，但同时使用这套无自定义系数的
-            // default/disabled profile。直接网格本就只对该实测 profile 开放；其余
-            // 保留值或组合不能据此外推。
-            3 => trim.global_trim_mode == 2 && modes == OBSERVED_ENCODER_TRIM_MODES,
-            _ => false,
-        }
-    }
-
-    fn trim_config_has_no_custom_values(config: &TrimConfig) -> bool {
-        config.centre.is_none()
-            && config.surround.is_none()
-            && config.height.is_none()
-            && config.top_bottom_y.is_none()
-            && config.listener_y.is_none()
+        macindecode_ac4_metadata::layout::direct_trim_is_supported(trim)
     }
 
     fn ramp_predecessor(
@@ -439,54 +366,18 @@ mod enabled {
                 event.sample
             )));
         }
-        let render = event.state.render.ok_or_else(|| {
+        macindecode_ac4_metadata::layout::validate_grid_object(
+            event.state,
+            event.additional,
+            expected,
+        )
+        .map_err(|reason| {
             reject(format!(
-                "Core object {selector} lacks a complete render state at sample {}",
+                "Core object {selector} at sample {}: {reason}",
                 event.sample
             ))
         })?;
-        let actual = (render.position.x, render.position.y, render.position.z);
-        if actual != expected || event.additional.extended_position.is_some() {
-            return Err(reject(format!(
-                "Core object {selector} has position {:?} at sample {}, not fixed template {:?}, or uses extended coordinates",
-                actual, event.sample, expected
-            )));
-        }
-        if !neutral_width(render.other_properties.width) {
-            return Err(reject(format!(
-                "Core object {selector} uses nonzero width at sample {}",
-                event.sample
-            )));
-        }
-        if zone_components(render.zone) != (false, true, 0) {
-            return Err(reject(format!(
-                "Core object {selector} uses a non-default zone/channel lock at sample {}",
-                event.sample
-            )));
-        }
-        let other = render.other_properties;
-        if other.screen_factor_code.is_some()
-            || other.depth_factor.is_some()
-            || other.object_at_infinity.is_some()
-            || other.distance_factor_code.is_some()
-            || other.divergence_mode.is_some()
-            || other.divergence_table.is_some()
-            || other.divergence_code.is_some()
-        {
-            return Err(reject(format!(
-                "Core object {selector} uses screen/depth/distance/infinity/divergence spatial modifiers at sample {}",
-                event.sample
-            )));
-        }
         Ok(())
-    }
-
-    fn neutral_width(width: Option<WidthUpdate>) -> bool {
-        matches!(
-            width,
-            None | Some(WidthUpdate::Uniform(0))
-                | Some(WidthUpdate::Cartesian { x: 0, y: 0, z: 0 })
-        )
     }
 
     fn ensure_output(output: &Path) -> Result<(), CliError> {

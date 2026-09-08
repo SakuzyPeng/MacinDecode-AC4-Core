@@ -1015,22 +1015,19 @@ fn resolve_oamd_updates(
 ) -> Result<OamdState, OamdStateError> {
     snapshots.clear();
     let mut next = initial;
-    for raw in blocks {
-        if let Err(error) = next.apply_blocks(core::slice::from_ref(raw), None) {
-            snapshots.clear();
-            return Err(error);
-        }
-        let index = usize::from(raw.object_index);
-        let Some(state) = oamd_object_state(&next, index) else {
-            snapshots.clear();
-            return Err(OamdStateError::ObjectIndexOutOfRange {
-                object_index: raw.object_index,
-                limit: macindecode_ac4_bitstream::oamd::MAX_OAMD_OBJECTS,
+    if let Err(error) = next.apply_blocks_with_observer(
+        blocks,
+        Some(num_obj_info_blocks),
+        |raw, metadata, additional| {
+            snapshots.push(FullAjocOamdUpdateSnapshot {
+                raw: *raw,
+                state: FullAjocOamdObjectState {
+                    metadata,
+                    additional,
+                },
             });
-        };
-        snapshots.push(FullAjocOamdUpdateSnapshot { raw: *raw, state });
-    }
-    if let Err(error) = next.apply_blocks(&[], Some(num_obj_info_blocks)) {
+        },
+    ) {
         snapshots.clear();
         return Err(error);
     }
@@ -1925,7 +1922,7 @@ impl FullAjocDecoder {
     }
 
     #[cfg(test)]
-    pub(super) fn downstream_is_fresh(&self, substream_index: u32) -> bool {
+    pub(crate) fn downstream_is_fresh(&self, substream_index: u32) -> bool {
         let index = usize::try_from(substream_index).unwrap_or(usize::MAX);
         self.substreams
             .get(index)
@@ -1968,7 +1965,7 @@ impl FullAjocDecoder {
     ///
     /// 重复调用相同帧长不会重新分配；未经 reset 改变帧长会结构化失败。
     #[cfg(test)]
-    pub(super) fn prepare_asf_substream(
+    pub(crate) fn prepare_asf_substream(
         &mut self,
         substream_index: u32,
         frame_length: u16,

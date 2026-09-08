@@ -24,7 +24,12 @@ macindecode-ac4-decode = "0.1.0"
 随附 C 表：规范表流水线与冻结摘要因此只有一份真相源。默认 feature 下不含任何规范表，
 `macindecode-ac4-bitstream` 也因此不需要构建脚本。
 
-## `spec-tables` 与 `audio-decode`
+## `spec-tables`、`metadata-decode` 与 `audio-decode`
+
+`metadata-decode` 包含 `spec-tables` 与 Huffman 语法/DRC/DE 解码，提供独立的
+`audio_syntax::FullAjocSyntaxDecoder`。它不创建 PCM、QMF 或对象重建状态，完整 AU 控制与
+元数据继承会话由 `macindecode-ac4-metadata` 提供。`audio-decode` 包含 `metadata-decode`
+并额外启用完整音频引擎；旧 Full decoder 语法出口保持可用。
 
 `spec-tables` 启用 ASF 成帧/IMDCT、A-SPX 表与 A-JOC 参数表；其数值由用户从
 官方 ETSI PDF 本地生成。`audio-decode` 会自动包含 `spec-tables`，并额外消费

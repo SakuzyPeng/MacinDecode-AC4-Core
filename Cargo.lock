@@ -201,6 +201,7 @@ dependencies = [
  "macindecode-ac4-bitstream",
  "macindecode-ac4-decode",
  "macindecode-ac4-inspect",
+ "macindecode-ac4-metadata",
  "macindecode-ac4-mp4",
  "macindecode-ac4-scene",
  "quick-xml",
@@ -222,9 +223,18 @@ name = "macindecode-ac4-inspect"
 version = "0.1.0"
 dependencies = [
  "macindecode-ac4-bitstream",
+ "macindecode-ac4-metadata",
  "macindecode-ac4-mp4",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "macindecode-ac4-metadata"
+version = "0.1.0"
+dependencies = [
+ "macindecode-ac4-bitstream",
+ "macindecode-ac4-decode",
 ]
 
 [[package]]
@@ -254,6 +264,7 @@ version = "0.1.0"
 dependencies = [
  "macindecode-ac4-bitstream",
  "macindecode-ac4-decode",
+ "macindecode-ac4-metadata",
 ]
 
 [[package]]

@@ -365,7 +365,7 @@ impl VarChannelElement {
     /// `channel_elements`/`aspx_elements`/`balanced_aspx` 按解析器的同一套规则
     /// 推出，不由调用方任意指定——否则用它搭出来的夹具可以自相矛盾，而本模块
     /// 那几条路由判据恰恰是靠这几个量互相钉住的。
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(
         codec_mode_aspx: bool,
         coding_config: Option<bool>,

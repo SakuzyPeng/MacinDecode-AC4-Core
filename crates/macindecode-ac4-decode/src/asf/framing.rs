@@ -419,7 +419,7 @@ pub struct AsfWindowLayout {
 /// 频带偏移可由这些字段和静态 SFB 表唯一推导；不复制 16 × 65 的偏移表，避免
 /// 每个通道工作区再增加约 2 KiB。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub(crate) struct AsfLayoutKey {
     num_windows: u8,
     num_window_groups: u8,
@@ -430,7 +430,7 @@ pub(crate) struct AsfLayoutKey {
     total_lines: u32,
 }
 
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 impl AsfLayoutKey {
     pub(crate) const fn empty() -> Self {
         Self {
@@ -463,7 +463,7 @@ impl AsfWindowLayout {
     }
 
     /// 供谱解析与重建核对调用方没有混用不同声道或帧的布局。
-    #[cfg(feature = "audio-decode")]
+    #[cfg(feature = "metadata-decode")]
     pub(crate) const fn key(&self) -> AsfLayoutKey {
         AsfLayoutKey {
             num_windows: self.num_windows,

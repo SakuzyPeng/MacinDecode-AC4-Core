@@ -11,18 +11,15 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use macindecode_ac4_bitstream::{
-    Ac4PresentationSubstream, Ac4Toc, PresentationChannelContext, PresentationDrcConfiguration,
-    PresentationDrcDecoderMode, PresentationDrcProfile, PresentationDrcState,
-    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainState,
-    SequenceTransition, SyncFrameIter,
+    PresentationDrcConfiguration, PresentationDrcDecoderMode, PresentationDrcProfile,
+    PresentationSubstreamError, SequenceTransition, SyncFrameIter,
     audio_substream::{
-        Ac4AudioSubstream, AudioSubstreamError, DialogEnhancementConfiguration,
-        DialogEnhancementConfigurationUpdate, FurtherLoudnessInfo, PreprocessingMetadata,
-        SubstreamContext,
+        AudioSubstreamError, DialogEnhancementConfiguration, DialogEnhancementConfigurationUpdate,
+        FurtherLoudnessInfo, PreprocessingMetadata,
     },
     presentation::presentation_config_label,
     substream::{ChannelMode, SubstreamInfo, SubstreamInfoChan},
-    topology::{Ac4Topology, ConfigFingerprint, RandomAccess, TopologyError},
+    topology::{Ac4Topology, ConfigFingerprint, RandomAccess},
 };
 use macindecode_ac4_mp4::{
     Ac4BitrateDsi, Ac4Dsi, Ac4DsiPresentationIndicators, Ac4Mp4, Ac4Mp4Error,
@@ -31,8 +28,40 @@ use macindecode_ac4_mp4::{
 use serde::Serialize;
 use serde_json::{Value, json};
 
+pub use macindecode_ac4_metadata::MetadataDetail;
+use macindecode_ac4_metadata::{
+    Ac4MetadataConfig, Ac4MetadataSession, AccessUnit, AccessUnitContext, MetadataAccessUnit,
+    MetadataErrorKind,
+};
+mod core_layout;
+pub use core_layout::*;
+#[cfg(test)]
+use macindecode_ac4_bitstream::{
+    Ac4PresentationSubstream, PresentationChannelContext, PresentationDrcState,
+    PresentationSubstreamContext,
+};
 mod stream;
-pub use stream::{inspect_mp4_reader, inspect_raw_reader, inspect_reader};
+pub use stream::{
+    inspect_mp4_reader, inspect_mp4_reader_with_options, inspect_raw_reader,
+    inspect_raw_reader_with_options, inspect_reader, inspect_reader_with_options,
+};
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct InspectOptions {
+    pub metadata_detail: MetadataDetail,
+}
+impl InspectOptions {
+    pub const fn with_metadata_detail(mut self, detail: MetadataDetail) -> Self {
+        self.metadata_detail = detail;
+        self
+    }
+    fn validate(self) -> Result<(), InspectError> {
+        if self.metadata_detail == MetadataDetail::Full && !cfg!(feature = "metadata-decode") {
+            return Err(InspectError::FeatureUnavailable);
+        }
+        Ok(())
+    }
+}
 
 /// How [`inspect_bytes`] should interpret its input.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -115,6 +144,8 @@ impl fmt::Display for InspectIssueSeverity {
 /// A fatal error produced before an inspect report can be completed.
 #[derive(Debug)]
 pub enum InspectError {
+    /// 完整扫描需要 metadata-decode feature 和本地规范表。
+    FeatureUnavailable,
     /// The input path could not be read.
     Read {
         /// Requested input path.
@@ -141,6 +172,9 @@ pub enum InspectError {
 impl fmt::Display for InspectError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::FeatureUnavailable => {
+                formatter.write_str("full metadata inspection requires the metadata-decode feature")
+            }
             Self::Read { path, source } => {
                 write!(formatter, "failed to read {}: {source}", path.display())
             }
@@ -158,7 +192,7 @@ impl Error for InspectError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Read { source, .. } => Some(source),
-            Self::EmptyInput { .. } | Self::Parse { .. } => None,
+            Self::EmptyInput { .. } | Self::Parse { .. } | Self::FeatureUnavailable => None,
         }
     }
 }
@@ -567,6 +601,7 @@ pub struct InspectReport {
     pub presentations: Vec<InspectPresentation>,
     pub audio_substreams: Vec<InspectAudioSubstream>,
     pub issues: Vec<InspectIssue>,
+    pub core_layouts: InspectCoreLayouts,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -621,6 +656,7 @@ fn gcd_u128(mut left: u128, mut right: u128) -> Option<u128> {
 
 #[derive(Debug, Clone)]
 struct DsiPresentationSummary {
+    core_layout: Option<macindecode_ac4_mp4::dsi::Ac4DsiPresentationCoreLayout>,
     index: usize,
     effective_id: Option<u32>,
     presentation_config: u8,
@@ -636,6 +672,7 @@ struct DsiPresentationSummary {
 
 #[derive(Debug, Clone)]
 struct DsiSummary {
+    unavailable_presentation_identities: usize,
     bitstream_version: u8,
     sample_rate: u32,
     frame_rate_numerator: u32,
@@ -649,12 +686,6 @@ enum PresentationKey {
     Id(u32),
     DuplicateId(u32, usize),
     Anonymous(usize),
-}
-
-#[derive(Debug, Default)]
-struct PresentationParseState {
-    drc: PresentationDrcState,
-    group_gain: PresentationSubstreamGroupGainState,
 }
 
 #[derive(Debug, Clone)]
@@ -717,6 +748,9 @@ struct SubstreamAccumulator {
 
 #[derive(Debug, Default)]
 struct Aggregator {
+    metadata_session: Option<Ac4MetadataSession>,
+    options: InspectOptions,
+    core_layouts: core_layout::CoreLayoutAccumulator,
     canonical_fingerprint: Option<ConfigFingerprint>,
     last_fingerprint: Option<ConfigFingerprint>,
     canonical_changed: bool,
@@ -732,10 +766,7 @@ struct Aggregator {
     observed_duration: Option<DurationRatio>,
     duration_unavailable: bool,
     presentations: BTreeMap<PresentationKey, PresentationAccumulator>,
-    presentation_states: BTreeMap<PresentationKey, PresentationParseState>,
-    presentation_channels: BTreeMap<PresentationKey, PresentationChannelContext>,
     substreams: BTreeMap<u32, SubstreamAccumulator>,
-    audio_contexts: BTreeMap<u32, SubstreamContext>,
     issues: Vec<InspectIssue>,
 }
 
@@ -744,6 +775,13 @@ struct Aggregator {
 /// Format detection matches [`InspectInputFormat::Auto`]. The complete file is
 /// inspected with bounded packet buffers; no audio reconstruction tables are required.
 pub fn inspect_path(path: impl AsRef<Path>) -> Result<InspectReport, InspectError> {
+    inspect_path_with_options(path, InspectOptions::default())
+}
+pub fn inspect_path_with_options(
+    path: impl AsRef<Path>,
+    options: InspectOptions,
+) -> Result<InspectReport, InspectError> {
+    options.validate()?;
     let path = path.as_ref();
     let file = std::fs::File::open(path).map_err(|source| InspectError::Read {
         path: path.to_path_buf(),
@@ -751,9 +789,10 @@ pub fn inspect_path(path: impl AsRef<Path>) -> Result<InspectReport, InspectErro
     })?;
     let input = path.display().to_string();
     let mut reader = io::BufReader::with_capacity(256 * 1024, file);
-    inspect_reader(
+    inspect_reader_with_options(
         &mut reader,
         InspectSourceHint::new(Some(&input), InspectInputFormat::Auto),
+        options,
     )
 }
 
@@ -765,13 +804,28 @@ pub fn inspect_bytes(
     data: &[u8],
     source: InspectSourceHint<'_>,
 ) -> Result<InspectReport, InspectError> {
-    inspect_named_bytes(data, source.name.unwrap_or("<memory>"), source.format)
+    inspect_bytes_with_options(data, source, InspectOptions::default())
+}
+
+pub fn inspect_bytes_with_options(
+    data: &[u8],
+    source: InspectSourceHint<'_>,
+    options: InspectOptions,
+) -> Result<InspectReport, InspectError> {
+    options.validate()?;
+    inspect_named_bytes(
+        data,
+        source.name.unwrap_or("<memory>"),
+        source.format,
+        options,
+    )
 }
 
 fn inspect_named_bytes(
     data: &[u8],
     input: &str,
     requested_format: InspectInputFormat,
+    options: InspectOptions,
 ) -> Result<InspectReport, InspectError> {
     if data.is_empty() {
         return Err(InspectError::EmptyInput {
@@ -790,8 +844,8 @@ fn inspect_named_bytes(
         InspectInputFormat::AnnexG => InspectSourceKind::AnnexG,
     };
     let result = match format {
-        InspectSourceKind::Mp4 => inspect_mp4(data, input),
-        InspectSourceKind::AnnexG => inspect_raw(data, input),
+        InspectSourceKind::Mp4 => inspect_mp4(data, input, options),
+        InspectSourceKind::AnnexG => inspect_raw(data, input, options),
     };
     result.map_err(|cause| InspectError::Parse {
         input: input.to_owned(),
@@ -800,8 +854,8 @@ fn inspect_named_bytes(
     })
 }
 
-fn inspect_raw(data: &[u8], input: &str) -> Result<InspectReport, String> {
-    let mut aggregate = Aggregator::default();
+fn inspect_raw(data: &[u8], input: &str, options: InspectOptions) -> Result<InspectReport, String> {
+    let mut aggregate = Aggregator::new(options);
     let mut total_transport_bytes = 0u128;
     let mut sync_words = BTreeSet::new();
     let mut crc_protected = 0u64;
@@ -866,11 +920,11 @@ fn inspect_raw(data: &[u8], input: &str) -> Result<InspectReport, String> {
     )
 }
 
-fn inspect_mp4(data: &[u8], input: &str) -> Result<InspectReport, String> {
+fn inspect_mp4(data: &[u8], input: &str, options: InspectOptions) -> Result<InspectReport, String> {
     let source = Ac4Mp4::parse(data).map_err(|error| error.to_string())?;
     let dsi_summary = collect_dsi_summary(source.dsi())?;
 
-    let mut aggregate = Aggregator::default();
+    let mut aggregate = Aggregator::new(options);
     let mut total_sample_bytes = 0u128;
     let mut duration_ticks = 0u128;
     for item in source.access_units() {
@@ -913,6 +967,7 @@ fn collect_dsi_summary(dsi: &Ac4Dsi<'_>) -> Result<DsiSummary, String> {
         )
     })?;
     let mut summary = DsiSummary {
+        unavailable_presentation_identities: 0,
         bitstream_version: dsi.bitstream_version,
         sample_rate: dsi.base_sampling_frequency.hz(),
         frame_rate_numerator: rate.numerator,
@@ -927,6 +982,9 @@ fn collect_dsi_summary(dsi: &Ac4Dsi<'_>) -> Result<DsiSummary, String> {
     for item in v1.presentations() {
         let envelope = item.map_err(|error| error.to_string())?;
         let Some(presentation) = envelope.v1().map_err(|error| error.to_string())? else {
+            summary.unavailable_presentation_identities = summary
+                .unavailable_presentation_identities
+                .saturating_add(1);
             continue;
         };
         let mut languages = Vec::new();
@@ -944,6 +1002,7 @@ fn collect_dsi_summary(dsi: &Ac4Dsi<'_>) -> Result<DsiSummary, String> {
             }
         }
         summary.presentations.push(DsiPresentationSummary {
+            core_layout: presentation.core_layout,
             index: usize::from(presentation.index),
             effective_id: presentation.effective_presentation_id().map(u32::from),
             presentation_config: presentation.presentation_config,
@@ -963,8 +1022,62 @@ fn collect_dsi_summary(dsi: &Ac4Dsi<'_>) -> Result<DsiSummary, String> {
 }
 
 impl Aggregator {
+    fn new(options: InspectOptions) -> Self {
+        Self {
+            options,
+            ..Self::default()
+        }
+    }
     fn observe(&mut self, frame: &[u8], index: u64) -> Result<(), String> {
-        let toc = Ac4Toc::parse(frame).map_err(|error| format!("Frame {index}: {error}"))?;
+        let mut session = match self.metadata_session.take() {
+            Some(session) => session,
+            None => Ac4MetadataSession::new(
+                Ac4MetadataConfig::new().with_detail(self.options.metadata_detail),
+            )
+            .map_err(|e| e.to_string())?,
+        };
+        let result = match session
+            .observe_access_unit(AccessUnit::new(frame, AccessUnitContext::new(index)))
+        {
+            Ok(observation) => {
+                self.core_layouts
+                    .observe(observation, self.options.metadata_detail);
+                for diagnostic in observation.diagnostics().iter().filter(|d| {
+                    !matches!(
+                        d.partition,
+                        macindecode_ac4_metadata::MetadataPartition::Topology
+                            | macindecode_ac4_metadata::MetadataPartition::Presentation
+                            | macindecode_ac4_metadata::MetadataPartition::Audio
+                    )
+                }) {
+                    let context = diagnostic.error.context();
+                    let mut issue = InspectIssue::warning(
+                        "metadata_partition_unavailable",
+                        format!("{:?}: {}", diagnostic.partition, diagnostic.error),
+                        Some(index),
+                    )
+                    .presentation(context.presentation_id);
+                    if let Some(substream) = context.substream_index {
+                        issue = issue.substream(substream);
+                    }
+                    self.issues.push(issue);
+                }
+                self.observe_metadata(frame, index, observation)
+            }
+            Err(error) => Err(format!("Frame {index}: {error}")),
+        };
+        self.metadata_session = Some(session);
+        result
+    }
+    fn observe_metadata(
+        &mut self,
+        frame: &[u8],
+        index: u64,
+        observation: MetadataAccessUnit<'_>,
+    ) -> Result<(), String> {
+        let toc = observation
+            .toc()
+            .ok_or("Metadata observation lacks a TOC")?;
         self.frame_count = self.frame_count.saturating_add(1);
         self.bitstream_versions.insert(toc.bitstream_version);
         self.fs_indices.insert(toc.fs_index);
@@ -1010,9 +1123,9 @@ impl Aggregator {
         if sequence_change {
             self.reset_parser_history();
         }
-        let topology = match Ac4Topology::parse(frame) {
-            Ok(topology) => topology,
-            Err(error @ TopologyError::Unsupported { .. }) => {
+        let topology = match observation.topology() {
+            Some(topology) => topology,
+            None => {
                 self.reset_parser_history();
                 self.last_fingerprint = None;
                 self.previous_sequence = Some(toc.sequence_counter);
@@ -1022,12 +1135,11 @@ impl Aggregator {
                 self.canonical_changed |= self.canonical_fingerprint.is_some();
                 self.issues.push(InspectIssue::warning(
                     "topology_unsupported",
-                    error.to_string(),
+                    "topology is unsupported by the bounded parser".to_owned(),
                     Some(index),
                 ));
                 return Ok(());
             }
-            Err(error) => return Err(format!("Frame {index}: {error}")),
         };
         let fingerprint = topology.config_fingerprint();
         let generation_change = self
@@ -1044,7 +1156,7 @@ impl Aggregator {
         }
         if self.canonical_fingerprint.is_none() {
             self.canonical_fingerprint = Some(fingerprint);
-            self.initialize_configuration(&topology, index)?;
+            self.initialize_configuration(topology, index)?;
             if self.frames_before_baseline != 0 {
                 self.issues.push(InspectIssue::warning(
                     "frames_before_complete_configuration",
@@ -1070,17 +1182,14 @@ impl Aggregator {
             return Ok(());
         }
 
-        self.observe_presentation_payloads(frame, &topology, index)?;
-        self.observe_audio_payloads(frame, &topology, index)?;
+        self.observe_presentation_payloads(frame, topology, index, observation)?;
+        self.observe_audio_payloads(frame, topology, index, observation)?;
         self.previous_sequence = Some(topology.toc.sequence_counter);
         self.last_fingerprint = Some(fingerprint);
         Ok(())
     }
 
     fn reset_parser_history(&mut self) {
-        self.presentation_states.clear();
-        self.presentation_channels.clear();
-        self.audio_contexts.clear();
         for substream in self.substreams.values_mut() {
             substream.de_configuration = None;
         }
@@ -1238,138 +1347,66 @@ impl Aggregator {
         frame: &[u8],
         topology: &Ac4Topology,
         frame_index: u64,
+        observation: MetadataAccessUnit<'_>,
     ) -> Result<(), String> {
         for (presentation_index, presentation) in topology.presentations().iter().enumerate() {
             let Some(substream) = presentation.substream else {
                 continue;
             };
             let key = presentation_key(topology, presentation_index, presentation.presentation_id);
-            let Some(context) = topology.presentation_substream_context(presentation_index) else {
-                if let Some(accumulator) = self.presentations.get_mut(&key) {
-                    record_metadata_failure(
-                        &mut accumulator.metadata_failure,
+            let Some(record) = observation
+                .presentations()
+                .iter()
+                .find(|r| usize::try_from(r.presentation_index) == Ok(presentation_index))
+            else {
+                continue;
+            };
+            let payload = topology
+                .substream_payload(frame, substream.substream_index)
+                .map_err(|e| e.to_string())?;
+            if let Err(error) = record.result {
+                let (failure, code) = match error.kind() {
+                    MetadataErrorKind::Presentation(e) => {
+                        if !presentation_metadata_error_is_reportable(e) {
+                            return Err(format!(
+                                "Frame {frame_index}, presentation {:?}: {e}",
+                                presentation.presentation_id
+                            ));
+                        }
+                        let failure = presentation_metadata_failure(e);
+                        let code = if presentation_metadata_error_is_reserved(e) {
+                            "reserved_code"
+                        } else if failure == MetadataFailure::Unknown {
+                            "presentation_metadata_unavailable"
+                        } else {
+                            "presentation_metadata_unsupported"
+                        };
+                        (failure, code)
+                    }
+                    _ => (
                         MetadataFailure::Unknown,
-                    );
+                        "presentation_metadata_unavailable",
+                    ),
+                };
+                if let Some(accumulator) = self.presentations.get_mut(&key) {
+                    record_metadata_failure(&mut accumulator.metadata_failure, failure);
                 }
                 self.issues.push(
                     InspectIssue::warning(
-                        "presentation_context_unavailable",
-                        "Presentation metadata context could not be derived",
+                        code,
+                        format!("{error}; payload_bytes={}", payload.len()),
                         Some(frame_index),
                     )
                     .presentation(presentation.presentation_id),
                 );
                 continue;
-            };
-            let payload = match topology.substream_payload(frame, substream.substream_index) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    return Err(format!(
-                        "Frame {frame_index}, presentation {:?}: {error}",
-                        presentation.presentation_id
-                    ));
-                }
-            };
-            let state = self.presentation_states.entry(key).or_default();
-            let locked_context = self
-                .presentation_channels
-                .get(&key)
-                .copied()
-                .map(|channel| {
-                    PresentationSubstreamContext::new(
-                        context.selection_context().alternative(),
-                        context.presentation_is_independent(),
-                        context.selection_context().n_audio_substreams(),
-                        context.n_substream_groups(),
-                        channel,
-                    )
-                });
-            let ims_context = (presentation.presentation_version == 2).then(|| {
-                PresentationSubstreamContext::new(
-                    context.selection_context().alternative(),
-                    context.presentation_is_independent(),
-                    context.selection_context().n_audio_substreams(),
-                    context.n_substream_groups(),
-                    PresentationChannelContext::new(Some(1), None, false, 0, false),
-                )
-            });
-            let parsed = match if let Some(locked_context) = locked_context {
-                Ac4PresentationSubstream::parse_with_drc_state_compat(
-                    payload,
-                    locked_context,
-                    &mut state.drc,
-                )
-                .map(|(parsed, _)| (parsed, locked_context))
-            } else {
-                Ac4PresentationSubstream::parse_with_drc_state_compat(
-                    payload,
-                    context,
-                    &mut state.drc,
-                )
-                .map(|(parsed, _)| (parsed, context))
-                .or_else(|primary_error| {
-                    let Some(ims_context) = ims_context else {
-                        return Err(primary_error);
-                    };
-                    Ac4PresentationSubstream::parse_with_drc_state_compat(
-                        payload,
-                        ims_context,
-                        &mut state.drc,
-                    )
-                    .map(|(parsed, _)| (parsed, ims_context))
-                })
-            } {
-                Ok(parsed) => parsed,
-                Err(error) => {
-                    if !presentation_metadata_error_is_reportable(error) {
-                        return Err(format!(
-                            "Frame {frame_index}, presentation {:?}: {error}",
-                            presentation.presentation_id
-                        ));
-                    }
-                    let failure = presentation_metadata_failure(error);
-                    if let Some(accumulator) = self.presentations.get_mut(&key) {
-                        record_metadata_failure(&mut accumulator.metadata_failure, failure);
-                    }
-                    let code = if presentation_metadata_error_is_reserved(error) {
-                        "reserved_code"
-                    } else if failure == MetadataFailure::Unknown {
-                        "presentation_metadata_unavailable"
-                    } else {
-                        "presentation_metadata_unsupported"
-                    };
-                    self.issues.push(
-                        InspectIssue::warning(
-                            code,
-                            format!(
-                                "{error}; payload_bytes={}; context={context:?}",
-                                payload.len()
-                            ),
-                            Some(frame_index),
-                        )
-                        .presentation(presentation.presentation_id),
-                    );
-                    continue;
-                }
-            };
-            let (parsed, effective_context) = parsed;
-            self.presentation_channels
-                .entry(key)
-                .or_insert(effective_context.channel_context());
-            if let Err(error) = state
-                .group_gain
-                .apply(parsed.substream_group_gain_update, effective_context)
-            {
-                self.issues.push(
-                    InspectIssue::warning(
-                        "presentation_group_gain_state",
-                        error.to_string(),
-                        Some(frame_index),
-                    )
-                    .presentation(presentation.presentation_id),
-                );
             }
-            let drc_configuration = state.drc.configuration();
+            let Some(view) = observation.presentation_metadata(record.presentation_index) else {
+                continue;
+            };
+            let parsed = view.parsed_substream().map_err(|e| e.to_string())?;
+            let effective_context = view.context();
+            let drc_configuration = view.effective_drc_configuration();
             let associated_scale = parsed.associated_audio.map(|associated| {
                 (
                     associated.scale_main,
@@ -1423,70 +1460,36 @@ impl Aggregator {
         frame: &[u8],
         topology: &Ac4Topology,
         frame_index: u64,
+        observation: MetadataAccessUnit<'_>,
     ) -> Result<(), String> {
-        let contexts = audio_contexts(topology);
-        for (&substream_index, candidates) in &contexts {
-            let payload = match topology.substream_payload(frame, substream_index) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    return Err(format!(
-                        "Frame {frame_index}, audio substream {substream_index}: {error}"
-                    ));
-                }
-            };
+        for record in observation.audio_metadata() {
+            let substream_index = record.substream_index;
+            let payload = topology
+                .substream_payload(frame, substream_index)
+                .map_err(|e| e.to_string())?;
             if let Some(accumulator) = self.substreams.get_mut(&substream_index) {
                 accumulator.measured_bytes = accumulator
                     .measured_bytes
                     .saturating_add(payload.len() as u128);
             }
-            let mut successful = Vec::new();
-            let mut failures = Vec::new();
-            for &context in candidates {
-                match Ac4AudioSubstream::parse(payload, context) {
-                    Ok(parsed) => successful.push((context, parsed)),
-                    Err(error) => failures.push((context, error)),
-                }
-            }
-            let selected = if let Some(locked) = self.audio_contexts.get(&substream_index).copied()
-            {
-                successful
-                    .iter()
-                    .copied()
-                    .find(|(context, _)| same_audio_context_family(*context, locked))
-            } else if successful.len() == 1 {
-                let selected = successful.pop();
-                if let Some((context, _)) = selected {
-                    self.audio_contexts.insert(substream_index, context);
-                }
-                selected
-            } else {
-                // 多个语法候选同时成功时暂不锁定；IMS 优先展示物理 stereo metadata。
-                successful
-                    .iter()
-                    .copied()
-                    .find(|(context, _)| context.channel_mode == Some(1))
-                    .or_else(|| successful.first().copied())
-            };
-            let Some((context, parsed)) = selected else {
-                if !successful.is_empty() {
-                    self.issues.push(
-                        InspectIssue::warning(
-                            "audio_metadata_context_changed",
-                            "Only an audio metadata context outside the locked configuration parsed successfully",
-                            Some(frame_index),
-                        )
-                        .substream(substream_index),
-                    );
-                    if let Some(accumulator) = self.substreams.get_mut(&substream_index) {
-                        accumulator.preprocessing_conflict = true;
-                        accumulator.de_configuration_conflict = true;
+            let (context, parsed) = match record.result {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    if error.kind() == MetadataErrorKind::ContextConflict {
+                        self.issues.push(InspectIssue::warning("audio_metadata_context_changed","Only an audio metadata context outside the locked configuration parsed successfully",Some(frame_index)).substream(substream_index));
+                        if let Some(accumulator) = self.substreams.get_mut(&substream_index) {
+                            accumulator.preprocessing_conflict = true;
+                            accumulator.de_configuration_conflict = true;
+                        }
+                        continue;
                     }
-                    continue;
-                }
-                let reportable = failures
-                    .iter()
-                    .find(|(_, error)| audio_metadata_error_is_reportable(*error));
-                if let Some((context, error)) = reportable {
+                    if let MetadataErrorKind::Audio(e) = error.kind()
+                        && !audio_metadata_error_is_reportable(e)
+                    {
+                        return Err(format!(
+                            "Frame {frame_index}, audio substream {substream_index}: {e}"
+                        ));
+                    }
                     if let Some(accumulator) = self.substreams.get_mut(&substream_index) {
                         record_metadata_failure(
                             &mut accumulator.metadata_failure,
@@ -1496,23 +1499,13 @@ impl Aggregator {
                     self.issues.push(
                         InspectIssue::warning(
                             "audio_metadata_unsupported",
-                            format!(
-                                "{error}; payload_bytes={}; context={context:?}",
-                                payload.len()
-                            ),
+                            format!("{error}; payload_bytes={}", payload.len()),
                             Some(frame_index),
                         )
                         .substream(substream_index),
                     );
                     continue;
                 }
-                let detail = failures.first().map_or_else(
-                    || "no metadata context was derived".to_owned(),
-                    |(context, error)| format!("{error}; context={context:?}"),
-                );
-                return Err(format!(
-                    "Frame {frame_index}, audio substream {substream_index}: {detail}"
-                ));
             };
             let mut preprocessing_changed = false;
             let mut de_configuration_changed = false;
@@ -1551,17 +1544,7 @@ impl Aggregator {
                     de.configuration,
                     DialogEnhancementConfigurationUpdate::New(_)
                 );
-                match de.configuration {
-                    DialogEnhancementConfigurationUpdate::NotPresent => {
-                        if independent {
-                            accumulator.de_configuration = None;
-                        }
-                    }
-                    DialogEnhancementConfigurationUpdate::KeepPrevious => {}
-                    DialogEnhancementConfigurationUpdate::New(configuration) => {
-                        accumulator.de_configuration = Some(configuration);
-                    }
-                }
+                accumulator.de_configuration = record.effective_de_configuration;
                 if independent {
                     if accumulator.de_configuration_sampled {
                         if accumulator.reported_de_configuration != accumulator.de_configuration
@@ -1631,6 +1614,7 @@ impl Aggregator {
     ) -> Result<InspectReport, String> {
         if let Some(dsi) = dsi.as_ref() {
             self.apply_dsi(dsi);
+            self.issues.extend(self.core_layouts.apply_dsi(dsi));
         }
 
         let duration_field = duration
@@ -1790,6 +1774,7 @@ impl Aggregator {
             presentations,
             audio_substreams,
             issues: self.issues,
+            core_layouts: self.core_layouts.finish(),
         })
     }
 
@@ -2143,78 +2128,6 @@ fn group_role(
         (Some(6), _) => "Data",
         _ => "Main",
     }
-}
-
-fn audio_contexts(topology: &Ac4Topology) -> BTreeMap<u32, Vec<SubstreamContext>> {
-    let mut contexts = BTreeMap::<u32, Vec<SubstreamContext>>::new();
-    for (group_index, group) in topology.groups().iter().enumerate() {
-        let alternative = topology.presentations().iter().any(|presentation| {
-            presentation
-                .substream
-                .is_some_and(|substream| substream.alternative)
-                && presentation
-                    .group_indices()
-                    .iter()
-                    .any(|&index| usize::try_from(index) == Ok(group_index))
-        });
-        let ims = topology.presentations().iter().any(|presentation| {
-            presentation.presentation_version == 2
-                && presentation
-                    .group_indices()
-                    .iter()
-                    .any(|&index| usize::try_from(index) == Ok(group_index))
-        });
-        for info in group.substreams() {
-            let Some(first) = info.substream_index() else {
-                continue;
-            };
-            let (ajoc, channel_mode) = match *info {
-                SubstreamInfo::Chan(ref channel) => (false, Some(channel.channel_mode.ch_mode)),
-                SubstreamInfo::Ajoc(_) => (true, None),
-                SubstreamInfo::Obj(_) => (false, None),
-            };
-            for offset in 0..group.frame_rate_factor {
-                let Some(index) = first.checked_add(offset) else {
-                    continue;
-                };
-                let b_iframe = if group.frame_rate_factor == 1 || info.audio_ndot() {
-                    Some(info.audio_ndot())
-                } else {
-                    None
-                };
-                let candidate = SubstreamContext {
-                    sus_ver: 1,
-                    alternative,
-                    ajoc,
-                    channel_mode,
-                    b_iframe,
-                    alternative_oamd: None,
-                };
-                let slot = contexts.entry(index).or_default();
-                if !slot.contains(&candidate) {
-                    slot.push(candidate);
-                }
-                if ims && matches!(channel_mode, Some(5 | 6)) {
-                    let stereo = SubstreamContext {
-                        channel_mode: Some(1),
-                        ..candidate
-                    };
-                    if !slot.contains(&stereo) {
-                        slot.push(stereo);
-                    }
-                }
-            }
-        }
-    }
-    contexts
-}
-
-fn same_audio_context_family(left: SubstreamContext, right: SubstreamContext) -> bool {
-    left.sus_ver == right.sus_ver
-        && left.alternative == right.alternative
-        && left.ajoc == right.ajoc
-        && left.channel_mode == right.channel_mode
-        && left.alternative_oamd == right.alternative_oamd
 }
 
 fn same_channel_layout_info(left: SubstreamInfoChan, right: SubstreamInfoChan) -> bool {
@@ -3674,6 +3587,7 @@ impl InspectReport {
         }
 
         let _ = writeln!(output, "Issues:");
+        self.core_layouts.render_text(&mut output);
         if self.issues.is_empty() {
             let _ = writeln!(output, "    None");
         } else {
@@ -4052,26 +3966,8 @@ mod tests {
     }
 
     #[test]
-    fn configuration_generation_reset_drops_only_parser_history() {
-        let key = PresentationKey::Anonymous(0);
+    fn configuration_generation_reset_preserves_report_comparisons() {
         let mut aggregate = Aggregator::default();
-        aggregate
-            .presentation_states
-            .insert(key, PresentationParseState::default());
-        aggregate
-            .presentation_channels
-            .insert(key, PresentationChannelContext::UNDEFINED);
-        aggregate.audio_contexts.insert(
-            1,
-            SubstreamContext {
-                sus_ver: 1,
-                alternative: false,
-                ajoc: false,
-                channel_mode: Some(1),
-                b_iframe: Some(true),
-                alternative_oamd: None,
-            },
-        );
         let configuration = DialogEnhancementConfiguration {
             method: 0,
             max_gain: 2,
@@ -4100,9 +3996,6 @@ mod tests {
 
         aggregate.reset_parser_history();
 
-        assert!(aggregate.presentation_states.is_empty());
-        assert!(aggregate.presentation_channels.is_empty());
-        assert!(aggregate.audio_contexts.is_empty());
         let substream = aggregate.substreams.get(&1).unwrap();
         assert_eq!(substream.de_configuration, None);
         assert_eq!(substream.reported_de_configuration, Some(configuration));

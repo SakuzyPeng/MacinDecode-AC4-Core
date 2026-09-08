@@ -122,8 +122,9 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 
 ```text
 macindecode-ac4-cli ──→ inspect / mp4 / scene / decode / bitstream
-macindecode-ac4-inspect ──→ mp4 / bitstream
-macindecode-ac4-scene ──→ decode / bitstream
+macindecode-ac4-inspect ──→ metadata / mp4 / bitstream
+macindecode-ac4-scene ──→ metadata / decode / bitstream
+macindecode-ac4-metadata ──→ bitstream / decode（可选 metadata-decode）
 macindecode-ac4-decode ──→ bitstream
 macindecode-ac4-mp4 ──→ bitstream
 macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream（内部）
@@ -133,6 +134,7 @@ macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream（内部）
 |---|---|---|
 | [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | bounded bit reader、TOC/拓扑、presentation/OAMD/EMDF 与音频语法 | ✅ |
 | [`macindecode-ac4-decode`](crates/macindecode-ac4-decode) | ASF/A-SPX/A-JOC 数值重建、QMF、表 188 对齐与 Full engine | ✅ |
+| [`macindecode-ac4-metadata`](crates/macindecode-ac4-metadata) | 无 PCM 的源 AU 元数据 Session、状态继承与 Core 网格判据 | ✅ |
 | [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | MP4/raw AC-4 文件级聚合报告、JSON DTO 与英文 text renderer | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` 数据契约及 A-JOC Core/Full 流式 Rust API | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF box、`dac4`、bounded AU、sample table 与 edit/priming 时间线 | ✅ |

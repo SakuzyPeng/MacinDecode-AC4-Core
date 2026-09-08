@@ -53,9 +53,13 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_SPEC_TABLES");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_AUDIO_DECODE");
     let spec_tables = std::env::var_os("CARGO_FEATURE_SPEC_TABLES").is_some();
+    let metadata_decode = std::env::var_os("CARGO_FEATURE_METADATA_DECODE").is_some();
     let audio_decode = std::env::var_os("CARGO_FEATURE_AUDIO_DECODE").is_some();
     if !spec_tables {
-        assert!(!audio_decode, "audio-decode 必须包含 spec-tables feature");
+        assert!(
+            !metadata_decode,
+            "metadata-decode 必须包含 spec-tables feature"
+        );
         return;
     }
 
@@ -97,12 +101,14 @@ fn main() {
     emit_imdct_rotation(&transform_lengths);
     emit_kbd_windows(&transform_lengths, &alpha_halves);
 
-    if !audio_decode {
+    if !metadata_decode {
         return;
     }
 
     // QMF 调制相位本身是数学量，仅完整音频路径需要。
-    emit_qmf_modulation();
+    if audio_decode {
+        emit_qmf_modulation();
+    }
 
     let mut arrays: BTreeMap<String, Vec<i64>> = BTreeMap::new();
     let mut floats: BTreeMap<String, Vec<f32>> = BTreeMap::new();
@@ -130,8 +136,10 @@ fn main() {
         parse_complex_arrays(&text, &mut complex);
     }
 
-    emit_qmf_window(&floats);
-    emit_aspx_noise(&complex);
+    if audio_decode {
+        emit_qmf_window(&floats);
+        emit_aspx_noise(&complex);
+    }
 
     let generated = emit(&arrays);
     let out = out_dir.join("huffman_tables.rs");

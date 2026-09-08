@@ -57,22 +57,70 @@ DECODE_LAYERS: dict[str, str] = {
     "dialog_enhancement": METADATA,
     # 数值重建、QMF、表 188 对齐与统一 Full A-JOC engine。
     "asf": DSP,
-    "aspx": DSP,
-    "ajoc": DSP,
+    "aspx": SYNTAX,
+    "ajoc": SYNTAX,
+    "audio_syntax": SYNTAX,
     "full_ajoc": DSP,
-    "channel": DSP,
-    "var_element": DSP,
-    "audio_data": DSP,
+    "channel": SYNTAX,
+    "channel::matrix": DSP,
+    "var_element": SYNTAX,
+    "audio_data": SYNTAX,
     "element_drive": DSP,
-    "substream_audio": DSP,
+    "substream_audio": SYNTAX,
     "frame_alignment": DSP,
     # 生成的 PDF 表，lib.rs 里的 `pub(crate) mod spec_tables`。
-    "spec_tables": DSP,
+    "spec_tables": PRIMITIVE,
+    "asf::framing": SYNTAX,
+    "asf::tables": SYNTAX,
+    "asf::spectrum": SYNTAX,
+    "asf::dequant": DSP,
+    "asf::imdct": DSP,
+    "asf::reconstruct": DSP,
+    "aspx::bands": SYNTAX,
+    "aspx::codebooks": SYNTAX,
+    "aspx::frames": SYNTAX,
+    "aspx::reach": SYNTAX,
+    "aspx::syntax": SYNTAX,
+    "aspx::tables": SYNTAX,
+    "aspx::dequant": DSP,
+    "aspx::envelope": DSP,
+    "aspx::hfadjust": DSP,
+    "aspx::hfassemble": DSP,
+    "aspx::hfgain": DSP,
+    "aspx::hfgen": DSP,
+    "aspx::interleave": DSP,
+    "aspx::limiter": DSP,
+    "aspx::lowband": DSP,
+    "aspx::noisegen": DSP,
+    "aspx::patches": DSP,
+    "aspx::pipeline": DSP,
+    "aspx::preflatten": DSP,
+    "aspx::qmf": DSP,
+    "aspx::state": DSP,
+    "aspx::tna": DSP,
+    "aspx::tonegen": DSP,
+    "aspx::workspace": DSP,
+    "ajoc::bands": SYNTAX,
+    "ajoc::de": SYNTAX,
+    "ajoc::syntax": SYNTAX,
+    "ajoc::decorrelator": DSP,
+    "ajoc::dequant": DSP,
+    "ajoc::diff": DSP,
+    "ajoc::interp": DSP,
+    "ajoc::reconstruction": DSP,
+}
+
+METADATA_LAYERS = {
+    "input": SYNTAX, "selection": SYNTAX, "error": SYNTAX,
+    "audio": METADATA, "presentation": METADATA, "group_oamd": METADATA,
+    "state": METADATA, "session": METADATA, "extended": METADATA,
+    "oamd": METADATA, "layout": METADATA,
 }
 
 CRATES: dict[str, dict[str, str]] = {
     "macindecode-ac4-bitstream": BITSTREAM_LAYERS,
     "macindecode-ac4-decode": DECODE_LAYERS,
+    "macindecode-ac4-metadata": METADATA_LAYERS,
 }
 
 # 当前被审计的 crate。`main` 逐个 crate 重新绑定这两个全局量。
@@ -83,7 +131,7 @@ LAYERS: dict[str, str] = BITSTREAM_LAYERS
 ALLOWED: dict[str, frozenset[str]] = {
     PRIMITIVE: frozenset({PRIMITIVE}),
     SYNTAX: frozenset({PRIMITIVE, SYNTAX}),
-    METADATA: frozenset({PRIMITIVE, METADATA}),
+    METADATA: frozenset({PRIMITIVE, SYNTAX, METADATA}),
     DSP: frozenset({PRIMITIVE, SYNTAX, METADATA, DSP}),
 }
 
@@ -264,6 +312,14 @@ def owning_module(path: Path) -> str:
     parts = module_parts(path)
     if not parts:
         raise LayerError(f"无法确定源码文件的顶层模块：{path}")
+    # 混合 facade 的子模块单独登记，避免把 ASF/A-SPX 语法与 DSP 一起放行。
+    if any(key.startswith(parts[0] + "::") for key in LAYERS) and len(parts) > 1:
+        prefix = "::".join(parts[:2])
+        declared_layer(prefix)
+    for length in range(len(parts), 0, -1):
+        candidate = "::".join(parts[:length])
+        if candidate in LAYERS:
+            return candidate
     return parts[0]
 
 
@@ -277,25 +333,141 @@ def declared_layer(module: str) -> str:
     return layer
 
 
+def use_paths(body: str) -> list[tuple[tuple[str, ...], str | None]]:
+    """展开 Rust use 树，保留子模块与 as 别名；不把 facade 名当作实际目标。"""
+    tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_]*|::|[{},*]", body)
+    position = 0
+    paths = []
+
+    def group(prefix=()):
+        nonlocal position
+        while position < len(tokens) and tokens[position] != "}":
+            if tokens[position] == ",":
+                position += 1
+                continue
+            path = list(prefix)
+            alias = None
+            while position < len(tokens):
+                token = tokens[position]
+                if token == "::":
+                    position += 1
+                    continue
+                if token in ("{", "}", ",", "as"):
+                    break
+                path.append(token)
+                position += 1
+            if position < len(tokens) and tokens[position] == "{":
+                position += 1
+                group(tuple(path))
+                if position >= len(tokens) or tokens[position] != "}":
+                    raise LayerError("use 树缺少右花括号")
+                position += 1
+            else:
+                if position < len(tokens) and tokens[position] == "as":
+                    position += 1
+                    if position < len(tokens):
+                        alias = tokens[position]
+                        position += 1
+                paths.append((tuple(path), alias))
+    group()
+    return paths
+
+
+def absolute_path(parts: tuple[str, ...], current: tuple[str, ...]):
+    if not parts:
+        return None
+    if parts[0] == "crate":
+        return parts[1:]
+    if parts[0] in ("self", "super"):
+        base = current
+        while parts and parts[0] in ("self", "super"):
+            if parts[0] == "super":
+                base = base[:-1]
+            parts = parts[1:]
+        return base + parts
+    if parts[0] in {name.split("::")[0] for name in LAYERS}:
+        return parts
+    # `use syntax::Type` 是当前模块内的 re-export。
+    if "::".join(current + parts[:1]) in LAYERS:
+        return current + parts
+    return None  # 外部 crate 的方向由 Cargo 管理。
+
+
+def qualified_target(parts, aliases, globs, symbols, visiting=frozenset()):
+    if not parts or parts in visiting:
+        return set()
+    visiting = visiting | {parts}
+    for length in range(len(parts), 0, -1):
+        prefix = parts[:length]
+        if prefix in aliases and aliases[prefix] != prefix:
+            return qualified_target(aliases[prefix] + parts[length:], aliases, globs, symbols, visiting)
+        if prefix in symbols:
+            return {symbols[prefix]}
+    found = set()
+    for prefix, target in globs:
+        if parts[:len(prefix)] != prefix:
+            continue
+        candidate = target + parts[len(prefix):]
+        if any(candidate[:length] in symbols or candidate[:length] in aliases for length in range(1, len(candidate) + 1)):
+            found.update(qualified_target(candidate, aliases, globs, symbols, visiting))
+    if found:
+        return found
+    for length in range(len(parts), 0, -1):
+        candidate = "::".join(parts[:length])
+        if candidate in LAYERS:
+            return {candidate}
+    declared_layer(parts[0])  # 未登记的 crate 顶层路径失败关闭。
+    return {parts[0]}
+
+
 def collect_edges() -> dict[tuple[str, str], set[str]]:
     """返回 (源模块, 目标模块) -> 出现该边的文件集合。"""
     if not CRATE_SRC.is_dir():
         raise LayerError(f"找不到 crate 源码目录：{CRATE_SRC}")
     edges: dict[tuple[str, str], set[str]] = {}
+    files = sorted(CRATE_SRC.rglob("*.rs"))
+    aliases, symbols, globs, sources = {}, {}, [], {}
+    use_pattern = re.compile(r"\buse\s+([^;]+);", re.S)
+    for path in files:
+        production = strip_test_items(path.read_text(encoding="utf-8"))
+        production = re.sub(r"//[^\n]*", "", production)
+        current = () if path.name == "lib.rs" and path.parent == CRATE_SRC else module_parts(path)
+        sources[path] = (production, current)
+        if path.name not in EXEMPT_FILES or path.parent != CRATE_SRC:
+            owner = owning_module(path)
+            declared_layer(owner)
+            for match in re.finditer(r"^(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum|type|const|fn|trait)\s+(\w+)", production, re.M):
+                symbols[current + (match.group(1),)] = owner
+        for statement in use_pattern.finditer(production):
+            for parts, alias in use_paths(statement.group(1)):
+                target = absolute_path(parts, current)
+                if not target:
+                    continue
+                if target[-1] == "*":
+                    globs.append((current, target[:-1]))
+                else:
+                    aliases[current + (alias or target[-1],)] = target
     seen_modules = False
-    for path in sorted(CRATE_SRC.rglob("*.rs")):
+    for path in files:
         if path.name in EXEMPT_FILES and path.parent == CRATE_SRC:
             continue
         parts = module_parts(path)
         source = owning_module(path)
         declared_layer(source)
         seen_modules = True
-        production = strip_test_items(path.read_text(encoding="utf-8"))
-        for target in referenced_modules(
-            production,
-            module_depth=len(parts),
-            known_modules=set(LAYERS),
-        ):
+        production, current = sources[path]
+        targets = set()
+        for statement in use_pattern.finditer(production):
+            for target, _ in use_paths(statement.group(1)):
+                absolute = absolute_path(target, current)
+                if absolute:
+                    targets.update(qualified_target(absolute, aliases, globs, symbols))
+        outside_use = use_pattern.sub("", production)
+        for match in re.finditer(r"\b(?:crate|super|self)(?:::\s*[A-Za-z_][A-Za-z0-9_]*)+", outside_use):
+            absolute = absolute_path(tuple(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", match.group())), current)
+            if absolute:
+                targets.update(qualified_target(absolute, aliases, globs, symbols))
+        for target in targets:
             if target == source:
                 continue
             declared_layer(target)

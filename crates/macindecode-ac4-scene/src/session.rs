@@ -1,19 +1,22 @@
 //! Scene 解码会话的控制面与 presentation 解析。
 
+#[cfg(test)]
+use crate::PresentationSelectionError;
 #[cfg(any(feature = "audio-decode", test))]
 use alloc::vec::Vec;
+#[cfg(test)]
 use macindecode_ac4_bitstream::{
-    Ac4PresentationSubstream, Ac4PresentationV1Info, PresentationDrcState,
-    PresentationSubstreamGroupGainState,
+    Ac4PresentationSubstream, PresentationDrcState, PresentationSubstreamContext,
+    PresentationSubstreamError,
+};
+use macindecode_ac4_bitstream::{
+    Ac4PresentationV1Info,
     substream::{ObjectAssignment, SubstreamInfo, SubstreamInfoAjoc},
     topology::{
         Ac4Topology, DecoderAction, MAX_PRESENTATIONS, MAX_SUBSTREAMS, ResetReason, TopologyError,
-        TopologyStateMachine, TopologyTransition, validate_group_references,
-        validate_substream_references,
+        TopologyTransition, validate_group_references, validate_substream_references,
     },
 };
-#[cfg(test)]
-use macindecode_ac4_bitstream::{PresentationSubstreamContext, PresentationSubstreamError};
 
 #[cfg(feature = "audio-decode")]
 use crate::DecodeStatus;
@@ -21,10 +24,9 @@ use crate::DecodeStatus;
 use crate::model::{CoreBandPcmChannelStorage, CoreBandPcmFrameStorage};
 use crate::{
     Ac4DecoderConfig, AccessUnit, AccessUnitContext, DecodeError, DecodeErrorContext,
-    DecodeErrorKind, DecodeMode, DecodeStage, DecodedAccessUnit, PresentationSelection,
-    PresentationSelectionError, ResetKind, UnsupportedReason,
+    DecodeErrorKind, DecodeMode, DecodeStage, DecodedAccessUnit, PresentationSelection, ResetKind,
+    UnsupportedReason,
     group_oamd::{ErrorScope, GroupOamdDecoder, PreparedGroupOamd},
-    model::{PresentationSubstreamMetadataRecord, PresentationSubstreamMetadataStorage},
 };
 #[cfg(feature = "audio-decode")]
 use crate::{
@@ -44,25 +46,10 @@ const PRESENTATION_SUBSTREAM_SYNTAX: &str = "raw_ac4_frame/ac4_presentation_subs
 #[cfg(test)]
 const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 3] = [0x00, 0x80, 0xd8];
 
-/// 所选 presentation 的解析历史与当前 AU 可见存储。
-#[derive(Debug, Default)]
-struct PresentationMetadataState {
-    drc: PresentationDrcState,
-    group_gain: PresentationSubstreamGroupGainState,
-    storage: PresentationSubstreamMetadataStorage,
-}
-
-impl PresentationMetadataState {
-    fn clear_view(&mut self) {
-        self.storage.clear();
-    }
-
-    fn reset(&mut self) {
-        self.drc.reset();
-        self.group_gain.reset();
-        self.storage.clear();
-    }
-}
+use macindecode_ac4_metadata::MetadataStateMachine as TopologyStateMachine;
+use macindecode_ac4_metadata::presentation::{
+    PreparedPresentationMetadata, PresentationMetadataState,
+};
 
 /// 一个连续 AC-4 时间线的 Scene 解码会话。
 ///
@@ -75,6 +62,8 @@ pub struct Ac4DecoderSession {
     topology: TopologyStateMachine,
     group_oamd: GroupOamdDecoder,
     presentation_metadata: PresentationMetadataState,
+    audio_metadata: macindecode_ac4_metadata::AudioMetadataState,
+    audio_metadata_record: Option<macindecode_ac4_metadata::AudioMetadataRecord>,
     #[cfg(feature = "audio-decode")]
     full_decoder: FullAjocDecoder,
     #[cfg(feature = "audio-decode")]
@@ -96,6 +85,8 @@ impl Ac4DecoderSession {
             topology: TopologyStateMachine::new(),
             group_oamd: GroupOamdDecoder::new(),
             presentation_metadata: PresentationMetadataState::default(),
+            audio_metadata: Default::default(),
+            audio_metadata_record: None,
             #[cfg(feature = "audio-decode")]
             full_decoder: FullAjocDecoder::new(),
             #[cfg(feature = "audio-decode")]
@@ -188,7 +179,8 @@ impl Ac4DecoderSession {
                         self.presentation_metadata.storage.view(),
                         #[cfg(feature = "audio-decode")]
                         core_band_pcm,
-                    ))
+                    )
+                    .with_audio_metadata(self.audio_metadata_record))
                 }
             }
         }
@@ -201,6 +193,8 @@ impl Ac4DecoderSession {
         self.output_frame_count = 0;
         self.group_oamd.reset();
         self.presentation_metadata.reset();
+        self.audio_metadata.reset();
+        self.audio_metadata_record = None;
         #[cfg(feature = "audio-decode")]
         {
             self.full_decoder.reset();
@@ -216,6 +210,8 @@ impl Ac4DecoderSession {
         self.output_frame_count = 0;
         self.group_oamd.reset();
         self.presentation_metadata.reset();
+        self.audio_metadata.reset();
+        self.audio_metadata_record = None;
         #[cfg(feature = "audio-decode")]
         {
             self.full_decoder.reset();
@@ -241,6 +237,7 @@ impl Ac4DecoderSession {
         access_unit: AccessUnit<'frame>,
     ) -> Result<AccessUnitPreflight<'frame>, DecodeError> {
         self.presentation_metadata.clear_view();
+        self.audio_metadata_record = None;
         let context = access_unit.context();
         if self.reset_required {
             return Err(DecodeError::new(
@@ -269,11 +266,16 @@ impl Ac4DecoderSession {
             return Err(error);
         }
 
-        let mut next_topology = self.topology;
-        if context.discontinuity() {
-            next_topology.mark_discontinuity(ResetReason::ExternalDiscontinuity);
-        }
-        let transition = next_topology.observe(&topology);
+        let prepared_control = self.topology.prepare(&topology, context).map_err(|_| {
+            DecodeError::new(
+                DecodeErrorKind::InternalInvariant {
+                    stage: DecodeStage::Topology,
+                },
+                DecodeErrorContext::for_access_unit(context.index()),
+            )
+        })?;
+        let next_topology = prepared_control.next();
+        let transition = prepared_control.transition();
 
         let presentation = match resolve_presentation(
             &topology,
@@ -293,6 +295,8 @@ impl Ac4DecoderSession {
                 self.output_frame_count = 0;
                 self.group_oamd.reset();
                 self.presentation_metadata.reset();
+                self.audio_metadata.reset();
+                self.audio_metadata_record = None;
                 #[cfg(feature = "audio-decode")]
                 {
                     self.full_decoder.reset();
@@ -415,48 +419,49 @@ impl Ac4DecoderSession {
                 )
             })?;
 
-        let replay_drc_state = if reset_history {
-            PresentationDrcState::new()
-        } else {
-            self.presentation_metadata.drc
-        };
-        let mut next_drc_state = replay_drc_state;
-        let (parsed, syntax_payload_len) = Ac4PresentationSubstream::parse_with_drc_state_compat(
-            payload,
-            parse_context,
-            &mut next_drc_state,
-        )
-        .map_err(|error| {
-            DecodeError::from_presentation_substream(
-                error,
-                access_unit_context.index(),
-                presentation.index,
-                presentation.id,
-                substream.substream_index,
-            )
-        })?;
-
-        let mut next_group_gain_state = if reset_history {
-            PresentationSubstreamGroupGainState::new()
-        } else {
-            self.presentation_metadata.group_gain
-        };
-        let effective_group_gain_codes = next_group_gain_state
-            .apply(parsed.substream_group_gain_update, parse_context)
-            .map_err(|error| {
-                DecodeError::from_presentation_group_gain(
-                    error,
+        let candidate = self
+            .presentation_metadata
+            .prepare(
+                payload,
+                parse_context,
+                macindecode_ac4_metadata::MetadataErrorContext::for_access_unit(
                     access_unit_context.index(),
-                    presentation.index,
-                    presentation.id,
-                    substream.substream_index,
                 )
+                .with_presentation(presentation.index, presentation.id)
+                .with_substream(substream.substream_index),
+                reset_history,
+            )
+            .map_err(|error| match error.kind() {
+                macindecode_ac4_metadata::MetadataErrorKind::Presentation(error) => {
+                    DecodeError::from_presentation_substream(
+                        error,
+                        access_unit_context.index(),
+                        presentation.index,
+                        presentation.id,
+                        substream.substream_index,
+                    )
+                }
+                macindecode_ac4_metadata::MetadataErrorKind::GroupGain(error) => {
+                    DecodeError::from_presentation_group_gain(
+                        error,
+                        access_unit_context.index(),
+                        presentation.index,
+                        presentation.id,
+                        substream.substream_index,
+                    )
+                }
+                _ => presentation_metadata_internal_error(
+                    access_unit_context.index(),
+                    presentation,
+                    Some(substream.substream_index),
+                    DecodeStage::AudioSyntax,
+                ),
             })?;
 
         self.presentation_metadata
             .storage
             .try_reserve_payload(payload.len())
-            .map_err(|()| {
+            .map_err(|_| {
                 DecodeError::new(
                     DecodeErrorKind::DecodeFailure {
                         stage: DecodeStage::AudioSyntax,
@@ -468,22 +473,7 @@ impl Ac4DecoderSession {
                 )
             })?;
 
-        Ok(Some(PreparedPresentationMetadata {
-            payload,
-            record: PresentationSubstreamMetadataRecord {
-                access_unit_index: access_unit_context.index(),
-                presentation_index: presentation.index,
-                presentation_id: presentation.id,
-                substream_index: substream.substream_index,
-                context: parse_context,
-                syntax_payload_len,
-                replay_drc_state,
-                effective_drc_configuration: next_drc_state.configuration(),
-                effective_group_gain_codes,
-            },
-            next_drc_state,
-            next_group_gain_state,
-        }))
+        Ok(Some(candidate))
     }
 
     /// 驱动当前 AU 候选对应的唯一 A-JOC engine。
@@ -641,6 +631,22 @@ impl Ac4DecoderSession {
         expect(dead_code, reason = "无 audio-decode 时公开入口没有可提交的 DSP 候选")
     )]
     fn commit_prepared(&mut self, prepared: PreparedAccessUnit<'_>) {
+        if matches!(prepared.transition.action, DecoderAction::Reset { .. }) {
+            self.audio_metadata.reset();
+        }
+        #[cfg(feature = "audio-decode")]
+        if let Some(observation) = self.full_decoder.last_syntax_observation() {
+            let candidate = self.audio_metadata.prepare_parsed(
+                observation.context().metadata,
+                observation.parsed().substream,
+                macindecode_ac4_metadata::MetadataErrorContext::for_access_unit(
+                    prepared.context.index(),
+                )
+                .with_substream(prepared.presentation.substream_index),
+            );
+            self.audio_metadata_record = Some(candidate.record());
+            self.audio_metadata.commit(candidate);
+        }
         self.group_oamd.commit(&prepared.group_oamd);
         if let Some(metadata) = prepared.presentation_metadata {
             self.presentation_metadata.drc = metadata.next_drc_state;
@@ -668,6 +674,8 @@ impl Ac4DecoderSession {
         self.output_frame_count = 0;
         self.group_oamd.reset();
         self.presentation_metadata.reset();
+        self.audio_metadata.reset();
+        self.audio_metadata_record = None;
         #[cfg(feature = "audio-decode")]
         {
             self.full_decoder.reset();
@@ -934,15 +942,6 @@ struct PreparedAccessUnit<'frame> {
     next_topology: TopologyStateMachine,
 }
 
-/// 一个已经完整验证、但尚未复制到 Session 存储或提交跨帧状态的 presentation payload。
-#[derive(Debug, Clone, Copy)]
-struct PreparedPresentationMetadata<'frame> {
-    payload: &'frame [u8],
-    record: PresentationSubstreamMetadataRecord,
-    next_drc_state: PresentationDrcState,
-    next_group_gain_state: PresentationSubstreamGroupGainState,
-}
-
 /// AU 控制面预检的两种非错误结果。
 #[cfg_attr(
     not(any(test, feature = "audio-decode")),
@@ -968,20 +967,7 @@ const fn reset_kind(reason: ResetReason) -> ResetKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct PresentationCandidate {
-    index: u32,
-    id: Option<u32>,
-    eligible: bool,
-}
-
-impl PresentationCandidate {
-    const EMPTY: Self = Self {
-        index: 0,
-        id: None,
-        eligible: false,
-    };
-}
+use macindecode_ac4_metadata::selection::{PresentationCandidate, select_candidate};
 
 /// 当前配置中已唯一确定的 Full A-JOC 来源。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1163,71 +1149,6 @@ fn presentation_identity_occurrences(
             .count(),
     )
     .unwrap_or(u32::MAX)
-}
-
-fn select_candidate(
-    candidates: &[PresentationCandidate],
-    selection: PresentationSelection,
-) -> Result<PresentationCandidate, PresentationSelectionError> {
-    let declared = u32::try_from(candidates.len()).unwrap_or(u32::MAX);
-    let selected = match selection {
-        PresentationSelection::AutoUnique => {
-            let mut selected = None;
-            let mut eligible = 0u32;
-            for candidate in candidates.iter().copied().filter(|item| item.eligible) {
-                eligible = eligible.saturating_add(1);
-                selected = Some(candidate);
-            }
-            match (eligible, selected) {
-                (0, _) => {
-                    return Err(PresentationSelectionError::NoEligiblePresentation { declared });
-                }
-                (1, Some(candidate)) => candidate,
-                (count, _) => {
-                    return Err(PresentationSelectionError::Ambiguous { eligible: count });
-                }
-            }
-        }
-        PresentationSelection::Index(requested) => {
-            let index = usize::try_from(requested).unwrap_or(usize::MAX);
-            candidates
-                .get(index)
-                .copied()
-                .ok_or(PresentationSelectionError::IndexOutOfRange {
-                    requested,
-                    declared,
-                })?
-        }
-        PresentationSelection::Id(requested) => {
-            let mut selected = None;
-            let mut matches = 0u32;
-            for candidate in candidates
-                .iter()
-                .copied()
-                .filter(|item| item.id == Some(requested))
-            {
-                matches = matches.saturating_add(1);
-                selected = Some(candidate);
-            }
-            match (matches, selected) {
-                (0, _) => return Err(PresentationSelectionError::IdNotFound { requested }),
-                (1, Some(candidate)) => candidate,
-                (count, _) => {
-                    return Err(PresentationSelectionError::IdNotUnique {
-                        requested,
-                        matches: count,
-                    });
-                }
-            }
-        }
-    };
-
-    if !selected.eligible {
-        return Err(PresentationSelectionError::NotEligible {
-            index: selected.index,
-        });
-    }
-    Ok(selected)
 }
 
 fn resolve_ajoc_source(

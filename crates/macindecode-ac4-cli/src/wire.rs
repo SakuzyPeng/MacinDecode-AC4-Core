@@ -106,6 +106,11 @@ pub(crate) fn write_error(error: &CliError) {
 /// Map the public inspect library error model onto the stable CLI diagnostic contract.
 pub(crate) fn inspect_error(error: InspectError) -> CliError {
     match error {
+        InspectError::FeatureUnavailable => CliError::new(
+            "inspect",
+            DiagnosticCode::FeatureRequired,
+            "Full metadata inspection requires rebuilding with --features metadata-decode",
+        ),
         InspectError::Read { path, source } => CliError::new(
             "inspect",
             DiagnosticCode::InputReadFailed,

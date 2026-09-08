@@ -402,9 +402,10 @@
     },
     "inspectResult": {
       "type": "object",
-      "required": ["source", "stream", "presentations", "audio_substreams", "issues"],
+      "required": ["source", "stream", "presentations", "audio_substreams", "issues", "core_layouts"],
       "additionalProperties": false,
       "properties": {
+        "core_layouts": { "$ref": "#/$defs/coreLayouts" },
         "source": {
           "$ref": "#/$defs/inspectSource"
         },
@@ -807,6 +808,371 @@
         }
       },
       "additionalProperties": false
+    },
+    "coreLayouts": {
+      "type": "object",
+      "required": [
+        "declarations",
+        "observations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "declarations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coreDeclaration"
+          }
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coreObservation"
+          }
+        }
+      }
+    },
+    "coreDeclaration": {
+      "type": "object",
+      "required": [
+        "source",
+        "configuration_generation",
+        "presentation_index",
+        "presentation_id",
+        "substream_index",
+        "declared_core_layout",
+        "association_reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "toc",
+            "dsi"
+          ]
+        },
+        "configuration_generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "presentation_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "presentation_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "substream_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "declared_core_layout": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "association_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "coreObservation": {
+      "type": "object",
+      "required": [
+        "configuration_generation",
+        "observation_epoch",
+        "substream_index",
+        "first_access_unit",
+        "last_access_unit",
+        "observed_core_grid",
+        "derived_speaker_layout",
+        "object_to_speaker"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "configuration_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observation_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "substream_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_access_unit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_access_unit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed_core_grid": {
+          "$ref": "#/$defs/coreGrid"
+        },
+        "derived_speaker_layout": {
+          "$ref": "#/$defs/reportedField"
+        },
+        "object_to_speaker": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coreSpeakerMapping"
+          }
+        }
+      }
+    },
+    "coreGridObject": {
+      "type": "object",
+      "required": [
+        "object_index",
+        "lfe",
+        "kind",
+        "position",
+        "extended_position",
+        "position_coding"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "object_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "lfe": {
+          "type": "boolean"
+        },
+        "kind": {
+          "enum": [
+            "Bed",
+            "Isf",
+            "Dynamic"
+          ]
+        },
+        "position": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 62
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 62
+                },
+                {
+                  "type": "integer",
+                  "minimum": -15,
+                  "maximum": 15
+                }
+              ],
+              "minItems": 3,
+              "maxItems": 3
+            }
+          ]
+        },
+        "extended_position": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/coreExtendedPosition"
+            }
+          ]
+        },
+        "position_coding": {
+          "enum": [
+            null,
+            "AbsolutePositive",
+            "AbsoluteNegative",
+            "Differential"
+          ]
+        }
+      }
+    },
+    "coreExtendedPosition": {
+      "type": "object",
+      "required": [
+        "presence",
+        "x",
+        "y",
+        "z"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "presence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "x": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 3
+        },
+        "y": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 3
+        },
+        "z": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    },
+    "coreGrid": {
+      "type": "object",
+      "required": [
+        "status",
+        "initial_grid",
+        "stability",
+        "observed_frames",
+        "missing_frames",
+        "change_count",
+        "first_change",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "present",
+            "not_present",
+            "not_applicable",
+            "unknown",
+            "unsupported"
+          ]
+        },
+        "initial_grid": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coreGridObject"
+          }
+        },
+        "stability": {
+          "enum": [
+            "unknown",
+            "stable",
+            "changed"
+          ]
+        },
+        "observed_frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "change_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_change": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/coreChange"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "coreChange": {
+      "type": "object",
+      "required": [
+        "access_unit_index",
+        "offset_samples"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "access_unit_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offset_samples": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "coreSpeakerMapping": {
+      "type": "object",
+      "required": [
+        "object_index",
+        "speaker"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "object_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "speaker": {
+          "enum": [
+            "L",
+            "R",
+            "C",
+            "LFE",
+            "Ls",
+            "Rs",
+            "Rls",
+            "Rrs",
+            "Ltm",
+            "Rtm",
+            "Vhl",
+            "Vhr",
+            "Ltr",
+            "Rtr"
+          ]
+        }
+      }
     }
   }
 }

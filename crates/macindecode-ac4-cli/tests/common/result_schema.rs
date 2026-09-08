@@ -38,6 +38,7 @@ pub(crate) fn success(command: &str, stdout: &[u8]) -> Value {
 fn assert_inspect_shape(result: &Value, schema: &Value) {
     assert_exact(result, definition(schema, "inspectWireResult"), "$.result");
     let report = &result["inspectResult"];
+    assert_core_layouts_shape(&report["core_layouts"], schema);
     assert_exact(
         report,
         definition(schema, "inspectResult"),
@@ -225,6 +226,74 @@ fn assert_reported(value: &Value, schema: &Value, path: &str) {
             );
         }
         other => panic!("{path}.status 应为五种稳定状态之一，实际为 {other:?}"),
+    }
+}
+
+fn assert_core_layouts_shape(core: &Value, schema: &Value) {
+    assert_exact(core, definition(schema, "coreLayouts"), "core_layouts");
+    for declaration in core["declarations"]
+        .as_array()
+        .expect("Core declarations array")
+    {
+        assert_exact(
+            declaration,
+            definition(schema, "coreDeclaration"),
+            "core declaration",
+        );
+        assert_reported(
+            &declaration["declared_core_layout"],
+            schema,
+            "declared_core_layout",
+        );
+    }
+    for observation in core["observations"]
+        .as_array()
+        .expect("Core observations array")
+    {
+        assert_exact(
+            observation,
+            definition(schema, "coreObservation"),
+            "Core observation",
+        );
+        assert!(
+            observation["first_access_unit"].as_u64().unwrap()
+                <= observation["last_access_unit"].as_u64().unwrap()
+        );
+        assert_reported(
+            &observation["derived_speaker_layout"],
+            schema,
+            "derived_speaker_layout",
+        );
+        let grid = &observation["observed_core_grid"];
+        assert_exact(grid, definition(schema, "coreGrid"), "Core grid");
+        if !grid["first_change"].is_null() {
+            assert_exact(
+                &grid["first_change"],
+                definition(schema, "coreChange"),
+                "Core first change",
+            );
+        }
+        for object in grid["initial_grid"].as_array().unwrap() {
+            assert_exact(object, definition(schema, "coreGridObject"), "Core object");
+            if let Some(position) = object["position"].as_array() {
+                assert_eq!(position.len(), 3);
+                assert!(position.iter().all(|p| p.as_i64().is_some()));
+            }
+            if !object["extended_position"].is_null() {
+                assert_exact(
+                    &object["extended_position"],
+                    definition(schema, "coreExtendedPosition"),
+                    "Core extended position",
+                );
+            }
+        }
+        for mapping in observation["object_to_speaker"].as_array().unwrap() {
+            assert_exact(
+                mapping,
+                definition(schema, "coreSpeakerMapping"),
+                "Core speaker mapping",
+            );
+        }
     }
 }
 

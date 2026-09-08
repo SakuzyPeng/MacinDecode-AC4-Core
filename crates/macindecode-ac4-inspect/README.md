@@ -5,6 +5,16 @@
 本 crate 不需要 `audio-decode`，也不执行响度、DRC、Dialogue Enhancement、downmix 或
 PCM 处理。
 
+逐 AU 实时观察使用 `macindecode-ac4-metadata::Ac4MetadataSession`。本库仍返回文件级摘要。
+原有入口固定使用轻量 `Basic`；`inspect_path_with_options`、`inspect_bytes_with_options` 与
+对应的 `*_reader_with_options` 接受 `InspectOptions::with_metadata_detail(MetadataDetail::Full)`。
+Full 需要显式编译 `metadata-decode` 并准备本地规范表；缺少后端时返回 `FeatureUnavailable`。
+
+报告的 `core_layouts` 区分 DSI/TOC 声明、实际 OAMD Core 网格和经验证的派生扬声器布局。
+每个观测区间包含配置代次、源 AU 范围、初始量化坐标、稳定性、变化次数与缺口；派生失败
+保留原因，不能仅根据对象数量推断 5.1/5.1.2/5.1.4/7.1.4。Basic 仍显示声明和未扫描原因。
+这些区间采用源时间，未应用容器 edit 或 Scene 播放对齐。
+
 ```toml
 [dependencies]
 macindecode-ac4-inspect = "0.1.0"

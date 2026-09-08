@@ -41,6 +41,14 @@ pub fn inspect_reader<R: Read + Seek>(
     reader: &mut R,
     source: InspectSourceHint<'_>,
 ) -> Result<InspectReport, InspectError> {
+    inspect_reader_with_options(reader, source, InspectOptions::default())
+}
+pub fn inspect_reader_with_options<R: Read + Seek>(
+    reader: &mut R,
+    source: InspectSourceHint<'_>,
+    options: InspectOptions,
+) -> Result<InspectReport, InspectError> {
+    options.validate()?;
     let input = source.name.unwrap_or("<reader>");
     let fail = |error: io::Error| failure(input, InspectSourceKind::Mp4, error);
     reader.seek(SeekFrom::Start(0)).map_err(fail)?;
@@ -69,11 +77,11 @@ pub fn inspect_reader<R: Read + Seek>(
         InspectInputFormat::Mp4 => false,
     };
     if raw {
-        inspect_raw_reader(reader, input)
+        inspect_raw_reader_with_options(reader, input, options)
     } else {
         let metadata = read_mp4_metadata(reader, MAX_METADATA_BYTES)
             .map_err(|error| failure(input, InspectSourceKind::Mp4, error))?;
-        inspect_mp4_reader(reader, &metadata, input)
+        inspect_mp4_reader_with_options(reader, &metadata, input, options)
     }
 }
 
@@ -86,10 +94,19 @@ pub fn inspect_mp4_reader<R: Read + Seek>(
     metadata: &Mp4MetadataBytes,
     input: &str,
 ) -> Result<InspectReport, InspectError> {
+    inspect_mp4_reader_with_options(reader, metadata, input, InspectOptions::default())
+}
+pub fn inspect_mp4_reader_with_options<R: Read + Seek>(
+    reader: &mut R,
+    metadata: &Mp4MetadataBytes,
+    input: &str,
+    options: InspectOptions,
+) -> Result<InspectReport, InspectError> {
+    options.validate()?;
     let result = (|| -> Result<InspectReport, String> {
         let source = metadata.metadata().map_err(|error| error.to_string())?;
         let dsi_summary = collect_dsi_summary(source.dsi())?;
-        let mut aggregate = Aggregator::default();
+        let mut aggregate = Aggregator::new(options);
         let mut total_sample_bytes = 0u128;
         let mut duration_ticks = 0u128;
         let mut buffer = Vec::new();
@@ -133,8 +150,16 @@ pub fn inspect_raw_reader<R: Read>(
     reader: &mut R,
     input: &str,
 ) -> Result<InspectReport, InspectError> {
+    inspect_raw_reader_with_options(reader, input, InspectOptions::default())
+}
+pub fn inspect_raw_reader_with_options<R: Read>(
+    reader: &mut R,
+    input: &str,
+    options: InspectOptions,
+) -> Result<InspectReport, InspectError> {
+    options.validate()?;
     let result = (|| -> Result<InspectReport, String> {
-        let mut aggregate = Aggregator::default();
+        let mut aggregate = Aggregator::new(options);
         let mut total_transport_bytes = 0u128;
         let mut sync_words = BTreeSet::new();
         let mut crc_protected = 0u64;

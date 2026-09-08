@@ -632,6 +632,66 @@ fn missing_inspect_input_preserves_the_read_diagnostic_contract() {
     assert!(diagnostic["context"]["cause"].is_string());
 }
 
+#[cfg(not(feature = "metadata-decode"))]
+#[test]
+fn full_metadata_option_reports_a_missing_backend() {
+    let output = Command::new(env!("CARGO_BIN_EXE_macinac4"))
+        .args([
+            "inspect",
+            "unused.ac4",
+            "--metadata-detail",
+            "full",
+            "--format",
+            "json",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let diagnostic: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(diagnostic["code"], "feature.required");
+}
+
+#[cfg(feature = "metadata-decode")]
+#[test]
+fn full_backend_does_not_change_the_default_scan_depth() {
+    let mut raw = pack_bits(
+        "10 0000000000 0 1 1101 1 1 0 0 1 0 000 0 00 000 0 00 00 0 000 0 0 0 1 00 1 0 1 0 0 1 1 0 0100 1 0 0100 1 0 0 1 01 0 10 0 0000000011 0 0000000100",
+    );
+    raw.extend_from_slice(&[0x55, 4, 0, 0, 0, 0, 0x20]);
+    let path = temp_path("ac4");
+    fs::write(&path, annex_g_of(&[(raw, false)], false)).unwrap();
+    let basic = run_inspect(&path, Some("json"));
+    assert!(
+        basic.status.success(),
+        "{}",
+        String::from_utf8_lossy(&basic.stderr)
+    );
+    let basic: Value = serde_json::from_slice(&basic.stdout).unwrap();
+    assert_eq!(
+        basic["result"]["inspectResult"]["core_layouts"]["observations"][0]["observed_core_grid"]["observed_frames"],
+        0
+    );
+    let full = Command::new(env!("CARGO_BIN_EXE_macinac4"))
+        .arg("inspect")
+        .arg(&path)
+        .args(["--metadata-detail", "full", "--format", "json"])
+        .output()
+        .unwrap();
+    fs::remove_file(&path).unwrap();
+    assert!(
+        full.status.success(),
+        "{}",
+        String::from_utf8_lossy(&full.stderr)
+    );
+    let full: Value = serde_json::from_slice(&full.stdout).unwrap();
+    assert_eq!(
+        full["result"]["inspectResult"]["core_layouts"]["observations"][0]["observed_core_grid"]["missing_frames"],
+        1
+    );
+    assert!(full["result"]["inspectResult"]["core_layouts"]["observations"][0]["derived_speaker_layout"]["value"].is_null());
+}
+
 fn vector(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")

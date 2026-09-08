@@ -182,7 +182,7 @@ impl AjocDataPoints {
         self.ramp_len_minus1.get(dp).copied()
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) const fn with_count_for_test(count: u8) -> Self {
         Self {
             count,
@@ -244,7 +244,7 @@ impl AjocObjectControl {
         self.wet_present.get(de).copied().unwrap_or(false)
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(
         present: bool,
         num_bands: u8,
@@ -359,7 +359,7 @@ impl AjocObjectMatrix {
         self.num_bands
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(num_bands: u8, num_dpoints: u8, num_dmx: u8, num_decorr: u8) -> Self {
         Self {
             num_bands,
@@ -370,7 +370,7 @@ impl AjocObjectMatrix {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn set_dry_for_test(
         &mut self,
         dp: usize,
@@ -392,7 +392,7 @@ impl AjocObjectMatrix {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn set_wet_for_test(
         &mut self,
         dp: usize,
@@ -449,7 +449,7 @@ impl Ajoc {
         self.decorr_enable.get(de).copied()
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) const fn for_test(
         num_decorr: u8,
         num_dpoints: u8,
@@ -466,7 +466,7 @@ impl Ajoc {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn set_decorr_enable_for_test(&mut self, de: usize, enabled: bool) {
         if let Some(slot) = self.decorr_enable.get_mut(de) {
             *slot = enabled;

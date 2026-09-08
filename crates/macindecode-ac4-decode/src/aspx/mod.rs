@@ -52,7 +52,7 @@
 
 #[cfg(feature = "spec-tables")]
 pub mod bands;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod codebooks;
 #[cfg(feature = "audio-decode")]
 pub mod dequant;
@@ -84,11 +84,11 @@ pub mod pipeline;
 pub mod preflatten;
 #[cfg(feature = "audio-decode")]
 pub mod qmf;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 mod reach;
 #[cfg(feature = "audio-decode")]
 pub mod state;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod syntax;
 pub mod tables;
 #[cfg(feature = "audio-decode")]
@@ -98,9 +98,9 @@ pub mod tonegen;
 #[cfg(feature = "audio-decode")]
 pub mod workspace;
 
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use reach::{AspxReach, collect_aspx_reach};
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use syntax::{
     AspxChannelFraming, AspxConfig, AspxData, AspxEnvelopes, AspxError, AspxHfGen, AspxState,
     MAX_SBG_PER_ENVELOPE,

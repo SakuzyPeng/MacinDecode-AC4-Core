@@ -3,13 +3,9 @@
 use crate::HeadphonePolicyState;
 use alloc::vec::Vec;
 use core::iter::FusedIterator;
-use macindecode_ac4_bitstream::{
-    Ac4PresentationSubstream, PresentationDrcConfiguration, PresentationDrcState,
-    PresentationSubstreamContext, PresentationSubstreamError, PresentationSubstreamGroupGainCodes,
-    oamd::{
-        AdditionalObjectMetadata, OamdCommonData, OamdMetadataBlock, ObjInfoBlockTiming,
-        ObjectMetadataState, SampleOffsetSource,
-    },
+use macindecode_ac4_bitstream::oamd::{
+    AdditionalObjectMetadata, OamdCommonData, OamdMetadataBlock, ObjInfoBlockTiming,
+    ObjectMetadataState, SampleOffsetSource,
 };
 
 /// 配置代次内稳定的场景元素标识。
@@ -31,18 +27,7 @@ impl SceneElementId {
     }
 }
 
-/// Session 的 presentation 选择策略。
-#[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum PresentationSelection {
-    /// 只有一个可解码 presentation 时自动选择；多于一个时返回歧义错误。
-    #[default]
-    AutoUnique,
-    /// 按零基 presentation 下标选择。
-    Index(u32),
-    /// 按码流声明的 `presentation_id` 选择。
-    Id(u32),
-}
+pub use macindecode_ac4_metadata::PresentationSelection;
 
 /// 调用方 metadata 中 presentation 身份的可用状态。
 ///
@@ -255,137 +240,7 @@ impl Default for Ac4DecoderConfig {
     }
 }
 
-/// 调用方提供的通用外部采样时间。
-///
-/// Scene 层只透传这些值，不解释它们来自哪一种容器。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AccessUnitContext {
-    index: u64,
-    source_sample_start: Option<i64>,
-    presentation_sample_start: Option<i64>,
-    priming_samples: Option<u64>,
-    random_access_hint: Option<bool>,
-    discontinuity: bool,
-}
-
-impl AccessUnitContext {
-    /// 为一个已定界的 access unit 创建上下文。
-    #[must_use]
-    pub const fn new(index: u64) -> Self {
-        Self {
-            index,
-            source_sample_start: None,
-            presentation_sample_start: None,
-            priming_samples: None,
-            random_access_hint: None,
-            discontinuity: false,
-        }
-    }
-
-    /// 设置调用方媒体时间轴中的起始采样。
-    #[must_use]
-    pub const fn with_source_sample_start(mut self, value: i64) -> Self {
-        self.source_sample_start = Some(value);
-        self
-    }
-
-    /// 设置调用方应用 edit 后的呈现起始采样。
-    #[must_use]
-    pub const fn with_presentation_sample_start(mut self, value: i64) -> Self {
-        self.presentation_sample_start = Some(value);
-        self
-    }
-
-    /// 设置容器单独声明的 priming，不把它混入其他起点字段。
-    #[must_use]
-    pub const fn with_priming_samples(mut self, value: u64) -> Self {
-        self.priming_samples = Some(value);
-        self
-    }
-
-    /// 设置容器或传输层的随机访问提示。
-    #[must_use]
-    pub const fn with_random_access_hint(mut self, value: bool) -> Self {
-        self.random_access_hint = Some(value);
-        self
-    }
-
-    /// 标记 access unit 前存在外部不连续。
-    #[must_use]
-    pub const fn with_discontinuity(mut self, value: bool) -> Self {
-        self.discontinuity = value;
-        self
-    }
-
-    /// 原始 access unit 下标。
-    #[must_use]
-    pub const fn index(&self) -> u64 {
-        self.index
-    }
-
-    /// 调用方媒体时间轴中的起始采样。
-    #[must_use]
-    pub const fn source_sample_start(&self) -> Option<i64> {
-        self.source_sample_start
-    }
-
-    /// 应用外部 edit 后的呈现起始采样。
-    #[must_use]
-    pub const fn presentation_sample_start(&self) -> Option<i64> {
-        self.presentation_sample_start
-    }
-
-    /// 容器 priming 采样数。
-    #[must_use]
-    pub const fn priming_samples(&self) -> Option<u64> {
-        self.priming_samples
-    }
-
-    /// 容器或传输层的随机访问提示。
-    #[must_use]
-    pub const fn random_access_hint(&self) -> Option<bool> {
-        self.random_access_hint
-    }
-
-    /// access unit 前是否存在外部不连续。
-    #[must_use]
-    pub const fn discontinuity(&self) -> bool {
-        self.discontinuity
-    }
-}
-
-impl Default for AccessUnitContext {
-    fn default() -> Self {
-        Self::new(0)
-    }
-}
-
-/// 一个已经剥离 sync wrapper、由调用方定界的 `raw_ac4_frame`。
-#[derive(Debug, Clone, Copy)]
-pub struct AccessUnit<'a> {
-    raw_frame: &'a [u8],
-    context: AccessUnitContext,
-}
-
-impl<'a> AccessUnit<'a> {
-    /// 创建 access unit；本构造器不复制输入切片。
-    #[must_use]
-    pub const fn new(raw_frame: &'a [u8], context: AccessUnitContext) -> Self {
-        Self { raw_frame, context }
-    }
-
-    /// 完整 `raw_ac4_frame` 字节。
-    #[must_use]
-    pub const fn raw_frame(&self) -> &'a [u8] {
-        self.raw_frame
-    }
-
-    /// 调用方提供的时间与连续性上下文。
-    #[must_use]
-    pub const fn context(&self) -> AccessUnitContext {
-        self.context
-    }
-}
+pub use macindecode_ac4_metadata::{AccessUnit, AccessUnitContext};
 
 /// 场景编码路径。
 #[non_exhaustive]
@@ -1808,166 +1663,7 @@ impl<'a> CoreBandPcmChannel<'a> {
     }
 }
 
-/// 所选 presentation 当前 AU 的完整 processing-metadata 侧车。
-///
-/// 该视图只观察码流原值，不执行 DRC、gain、pan、downmix、loudness correction 或任何
-/// renderer 处理。`payload` 借用 Session 自持的已验证副本，因此与
-/// [`DecodedAccessUnit`] 一样只在下一次 Session 可变调用前有效。
-#[derive(Debug, Clone, Copy)]
-pub struct PresentationSubstreamMetadata<'a> {
-    payload: &'a [u8],
-    record: PresentationSubstreamMetadataRecord,
-}
-
-impl<'a> PresentationSubstreamMetadata<'a> {
-    /// 产生该 metadata 的 AU 下标。
-    #[must_use]
-    pub const fn access_unit_index(self) -> u64 {
-        self.record.access_unit_index
-    }
-
-    /// Session 已选择的零基 presentation 下标。
-    #[must_use]
-    pub const fn presentation_index(self) -> u32 {
-        self.record.presentation_index
-    }
-
-    /// 所选 presentation 的码流标识；码流未声明时为 `None`。
-    #[must_use]
-    pub const fn presentation_id(self) -> Option<u32> {
-        self.record.presentation_id
-    }
-
-    /// 该 presentation substream 在 TOC index table 中的物理下标。
-    #[must_use]
-    pub const fn substream_index(self) -> u32 {
-        self.record.substream_index
-    }
-
-    /// 从同一 AU 拓扑派生、且已经用于验证 payload 的完整解析上下文。
-    #[must_use]
-    pub const fn context(self) -> PresentationSubstreamContext {
-        self.record.context
-    }
-
-    /// Session 自持的完整有界 presentation substream payload。
-    #[must_use]
-    pub const fn payload(self) -> &'a [u8] {
-        self.payload
-    }
-
-    /// 已按 `TS103190-2:v1.3.1:6.2.2.3` 的 `ac4_presentation_substream()` 语法严格验证的
-    /// payload 前缀。
-    ///
-    /// 通常与 [`payload`](Self::payload) 相同。已观测的 object/A-JOC 独立 DRC 帧会在规范
-    /// 末尾之后额外携带一个 `0x00`、`0x80` 或 `0xd8`；Scene 为回放互操作性只接受这三种精确形态，
-    /// 并把该字节排除在本切片之外。
-    #[must_use]
-    pub fn syntax_payload(self) -> &'a [u8] {
-        self.payload
-            .get(..self.record.syntax_payload_len)
-            .unwrap_or(&[])
-    }
-
-    /// 规范语法之后、为已知回放兼容形态保留的原始尾部。
-    ///
-    /// 当前返回值只可能为空、单字节 `[0x00]`、`[0x80]` 或 `[0xd8]`。该字节没有被赋予 AC-4
-    /// processing 语义，调用方不得把它解释为 DRC、gain 或 loudness-correction 字段。
-    #[must_use]
-    pub fn compatibility_tail(self) -> &'a [u8] {
-        self.payload
-            .get(self.record.syntax_payload_len..)
-            .unwrap_or(&[])
-    }
-
-    /// 当前 AU 成功提交后有效的 DRC 配置。
-    ///
-    /// 这与 [`parsed_substream`](Self::parsed_substream) 中“本帧是否传输配置”保持区分：
-    /// dependent frame 可以不重新传配置，但仍使用前一有效配置解析当前 DRC data。
-    #[must_use]
-    pub const fn effective_drc_configuration(self) -> Option<PresentationDrcConfiguration> {
-        self.record.effective_drc_configuration
-    }
-
-    /// 当前 AU 生效的逐 substream-group 六比特 gain 码值。
-    ///
-    /// 返回值仍是原始码值，不换算为 dB，也不应用到 PCM。当前帧的 absent/keep/new 传输形态
-    /// 保留在 [`Ac4PresentationSubstream::substream_group_gain_update`] 中。
-    #[must_use]
-    pub const fn effective_group_gain_codes(self) -> PresentationSubstreamGroupGainCodes {
-        self.record.effective_group_gain_codes
-    }
-
-    /// 从 Session 自持 payload 重建完整、借用的 presentation metadata 视图。
-    ///
-    /// Session 在发布本侧车前已经用相同上下文和 DRC 起始状态完成过一次严格验证；这里对
-    /// [`syntax_payload`](Self::syntax_payload) 重放 parser，是为了在禁止自引用存储的安全 Rust
-    /// 中恢复所有 opaque bit view。已知的非规范兼容尾部不参与语法解析。
-    ///
-    /// # Errors
-    ///
-    /// 若 Session 自持数据不再满足先前验证过的不变量，则返回底层解析错误；正常使用中不应
-    /// 出现该情况。
-    pub fn parsed_substream(
-        self,
-    ) -> Result<Ac4PresentationSubstream<'a>, PresentationSubstreamError> {
-        let mut drc_state = self.record.replay_drc_state;
-        Ac4PresentationSubstream::parse_with_drc_state(
-            self.syntax_payload(),
-            self.record.context,
-            &mut drc_state,
-        )
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct PresentationSubstreamMetadataRecord {
-    pub(crate) access_unit_index: u64,
-    pub(crate) presentation_index: u32,
-    pub(crate) presentation_id: Option<u32>,
-    pub(crate) substream_index: u32,
-    pub(crate) context: PresentationSubstreamContext,
-    pub(crate) syntax_payload_len: usize,
-    pub(crate) replay_drc_state: PresentationDrcState,
-    pub(crate) effective_drc_configuration: Option<PresentationDrcConfiguration>,
-    pub(crate) effective_group_gain_codes: PresentationSubstreamGroupGainCodes,
-}
-
-/// Session 拥有的 presentation payload 副本与当前可见记录。
-#[derive(Debug, Default)]
-pub(crate) struct PresentationSubstreamMetadataStorage {
-    payload: Vec<u8>,
-    record: Option<PresentationSubstreamMetadataRecord>,
-}
-
-impl PresentationSubstreamMetadataStorage {
-    pub(crate) fn clear(&mut self) {
-        self.payload.clear();
-        self.record = None;
-    }
-
-    pub(crate) fn try_reserve_payload(&mut self, payload_len: usize) -> Result<(), ()> {
-        let additional = payload_len.saturating_sub(self.payload.len());
-        self.payload.try_reserve(additional).map_err(|_| ())
-    }
-
-    pub(crate) fn publish(&mut self, payload: &[u8], record: PresentationSubstreamMetadataRecord) {
-        self.payload.clear();
-        self.payload.extend_from_slice(payload);
-        self.record = Some(record);
-    }
-
-    #[cfg_attr(
-        not(feature = "audio-decode"),
-        allow(dead_code, reason = "无 audio-decode 时公开入口不会返回成功的 AU 视图")
-    )]
-    pub(crate) fn view(&self) -> Option<PresentationSubstreamMetadata<'_>> {
-        Some(PresentationSubstreamMetadata {
-            payload: &self.payload,
-            record: self.record?,
-        })
-    }
-}
+pub use macindecode_ac4_metadata::PresentationSubstreamMetadata;
 
 /// 一次 AU 解码得到的借用结果。
 #[derive(Debug)]
@@ -1975,11 +1671,25 @@ pub struct DecodedAccessUnit<'a> {
     status: DecodeStatus,
     frames: &'a [SceneFrameStorage],
     presentation_metadata: Option<PresentationSubstreamMetadata<'a>>,
+    audio_metadata: Option<macindecode_ac4_metadata::AudioMetadataRecord>,
     #[cfg(feature = "audio-decode")]
     core_band_pcm: Option<&'a CoreBandPcmFrameStorage>,
 }
 
 impl<'a> DecodedAccessUnit<'a> {
+    #[cfg(feature = "audio-decode")]
+    pub(crate) fn with_audio_metadata(
+        mut self,
+        metadata: Option<macindecode_ac4_metadata::AudioMetadataRecord>,
+    ) -> Self {
+        self.audio_metadata = metadata;
+        self
+    }
+    /// 当前源 AU 的 audio metadata 摘要；内部 bit offset 相对原 substream payload。
+    pub const fn audio_metadata(&self) -> Option<macindecode_ac4_metadata::AudioMetadataRecord> {
+        self.audio_metadata
+    }
+
     #[cfg_attr(
         not(feature = "audio-decode"),
         expect(
@@ -1997,6 +1707,7 @@ impl<'a> DecodedAccessUnit<'a> {
             status,
             frames,
             presentation_metadata,
+            audio_metadata: None,
             #[cfg(feature = "audio-decode")]
             core_band_pcm,
         }

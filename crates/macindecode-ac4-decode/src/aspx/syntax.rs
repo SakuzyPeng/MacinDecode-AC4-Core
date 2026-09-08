@@ -225,7 +225,7 @@ impl AspxChannelFraming {
     /// `params` 与 `interval` 分开传，**不由本函数替调用方推导**：判据要造得出
     /// 「区间声明三个包络、`num_env` 只有两个」这类失配去验下游报不报错，构造器
     /// 一旦替它们对齐，那类判据就再也响不了。
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(
         params: AspxIntervalParams,
         interval: AspxInterval,
@@ -308,7 +308,7 @@ impl AspxHfGen {
 
     /// 供其他模块的判据组装一份 HF 生成参数；生产路径只由 `aspx_hfgen_iwc_*()`
     /// 产出。两个计数取各自切片的长度，判据因此能造出与频带表不符的组数。
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(tna_mode: &[u8], add_harmonic: &[bool]) -> Self {
         let mut out = Self::empty();
         for (slot, value) in out.tna_mode.iter_mut().zip(tna_mode) {
@@ -430,7 +430,7 @@ impl AspxEnvelopes {
     /// 逐包络的子带组数取各条切片自身的长度，因此判据可以造出「本包络声明高分
     /// 辨率、给的却是低分辨率的组数」——那正是 `5.7.6.3.4` 要报错的一种失配。
     /// 噪声侧只有一个组数，取首条切片的长度。
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(sig: &[&[i16]], noise: &[&[i16]]) -> Self {
         let mut out = Self::empty();
         out.num_env = u8::try_from(sig.len()).unwrap_or(u8::MAX);
@@ -517,7 +517,7 @@ impl AspxData {
     }
 
     /// 供其他模块的判据组装一个已解析的元素。
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test(
         channels: u8,
         bands: AspxBandTables,
@@ -529,7 +529,7 @@ impl AspxData {
     }
 
     /// 同上，但可指定 `aspx_balance`。
-    #[cfg(test)]
+    #[cfg(all(test, feature = "audio-decode"))]
     pub(crate) fn for_test_balanced(
         channels: u8,
         balance: Option<bool>,

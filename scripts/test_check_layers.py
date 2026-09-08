@@ -252,6 +252,41 @@ class GateTests(unittest.TestCase):
             self.run_gate({})
 
 
+class QualifiedLayerTests(unittest.TestCase):
+    def collect(self, dependency):
+        layers = {"parser": "syntax", "container": "dsp", "container::syntax": "syntax", "container::engine": "dsp"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "container").mkdir()
+            (root / "lib.rs").write_text("pub mod parser; pub mod container; pub use container::syntax::*;", encoding="utf-8")
+            (root / "parser.rs").write_text(dependency, encoding="utf-8")
+            (root / "container" / "mod.rs").write_text("pub use syntax::{Reader, Context}; pub use engine::Engine;", encoding="utf-8")
+            (root / "container" / "syntax.rs").write_text("pub struct Reader;\npub struct Context;", encoding="utf-8")
+            (root / "container" / "engine.rs").write_text("pub struct Engine;", encoding="utf-8")
+            with mock.patch.object(check_layers, "CRATE_SRC", root), mock.patch.object(check_layers, "LAYERS", layers):
+                edges = check_layers.collect_edges()
+                return edges, check_layers.violations(edges)
+
+    def test_facade_resolves_to_the_actual_syntax_module(self):
+        edges, violations = self.collect("use crate::container::{Reader, Context};")
+        self.assertIn(("parser", "container::syntax"), edges)
+        self.assertFalse(violations)
+
+    def test_facade_cannot_hide_a_dsp_dependency(self):
+        edges, violations = self.collect("use crate::container::Engine as Hidden;")
+        self.assertIn(("parser", "container::engine"), edges)
+        self.assertEqual([(s, t) for s, t, _ in violations], [("parser", "container::engine")])
+
+    def test_nested_use_tree_preserves_the_dsp_branch(self):
+        _, violations = self.collect("use crate::{container::{syntax::Reader, engine::Engine}};")
+        self.assertEqual([(s, t) for s, t, _ in violations], [("parser", "container::engine")])
+
+    def test_root_glob_export_retains_the_actual_owner(self):
+        edges, violations = self.collect("pub type Alias = crate::Reader;")
+        self.assertIn(("parser", "container::syntax"), edges)
+        self.assertFalse(violations)
+
+
 class RealTreeTests(unittest.TestCase):
     def test_repository_currently_passes(self):
         """真实源码树上的基线。CI 的 quality 检查跑的是同一条路径。
@@ -274,11 +309,11 @@ class RealTreeTests(unittest.TestCase):
                     total += len(edges)
         self.assertGreater(total, 50)
 
-    def test_both_crates_are_registered(self):
-        """两个 crate 都必须在 CRATES 里，且源码目录真实存在。"""
+    def test_all_core_crates_are_registered(self):
+        """语法、解码与共享 metadata crate 均受门禁约束。"""
         self.assertEqual(
             sorted(check_layers.CRATES),
-            ["macindecode-ac4-bitstream", "macindecode-ac4-decode"],
+            ["macindecode-ac4-bitstream", "macindecode-ac4-decode", "macindecode-ac4-metadata"],
         )
         for crate in check_layers.CRATES:
             self.assertTrue((check_layers.REPO_ROOT / "crates" / crate / "src").is_dir())

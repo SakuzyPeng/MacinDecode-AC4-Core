@@ -18,9 +18,11 @@ path = "src/main.rs"
 
 [features]
 default = []
+metadata-decode = ["macindecode-ac4-inspect/metadata-decode"]
 # 解析 A-JOC substream 的音频数据。转发到 decode 与 scene crate 的同名 feature，
 # 关闭时 trace 的 `ajoc_audio` 字段为 null，其余输出不变。
 audio-decode = [
+    "metadata-decode",
     "dep:macindecode-ac4-decode",
     "macindecode-ac4-decode/audio-decode",
     "dep:macindecode-ac4-scene",
@@ -29,6 +31,7 @@ audio-decode = [
 ]
 
 [dependencies]
+macindecode-ac4-metadata.workspace = true
 clap = { version = "4.6", features = ["derive"] }
 macindecode-ac4-bitstream.workspace = true
 macindecode-ac4-decode = { workspace = true, optional = true }

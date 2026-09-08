@@ -16,7 +16,7 @@
 
 #![no_std]
 
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 extern crate alloc;
 
 #[cfg(feature = "spec-tables")]
@@ -29,17 +29,19 @@ pub(crate) mod spec_tables {
 }
 
 pub mod ajoc;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
+pub mod audio_syntax;
+#[cfg(feature = "metadata-decode")]
 pub use ajoc::de as ajoc_de;
 pub mod asf;
 pub mod aspx;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod audio_data;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod channel;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod dialog_enhancement;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod drc_gains;
 #[cfg(feature = "audio-decode")]
 pub mod element_drive;
@@ -47,16 +49,16 @@ pub mod element_drive;
 pub mod frame_alignment;
 #[cfg(feature = "audio-decode")]
 pub mod full_ajoc;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod huffman;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod substream_audio;
-#[cfg(all(test, feature = "audio-decode"))]
+#[cfg(all(test, feature = "metadata-decode"))]
 mod testutil;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod var_element;
 
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use dialog_enhancement::{
     DIALOG_ENHANCEMENT_PARAMETER_BANDS, DialogEnhancementDataBlock, DialogEnhancementDataError,
     DialogEnhancementDecodedData, DialogEnhancementEffectiveData,
@@ -67,16 +69,16 @@ pub use dialog_enhancement::{
     DialogEnhancementSimulcastData, DialogEnhancementState, DialogEnhancementStateError,
     MAX_DIALOG_ENHANCEMENT_PARAMETER_CHANNELS, MAX_DIALOG_ENHANCEMENT_PARAMETER_CODES,
 };
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use drc_gains::{
     MAX_PRESENTATION_DRC_BANDS, MAX_PRESENTATION_DRC_CHANNEL_GROUPS,
     MAX_PRESENTATION_DRC_GAIN_VALUES, MAX_PRESENTATION_DRC_SUBFRAMES,
     PresentationDrcDecodedGainSet, PresentationDrcGainSetExt, PresentationDrcGains,
     PresentationDrcGainsContext, PresentationDrcGainsError,
 };
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use huffman::{HuffmanError, HuffmanTable};
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use substream_audio::{
     Ac4SubstreamAjoc, AjocAudioWorkspace, AjocSubstreamContext, SubstreamAudioError,
     parse_substream_ajoc,

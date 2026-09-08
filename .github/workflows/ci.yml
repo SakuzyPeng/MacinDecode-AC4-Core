@@ -47,6 +47,9 @@ jobs:
       - name: Check Scene no_std API
         run: cargo check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features
 
+      - name: Check metadata no_std API without tables
+        run: cargo check --locked -p macindecode-ac4-metadata --lib --target thumbv7em-none-eabi --no-default-features
+
       - name: Lint default features
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
@@ -149,6 +152,12 @@ jobs:
 
       - name: Lint audio-decode feature
         run: cargo clippy --locked --workspace --all-targets --features audio-decode -- -D warnings
+
+      - name: Check independent metadata backend
+        run: |
+          cargo check --locked -p macindecode-ac4-metadata --lib --target thumbv7em-none-eabi --no-default-features --features metadata-decode
+          cargo clippy --locked --workspace --all-targets --features metadata-decode -- -D warnings
+          cargo test --locked -p macindecode-ac4-decode -p macindecode-ac4-metadata -p macindecode-ac4-inspect --features metadata-decode
 
       - name: Test audio-decode feature
         run: cargo test --locked --workspace --features audio-decode

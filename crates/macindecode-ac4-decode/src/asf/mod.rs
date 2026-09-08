@@ -22,14 +22,14 @@ pub mod framing;
 pub mod imdct;
 #[cfg(feature = "audio-decode")]
 pub mod reconstruct;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod spectrum;
 #[cfg(feature = "spec-tables")]
 pub mod tables;
 
 #[cfg(feature = "audio-decode")]
 pub use reconstruct::{MAX_SCALE_FACTOR, ReconstructError, ScaleFactors, scale_factors};
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use spectrum::{
     AsfSpectrumError, AsfWorkspace, MAX_EXT_PREFIX, MAX_QUANT_MAGNITUDE, MAX_SPECTRAL_LINES,
     Section, coded_band_count,

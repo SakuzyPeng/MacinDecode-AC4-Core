@@ -87,60 +87,7 @@ impl fmt::Display for NeedMoreData {
 
 impl core::error::Error for NeedMoreData {}
 
-/// presentation 选择失败。
-#[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PresentationSelectionError {
-    /// 没有携带音频 group 的 eligible presentation。
-    NoEligiblePresentation { declared: u32 },
-    /// `AutoUnique` 遇到多个 eligible presentation。
-    Ambiguous { eligible: u32 },
-    /// 零基下标超出码流声明范围。
-    IndexOutOfRange { requested: u32, declared: u32 },
-    /// `presentation_id` 在当前配置中不存在。
-    IdNotFound { requested: u32 },
-    /// 同一 `presentation_id` 在当前配置中出现多次。
-    IdNotUnique { requested: u32, matches: u32 },
-    /// 显式选择到了只携带数据或不引用音频 group 的 presentation。
-    NotEligible { index: u32 },
-}
-
-impl fmt::Display for PresentationSelectionError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Self::NoEligiblePresentation { declared } => write!(
-                formatter,
-                "Input declares {declared} presentations but has no eligible audio presentation"
-            ),
-            Self::Ambiguous { eligible } => write!(
-                formatter,
-                "Input has {eligible} eligible presentations; AutoUnique cannot make a unique selection"
-            ),
-            Self::IndexOutOfRange {
-                requested,
-                declared,
-            } => write!(
-                formatter,
-                "Presentation index {requested} is out of range; input declares {declared} presentations"
-            ),
-            Self::IdNotFound { requested } => {
-                write!(formatter, "presentation_id {requested} does not exist")
-            }
-            Self::IdNotUnique { requested, matches } => write!(
-                formatter,
-                "presentation_id {requested} occurs {matches} times and cannot be selected uniquely"
-            ),
-            Self::NotEligible { index } => {
-                write!(
-                    formatter,
-                    "Presentation {index} has no selectable audio group"
-                )
-            }
-        }
-    }
-}
-
-impl core::error::Error for PresentationSelectionError {}
+pub use macindecode_ac4_metadata::selection::PresentationSelectionError;
 
 /// 当前 Scene 解码器明确拒绝的边界。
 #[non_exhaustive]

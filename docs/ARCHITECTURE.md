@@ -18,12 +18,13 @@ encoded access units
 
 ## 2. 当前 workspace 与职责边界
 
-当前 workspace 有七个 crate，其中六个是可发布包，`macindecode-ac4-perf` 仅供仓库内部使用：
+当前 workspace 有八个 crate，其中七个是可发布包，`macindecode-ac4-perf` 仅供仓库内部使用：
 
 | crate | 当前职责 | 平台依赖 |
 |---|---|---|
 | `macindecode-ac4-bitstream` | bounded bit reader、sync/TOC/拓扑、presentation/OAMD/EMDF、音频语法与 opaque metadata view | 无，`no_std` |
 | `macindecode-ac4-decode` | ASF/A-SPX/A-JOC 数值重建、Huffman metadata、QMF、表 188 对齐与统一 Full engine | 无，`no_std` |
+| `macindecode-ac4-metadata` | 源 AU 观察、共享控制/presentation/audio/OAMD 状态与 Core 网格判据；可选有表语法后端，不生成 PCM | 无，`no_std + alloc` |
 | `macindecode-ac4-scene` | 容器无关的 `Ac4SceneFrame` 数据契约、Session 控制面、A-JOC Core/Full 场景组装与 presentation metadata 侧车 | 无，`no_std` |
 | `macindecode-ac4-mp4` | `ac-4`、`dac4`、sample table、edit/priming 时间线 | 无，`no_std` |
 | `macindecode-ac4-inspect` | MP4/raw 单遍聚合、公开报告 DTO、JSON 序列化与稳定 text renderer | 使用 `std` |

@@ -171,7 +171,7 @@ impl From<macindecode_ac4_bitstream::oamd::OamdError> for SubstreamAudioError {
 }
 
 /// 由 TOC 与 `ac4_substream_info_ajoc()` 推导出的整套解析上下文。
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AjocSubstreamContext {
     /// `metadata()` 的上下文。
     pub metadata: SubstreamContext,

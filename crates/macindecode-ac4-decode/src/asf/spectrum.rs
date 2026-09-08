@@ -516,6 +516,7 @@ impl AsfWorkspace {
     }
 
     /// 解析本工作区时使用的窗口布局键。
+    #[cfg(feature = "audio-decode")]
     pub(crate) const fn layout_key(&self) -> AsfLayoutKey {
         self.layout_key
     }

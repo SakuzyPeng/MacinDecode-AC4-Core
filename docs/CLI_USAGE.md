@@ -52,6 +52,9 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 ### `inspect`
 
 单遍扫描 MP4/M4A 或 Annex G raw AC-4，输出类似 DRP/MediaInfo 的只读比特流元数据报告。
+通过 `--metadata-detail full` 可显式扫描实际 Core/Full OAMD 并生成 Core 布局证据；需要
+`metadata-decode` feature 与本地规范表。默认 `basic` 保持轻量，两个模式都不生成 PCM。
+
 该命令不需要 `audio-decode` feature，不解析 `trace` JSON，也不执行响度、DRC、Dialogue
 Enhancement、downmix 或 PCM 处理。
 

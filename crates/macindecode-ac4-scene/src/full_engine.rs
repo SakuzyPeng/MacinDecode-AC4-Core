@@ -133,6 +133,12 @@ fn syntax_error(
     presentation: ResolvedPresentation,
 ) -> DecodeError {
     match error {
+        FullAjocSyntaxError::AllocationFailure { .. } => DecodeError::new(
+            DecodeErrorKind::DecodeFailure {
+                stage: DecodeStage::AudioSyntax,
+            },
+            error_context(access_unit, presentation).with_syntax_path(AJOC_PAYLOAD_SYNTAX),
+        ),
         FullAjocSyntaxError::Decode {
             substream_index,
             error,

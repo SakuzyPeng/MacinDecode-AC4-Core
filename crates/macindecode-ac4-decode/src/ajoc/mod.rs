@@ -33,7 +33,7 @@
 
 #[cfg(feature = "spec-tables")]
 pub mod bands;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod de;
 #[cfg(feature = "audio-decode")]
 pub mod decorrelator;
@@ -45,7 +45,7 @@ pub mod diff;
 pub mod interp;
 #[cfg(feature = "audio-decode")]
 pub mod reconstruction;
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub mod syntax;
 
 /// `ajoc_num_dpoints` 的上界。该字段占 2 位，故数据点不超过 3 个。
@@ -71,7 +71,7 @@ pub enum MatrixKind {
     Wet,
 }
 
-#[cfg(feature = "audio-decode")]
+#[cfg(feature = "metadata-decode")]
 pub use syntax::{
     Ajoc, AjocDataPoints, AjocError, AjocHcbType, AjocObjectControl, AjocObjectMatrix,
     ajoc_num_bands, cb_off, parse_ajoc, table_for,

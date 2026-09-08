@@ -307,9 +307,36 @@ impl OamdState {
         blocks: &[OamdMetadataBlock],
         num_obj_info_blocks: Option<u8>,
     ) -> Result<(), OamdStateError> {
+        self.apply_blocks_with_observer(blocks, num_obj_info_blocks, |_, _, _| {})
+    }
+
+    /// 在同一状态候选上还原全部块，并观察每次更新后的完整码值。
+    /// `TS103190-2:v1.3.1:6.3.9`。observer 接收候选事件；任何后续块失败时，
+    /// 调用方必须丢弃本批事件。本状态仅在全部块成功后提交。
+    pub fn apply_blocks_with_observer(
+        &mut self,
+        blocks: &[OamdMetadataBlock],
+        num_obj_info_blocks: Option<u8>,
+        mut observer: impl FnMut(&OamdMetadataBlock, ObjectMetadataState, AdditionalObjectMetadata),
+    ) -> Result<(), OamdStateError> {
         let mut next = *self;
         for update in blocks {
             next.apply_block(update)?;
+            let index = usize::from(update.object_index);
+            let state =
+                next.object(index)
+                    .copied()
+                    .ok_or(OamdStateError::ObjectIndexOutOfRange {
+                        object_index: update.object_index,
+                        limit: MAX_OAMD_OBJECTS,
+                    })?;
+            let additional = next.object_additional(index).copied().ok_or(
+                OamdStateError::ObjectIndexOutOfRange {
+                    object_index: update.object_index,
+                    limit: MAX_OAMD_OBJECTS,
+                },
+            )?;
+            observer(update, state, additional);
         }
         if let Some(count) = num_obj_info_blocks {
             next.previous_num_obj_info_blocks = Some(count);

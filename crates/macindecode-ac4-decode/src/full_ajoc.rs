@@ -22,7 +22,7 @@ use core::fmt;
 
 mod asf;
 mod decoder;
-mod syntax;
+use crate::audio_syntax as syntax;
 
 pub use asf::{
     DecodedFullAjocAsfFrame, FullAjocAsfBuffer, FullAjocAsfChannelObservation, FullAjocAsfError,
@@ -394,6 +394,29 @@ impl SupportedAjocFullFrame {
                     physical_substreams,
                     dialogue_objects,
                 }
+    }
+}
+
+impl DecodedFullAjocSyntaxFrame<'_> {
+    pub fn aspx_support(&self) -> Result<SupportedAspxFrame, AspxBlocker> {
+        AspxBlocker::check(
+            &self.parsed().audio.var_element,
+            self.context().params.context.frame_len_base,
+        )
+    }
+    pub fn full_support(&self) -> Result<SupportedAjocFullFrame, FullAjocBlocker> {
+        SupportedAjocFullFrame::check(&self.parsed(), &self.context(), self.physical_substreams())
+    }
+}
+impl FullAjocSyntaxObservation<'_> {
+    pub fn aspx_support(self) -> Result<SupportedAspxFrame, AspxBlocker> {
+        AspxBlocker::check(
+            &self.parsed().audio.var_element,
+            self.context().params.context.frame_len_base,
+        )
+    }
+    pub fn full_support(self) -> Result<SupportedAjocFullFrame, FullAjocBlocker> {
+        SupportedAjocFullFrame::check(&self.parsed(), &self.context(), self.physical_substreams())
     }
 }
 
