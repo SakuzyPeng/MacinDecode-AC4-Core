@@ -1134,7 +1134,7 @@ impl SceneObjectState {
         self.headphone_policy
     }
 
-    #[cfg(any(feature = "audio-decode", test))]
+    #[cfg(feature = "audio-decode")]
     pub(crate) const fn with_headphone_policy(mut self, policy: HeadphonePolicyState) -> Self {
         self.headphone_policy = policy;
         self
@@ -1202,7 +1202,7 @@ pub struct CommonMetadataUpdateOrigin {
 }
 
 impl CommonMetadataUpdateOrigin {
-    #[cfg(any(feature = "audio-decode", test))]
+    #[cfg(feature = "audio-decode")]
     pub(crate) const fn new(group_mask: u8, control_source_access_unit_index: u64) -> Self {
         Self {
             group_mask,
@@ -1344,7 +1344,7 @@ impl SceneMetadataUpdate {
         }
     }
 
-    #[cfg(any(feature = "audio-decode", test))]
+    #[cfg(feature = "audio-decode")]
     pub(crate) const fn common_policy_update(
         element_id: SceneElementId,
         state: SceneObjectState,
@@ -1363,7 +1363,7 @@ impl SceneMetadataUpdate {
         }
     }
 
-    #[cfg(any(feature = "audio-decode", test))]
+    #[cfg(feature = "audio-decode")]
     pub(crate) fn resolve_headphone_policy(
         &mut self,
         policy: HeadphonePolicyState,
