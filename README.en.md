@@ -18,6 +18,7 @@ respective owners and are referenced only to describe compatibility.
 
 - **Container & sync**: MP4 (`ac-4` sample entry / `dac4`) and raw AC-4 sync frame parsing
 - **Scene topology**: Presentation / Group / Substream relationships, random access & configuration generation state machine
+- **Metadata-only sessions**: Source-AU presentation/audio/OAMD observation without PCM reconstruction, with Core grid and speaker-layout reports
 - **OAMD timeline**: Cross-frame state continuity, intra-frame updates, ramps, and post-seek integrity marking
 - **Audio core decoding**: Dequantization, IMDCT, joint channel matrix, A-SPX spectral extension & QMF synthesis
 - **A-JOC full reconstruction**: Object matrix, wet/decorrelation, LFE reinsertion, terminal QMF synthesis
@@ -124,8 +125,9 @@ defaults to stable English text; on failure, stdout is empty (exit code 2 for ar
 
 ```text
 macindecode-ac4-cli ──→ inspect / mp4 / scene / decode / bitstream
-macindecode-ac4-inspect ──→ mp4 / bitstream
-macindecode-ac4-scene ──→ decode / bitstream
+macindecode-ac4-inspect ──→ metadata / mp4 / bitstream
+macindecode-ac4-scene ──→ metadata / decode / bitstream
+macindecode-ac4-metadata ──→ bitstream / decode (optional metadata-decode)
 macindecode-ac4-decode ──→ bitstream
 macindecode-ac4-mp4 ──→ bitstream
 macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream (internal)
@@ -135,6 +137,7 @@ macindecode-ac4-perf ──→ scene / decode / mp4 / bitstream (internal)
 |---|---|---|
 | [`macindecode-ac4-bitstream`](crates/macindecode-ac4-bitstream) | Bounded bit reading, TOC/topology, presentation/OAMD/EMDF, and audio syntax | ✅ |
 | [`macindecode-ac4-decode`](crates/macindecode-ac4-decode) | ASF/A-SPX/A-JOC reconstruction, QMF, Table 188 alignment, and the Full engine | ✅ |
+| [`macindecode-ac4-metadata`](crates/macindecode-ac4-metadata) | Source-AU metadata sessions without PCM, state inheritance, and Core grid criteria | ✅ |
 | [`macindecode-ac4-inspect`](crates/macindecode-ac4-inspect) | File-level MP4/raw AC-4 aggregation, JSON DTOs, and stable text rendering | — |
 | [`macindecode-ac4-scene`](crates/macindecode-ac4-scene) | `Ac4SceneFrame` contract and streaming Rust API for A-JOC Core/Full | ✅ |
 | [`macindecode-ac4-mp4`](crates/macindecode-ac4-mp4) | ISO BMFF boxes, `dac4`, bounded AUs, sample table, and edit/priming timeline | ✅ |

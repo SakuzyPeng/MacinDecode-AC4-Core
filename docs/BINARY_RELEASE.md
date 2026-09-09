@@ -23,6 +23,11 @@ git push origin v0.1.0
 tag 与版本不一致时，工作流会在任何平台开始构建前失败。工作流不会发布
 crates.io 包；crate 发布仍按 [crates.io 发布检查](CRATES_IO_RELEASE.md) 人工执行。
 
+发布说明优先读取 tag 内的 `docs/releases/<tag>.md`，例如
+[`docs/releases/v0.1.0.md`](releases/v0.1.0.md)。该文件应说明本版功能、支持范围和
+下载用法；未提供时回退到 GitHub 自动生成的提交说明。推送 tag 前应先提交发布说明，
+并确认对应源码的 CI 与六平台构建成功。
+
 ## 发布目标
 
 | 系统 | 架构 | Rust target | 归档 |

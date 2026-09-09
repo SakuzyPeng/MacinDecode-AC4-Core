@@ -237,6 +237,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
       - name: Download complete release bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -254,7 +259,13 @@ jobs:
             gh release upload "$RELEASE_TAG" dist/* --clobber
             exit 0
           fi
-          args=(--verify-tag --generate-notes --title "MacinDecode AC-4 Core $RELEASE_TAG")
+          args=(--verify-tag --title "MacinDecode AC-4 Core $RELEASE_TAG")
+          notes_file="docs/releases/$RELEASE_TAG.md"
+          if [[ -f "$notes_file" ]]; then
+            args+=(--notes-file "$notes_file")
+          else
+            args+=(--generate-notes)
+          fi
           if [[ "$RELEASE_VERSION" == *-* ]]; then
             args+=(--prerelease)
           fi
