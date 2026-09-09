@@ -660,97 +660,73 @@ impl Ac4MetadataSession {
         };
         let object_start = self.output.objects.len();
         let update_start = self.output.updates.len();
-        let mut observe =
-            |index,
-             parsed: &macindecode_ac4_bitstream::oamd::OamdSubstreamPayload,
-             initial: macindecode_ac4_bitstream::oamd::OamdState,
-             descriptors: &macindecode_ac4_bitstream::oamd::ObjectDescriptors| {
-                if descriptors.as_slice().iter().all(|d| d.b_ajoc_coded) {
-                    return Ok(());
-                }
-                let timing = parsed.timing.or(initial.effective_timing());
-                let count = timing
-                    .map(|t| t.num_obj_info_blocks)
-                    .or(initial.previous_num_obj_info_blocks())
-                    .unwrap_or(0);
-                crate::oamd::resolve_side(
-                    initial,
-                    parsed.metadata_blocks(),
-                    count,
-                    timing,
-                    descriptors.as_slice(),
-                    index,
-                    ObjectMetadataDomain::Standalone,
-                    &mut self.output,
-                )
-                .map(|_| ())
-            };
-        match self.groups.prepare_with_observer(
-            raw,
-            topology,
-            mask,
-            false,
-            error_scope,
-            false,
-            &mut observe,
-        ) {
-            Ok(candidate) => {
-                self.output.groups.extend_from_slice(candidate.groups());
-                self.groups.commit(&candidate);
-            }
-            Err(error) => {
-                self.output.objects.truncate(object_start);
-                self.output.updates.truncate(update_start);
-                let blocked = if error.kind() == MetadataErrorKind::ContextConflict {
-                    error.context().substream_index
-                } else {
-                    None
+        let mut remaining = mask;
+        let mut invalidated = 0u8;
+        loop {
+            let mut observe =
+                |index,
+                 parsed: &macindecode_ac4_bitstream::oamd::OamdSubstreamPayload,
+                 initial: macindecode_ac4_bitstream::oamd::OamdState,
+                 descriptors: &macindecode_ac4_bitstream::oamd::ObjectDescriptors| {
+                    if descriptors.as_slice().iter().all(|d| d.b_ajoc_coded) {
+                        return Ok(());
+                    }
+                    let timing = parsed.timing.or(initial.effective_timing());
+                    let count = timing
+                        .map(|t| t.num_obj_info_blocks)
+                        .or(initial.previous_num_obj_info_blocks())
+                        .unwrap_or(0);
+                    crate::oamd::resolve_side(
+                        initial,
+                        parsed.metadata_blocks(),
+                        count,
+                        timing,
+                        descriptors.as_slice(),
+                        index,
+                        ObjectMetadataDomain::Standalone,
+                        &mut self.output,
+                    )
+                    .map(|_| ())
                 };
-                let mut seen = [false; MAX_SUBSTREAMS];
-                for index in 0..topology.groups().len() {
-                    let gi = u32::try_from(index).unwrap_or(u32::MAX);
-                    let bit = 1u8.checked_shl(gi).unwrap_or(0);
-                    if mask & bit == 0 {
-                        continue;
-                    }
-                    let physical = topology
-                        .groups()
-                        .get(index)
-                        .and_then(|g| g.oamd_substream)
-                        .and_then(|s| s.substream_index);
-                    if blocked.is_some() && physical == blocked {
-                        self.groups.invalidate_group(topology, index);
-                        self.output.issue(MetadataPartition::GroupOamd, error);
-                        continue;
-                    }
-                    let before = (self.output.objects.len(), self.output.updates.len());
-                    let mut observer=|si,parsed:&macindecode_ac4_bitstream::oamd::OamdSubstreamPayload,initial:macindecode_ac4_bitstream::oamd::OamdState,descriptors:&macindecode_ac4_bitstream::oamd::ObjectDescriptors|{
-                        let slot=usize::try_from(si).unwrap_or(usize::MAX);
-                        if seen.get(slot)==Some(&true)||descriptors.as_slice().iter().all(|d|d.b_ajoc_coded){return Ok(());}
-                        let timing=parsed.timing.or(initial.effective_timing());let count=timing.map(|t|t.num_obj_info_blocks).or(initial.previous_num_obj_info_blocks()).unwrap_or(0);
-                        crate::oamd::resolve_side(initial,parsed.metadata_blocks(),count,timing,descriptors.as_slice(),si,ObjectMetadataDomain::Standalone,&mut self.output)?;
-                        if let Some(seen)=seen.get_mut(slot){*seen=true;}Ok(())
-                    };
-                    match self.groups.prepare_with_observer(
-                        raw,
-                        topology,
-                        bit,
-                        false,
-                        error_scope,
-                        false,
-                        &mut observer,
-                    ) {
-                        Ok(candidate) => {
-                            self.output.groups.extend_from_slice(candidate.groups());
-                            self.groups.commit(&candidate);
-                        }
-                        Err(e) => {
-                            self.output.objects.truncate(before.0);
-                            self.output.updates.truncate(before.1);
+            match self.groups.prepare_with_observer(
+                raw,
+                topology,
+                remaining,
+                false,
+                error_scope,
+                false,
+                &mut observe,
+            ) {
+                Ok(candidate) => {
+                    // 失败组的 common 单独失效；与成功组共享的物理状态由候选恢复。
+                    for index in 0..topology.groups().len() {
+                        let group = u32::try_from(index).unwrap_or(u32::MAX);
+                        if invalidated & 1u8.checked_shl(group).unwrap_or(0) != 0 {
                             self.groups.invalidate_group(topology, index);
-                            self.output.issue(MetadataPartition::GroupOamd, e);
                         }
                     }
+                    self.output.groups.extend_from_slice(candidate.groups());
+                    self.groups.commit(&candidate);
+                    break;
+                }
+                Err(error) => {
+                    self.output.objects.truncate(object_start);
+                    self.output.updates.truncate(update_start);
+                    let failed = failed_oamd_groups(topology, remaining, error);
+                    invalidated |= failed;
+                    remaining &= !failed;
+                    for index in 0..topology.groups().len() {
+                        let group = u32::try_from(index).unwrap_or(u32::MAX);
+                        if failed & 1u8.checked_shl(group).unwrap_or(0) != 0 {
+                            self.output.issue(
+                                MetadataPartition::GroupOamd,
+                                MetadataError::new(error.kind(), error.context().with_group(group)),
+                            );
+                        }
+                    }
+                    // 每次至少排除一组；余下组始终从本 AU 之前的历史重新准备。
+                    // TS103190-2:v1.3.1:6.2.2.4、TS103190-2:v1.3.1:6.3.9：
+                    // 共享物理载荷的差分只能提交一次，剩余组间的上下文仍须一致。
                 }
             }
         }
@@ -799,6 +775,33 @@ impl Ac4MetadataSession {
             self.output.audio.push(record);
         }
     }
+}
+
+fn failed_oamd_groups(topology: &Ac4Topology, selected: u8, error: MetadataError) -> u8 {
+    let context = error.context();
+    let affected = if error.kind() != MetadataErrorKind::ContextConflict
+        && let Some(group) = context.group_index
+    {
+        1u8.checked_shl(group).unwrap_or(0)
+    } else if let Some(physical) = context.substream_index {
+        topology
+            .groups()
+            .iter()
+            .enumerate()
+            .fold(0u8, |mask, (index, group)| {
+                if group.oamd_substream.and_then(|s| s.substream_index) == Some(physical) {
+                    mask | 1u8
+                        .checked_shl(u32::try_from(index).unwrap_or(u32::MAX))
+                        .unwrap_or(0)
+                } else {
+                    mask
+                }
+            })
+    } else {
+        0
+    };
+    let affected = affected & selected;
+    if affected == 0 { selected } else { affected }
 }
 
 #[derive(Debug)]
@@ -993,6 +996,185 @@ mod tests {
     fn session() -> Ac4MetadataSession {
         Ac4MetadataSession::new(Ac4MetadataConfig::new()).unwrap()
     }
+
+    fn shared_oamd_frame(
+        ndot: [bool; 3],
+        separate_group: usize,
+        shared: &[u8],
+        separate: &[u8],
+    ) -> (Vec<u8>, Ac4Topology) {
+        // config 3 引用三个 direct-object group；两组共享 OAMD 2，另一组使用 OAMD 3。
+        // 三组引用同一 audio 1，presentation 0/audio 1 留空，仅测试 group OAMD 事务。
+        let presentation = "0 011 0 000 0 00 000 0 00 00 0 0 000 001 010 0 0 0 1 00";
+        let groups = ndot
+            .into_iter()
+            .enumerate()
+            .map(|(index, independent)| {
+                let physical = if index == separate_group {
+                    "11 00 0"
+                } else {
+                    "10"
+                };
+                format!(
+                    "1 0 1 0 1 {} {physical} 0 001 1 0 0 0 1 01 0",
+                    u8::from(independent)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        let mut raw = pack(&format!(
+            "10 0000000000 0 1 1101 1 1 0 0 {presentation} {groups} 00 00 0 0 0000000000 0 0000000000 0 {:010b} 0 {:010b}",
+            shared.len(),
+            separate.len()
+        ));
+        raw.extend_from_slice(shared);
+        raw.extend_from_slice(separate);
+        let topology = Ac4Topology::parse(&raw).unwrap();
+        assert_eq!(topology.groups().len(), 3);
+        macindecode_ac4_bitstream::topology::validate_substream_references(&topology).unwrap();
+        (raw, topology)
+    }
+
+    fn observe_group_frame(
+        session: &mut Ac4MetadataSession,
+        frame: (Vec<u8>, Ac4Topology),
+        index: u64,
+    ) {
+        session.output.clear();
+        session.output.context = AccessUnitContext::new(index);
+        session.observe_groups(
+            &frame.0,
+            &frame.1,
+            7,
+            MetadataErrorContext::for_access_unit(index),
+        );
+    }
+
+    fn observed_object_x(session: &Ac4MetadataSession, substream_index: u32) -> u8 {
+        session
+            .output
+            .objects
+            .iter()
+            .find(|object| object.substream_index == substream_index)
+            .unwrap()
+            .state
+            .render
+            .unwrap()
+            .position
+            .x
+    }
+
+    #[test]
+    fn shared_oamd_delta_commits_once_when_an_independent_group_fails() {
+        let absolute = pack("0 1 0 001 000000 00 0 1 001010 011111 1 0000 1 1 0");
+        let delta = pack("0 0 0 0 1 0 0 1 001 000 000 1 1 0");
+        let reuse = pack("0 0 0 1 1 0");
+        for separate_group in 0..3 {
+            let mut session = session();
+            observe_group_frame(
+                &mut session,
+                shared_oamd_frame([true; 3], separate_group, &absolute, &absolute),
+                0,
+            );
+            assert!(session.output.diagnostics.is_empty());
+            assert_eq!(observed_object_x(&session, 2), 10);
+
+            observe_group_frame(
+                &mut session,
+                shared_oamd_frame([false; 3], separate_group, &delta, &[0xff]),
+                1,
+            );
+            assert_eq!(session.output.groups.len(), 2);
+            assert_eq!(session.output.objects.len(), 1);
+            assert_eq!(session.output.updates.len(), 1);
+            assert_eq!(session.output.diagnostics.len(), 1);
+            assert_eq!(
+                session
+                    .output
+                    .diagnostics
+                    .first()
+                    .unwrap()
+                    .error
+                    .context()
+                    .group_index,
+                u32::try_from(separate_group).ok()
+            );
+            assert_eq!(observed_object_x(&session, 2), 11);
+
+            observe_group_frame(
+                &mut session,
+                shared_oamd_frame([false; 3], separate_group, &reuse, &[0xff]),
+                2,
+            );
+            assert_eq!(
+                observed_object_x(&session, 2),
+                11,
+                "下一 AU 必须继承只应用一次差分的物理 OAMD 状态"
+            );
+        }
+    }
+
+    #[test]
+    fn failed_shared_oamd_invalidates_both_groups_and_preserves_the_other_source() {
+        let absolute = pack("0 1 0 001 000000 00 0 1 001010 011111 1 0000 1 1 0");
+        let delta = pack("0 0 0 0 1 0 0 1 001 000 000 1 1 0");
+        let reuse = pack("0 0 0 1 1 0");
+        let mut session = session();
+        observe_group_frame(
+            &mut session,
+            shared_oamd_frame([true; 3], 2, &absolute, &absolute),
+            0,
+        );
+        observe_group_frame(
+            &mut session,
+            shared_oamd_frame([false; 3], 2, &[0xff], &delta),
+            1,
+        );
+        assert_eq!(session.output.groups.len(), 1);
+        assert_eq!(session.output.objects.len(), 1);
+        assert_eq!(session.output.diagnostics.len(), 2);
+        assert_eq!(observed_object_x(&session, 3), 11);
+
+        observe_group_frame(
+            &mut session,
+            shared_oamd_frame([false; 3], 2, &reuse, &reuse),
+            2,
+        );
+        assert_eq!(session.output.objects.len(), 1);
+        assert_eq!(session.output.diagnostics.len(), 2);
+        assert_eq!(observed_object_x(&session, 3), 11);
+    }
+
+    #[test]
+    fn shared_oamd_context_conflict_is_detected_after_an_unrelated_failure() {
+        let absolute = pack("0 1 0 001 000000 00 0 1 001010 011111 1 0000 1 1 0");
+        let delta = pack("0 0 0 0 1 0 0 1 001 000 000 1 1 0");
+        let mut session = session();
+        observe_group_frame(
+            &mut session,
+            shared_oamd_frame([true; 3], 0, &absolute, &absolute),
+            0,
+        );
+        // group 0 先失败；group 1/2 随后暴露同一物理 OAMD 的 ndot 冲突。
+        observe_group_frame(
+            &mut session,
+            shared_oamd_frame([false, false, true], 0, &delta, &[0xff]),
+            1,
+        );
+        assert!(session.output.groups.is_empty());
+        assert!(session.output.objects.is_empty());
+        assert!(session.output.updates.is_empty());
+        assert_eq!(
+            session
+                .output
+                .diagnostics
+                .iter()
+                .filter(|diagnostic| diagnostic.error.kind() == MetadataErrorKind::ContextConflict)
+                .count(),
+            2
+        );
+    }
+
     #[test]
     fn basic_observes_presentation_audio_and_integer_source_time() {
         let mut session = session();
