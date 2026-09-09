@@ -1462,16 +1462,21 @@ impl Aggregator {
         frame_index: u64,
         observation: MetadataAccessUnit<'_>,
     ) -> Result<(), String> {
+        // 同一 canonical topology 内，载荷边界不依赖 metadata 的随机访问门禁。
+        // 按物理 index 去重计数，等待恢复期间的字节仍属于码率统计范围。
+        for (&substream_index, accumulator) in &mut self.substreams {
+            let payload = topology
+                .substream_payload(frame, substream_index)
+                .map_err(|e| e.to_string())?;
+            accumulator.measured_bytes = accumulator
+                .measured_bytes
+                .saturating_add(payload.len() as u128);
+        }
         for record in observation.audio_metadata() {
             let substream_index = record.substream_index;
             let payload = topology
                 .substream_payload(frame, substream_index)
                 .map_err(|e| e.to_string())?;
-            if let Some(accumulator) = self.substreams.get_mut(&substream_index) {
-                accumulator.measured_bytes = accumulator
-                    .measured_bytes
-                    .saturating_add(payload.len() as u128);
-            }
             let (context, parsed) = match record.result {
                 Ok(parsed) => parsed,
                 Err(error) => {
@@ -3655,6 +3660,59 @@ fn text_audio_substreams(output: &mut String, field: &ReportedField) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        reason = "构造已知有界的 stereo 测试位串"
+    )]
+    fn stereo_frame(sequence: u16, iframe: bool) -> Vec<u8> {
+        let bits = format!(
+            "10 {sequence:010b} 0 1 1101 {} 1 0 0 1 0 000 0 00 000 0 00 00 0 000 0 0 0 1 00 1 0 1 1 10 0 0 1 01 0 10 0 0000000011 0 0000000100",
+            u8::from(iframe)
+        );
+        let bits: Vec<_> = bits.bytes().filter(|b| matches!(b, b'0' | b'1')).collect();
+        let mut raw = vec![0; bits.len().div_ceil(8)];
+        for (index, bit) in bits.into_iter().enumerate() {
+            if bit == b'1' {
+                raw[index / 8] |= 1 << (7 - index % 8);
+            }
+        }
+        raw.extend_from_slice(&[0x55, 0x04, 0, 0, 0, 0, 0x20]);
+        raw
+    }
+
+    #[test]
+    fn substream_bitrate_counts_payloads_while_waiting_for_random_access() {
+        for resumes in [false, true] {
+            let mut frames = vec![stereo_frame(1, true), stereo_frame(3, false)];
+            if resumes {
+                frames.extend([stereo_frame(4, false), stereo_frame(5, true)]);
+            }
+            let mut stream = Vec::new();
+            for raw in &frames {
+                stream.extend_from_slice(&[0xac, 0x40]);
+                stream.extend_from_slice(&u16::try_from(raw.len()).unwrap().to_be_bytes());
+                stream.extend_from_slice(raw);
+            }
+            let report = inspect_bytes(
+                &stream,
+                InspectSourceHint::new(Some("sequence-change.ac4"), InspectInputFormat::AnnexG),
+            )
+            .unwrap();
+            assert_eq!(
+                report.source.frame_count,
+                u64::try_from(frames.len()).unwrap()
+            );
+            let presentation = report.presentations.first().unwrap();
+            let audio = report.audio_substreams.first().unwrap();
+            assert_eq!(presentation.bit_rate.status, FieldStatus::Present);
+            assert_eq!(presentation.bit_rate.value, Some(json!(1)));
+            assert_eq!(audio.bit_rate.status, FieldStatus::Present);
+            // 每个 AU 都含 4 字节音频：48 kHz / 2048 samples 下是 750 bps，显示 1 kbps。
+            assert_eq!(audio.bit_rate.value, Some(json!(1)), "resumes={resumes}");
+        }
+    }
 
     #[test]
     fn availability_states_remain_distinct_in_text_and_json() {
