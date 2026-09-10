@@ -8,7 +8,8 @@ Dolby AC-4 object audio decoding core · Rust 2024 · MSRV 1.98 · `unsafe` forb
 
 AC-4 is Dolby's next-generation audio codec supporting object-based immersive audio (Dolby Atmos). MacinDecode-AC4-Core aims to reconstruct AC-4 bitstreams as **pre-render audio scenes** — containing beds, object PCM, Object Audio Metadata (OAMD), and sample-accurate timelines — for consumption by an external renderer without performing the final render itself.
 
-This project does **not** handle speaker/headphone rendering, loudness management, AC-4 encoding, or Dolby product certification.
+This project does **not** handle speaker/headphone rendering, loudness management, or Dolby product certification.
+AC-4 encoding is **not available today**: it is within project scope per [ADR-0015](docs/decisions/0015-bring-ac4-encoding-into-scope.md), but implementation has not started, and that scope reaches only an experimental bitstream generator that a reference decoder can decode correctly — not certification or compliance claims.
 
 This is an independent open-source implementation and is not affiliated with, sponsored by,
 or endorsed by Dolby Laboratories. Dolby, Dolby Atmos, and AC-4 are trademarks of their

@@ -150,6 +150,7 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 - ADR-0012 搁置 direct-object，并重新锚定挂在它上面的条款
 - ADR-0013 提取 `macindecode-ac4-decode` crate
 - ADR-0014 独立的源 AU metadata Session
+- ADR-0015 把 AC-4 编码纳入项目边界
 - ADR-0016 接受规范之外的现实行为
 
 **动架构之前先读 ADR-0011 与 ADR-0013。** 长期依赖方向是 syntax → decode/engine → scene；

@@ -51,6 +51,7 @@ control source AU、raw timing、ramp、完整更新后状态与 changed mask，
 | `macindecode-ac4-decode` | 已提取 | ASF/A-SPX/A-JOC 数值重建、QMF、表 188 对齐与统一 Full engine |
 | `macindecode-ac4-scene` | 已存在 | presentation 选择、Session 事务、渲染前语义与借用输出 |
 | `macindecode-ac4-ffi` | 延后评估 | Rust Scene API 稳定且有真实宿主需求后建立的版本化 C ABI |
+| `macindecode-ac4-encode` | 未建立 | 心理声学、码率控制与 A-SPX/A-JOC 参数估计；bit writer 属 bitstream、正向 MDCT 暂留 decode，见 [ADR-0015](decisions/0015-bring-ac4-encoding-into-scope.md) |
 
 旧的 `audio-core` / `ajoc` / `oamd` 三路规划不再作为目标包结构；raw OAMD 留在 bitstream，
 Scene 语义映射留在 scene；独立的无环 OAMD 中间层要等取得真实 direct-object 素材后再评估
@@ -107,6 +108,7 @@ macindecode-ac4-inspect -> macindecode-ac4-mp4 + macindecode-ac4-bitstream
 macindecode-ac4-cli     -> inspect + mp4 + scene + bitstream/decode
 macindecode-ac4-perf    -> mp4 + scene + bitstream/decode
 macindecode-ac4-ffi     -> scene  （尚未建立）
+macindecode-ac4-encode  -> decode + bitstream  （尚未建立）
 ```
 
 当前 `macindecode-ac4-scene` 已定义容器无关的数据模型和 Session 控制面；`decode_access_unit` 只接收调用方定界的 access unit 与已经换算为整数采样的位置，不读取或解释 MP4 字节。`macindecode-ac4-mp4` 只负责 access unit、AC-4 轨定位与时间线，不解释音频工具语义；其 `Ac4Mp4` 两级入口先统一轨、DSI、sample-description 与文件范围，再由需要导出的调用方按需解析 movie/edit 时间线。`macindecode-ac4-inspect` 只消费前一级和 bitstream typed API，形成文件级只读报告，不进入 Scene 或音频处理；CLI 与 perf 消费同一 bounded AU 和整数 sample 换算，CLI 仅在 Scene 返回以后执行 WAVE 兼容所需的最终 edit/尺度投影。调用方可以把 DSI 等系统层选择信息保留在泛型 `PresentationSelectionMetadata<T>` 中，再由已选 `ScenePresentation` 按双方唯一的 effective ID 取得只读关联；数组下标不作为身份，身份不可用的 opaque 项会令关联保持 `Indeterminate`，metadata 不进入解码配置，也不形成 Scene 到 MP4 的依赖。presentation 处理前 Scene、选择、时间、所有权、normalized PCM 与 raw OAMD 的正式边界见 [ADR-0007](decisions/0007-preprocessed-scene-rust-api-boundary.md)。

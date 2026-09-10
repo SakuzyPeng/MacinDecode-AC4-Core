@@ -685,5 +685,11 @@ SAF/Apple APAC 左右能量对照另见 [core APAC 平衡实验](experiments/cor
 
 - 商业认证。
 - 扬声器或双耳渲染产品化。
-- AC-4 编码器。
 - 未经验证的所有 profile/version 全覆盖承诺。
+- 把产出码流声称为合规 AC-4。
+
+**AC-4 编码器已按 [ADR-0015](decisions/0015-bring-ac4-encoding-into-scope.md) 从本清单移入
+项目范围，但尚未开始实现。** 范围只到「能被参考解码器正确解出的码流生成器」。语法写侧
+（round-trip：parse → write → 与原始码流逐字节相同）不设前置；音频段须等规范可追踪性第 7 节
+的差分裁决完成，否则未裁决判读会被编解码两侧同时继承。bit writer 与语法写侧、正向 MDCT、
+参数估计层与编码器输入类型的四处归属见该 ADR。自建编码器不进入测试向量生产链。
