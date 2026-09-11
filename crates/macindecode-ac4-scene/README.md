@@ -48,7 +48,7 @@ renderer 从 `SceneObjectState::headphone_policy()` 读取内容策略：
   SceneRelative/HeadRelative。设备能力、用户设置和实时头姿仍由 renderer 处理。
 - `Unspecified`：内容没有可解析的声明，不等于禁用头追；采用何种默认播放策略由调用方决定。
 - `Unsupported(issue)`：保留模式或 group 歧义等使语义不能确定。原始数据和 PCM 仍保留，
-  对象及帧的语义完整性标记为假；它不等于 `DecodeError::Unsupported`。
+  `semantic_complete(SemanticScope::All)` 及帧的语义完整性标记为假；它不等于 `DecodeError::Unsupported`。
 
 Scene 按 `TS103190-2:v1.3.1:6.3.9.10a–11` 的操作模式选择控制源：Stereo 为
 Bypass/HeadRelative；默认 Near/Far 使用全局位；Manual 使用逐对象位。未指定的 common
@@ -79,3 +79,12 @@ control source AU；共同来源可以同时存在，不能把 `None` 理解成�
 ## License
 
 [MIT](LICENSE)
+
+### 语义完整性检查范围
+
+`SceneObjectState::semantic_complete(scope)` 现在要求显式选择 `SemanticScope`。
+原无参数调用迁移为 `SemanticScope::All`，保留包括耳机策略在内的完整性检查；
+只消费通用空间语义、并自行处理耳机降级的 renderer 使用 `SemanticScope::Spatial`。
+后者仍拒绝未知的空间语义，不修改 `headphone_policy()` 的 `Unsupported` 原因。
+`Unspecified` 在两种范围下都不是错误；状态尚未到齐的 `None` 与语义完整性仍分开判断。
+帧级 `semantic_metadata_complete()` 继续按 `All` 汇总，PCM 和导出严格判定不变。

@@ -879,6 +879,15 @@ impl RawOamdUpdate {
     }
 }
 
+/// 调用方需要检查的语义范围；不改变内容策略或原始字段。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SemanticScope {
+    /// 通用空间语义。耳机策略由调用方通过 `headphone_policy()` 单独处理。
+    Spatial,
+    /// 所有已发布的语义，包括有效耳机策略。
+    All,
+}
+
 /// renderer 友好的完整对象状态，并列保留原始量化值。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SceneObjectState {
@@ -995,11 +1004,14 @@ impl SceneObjectState {
         self
     }
 
-    /// 所有原始字段是否都有经过验证的通用场景映射。
+    /// 指定范围内的原始字段是否都有经过验证的通用场景映射。
+    /// `Spatial` 允许调用方单独降级耳机策略，但不放行其他未知空间语义。
+    /// 此查询不表示状态已经到齐；预热期仍须检查对象的 `initial_state()`。
     #[must_use]
-    pub const fn semantic_complete(&self) -> bool {
+    pub const fn semantic_complete(&self, scope: SemanticScope) -> bool {
         self.semantic_complete
-            && !matches!(self.headphone_policy, HeadphonePolicyState::Unsupported(_))
+            && (matches!(scope, SemanticScope::Spatial)
+                || !matches!(self.headphone_policy, HeadphonePolicyState::Unsupported(_)))
     }
 
     #[must_use]

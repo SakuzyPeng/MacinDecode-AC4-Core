@@ -655,16 +655,16 @@ impl SceneAssembler {
             && frame.objects.iter().all(|object| {
                 object
                     .initial_state
-                    .is_some_and(|state| state.semantic_complete())
+                    .is_some_and(|state| state.semantic_complete(crate::SemanticScope::All))
             })
             && frame.beds.iter().all(|bed| {
                 bed.initial_state
-                    .is_some_and(|state| state.semantic_complete())
+                    .is_some_and(|state| state.semantic_complete(crate::SemanticScope::All))
             })
             && frame
                 .metadata_updates
                 .iter()
-                .all(|update| update.state().semantic_complete());
+                .all(|update| update.state().semantic_complete(crate::SemanticScope::All));
 
         self.oamd_states = end_states;
         self.headphone_context = headphone_context;
@@ -2008,12 +2008,13 @@ mod tests {
                 state.headphone_policy(),
                 HeadphonePolicyState::Unsupported(HeadphonePolicyIssue::ReservedOperationMode(7))
             );
-            assert!(!state.semantic_complete());
+            assert!(!state.semantic_complete(crate::SemanticScope::All));
+            assert!(state.semantic_complete(crate::SemanticScope::Spatial));
             assert_eq!(state.raw(), states[0].unwrap().raw());
             assert!(
                 state
                     .with_headphone_policy(HeadphonePolicyState::Unspecified)
-                    .semantic_complete()
+                    .semantic_complete(crate::SemanticScope::All)
             );
         }
     }
@@ -2071,7 +2072,7 @@ mod tests {
         let headphone = state.headphone().expect("应映射耳机状态");
         assert_eq!(headphone.mode(), HeadphoneMode::Mid);
         assert!(headphone.head_tracking_disabled());
-        assert!(state.semantic_complete());
+        assert!(state.semantic_complete(crate::SemanticScope::All));
         assert_eq!(state.raw().effective(), effective);
         assert_eq!(state.raw().additional(), additional);
     }
@@ -2095,7 +2096,7 @@ mod tests {
 
         let state = map_oamd_object_state(effective, AdditionalObjectMetadata::default());
 
-        assert!(!state.semantic_complete());
+        assert!(!state.semantic_complete(crate::SemanticScope::All));
         assert_eq!(
             state
                 .raw()
@@ -2396,7 +2397,16 @@ mod tests {
         let state = map_oamd_object_state(effective, AdditionalObjectMetadata::default());
 
         assert_eq!(state.zone().map(|zone| zone.mask()), Some(7));
-        assert!(!state.semantic_complete());
+        assert!(!state.semantic_complete(crate::SemanticScope::All));
+        assert!(!state.semantic_complete(crate::SemanticScope::Spatial));
+        #[cfg(feature = "audio-decode")]
+        {
+            let state = state.with_headphone_policy(crate::HeadphonePolicyState::Unsupported(
+                crate::HeadphonePolicyIssue::ConflictingGroups,
+            ));
+            assert!(!state.semantic_complete(crate::SemanticScope::Spatial));
+            assert!(!state.semantic_complete(crate::SemanticScope::All));
+        }
         assert_eq!(
             state
                 .raw()

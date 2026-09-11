@@ -66,7 +66,7 @@ pub use model::{
     PresentationSubstreamMetadata, RawOamdCommonState, RawOamdState, RawOamdTiming, RawOamdUpdate,
     ResetKind, SceneBed, SceneBedComponent, SceneElementId, SceneElementSource, SceneFrameIter,
     SceneMetadataUpdate, SceneObject, SceneObjectState, ScenePath, ScenePresentation,
-    SceneTimeline, SpeakerLabel, ZoneState,
+    SceneTimeline, SemanticScope, SpeakerLabel, ZoneState,
 };
 #[cfg(feature = "audio-decode")]
 pub use model::{CoreBandPcmChannel, CoreBandPcmFrame};
