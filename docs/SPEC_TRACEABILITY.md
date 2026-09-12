@@ -1199,9 +1199,13 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 ### 5.19 OAMD 语义与拓扑配置指纹修正（`crates/macindecode-ac4-bitstream/src/oamd/`、`substream/`、`topology/`）
 
-**`add_per_object_md()` 没有 REUSE 语义。** `6.2.8.5` 给 `object_basic_info` 与 `object_render_info` 各配了一个状态机（`DEFAULT`/`ALL_NEW`/`REUSE`/`PART_REUSE`），而 `add_per_object_md()` 只由逐块的 `b_add_table_data` 控制存在与否，没有任何 reuse 标志。语义侧另有直接条款：`6.3.9.12.1` 规定「If any extended precision metadata element is not transmitted, its value shall be 0」。因此本块未携带该表时，扩展位置与耳机字段恢复默认值，而不是沿用前值。
+**附加表的传输存在性与各字段的有效状态分别处理。** `6.2.8.5` 给 `object_basic_info` 与 `object_render_info` 各配了一个状态机（`DEFAULT`/`ALL_NEW`/`REUSE`/`PART_REUSE`），`add_per_object_md()` 则通过 `b_add_table_data` 与内部 presence 位传输扩展字段。`6.3.9.12.1` 明确要求缺席的**扩展精度位置**分量取 0；该要求不能外推成耳机策略的清除指令。先前版本把整份附加状态清空，其中包含耳机字段，属于对这条要求的过度外推。
 
-**该修正在当前材料上不可观察**：八条流共 17 314 个 `object_info_block` **全部**携带 `b_add_table_data`，未携带的次数为 0，新旧行为的分歧点因此为零——端到端 ADM 导出逐字节相同。分支只由构造数据的单元测试覆盖。
+`6.3.9.11.3–5` 定义逐对象耳机字段的存在性、渲染模式与头追开关，未规定字段省略即撤销已有设置。固定策略的 DME 3DoF 母版提供了可观察反例：长笛单对象持续音只在稀疏块重发耳机字段，旧 API 因逐块清空而在 `HeadRelative` 与 `Unspecified` 之间反复切换。现按最后一次明确耳机更新延续有效值；整张附加表缺席或表内耳机字段缺席时均保持，显式新值替换，reset/seek/配置变化的既有历史清除边界保持。扩展位置和 trim 的逐块处理不变，原始语法的 `None` 也不改写为“本块实际传输了值”。这是规范字段作用域与本机 DME 稀疏更新互操作的判读，不把单一编码器实验扩大成所有保留扩展的通用继承规则。
+
+**最初八条流不足以裁决耳机字段的保持方式**：当时共 17 314 个 `object_info_block` 全部携带 `b_add_table_data`，整表缺席分支仅由构造测试覆盖。后续单对象持续音补充了实际稀疏耳机字段案例；回归分别覆盖整表缺席、表内耳机字段缺席、显式改值、对象隔离、reset 和失败事务。
+
+2026-09-13 的本地回归使用两份 60 秒长笛单对象 AC-4：HeadRelative 文件原有 1 377 个发声帧中，60 帧发布 `Near/HeadRelative`、1 317 帧误退为 `Unspecified`；修复后全部 1 377 帧为 `Near/HeadRelative`。SceneRelative 对照文件全部发声帧保持 `Near/SceneRelative`。完整对象 PCM WAVE 在修复前后逐字节相同（241 920 080 字节，SHA-256 `7df925c8ee7c3198aec82b00b68af08aab83301ee409f2a53f5e458019edaa8f`），原始对象位置与增益状态统计也完全相同。C4/C8 的混合、全 HeadRelative、全 SceneRelative 三组均不再周期性退回未指定状态。
 
 **A-JOC substream info 内嵌的 `oamd_common_data()` 从跳过改为完整解析**，并在 `config_fingerprint()` 中清除：它是随机访问点携带的状态刷新，不是解码器配置，否则 present 标志在相邻帧切换会被误判为 topology 重配。
 

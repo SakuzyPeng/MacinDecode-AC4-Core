@@ -50,6 +50,12 @@ renderer 从 `SceneObjectState::headphone_policy()` 读取内容策略：
 - `Unsupported(issue)`：保留模式或 group 歧义等使语义不能确定。原始数据和 PCM 仍保留，
   `semantic_complete(SemanticScope::All)` 及帧的语义完整性标记为假；它不等于 `DecodeError::Unsupported`。
 
+逐对象耳机字段支持稀疏更新：已经明确的 render mode 与头追开关在后续块省略这些字段时
+继续有效，直到收到新值或流重置。尚未建立明确耳机设置、或公共操作模式未指定时仍可能
+返回 `Unspecified`；字段没有在每帧重复传输不会让策略反复变成 `Unspecified`。
+原始 `ObjectInfoBlock::additional_metadata` 仍保留本次传输的存在性，不能把它的缺席当作
+播放器应清空有效耳机策略的指令。
+
 Scene 按 `TS103190-2:v1.3.1:6.3.9.10a–11` 的操作模式选择控制源：Stereo 为
 Bypass/HeadRelative；默认 Near/Far 使用全局位；Manual 使用逐对象位。未指定的 common
 不借用逐对象字段猜测操作模式。多 group 引用同一物理子流时，所有适用组的有效策略必须一致。

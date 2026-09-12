@@ -250,6 +250,9 @@ impl OamdState {
     }
 
     /// 返回对象当前生效的附加元数据。
+    ///
+    /// 扩展位置与 trim 属于当前块；耳机设置保留最近一次明确值，直到新值或 reset。
+    /// 本块是否实际携带耳机字段仍由 [`super::ObjectInfoBlock::additional_metadata`] 表达。
     #[must_use]
     pub fn object_additional(&self, index: usize) -> Option<&AdditionalObjectMetadata> {
         self.additional.get(index)
@@ -431,9 +434,13 @@ impl OamdState {
                     object_index: update.object_index,
                     limit: MAX_OAMD_OBJECTS,
                 })?;
-        // `add_per_object_md()` 属于当前 object_info_block，没有 REUSE 语义。
-        // 本块未携带该表时，扩展位置与耳机字段都恢复为默认值。
+        // TS103190-2:v1.3.1:6.3.9.11.3–5：b_headphone 表示本块是否携带耳机设置，
+        // 缺席不构成取消设置；DME 的固定耳机策略只在稀疏更新中重发。
+        // 6.3.9.12.1 的缺席清零规则只适用于扩展精度位置，不能外推到耳机字段。
+        // reset 清除全部历史；新的显式耳机值（包括关闭头追）在本块覆盖旧值。
+        let previous_headphone = additional.headphone;
         *additional = update.info.additional_metadata.unwrap_or_default();
+        additional.headphone = additional.headphone.or(previous_headphone);
         Ok(())
     }
 }

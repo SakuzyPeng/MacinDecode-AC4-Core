@@ -870,7 +870,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_frame_retains_common_timing_but_resets_block_additional_metadata() {
+    fn apply_frame_retains_headphone_but_resets_block_extension_fields() {
         let (timing_bits, timing_len) = payload("0 001 000011 01");
         let mut reader = BitReader::new(&timing_bits[..timing_len]);
         let timing = OamdTimingData::parse(&mut reader).expect("timing 应可解析");
@@ -929,10 +929,134 @@ mod tests {
                 None,
                 None,
             )
-            .expect("未携带 additional table 的对象更新应恢复默认值");
+            .expect("未携带 additional table 的对象更新不撤销耳机策略");
         assert_eq!(
             state.object_additional(0),
-            Some(&AdditionalObjectMetadata::default())
+            Some(&AdditionalObjectMetadata {
+                headphone: additional.headphone,
+                ..AdditionalObjectMetadata::default()
+            })
         );
+    }
+
+    #[test]
+    fn sparse_headphone_updates_are_independent_per_object_and_resettable() {
+        let head = ObjectHeadphone {
+            render_mode: 1,
+            head_tracking_disabled: true,
+        };
+        let scene = ObjectHeadphone {
+            render_mode: 2,
+            head_tracking_disabled: false,
+        };
+        let update = |object_index, additional_metadata| OamdMetadataBlock {
+            object_index,
+            block_index: 0,
+            info: ObjectInfoBlock {
+                additional_metadata,
+                ..Default::default()
+            },
+        };
+        let mut state = OamdState::new();
+        state
+            .apply_blocks(
+                &[
+                    update(
+                        0,
+                        Some(AdditionalObjectMetadata {
+                            headphone: Some(head),
+                            ..Default::default()
+                        }),
+                    ),
+                    update(
+                        1,
+                        Some(AdditionalObjectMetadata {
+                            headphone: Some(scene),
+                            ..Default::default()
+                        }),
+                    ),
+                ],
+                Some(1),
+            )
+            .expect("两个对象各自建立耳机策略");
+
+        // 附加表存在但不含耳机字段，同样只表示没有新的耳机更新。
+        let extension_only = AdditionalObjectMetadata {
+            trim_disabled: true,
+            extended_position: Some(ExtendedPrecisionPosition {
+                presence: 0b001,
+                z: Some(2),
+                ..Default::default()
+            }),
+            headphone: None,
+        };
+        state
+            .apply_blocks(&[update(0, Some(extension_only)), update(1, None)], Some(1))
+            .expect("独立继承耳机字段，同时应用本块扩展数据");
+        assert_eq!(
+            state.object_additional(0),
+            Some(&AdditionalObjectMetadata {
+                headphone: Some(head),
+                ..extension_only
+            })
+        );
+        assert_eq!(state.object_additional(1).unwrap().headphone, Some(scene));
+
+        // 新显式值可以同时改变渲染模式和头追开关，之后再次省略仍保持新值。
+        state
+            .apply_blocks(
+                &[update(
+                    0,
+                    Some(AdditionalObjectMetadata {
+                        headphone: Some(scene),
+                        ..Default::default()
+                    }),
+                )],
+                Some(1),
+            )
+            .unwrap();
+        state.apply_blocks(&[update(0, None)], Some(1)).unwrap();
+        assert_eq!(state.object_additional(0).unwrap().headphone, Some(scene));
+
+        state.reset();
+        state.apply_blocks(&[update(0, None)], Some(1)).unwrap();
+        assert_eq!(state.object_additional(0).unwrap().headphone, None);
+        assert_eq!(state.object_additional(1).unwrap().headphone, None);
+    }
+
+    #[test]
+    fn failed_batch_does_not_commit_sparse_headphone_state() {
+        let first = OamdMetadataBlock {
+            object_index: 0,
+            block_index: 0,
+            info: ObjectInfoBlock {
+                additional_metadata: Some(AdditionalObjectMetadata {
+                    headphone: Some(ObjectHeadphone {
+                        render_mode: 1,
+                        head_tracking_disabled: true,
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        };
+        let mut state = OamdState::new();
+        state.apply_blocks(&[first], Some(1)).unwrap();
+        let before = state;
+        let mut change = first;
+        change.info.additional_metadata.as_mut().unwrap().headphone = Some(ObjectHeadphone {
+            render_mode: 2,
+            head_tracking_disabled: false,
+        });
+        let invalid = OamdMetadataBlock {
+            object_index: 1,
+            block_index: 0,
+            info: ObjectInfoBlock {
+                basic_info_status: InfoStatus::Reuse,
+                ..Default::default()
+            },
+        };
+        assert!(state.apply_blocks(&[change, invalid], Some(1)).is_err());
+        assert_eq!(state, before, "后一块失败不得泄漏前一块的耳机更新");
     }
 }
