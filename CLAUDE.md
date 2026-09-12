@@ -149,6 +149,9 @@ LFE 的延迟是**判读，不是抄写**：`5.7.6.5.3` 称 `δ_ASPX` 是 A-SPX 
 - ADR-0011 按语法、解码与场景重整职责边界
 - ADR-0012 搁置 direct-object，并重新锚定挂在它上面的条款
 - ADR-0013 提取 `macindecode-ac4-decode` crate
+- ADR-0014 独立的源 AU metadata Session
+- ADR-0015 把 AC-4 编码纳入项目边界
+- ADR-0016 接受规范之外的现实行为
 
 **动架构之前先读 ADR-0011 与 ADR-0013。** 长期依赖方向是 syntax → decode/engine → scene；
 `macindecode-ac4-decode` 已完成物理提取，OAMD 暂不独立成 crate，FFI 继续延后。两份 ADR 同时
@@ -190,5 +193,7 @@ typed metadata」，构造时必须带 `reason`。把解析失败报成 `NotPres
 字段——和值算错同级的谎报。
 
 未覆盖路径一律 **fail-closed**，不静默降级：`b_static_dmx = 1`、channel-based、direct-object/mixed、SIMPLE、1 024 及以下短帧、活动 companding、FIC/TIC 交织、活动 core DE 全部显式拒绝。README 的支持矩阵是这份清单的权威版本，写着「未观察到」的行只描述当前工具与素材，不等于规范不支持。
+
+这条原则有一类**已记录的例外**：规范在某个位置不产生任何数据、而真实工具链稳定写出它时（当前是 P2 `6.2.2.3` 之后的兼容尾字节），实现会在严格路径之外提供独立的兼容入口。边界与门槛见 [ADR-0016](docs/decisions/0016-accept-non-normative-stream-behaviour.md)，条目见规范可追踪性第 8 节。**扩充兼容集合前先过那三条门槛**，其中「规范语法恰好耗尽」是前置条件而非事后说明——否则一处真实漏读会被当成编码器的怪字节放过去。
 
 详见 `docs/ROADMAP.md` 与 `docs/SPEC_TRACEABILITY.md`。

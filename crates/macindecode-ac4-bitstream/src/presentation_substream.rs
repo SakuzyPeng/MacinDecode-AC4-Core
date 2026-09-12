@@ -63,8 +63,10 @@ const MIN_KNOWN_DRC_GAIN_SET_BITS: u32 = 2 + 7;
 
 /// 已验证的 independent object/A-JOC presentation DRC 兼容尾字节。
 ///
-/// 0xd8 来自 2026-09-08 本地样本的全部 252 个 independent 帧；前缀均严格耗尽，
-/// 见 docs/TEST_VECTOR_STRATEGY.md。它不属于 TS103190-2:v1.3.1:6.2.2.3 的字段。
+/// 0xd8 来自 2026-09-08 本地样本的全部 252 个 independent 帧；前缀均严格耗尽。
+/// 它不属于 TS103190-2:v1.3.1:6.2.2.3 的字段，因此登记在 docs/SPEC_TRACEABILITY.md
+/// 第 8 节「规范之外的现实行为」；逐条数据与命中统计见 docs/TEST_VECTOR_STRATEGY.md 9.2m。
+/// 扩充本集合前先按第 8 节的三个前置条件核对，尤其是「规范语法恰好耗尽」。
 const INDEPENDENT_OBJECT_DRC_COMPATIBILITY_BYTES: [u8; 3] = [0x00, 0x80, 0xd8];
 
 /// presentation substream 前缀中超出固定容量的结构。

@@ -8,7 +8,8 @@ Dolby AC-4 对象音频解码核心 · Rust 2024 · MSRV 1.98 · `unsafe` 禁用
 
 AC-4 是 Dolby 的下一代音频编解码器，支持基于对象的沉浸式音频（Dolby Atmos）。MacinDecode-AC4-Core 的目标是在不执行最终渲染的前提下，将 AC-4 码流还原为**渲染前音频场景**——包含 bed、对象 PCM、对象音频元数据（OAMD）和采样级时间线——交给外部渲染器使用。
 
-本项目**不负责**扬声器/耳机渲染、响度管理、AC-4 编码或 Dolby 产品认证。
+本项目**不负责**扬声器/耳机渲染、响度管理或 Dolby 产品认证。
+AC-4 编码**当前不提供**：它已按 [ADR-0015](docs/decisions/0015-bring-ac4-encoding-into-scope.md) 纳入项目范围，但尚未开始实现，且范围只到「能被参考解码器正确解出的实验性码流生成器」，不含认证或合规声明。
 
 本项目是独立的开源实现，与 Dolby Laboratories 不存在隶属、赞助或认可关系。
 Dolby、Dolby Atmos 与 AC-4 是其各自权利人的商标；文中名称仅用于兼容性说明。
