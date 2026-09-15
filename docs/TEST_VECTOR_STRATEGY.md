@@ -193,6 +193,47 @@ A-JOC 能力，不把 3DoF 或纯对象 ADM 误标为 direct-object。
   哪些对象留在场景坐标系、哪些对象跟随听者，并设计能区分旋转补偿的轨迹。3DoF 在这里指
   头部旋转跟踪，不包含听者平移；它也不等于 direct-object 编码。
 
+#### DAR 3DoF 能力实测（2026-09-13）
+
+**DAR 5.5 能产出保留逐对象头追策略的 L4 A-JOC。** 本机已用单对象长笛与双对象
+C4/C8 做受控导出，成功保留全 SceneRelative、全 HeadRelative 和左 SceneRelative /
+右 HeadRelative 三种策略。六份 768 kbps 导出均为 48 kHz、12 秒 / 576000 可见 samples、
+284 AU，并通过完整元数据检查与 Scene 解码。参数、输入与输出哈希见
+[`dar_3dof_capability.json`](experiments/dar_3dof_capability.json)。这些是能力探测样本，
+尚未接入 `build_vector.sh` 或替换冻结向量。
+
+**1500 kbps 补充实测也已通过。** 同一六份输入保持 Music / `contentType=1`，实际音频轨
+均为 1500000 bit/s、L4、576000 可见 samples / 284 AU；全 SceneRelative、全 HeadRelative
+与混合策略的有信号帧统计均与 768 kbps 相同。长笛 scene/head 裸流同为 2273988 字节，
+仅 89 个字节位置不同；直接 DAMF 与 ADM 的 HeadRelative 裸流仍逐字节一致。
+五份独立样本已打包，详细哈希与检查见
+[`dar_3dof_1500k.json`](experiments/dar_3dof_1500k.json)。
+
+关键是 **Music 编码模式下的独立内容类型选择**：保持其余参数相同，导出设置
+`contentType=0` 会把当前探针的 HeadRelative 写成 SceneRelative；改为 `contentType=1`
+则能保留。这里按黑盒实测记录数值，不把未公开的枚举名当作规范。既有 `dar-encode`
+固定使用 `contentType=0`；GUI 的默认 L4 导出虽显示 `Music (448 kbps)`，实测也发送 0，
+因此单独选择 Music 不足以生产上述对照向量。这个内容类型参数与 `mode` 是不同字段，
+不能把 0/1 误写成 Film/Music 的切换。
+
+成功输入路径为 DAMF 0.5.1/home，或由其规范化、并核对位置 / `headTrackMode` /
+`binauralRenderMode` 往返的 ADM BWF。DAR 拒绝对象占用前 10 个输入通道的纯对象母版；
+本次在前 10 路补零 PCM 的 7.1.2 bed，把原对象移到 ID 10 起，逐字节保留对象 PCM。
+同一长笛的 DAMF 与 ADM 输入在 `contentType=1` 下产生相同的 HeadRelative 裸流。
+两种头追策略的 768 kbps 长笛裸流均为 1165252 字节，只有 89 个字节位置不同；
+`contentType=0` 下两种输入的裸流则完全相同。
+
+直接读取格式正确的 DAMF 0.6.0/type 3dof 时，当前 Home Theater 应用模式仍报
+`Opening XR master in non XR mode`。这说明原生 XR 母版入口有独立门禁，不能据此否定
+上述 home 输入的头追编码能力；本次成功路径没有进入 XR 应用模式。768 kbps 继续复用
+本机既有 DAR 码率工具，工具状态已恢复。
+
+双对象右侧在首次激活的一个有信号帧仍以 Mid/SceneRelative 起始，之后 188 个有信号帧
+符合配置；这一边界也见于既有 DME 对照，不能省略后声称从首个发声样本起完全一致。
+本实验验证 OAMD 与 Scene API 的内容策略，不等于已验证播放器头姿处理，也不声明
+6DoF、direct-object 或完整 XR authoring 能力。后续接入应让外部 DAR 适配器显式开放
+内容类型选择，同时保持既有默认向量的行为。
+
 #### DME native channel-based / IMS
 
 `dme_native` profile 使用 DME 安装中的 channel encoder 与 native IMS encoder，并复用同版本

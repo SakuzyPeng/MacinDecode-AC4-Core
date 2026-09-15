@@ -1,0 +1,238 @@
+{
+  "date": "2026-09-13",
+  "question": "DAR 的 3DoF 策略向量能否产出 1500 kbps？",
+  "conclusion": "可以。保持 Music + contentType=1，六份 1500 kbps L4 导出均完整解码，五种场景的有效头追策略统计与 768 kbps 对照相同。",
+  "base_experiment": "dar_3dof_capability.json",
+  "tools": {
+    "dar_version": "5.5.0 release",
+    "dar_build": "5.5.0_3872-b53763b9",
+    "dar_binary_sha256": "ec9432d6af6679cfdf5cc668d37be0b3ac295ea9453b264ec84e0d1706bb2390",
+    "bitrate_adapter_sha256": "5b1ac98f3bc71b9f5703df5c4c8961b990a76e38a933d4651082a04daff42d61",
+    "adm_normalizer_version": "2.1.2",
+    "adm_normalizer_sha256": "21229c3d2855bf68f604ed4915e9832eac2c4e4fdd33e4bce3e3e7dcfa6eae21",
+    "macinac4_sha256": "03bc81c16b3400c575c3424c9b18f29e1f173fcbc4d974ba7527d56e5867ad8a"
+  },
+  "export_settings": {
+    "mode": 1,
+    "codec": 1,
+    "contentType": 1,
+    "bitRate": 0
+  },
+  "bitrate_kbps": 1500,
+  "application_mode": "Home Theater",
+  "input_note": "复用 768 kbps 实验的同一 12 秒源，已逐份核对 manifest、metadata、CAF 哈希，未改动母版。",
+  "inputs": {
+    "flute_padded_scene_relative_flat": {
+      "manifest_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "metadata_sha256": "051eb41f380a57566738e7c1cb12d19cf81c7787ffe0de9f2a556751cc9a8432",
+      "caf_sha256": "7967b2210ccad6470feadafe019efed8f6002298c1cc150126aa170a8b6ee944",
+      "object_pcm_prefix_sha256": "ab1433cef3edfcbc8afdb2eea294eec379979d1e6be5d2e80173258a75c038bf"
+    },
+    "flute_padded_head_relative_flat": {
+      "manifest_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "metadata_sha256": "5710e78e7b080bfba9a40a54d496447c8af53cc42eb8c5c5e9fa540f81a7c6a5",
+      "caf_sha256": "7967b2210ccad6470feadafe019efed8f6002298c1cc150126aa170a8b6ee944",
+      "object_pcm_prefix_sha256": "ab1433cef3edfcbc8afdb2eea294eec379979d1e6be5d2e80173258a75c038bf"
+    },
+    "c4_c8_padded_mixed_left_scene_right_head_flat": {
+      "manifest_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "metadata_sha256": "c81aa3dff72cacbff15a137d6ea46d2d6c2d1d536d4d84755ea48eaaeb31ac29",
+      "caf_sha256": "40a62ad4f76b4d31433026f714075a8ff631f046350c102d7a3c8d12e7dfc5d4",
+      "object_pcm_prefix_sha256": "28dfb9a7ebf43f9b4fe79b97b65f8282022062ada96533aa3148bc2a78fb2db1"
+    },
+    "c4_c8_padded_all_head_relative_flat": {
+      "manifest_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "metadata_sha256": "b7d02123ddfd78a130ce1e61cac38d4c946b57ea7f6f4a992c1d065ca39f344e",
+      "caf_sha256": "40a62ad4f76b4d31433026f714075a8ff631f046350c102d7a3c8d12e7dfc5d4",
+      "object_pcm_prefix_sha256": "28dfb9a7ebf43f9b4fe79b97b65f8282022062ada96533aa3148bc2a78fb2db1"
+    },
+    "c4_c8_padded_all_scene_relative_flat": {
+      "manifest_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "metadata_sha256": "dfd149492527ce12e1026e54d981f7854a0c16cab474aaaee88c70a58faaa66d",
+      "caf_sha256": "40a62ad4f76b4d31433026f714075a8ff631f046350c102d7a3c8d12e7dfc5d4",
+      "object_pcm_prefix_sha256": "28dfb9a7ebf43f9b4fe79b97b65f8282022062ada96533aa3148bc2a78fb2db1"
+    }
+  },
+  "outputs": {
+    "flute_scene_music_1500": {
+      "input": "inputs/flute_padded_scene_relative_flat/master.atmos",
+      "input_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "raw_sha256": "804ad074d260457419882737403fdb8e76f3027a2fcd1419dbc165ec5caf3b3c",
+      "raw_bytes": 2273988,
+      "m4a_sha256": "c87a18a8ad2f9754eaa61c609a1974c5aafa7ca965e9b304440f3b9c2f47c690",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 283
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "audio_track_count": 1,
+      "bit_rate_bps": 1500000,
+      "metadata_diagnostics": 0,
+      "policy_counts_match_768k": true,
+      "full_object_count": 21,
+      "crc_frames": 0,
+      "crc_note": "MP4Box 抽取为 AC40，无 CRC 字段；未声称验证不存在的 CRC。"
+    },
+    "flute_head_music_1500": {
+      "input": "inputs/flute_padded_head_relative_flat/master.atmos",
+      "input_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "raw_sha256": "ec1a689bb6a7b49f0582ba767064a185fe7e23821ad84f46a21085d9c7cba597",
+      "raw_bytes": 2273988,
+      "m4a_sha256": "21eb64cd3281e2a03c53b02b65a44f854e3281468f59cf73cdc3fd4d765dab5f",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 283
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "audio_track_count": 1,
+      "bit_rate_bps": 1500000,
+      "metadata_diagnostics": 0,
+      "policy_counts_match_768k": true,
+      "full_object_count": 21,
+      "crc_frames": 0,
+      "crc_note": "MP4Box 抽取为 AC40，无 CRC 字段；未声称验证不存在的 CRC。"
+    },
+    "c4_c8_mixed_music_1500": {
+      "input": "inputs/c4_c8_padded_mixed_left_scene_right_head_flat/master.atmos",
+      "input_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "raw_sha256": "95b0759cfd3b055c68de23b6cf8169149e6f132399679350a13f76de5b3ba974",
+      "raw_bytes": 2273988,
+      "m4a_sha256": "6a43e716f086970a2de8cd843bfffcfaff2c5905f141d8b9b8ed0d1500d8886b",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/HeadRelative": 188
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "audio_track_count": 1,
+      "bit_rate_bps": 1500000,
+      "metadata_diagnostics": 0,
+      "policy_counts_match_768k": true,
+      "full_object_count": 21,
+      "crc_frames": 0,
+      "crc_note": "MP4Box 抽取为 AC40，无 CRC 字段；未声称验证不存在的 CRC。"
+    },
+    "c4_c8_all_head_music_1500": {
+      "input": "inputs/c4_c8_padded_all_head_relative_flat/master.atmos",
+      "input_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "raw_sha256": "c810f9d1b8b03b716fc0756ef2c0fdddc23c11245f37891369dd03e4e97148fc",
+      "raw_bytes": 2273988,
+      "m4a_sha256": "87a6faf97346302972929565d368634feca2f295e0a451e82a7b89bae06a6103",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/HeadRelative": 188
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "audio_track_count": 1,
+      "bit_rate_bps": 1500000,
+      "metadata_diagnostics": 0,
+      "policy_counts_match_768k": true,
+      "full_object_count": 21,
+      "crc_frames": 0,
+      "crc_note": "MP4Box 抽取为 AC40，无 CRC 字段；未声称验证不存在的 CRC。"
+    },
+    "c4_c8_all_scene_music_1500": {
+      "input": "inputs/c4_c8_padded_all_scene_relative_flat/master.atmos",
+      "input_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "raw_sha256": "2b90dd7f4fe55656effa8e7e720385898f9153ff0eb86b0ae3e9a17538c2329c",
+      "raw_bytes": 2273988,
+      "m4a_sha256": "a1aedf2a75f0da957b607d6d05075f7b55095463b5ecfa088218a803b8ef8adb",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/SceneRelative": 188
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "audio_track_count": 1,
+      "bit_rate_bps": 1500000,
+      "metadata_diagnostics": 0,
+      "policy_counts_match_768k": true,
+      "full_object_count": 21,
+      "crc_frames": 0,
+      "crc_note": "MP4Box 抽取为 AC40，无 CRC 字段；未声称验证不存在的 CRC。"
+    },
+    "flute_adm_head_music_1500": {
+      "input": "normalized/flute_padded_head_relative_flat/master.wav",
+      "input_sha256": "39be7272c71ca8816e5ed221474bf18cb80591e80e9718f54e30e2e039422ff0",
+      "raw_sha256": "ec1a689bb6a7b49f0582ba767064a185fe7e23821ad84f46a21085d9c7cba597",
+      "raw_bytes": 2273988,
+      "m4a_sha256": "d1d5377f45a6b9a0e0111b8e631b6a838068033d25ca4a8185ed1f6ec52f0f18",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 283
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "audio_track_count": 1,
+      "bit_rate_bps": 1500000,
+      "metadata_diagnostics": 0,
+      "policy_counts_match_768k": true,
+      "full_object_count": 21,
+      "crc_frames": 0,
+      "crc_note": "MP4Box 抽取为 AC40，无 CRC 字段；未声称验证不存在的 CRC。"
+    }
+  },
+  "comparisons": {
+    "scene_vs_head": {
+      "a": "flute_scene_music_1500",
+      "b": "flute_head_music_1500",
+      "bytes_per_stream": 2273988,
+      "equal": false,
+      "different_bytes": 89
+    },
+    "damf_vs_adm_head": {
+      "a": "flute_head_music_1500",
+      "b": "flute_adm_head_music_1500",
+      "bytes_per_stream": 2273988,
+      "equal": true,
+      "different_bytes": 0
+    }
+  },
+  "adapter_restored": true,
+  "limitations": [
+    "仍需显式 contentType=1；单独选择 Music 不能保证 HeadRelative 保留。",
+    "C4/C8 右对象激活的首个有信号帧仍为 Mid/SceneRelative；其后 188 个有信号帧符合配置，与 768 kbps 相同。",
+    "此处验证码流元数据与完整 Scene 解码，未做实际头姿设备联测；未接入正式生产链。"
+  ],
+  "local_work_dir": "tmp/dar_3dof_exploration_20260913",
+  "reproduction": "python3 tmp/dar_3dof_exploration_20260913/work/encode_music_matrix.py --bitrate 1500"
+}

@@ -1,0 +1,824 @@
+{
+  "date": "2026-09-13",
+  "question": "DAR 是否能产出保留逐对象头部跟踪策略的 AC-4 3DoF 诊断向量？",
+  "conclusion": "可以。DAR 5.5 在普通 Home Theater 运行模式下，接受 home DAMF 或保真 ADM；保持 Music 编码模式，将导出内容类型由 0 改为 1，可保留 SceneRelative、HeadRelative 及逐对象混合策略。",
+  "scope": "当前安装、12 秒原创单/双对象探针的黑盒观测；并非已验证实时头姿渲染或完整 XR authoring 工作流。",
+  "repository_head": "9673e1ef445e7e2ab218cc1b7b79f484fa92135f",
+  "tools": {
+    "dar_version": "5.5.0 release",
+    "dar_build": "5.5.0_3872-b53763b9",
+    "dar_binary_sha256": "ec9432d6af6679cfdf5cc668d37be0b3ac295ea9453b264ec84e0d1706bb2390",
+    "bitrate_adapter_sha256": "5b1ac98f3bc71b9f5703df5c4c8961b990a76e38a933d4651082a04daff42d61",
+    "adm_normalizer_version": "2.1.2",
+    "adm_normalizer_sha256": "21229c3d2855bf68f604ed4915e9832eac2c4e4fdd33e4bce3e3e7dcfa6eae21",
+    "macinac4_sha256": "03bc81c16b3400c575c3424c9b18f29e1f173fcbc4d974ba7527d56e5867ad8a"
+  },
+  "export_parameter_observation": {
+    "fixed": {
+      "mode": 1,
+      "codec": 1,
+      "bitRate": 0,
+      "nominal_bitrate_kbps": 768
+    },
+    "baseline": {
+      "contentType": 0
+    },
+    "tracking_preserved": {
+      "contentType": 1
+    },
+    "interpretation": "mode=1 为 Music；contentType 是独立的内容类型选择。此处记录观测值，不把未公开的 enum 名称当作规范。",
+    "gui_control": {
+      "visible_encoding_label": "Music (448 kbps)",
+      "observed": {
+        "initial": {
+          "mode": 1,
+          "bitRate": 0,
+          "contentType": 0,
+          "codec": 1,
+          "encodeWithVideo": 1
+        },
+        "settings": [
+          {
+            "mode": 1,
+            "bitRate": 0,
+            "contentType": 0,
+            "codec": 1,
+            "encodeWithVideo": 1
+          },
+          {
+            "mode": 1,
+            "bitRate": 0,
+            "contentType": 0,
+            "codec": 1,
+            "encodeWithVideo": 1
+          }
+        ],
+        "finished": true
+      },
+      "result": {
+        "raw_sha256": "7004a27d7adb99ceb415b35329bdcb60830592858df1463d1c0034103c73e53f",
+        "raw_bytes": 680558,
+        "access_units": 284,
+        "sounding_policies": {
+          "SceneElementId(2)": {
+            "Near/SceneRelative": 283
+          }
+        }
+      }
+    },
+    "current_wrapper_limitation": "既有 dar-encode 固定 contentType=0，未开放本次成功所需的内容类型选择；默认 GUI Music 也发送 0。"
+  },
+  "input_constraints": [
+    "DAR 拒绝对象占用前 10 个输入通道的纯对象源；本次给前 10 路补零 PCM 的 7.1.2 bed，对象从 ID 10 起。",
+    "所有正式对照使用平面 DAMF event 格式；对规范化后的 ADM 做原生往返，逐对象核对位置、Near 与 headTrackMode。",
+    "仅把 0.5.1/home 改为 0.6.0/3dof、保持其余字节相同，当前 Home Theater 模式报 Opening XR master in non XR mode。",
+    "本次成功路径保持 0.5.1/home，不依赖进入 XR 应用模式；直接 DAMF 与规范化 ADM 的 HeadRelative 输出裸流逐字节相同。"
+  ],
+  "sources": {
+    "flute_padded_scene_relative_flat": {
+      "case": {
+        "sample_rate": 48000,
+        "duration_samples": 576000,
+        "frame_rate": "24",
+        "presentation_type": "home",
+        "generator": "../../work/prepare.py",
+        "bed": {
+          "layout": "7.1.2",
+          "channels": [
+            "L",
+            "R",
+            "C",
+            "LFE",
+            "Lss",
+            "Rss",
+            "Lrs",
+            "Rrs",
+            "Lts",
+            "Rts"
+          ],
+          "signal": {
+            "kind": "silence"
+          }
+        },
+        "objects": [
+          {
+            "source_id": 10,
+            "name": "sustained_flute_C5",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/flute_sustain_3dof_20260912/flute_sustain_C5_mono.wav",
+              "sha256": "277333835e31587962d968999d792c17ff455e863cfb3e11ec2f2082b60c8c56"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "scene relative"
+            }
+          }
+        ],
+        "case_id": "dar_exploration_flute_padded_scene_relative_flat",
+        "intent": [
+          "单对象固定右侧；长笛采样音色连续 C5 持音，比较 SceneRelative 与 HeadRelative。"
+        ]
+      },
+      "manifest_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "metadata_sha256": "051eb41f380a57566738e7c1cb12d19cf81c7787ffe0de9f2a556751cc9a8432",
+      "caf_sha256": "7967b2210ccad6470feadafe019efed8f6002298c1cc150126aa170a8b6ee944",
+      "object_pcm_prefix_sha256": "ab1433cef3edfcbc8afdb2eea294eec379979d1e6be5d2e80173258a75c038bf",
+      "object_pcm_unchanged": true,
+      "adm_roundtrip_position_tracking_binaural_verified": true
+    },
+    "flute_padded_head_relative_flat": {
+      "case": {
+        "sample_rate": 48000,
+        "duration_samples": 576000,
+        "frame_rate": "24",
+        "presentation_type": "home",
+        "generator": "../../work/prepare.py",
+        "bed": {
+          "layout": "7.1.2",
+          "channels": [
+            "L",
+            "R",
+            "C",
+            "LFE",
+            "Lss",
+            "Rss",
+            "Lrs",
+            "Rrs",
+            "Lts",
+            "Rts"
+          ],
+          "signal": {
+            "kind": "silence"
+          }
+        },
+        "objects": [
+          {
+            "source_id": 10,
+            "name": "sustained_flute_C5",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/flute_sustain_3dof_20260912/flute_sustain_C5_mono.wav",
+              "sha256": "277333835e31587962d968999d792c17ff455e863cfb3e11ec2f2082b60c8c56"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "head relative"
+            }
+          }
+        ],
+        "case_id": "dar_exploration_flute_padded_head_relative_flat",
+        "intent": [
+          "单对象固定右侧；长笛采样音色连续 C5 持音，比较 SceneRelative 与 HeadRelative。"
+        ]
+      },
+      "manifest_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "metadata_sha256": "5710e78e7b080bfba9a40a54d496447c8af53cc42eb8c5c5e9fa540f81a7c6a5",
+      "caf_sha256": "7967b2210ccad6470feadafe019efed8f6002298c1cc150126aa170a8b6ee944",
+      "object_pcm_prefix_sha256": "ab1433cef3edfcbc8afdb2eea294eec379979d1e6be5d2e80173258a75c038bf",
+      "object_pcm_unchanged": true,
+      "adm_roundtrip_position_tracking_binaural_verified": true
+    },
+    "c4_c8_padded_mixed_left_scene_right_head_flat": {
+      "case": {
+        "sample_rate": 48000,
+        "duration_samples": 576000,
+        "frame_rate": "24",
+        "presentation_type": "home",
+        "generator": "../../work/prepare.py",
+        "bed": {
+          "layout": "7.1.2",
+          "channels": [
+            "L",
+            "R",
+            "C",
+            "LFE",
+            "Lss",
+            "Rss",
+            "Lrs",
+            "Rrs",
+            "Lts",
+            "Rts"
+          ],
+          "signal": {
+            "kind": "silence"
+          }
+        },
+        "objects": [
+          {
+            "source_id": 10,
+            "name": "left_C4",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/c4_c8_3dof_20260912/stems/left_C4.wav",
+              "sha256": "c68e31a95c0617cf8910902e90aa1e4653be230fa5c53bcf81c83f184e09babb"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  -1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "scene relative"
+            }
+          },
+          {
+            "source_id": 11,
+            "name": "right_C8",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/c4_c8_3dof_20260912/stems/right_C8.wav",
+              "sha256": "17afa5e119f2ad39d0e3373ba71d28449e0cfc25fdb55cfd3cbb3fa7bc4f0168"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "head relative"
+            }
+          }
+        ],
+        "case_id": "dar_exploration_c4_c8_padded_mixed_left_scene_right_head_flat",
+        "intent": [
+          "左侧固定 C4，右侧固定 C8，比较混合、全 HeadRelative、全 SceneRelative。"
+        ]
+      },
+      "manifest_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "metadata_sha256": "c81aa3dff72cacbff15a137d6ea46d2d6c2d1d536d4d84755ea48eaaeb31ac29",
+      "caf_sha256": "40a62ad4f76b4d31433026f714075a8ff631f046350c102d7a3c8d12e7dfc5d4",
+      "object_pcm_prefix_sha256": "28dfb9a7ebf43f9b4fe79b97b65f8282022062ada96533aa3148bc2a78fb2db1",
+      "object_pcm_unchanged": true,
+      "adm_roundtrip_position_tracking_binaural_verified": true
+    },
+    "c4_c8_padded_all_head_relative_flat": {
+      "case": {
+        "sample_rate": 48000,
+        "duration_samples": 576000,
+        "frame_rate": "24",
+        "presentation_type": "home",
+        "generator": "../../work/prepare.py",
+        "bed": {
+          "layout": "7.1.2",
+          "channels": [
+            "L",
+            "R",
+            "C",
+            "LFE",
+            "Lss",
+            "Rss",
+            "Lrs",
+            "Rrs",
+            "Lts",
+            "Rts"
+          ],
+          "signal": {
+            "kind": "silence"
+          }
+        },
+        "objects": [
+          {
+            "source_id": 10,
+            "name": "left_C4",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/c4_c8_3dof_20260912/stems/left_C4.wav",
+              "sha256": "c68e31a95c0617cf8910902e90aa1e4653be230fa5c53bcf81c83f184e09babb"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  -1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "head relative"
+            }
+          },
+          {
+            "source_id": 11,
+            "name": "right_C8",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/c4_c8_3dof_20260912/stems/right_C8.wav",
+              "sha256": "17afa5e119f2ad39d0e3373ba71d28449e0cfc25fdb55cfd3cbb3fa7bc4f0168"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "head relative"
+            }
+          }
+        ],
+        "case_id": "dar_exploration_c4_c8_padded_all_head_relative_flat",
+        "intent": [
+          "左侧固定 C4，右侧固定 C8，比较混合、全 HeadRelative、全 SceneRelative。"
+        ]
+      },
+      "manifest_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "metadata_sha256": "b7d02123ddfd78a130ce1e61cac38d4c946b57ea7f6f4a992c1d065ca39f344e",
+      "caf_sha256": "40a62ad4f76b4d31433026f714075a8ff631f046350c102d7a3c8d12e7dfc5d4",
+      "object_pcm_prefix_sha256": "28dfb9a7ebf43f9b4fe79b97b65f8282022062ada96533aa3148bc2a78fb2db1",
+      "object_pcm_unchanged": true,
+      "adm_roundtrip_position_tracking_binaural_verified": true
+    },
+    "c4_c8_padded_all_scene_relative_flat": {
+      "case": {
+        "sample_rate": 48000,
+        "duration_samples": 576000,
+        "frame_rate": "24",
+        "presentation_type": "home",
+        "generator": "../../work/prepare.py",
+        "bed": {
+          "layout": "7.1.2",
+          "channels": [
+            "L",
+            "R",
+            "C",
+            "LFE",
+            "Lss",
+            "Rss",
+            "Lrs",
+            "Rrs",
+            "Lts",
+            "Rts"
+          ],
+          "signal": {
+            "kind": "silence"
+          }
+        },
+        "objects": [
+          {
+            "source_id": 10,
+            "name": "left_C4",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/c4_c8_3dof_20260912/stems/left_C4.wav",
+              "sha256": "c68e31a95c0617cf8910902e90aa1e4653be230fa5c53bcf81c83f184e09babb"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  -1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "scene relative"
+            }
+          },
+          {
+            "source_id": 11,
+            "name": "right_C8",
+            "signal": {
+              "kind": "pcm_wave",
+              "file": "tmp/c4_c8_3dof_20260912/stems/right_C8.wav",
+              "sha256": "17afa5e119f2ad39d0e3373ba71d28449e0cfc25fdb55cfd3cbb3fa7bc4f0168"
+            },
+            "segments": [
+              {
+                "start_samples": 0,
+                "position": [
+                  1,
+                  0,
+                  0
+                ],
+                "ramp_samples": 0
+              }
+            ],
+            "static_fields": {
+              "snap": false,
+              "elevation": true,
+              "zones": "all",
+              "size": 0,
+              "decorr": 0,
+              "importance": 1,
+              "gain": 0,
+              "screenFactor": 0,
+              "depthFactor": 0,
+              "binauralRenderMode": "near",
+              "headTrackMode": "scene relative"
+            }
+          }
+        ],
+        "case_id": "dar_exploration_c4_c8_padded_all_scene_relative_flat",
+        "intent": [
+          "左侧固定 C4，右侧固定 C8，比较混合、全 HeadRelative、全 SceneRelative。"
+        ]
+      },
+      "manifest_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "metadata_sha256": "dfd149492527ce12e1026e54d981f7854a0c16cab474aaaee88c70a58faaa66d",
+      "caf_sha256": "40a62ad4f76b4d31433026f714075a8ff631f046350c102d7a3c8d12e7dfc5d4",
+      "object_pcm_prefix_sha256": "28dfb9a7ebf43f9b4fe79b97b65f8282022062ada96533aa3148bc2a78fb2db1",
+      "object_pcm_unchanged": true,
+      "adm_roundtrip_position_tracking_binaural_verified": true
+    }
+  },
+  "controls": {
+    "flute_adm_scene_768": {
+      "raw_sha256": "d5a55f4506e7cab4f69c1de9690527c553bfb22f9cd6d95fee7b305a79026b6d",
+      "raw_bytes": 1165252,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 283
+        }
+      }
+    },
+    "flute_adm_head_768": {
+      "raw_sha256": "d5a55f4506e7cab4f69c1de9690527c553bfb22f9cd6d95fee7b305a79026b6d",
+      "raw_bytes": 1165252,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 283
+        }
+      }
+    },
+    "c4_c8_adm_mixed_768": {
+      "raw_sha256": "1bdb6c167cb44ac4da50945614995b980cdc482683859c6a284d9297c6d59f49",
+      "raw_bytes": 1165252,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/SceneRelative": 188
+        }
+      }
+    },
+    "flute_native_home_head": {
+      "raw_sha256": "7004a27d7adb99ceb415b35329bdcb60830592858df1463d1c0034103c73e53f",
+      "raw_bytes": 680558,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 283
+        }
+      }
+    },
+    "flute_native_home_head_music": {
+      "raw_sha256": "2ab50c56adf55111d0a28dc31488342fea433500192b01b1cb93e3080de9633d",
+      "raw_bytes": 680558,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 283
+        }
+      }
+    },
+    "flute_dme_scene_relative": {
+      "raw_sha256": "a1114ee3a0a1d8436b200797dac99ad332ac651c9b266530515bf813259dff58",
+      "raw_bytes": 1164968,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 283
+        }
+      }
+    },
+    "flute_dme_head_relative": {
+      "raw_sha256": "949e405440ec1628a48e94e3abcbf95bbefc3aabd75717d52174d2340306e66d",
+      "raw_bytes": 1164968,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 283
+        }
+      }
+    }
+  },
+  "outputs": {
+    "flute_scene_music_768": {
+      "input": "inputs/flute_padded_scene_relative_flat/master.atmos",
+      "input_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "raw_sha256": "d5a55f4506e7cab4f69c1de9690527c553bfb22f9cd6d95fee7b305a79026b6d",
+      "raw_bytes": 1165252,
+      "m4a_sha256": "7e6542d5afbbdf611277e80f54c733678d1b65b428ac2f5936406ebcb61d1d6a",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 283
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "bitrate_kbps": 768,
+      "container_audio_tracks": 1,
+      "crc_note": "MP4Box 抽取为无 CRC 的 AC40 同步帧；本项不声称校验了不存在的 CRC。",
+      "metadata_diagnostics": 0,
+      "common_headphone_modes": {
+        "mode_3;disable_all_None": 284
+      }
+    },
+    "flute_head_music_768": {
+      "input": "inputs/flute_padded_head_relative_flat/master.atmos",
+      "input_sha256": "2ca8676624e731e311f142852a182d83055b4e6c61a70d5e41fb8a3c740ff20c",
+      "raw_sha256": "7af0d56dfc4925deddd019c5fa23646ab45be3f28ad9d7f275cfbbcb4011a478",
+      "raw_bytes": 1165252,
+      "m4a_sha256": "a1cfe168b2cf488cc771df7207545669858b607ee6bd33d185a6f9f61d234c67",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 283
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "bitrate_kbps": 768,
+      "container_audio_tracks": 1,
+      "crc_note": "MP4Box 抽取为无 CRC 的 AC40 同步帧；本项不声称校验了不存在的 CRC。",
+      "metadata_diagnostics": 0,
+      "common_headphone_modes": {
+        "mode_3;disable_all_None": 284
+      }
+    },
+    "c4_c8_mixed_music_768": {
+      "input": "inputs/c4_c8_padded_mixed_left_scene_right_head_flat/master.atmos",
+      "input_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "raw_sha256": "80d0e290b2a7d4b40ba8c37c86997405acf084ca27a6094a8abef6f2739a3a05",
+      "raw_bytes": 1165252,
+      "m4a_sha256": "2845b159918506da3c6895f366fd65a3b2852841631b5c6af6b799aa80b897dd",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/HeadRelative": 188
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "bitrate_kbps": 768,
+      "container_audio_tracks": 1,
+      "crc_note": "MP4Box 抽取为无 CRC 的 AC40 同步帧；本项不声称校验了不存在的 CRC。",
+      "metadata_diagnostics": 0,
+      "common_headphone_modes": {
+        "mode_3;disable_all_None": 284
+      }
+    },
+    "c4_c8_all_head_music_768": {
+      "input": "inputs/c4_c8_padded_all_head_relative_flat/master.atmos",
+      "input_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "raw_sha256": "238b7a609f2605376b6b6d4241529ba92acb7683b3685f2b1b6e025d67b749e2",
+      "raw_bytes": 1165252,
+      "m4a_sha256": "efdd0bfe23d05d2a4ede2075b0e2eda2e8a250944c22133f76eda1d508587bc0",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/HeadRelative": 188
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "bitrate_kbps": 768,
+      "container_audio_tracks": 1,
+      "crc_note": "MP4Box 抽取为无 CRC 的 AC40 同步帧；本项不声称校验了不存在的 CRC。",
+      "metadata_diagnostics": 0,
+      "common_headphone_modes": {
+        "mode_3;disable_all_None": 284
+      }
+    },
+    "c4_c8_all_scene_music_768": {
+      "input": "inputs/c4_c8_padded_all_scene_relative_flat/master.atmos",
+      "input_sha256": "650409b53ebddb72161d355bd8de85bc8437f250b1e5012166e9826b456955cd",
+      "raw_sha256": "1bdb6c167cb44ac4da50945614995b980cdc482683859c6a284d9297c6d59f49",
+      "raw_bytes": 1165252,
+      "m4a_sha256": "6e35cdb13de860e0b869ff45b63d89def8861448f60dc59d25f905e47c3d013e",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/SceneRelative": 191
+        },
+        "SceneElementId(3)": {
+          "Mid/SceneRelative": 1,
+          "Near/SceneRelative": 188
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "bitrate_kbps": 768,
+      "container_audio_tracks": 1,
+      "crc_note": "MP4Box 抽取为无 CRC 的 AC40 同步帧；本项不声称校验了不存在的 CRC。",
+      "metadata_diagnostics": 0,
+      "common_headphone_modes": {
+        "mode_3;disable_all_None": 284
+      }
+    },
+    "flute_adm_head_music_768": {
+      "input": "normalized/flute_padded_head_relative_flat/master.wav",
+      "input_sha256": "39be7272c71ca8816e5ed221474bf18cb80591e80e9718f54e30e2e039422ff0",
+      "raw_sha256": "7af0d56dfc4925deddd019c5fa23646ab45be3f28ad9d7f275cfbbcb4011a478",
+      "raw_bytes": 1165252,
+      "m4a_sha256": "41c6dd85760402baa59b97634577552d369f21ae632c2ded88f806e024060c73",
+      "duration_samples": 576000,
+      "level": 4,
+      "access_units": 284,
+      "sounding_policies": {
+        "SceneElementId(2)": {
+          "Near/HeadRelative": 283
+        }
+      },
+      "inspect_issues": [],
+      "sample_rate": 48000,
+      "bitrate_kbps": 768,
+      "container_audio_tracks": 1,
+      "crc_note": "MP4Box 抽取为无 CRC 的 AC40 同步帧；本项不声称校验了不存在的 CRC。",
+      "metadata_diagnostics": 0,
+      "common_headphone_modes": {
+        "mode_3;disable_all_None": 284
+      }
+    }
+  },
+  "comparisons": {
+    "baseline_scene_vs_head": {
+      "a": "flute_adm_scene_768",
+      "b": "flute_adm_head_768",
+      "bytes_a": 1165252,
+      "bytes_b": 1165252,
+      "equal": true,
+      "different_bytes_when_equal_length": 0
+    },
+    "content_type_1_scene_vs_head": {
+      "a": "flute_scene_music_768",
+      "b": "flute_head_music_768",
+      "bytes_a": 1165252,
+      "bytes_b": 1165252,
+      "equal": false,
+      "different_bytes_when_equal_length": 89
+    },
+    "damf_vs_adm_head": {
+      "a": "flute_head_music_768",
+      "b": "flute_adm_head_music_768",
+      "bytes_a": 1165252,
+      "bytes_b": 1165252,
+      "equal": true,
+      "different_bytes_when_equal_length": 0
+    },
+    "gui_vs_content_type_0_448": {
+      "a": "flute_gui_l4_head",
+      "b": "flute_native_home_head",
+      "bytes_a": 680558,
+      "bytes_b": 680558,
+      "equal": true,
+      "different_bytes_when_equal_length": 0
+    }
+  },
+  "limitations": [
+    "C4/C8 右对象初次激活的一个有信号帧仍以 Mid/SceneRelative 起始，其后 188 个有信号帧符合配置；不能宣称每个有信号样本从激活第一刻起都是 HeadRelative。",
+    "284 AU 与容器的 576000 可见 samples 分别记录；本地完整 Scene 解码按源 AU 校验，容器 edit list 另由 ffprobe 检查。",
+    "没有修改正式 case.json、冻结向量、解码器或外部包装器生产代码；尚未接入 build_vector.sh。",
+    "普通 YAML dump 产生的缩进/序列格式试验曾丢失有效字段或被拒绝；这批预探测文件均排除在上述结论和制品外。"
+  ],
+  "local_work_dir": "tmp/dar_3dof_exploration_20260913",
+  "references": [
+    {
+      "title": "Dolby Atmos Renderer User's Guide",
+      "version": "5.5, 29 July 2026",
+      "sections": [
+        "7.11 (pages 39-42)",
+        "9.4 (page 51)"
+      ],
+      "note": "公开 L4 Music 导出与监听头追入口，未据此推断 contentType=1 的私有命名。"
+    }
+  ]
+}
