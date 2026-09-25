@@ -90,6 +90,11 @@ jobs:
       - name: Test decode baseline checker
         run: python3 -m unittest scripts/test_decode_check.py
 
+      - name: Test external object PCM comparison without proprietary media
+        run: |
+          python3 -m pip install -r scripts/requirements-pcm.txt
+          python3 -m unittest scripts/test_compare_object_pcm.py
+
       - name: Test A-JOC census checker
         run: python3 -m unittest scripts/test_ajoc_census.py
 

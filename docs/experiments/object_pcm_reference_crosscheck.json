@@ -1,0 +1,2964 @@
+{
+  "schema": "macinac4.object-pcm-reference-crosscheck",
+  "version": 1,
+  "recorded_on": "2026-09-23",
+  "implementation_commit": "275c7d6723b1ab8b574072dc3c94f9df85e3f74d",
+  "comparison_script_sha256": "78449b4a5ca166cd05e391f6cdc6671a52f60324ed2840106c1d01a2a137306a",
+  "numpy_version": "2.3.2",
+  "purpose": "建立外部对象 PCM 的身份、处理、固定尺度与整数时间轴凭证，并保存首轮跨实现差分；不替代三层本地逐位基线。",
+  "reference": {
+    "runtime": "DRP 4.3.0.19350 arm64",
+    "runtime_binary_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "adapter_identity_recorded": false,
+    "adapter_note": "个人适配工具和调用路径不入库；通过现有本地入口捕获对象 Float32，临时加入目标参考电平与参数返回码记录。",
+    "object_pcm_tap": "decoder output before OAR",
+    "processing_status": "所有显式参数 setter 返回 0；target_reference_level=0 的作用另由同输入 A/B 核对。",
+    "scene_descriptor_checks": {
+      "axes": {
+        "events": 143,
+        "initial_10_object_events": 1,
+        "lfe_plus_20_dynamic_events": 142
+      },
+      "bed": {
+        "events": 49,
+        "initial_10_object_events": 1,
+        "lfe_plus_20_dynamic_events": 48
+      },
+      "music": {
+        "events": 400,
+        "initial_10_object_events": 1,
+        "lfe_plus_20_dynamic_events": 399
+      }
+    },
+    "object_gain_q12_observed": [
+      4096
+    ]
+  },
+  "alignment_evidence": {
+    "axes_mp4_equals_raw_slice_bitwise": true,
+    "raw_slice_start_samples": 2048,
+    "raw_slice_frames": 288000,
+    "independent_music_low_band_lag_search": {
+      "search_samples": [
+        -4096,
+        4096
+      ],
+      "frequencies_hz": [
+        0,
+        12000
+      ],
+      "reference_channels": [
+        1,
+        4,
+        13
+      ],
+      "best_lags_samples": [
+        31,
+        31,
+        31
+      ],
+      "note": "每一路均以 31 为唯一最大值；用于固定本次输入的公共整数偏移，不逐轨优化最终误差。"
+    },
+    "unresolved": "31 samples 的内部成因尚未确定；它不是对其他版本/码流的延迟承诺。"
+  },
+  "private_music_input": {
+    "kind": "非自产真实音乐 AC-4 768K，仅取开头连续 400 AU",
+    "original_mp4_sha256": "84e28b1d4375e5193b55d24df67e4544cd38c17eb2faf29b49b3b8dfa331a498",
+    "demuxed_full_raw_sha256": "6f360fcf1d8fa02b247214d73e98c23bd2bf7a12640034cbd2032f2936e708c4",
+    "prefix_raw_sha256": "be50ed1a2ab06ce81e822839c59ca2be1508b512ec0e2643bd050734df17abd5",
+    "prefix_raw_bytes": 1647290,
+    "prefix_codec_frames": 400,
+    "prefix_samples": 819200,
+    "derivation": "由原始 MP4 的首条音轨无损取出 AC-4；按 Annex G syncframe 长度与可选 CRC 定界，保留最前 400 帧。未重编码，未从非随机访问点截入。"
+  },
+  "cases": [
+    {
+      "case": "axes_mp4",
+      "provenance": {
+        "input_sha256": "e7e6f1cbf5e646b686bc005c369abeaf12799a1b53a0170ccf2242405951f705",
+        "local_pcm_sha256": "1f04c27a4ddb936d7aa3d159e0072e92914131559b9a230119ebc03b7d930921",
+        "local_export_sha256": "de92453d78471b6a60de0fcce662d796ad3c5826369bebc6b3f6b6f4b83c3c8d",
+        "reference_pcm_sha256": "6a284d284843ca321316b069bee6f6330d50c954ff3a9753c0df3cf206f1c0db",
+        "reference_runtime": "DRP 4.3.0.19350 arm64",
+        "reference_processing": {
+          "requested": {
+            "target_reference_level": 0,
+            "setup_b_dap_enable": 0,
+            "drc_enable": 0,
+            "limiter_enable": 0,
+            "dap_param_ieq_profile": 0,
+            "dap_param_ieq_strength": 0,
+            "presentation_selection_mode": 0,
+            "presentation_selection_b_select_by_presentation_index": 1,
+            "presentation_selection_index": 1,
+            "cplx_sample_mem_size": 4,
+            "buffer_format": 7,
+            "setup_output_cplx_level": 12287,
+            "cplx_num_channels": 21,
+            "output_channel_config": 12032,
+            "output_num_channels": 21
+          },
+          "all_setters_returned_zero": true,
+          "output_tap": "decoder object PCM before OAR",
+          "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c"
+        },
+        "identity_evidence": "参考侧 normalized OAMD scene 的 21 路布局核为 LFE + 20 个 dynamic object；索引 1..20 对应本地 ajoc_object 0..19。固定映射，不以相关性重排。"
+      },
+      "alignment": {
+        "reference_lag_samples": 2079,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。",
+        "local_frames": 288000,
+        "reference_frames": 292864,
+        "local_start": 0,
+        "reference_start": 2079,
+        "compared_frames": 288000,
+        "uncompared_local_prefix": 0,
+        "uncompared_reference_prefix": 2079,
+        "uncompared_local_suffix": 0,
+        "uncompared_reference_suffix": 2785
+      },
+      "scale": {
+        "local_multiplier": 1.52587890625e-05,
+        "reference_multiplier": 1.0,
+        "evidence": "CLI ±32768 -> Scene 为 2^-15；ADR-0006 决策 3 明示公开 PCM 相对字面 QMF PCM 的全局 2 倍表示，本比较另乘精确 0.5。参考 target_reference_level=0；固定换算，不由最小二乘估计。",
+        "gain_fit_applied": false
+      },
+      "spectral_method": {
+        "fft_samples": 4096,
+        "hop_samples": 4096,
+        "window": "numpy.hanning",
+        "discarded_tail_samples": 1280,
+        "drp_reference_upper_hz_exclusive": 18000
+      },
+      "verdict": "observation_only",
+      "excited_tracks": 1,
+      "max_abs_error": 0.0015468746423721313,
+      "full_report_sha256": "4f9d3b9e87160c17d3eaa8a84e687c6060f7a76945b499cb430bce1edd6d0696",
+      "both_zero_tracks": [
+        "lfe",
+        "object:1",
+        "object:2",
+        "object:3",
+        "object:4",
+        "object:5",
+        "object:6",
+        "object:7",
+        "object:8",
+        "object:9",
+        "object:10",
+        "object:11",
+        "object:12",
+        "object:13",
+        "object:14",
+        "object:15",
+        "object:16",
+        "object:17",
+        "object:18",
+        "object:19"
+      ],
+      "tracks": [
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "activity": "both_nonzero",
+          "local_rms": 0.11589170652465293,
+          "reference_rms": 0.1159058790160893,
+          "correlation": 0.99999859262541,
+          "rmse": 0.00019496169550866198,
+          "snr_db": 55.48312343721193,
+          "max_abs_error": 0.0015468746423721313,
+          "fitted_gain_db_diagnostic_only": 0.0010499152847525917,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.11610576169080136,
+              "reference_rms": 0.11612040744765931,
+              "correlation": 0.9999986657950632,
+              "rmse": 0.00019023843691031976,
+              "snr_db": 55.71220564224703,
+              "fitted_gain_db_diagnostic_only": 0.0010839934290738937
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 3.661812323807182e-06,
+              "reference_rms": 3.248970133474399e-06,
+              "correlation": 0.7453703190584061,
+              "rmse": 2.495828087101249e-06,
+              "snr_db": 2.2906210254150228,
+              "fitted_gain_db_diagnostic_only": -3.5915653582456586
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.444109188261797e-06,
+              "reference_rms": 7.018810898377503e-07,
+              "correlation": 0.7610968615569318,
+              "rmse": 1.963421249218509e-06,
+              "snr_db": -8.934998901983588,
+              "fitted_gain_db_diagnostic_only": -13.208342616873024
+            }
+          ]
+        }
+      ],
+      "reference_level_ab": {
+        "default_capture_pcm_sha256": "2e0f0973eed41eef8aa33c7e61d54a7c6115c73f5f90b135647b729eb2b0afdd",
+        "explicit_zero_capture_pcm_sha256": "6a284d284843ca321316b069bee6f6330d50c954ff3a9753c0df3cf206f1c0db",
+        "measurement_channel": 1,
+        "explicit_zero_over_default_gain_db": 14.999941856893628,
+        "note": "同一输入、同一参考路径，只新增 target_reference_level=0；数值为诊断拟合，不用于本地 PCM 比较补偿。"
+      },
+      "local_trace": {
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 143,
+          "parsed": 143,
+          "parsed_substreams": 143,
+          "substreams": 143
+        },
+        "configuration": {
+          "companding_active_frames": 0,
+          "companding_frames": 0,
+          "differential_positions": 6,
+          "oamd_extension_present": 0,
+          "position_changes": 29,
+          "some_signals_inactive": 0,
+          "state_failures": 0
+        },
+        "full_reconstructed_frames": 142,
+        "full_warmup_frames": 1,
+        "full_wet_frames": 142
+      }
+    },
+    {
+      "case": "axes_raw",
+      "provenance": {
+        "input_sha256": "7e6e874c9a0151d871b5a50ac8665f94d622b7539266d955d89d0c7ac3978448",
+        "local_pcm_sha256": "b10f3efee41e68acb7b0da9e01f69ba27d274cd21b9f91f0502cfc320a459016",
+        "local_export_sha256": "51c552d5a893754f07a164f1f1b0a6c73ba16db8127463c0edf83bb290503d59",
+        "reference_pcm_sha256": "6a284d284843ca321316b069bee6f6330d50c954ff3a9753c0df3cf206f1c0db",
+        "reference_runtime": "DRP 4.3.0.19350 arm64",
+        "reference_processing": {
+          "requested": {
+            "target_reference_level": 0,
+            "setup_b_dap_enable": 0,
+            "drc_enable": 0,
+            "limiter_enable": 0,
+            "dap_param_ieq_profile": 0,
+            "dap_param_ieq_strength": 0,
+            "presentation_selection_mode": 0,
+            "presentation_selection_b_select_by_presentation_index": 1,
+            "presentation_selection_index": 1,
+            "cplx_sample_mem_size": 4,
+            "buffer_format": 7,
+            "setup_output_cplx_level": 12287,
+            "cplx_num_channels": 21,
+            "output_channel_config": 12032,
+            "output_num_channels": 21
+          },
+          "all_setters_returned_zero": true,
+          "output_tap": "decoder object PCM before OAR",
+          "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c"
+        },
+        "identity_evidence": "参考侧 normalized OAMD scene 的 21 路布局核为 LFE + 20 个 dynamic object；索引 1..20 对应本地 ajoc_object 0..19。固定映射，不以相关性重排。"
+      },
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。",
+        "local_frames": 292864,
+        "reference_frames": 292864,
+        "local_start": 0,
+        "reference_start": 31,
+        "compared_frames": 292833,
+        "uncompared_local_prefix": 0,
+        "uncompared_reference_prefix": 31,
+        "uncompared_local_suffix": 31,
+        "uncompared_reference_suffix": 0
+      },
+      "scale": {
+        "local_multiplier": 1.52587890625e-05,
+        "reference_multiplier": 1.0,
+        "evidence": "CLI ±32768 -> Scene 为 2^-15；ADR-0006 决策 3 明示公开 PCM 相对字面 QMF PCM 的全局 2 倍表示，本比较另乘精确 0.5。参考 target_reference_level=0；固定换算，不由最小二乘估计。",
+        "gain_fit_applied": false
+      },
+      "spectral_method": {
+        "fft_samples": 4096,
+        "hop_samples": 4096,
+        "window": "numpy.hanning",
+        "discarded_tail_samples": 2017,
+        "drp_reference_upper_hz_exclusive": 18000
+      },
+      "verdict": "observation_only",
+      "excited_tracks": 1,
+      "max_abs_error": 0.0015468746423721313,
+      "full_report_sha256": "76ac5b88d57612734babcf1ba73e64ded634e5bc26cd1ba2086c56a4c5ebf1b6",
+      "both_zero_tracks": [
+        "lfe",
+        "object:1",
+        "object:2",
+        "object:3",
+        "object:4",
+        "object:5",
+        "object:6",
+        "object:7",
+        "object:8",
+        "object:9",
+        "object:10",
+        "object:11",
+        "object:12",
+        "object:13",
+        "object:14",
+        "object:15",
+        "object:16",
+        "object:17",
+        "object:18",
+        "object:19"
+      ],
+      "tracks": [
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "activity": "both_nonzero",
+          "local_rms": 0.11493137261501453,
+          "reference_rms": 0.11494542766643283,
+          "correlation": 0.99999859262541,
+          "rmse": 0.00019334614998869215,
+          "snr_db": 55.48312343721193,
+          "max_abs_error": 0.0015468746423721313,
+          "fitted_gain_db_diagnostic_only": 0.0010499152847525917,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.11522074703962994,
+              "reference_rms": 0.11523614373095986,
+              "correlation": 0.9999984654047407,
+              "rmse": 0.00020245623105435756,
+              "snr_db": 55.1051513775566,
+              "fitted_gain_db_diagnostic_only": 0.0011472691734800173
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 3.665700405049735e-06,
+              "reference_rms": 3.1891687731419636e-06,
+              "correlation": 0.7482140054099243,
+              "rmse": 2.4726725421218277e-06,
+              "snr_db": 2.210217936139358,
+              "fitted_gain_db_diagnostic_only": -3.729072624427223
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.4408257691578537e-06,
+              "reference_rms": 6.959807408972256e-07,
+              "correlation": 0.7582318685236678,
+              "rmse": 1.966189200227222e-06,
+              "snr_db": -9.020561685537594,
+              "fitted_gain_db_diagnostic_only": -13.302750476537765
+            }
+          ]
+        }
+      ],
+      "reference_level_ab": {
+        "default_capture_pcm_sha256": "2e0f0973eed41eef8aa33c7e61d54a7c6115c73f5f90b135647b729eb2b0afdd",
+        "explicit_zero_capture_pcm_sha256": "6a284d284843ca321316b069bee6f6330d50c954ff3a9753c0df3cf206f1c0db",
+        "measurement_channel": 1,
+        "explicit_zero_over_default_gain_db": 14.999941856893628,
+        "note": "同一输入、同一参考路径，只新增 target_reference_level=0；数值为诊断拟合，不用于本地 PCM 比较补偿。"
+      },
+      "local_trace": {
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 143,
+          "parsed": 143,
+          "parsed_substreams": 143,
+          "substreams": 143
+        },
+        "configuration": {
+          "companding_active_frames": 0,
+          "companding_frames": 0,
+          "differential_positions": 6,
+          "oamd_extension_present": 0,
+          "position_changes": 29,
+          "some_signals_inactive": 0,
+          "state_failures": 0
+        },
+        "full_reconstructed_frames": 142,
+        "full_warmup_frames": 1,
+        "full_wet_frames": 142
+      }
+    },
+    {
+      "case": "bed_256k",
+      "provenance": {
+        "input_sha256": "4831735e2463b4a98b44d0b6c4f5d137175d8a1fba874878f70a6adb3ac527dc",
+        "local_pcm_sha256": "b962f24c5ca50bb9eb4132ed715bcab69c608ba2bbd01d7b374ef9a271c9308b",
+        "local_export_sha256": "03b4245bdc8d5892dae4019a9c709786ba141bbd215fa7f006ecac237b8dc3d4",
+        "reference_pcm_sha256": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+        "reference_runtime": "DRP 4.3.0.19350 arm64",
+        "reference_processing": {
+          "requested": {
+            "target_reference_level": 0,
+            "setup_b_dap_enable": 0,
+            "drc_enable": 0,
+            "limiter_enable": 0,
+            "dap_param_ieq_profile": 0,
+            "dap_param_ieq_strength": 0,
+            "presentation_selection_mode": 0,
+            "presentation_selection_b_select_by_presentation_index": 1,
+            "presentation_selection_index": 1,
+            "cplx_sample_mem_size": 4,
+            "buffer_format": 7,
+            "setup_output_cplx_level": 12287,
+            "cplx_num_channels": 21,
+            "output_channel_config": 12032,
+            "output_num_channels": 21
+          },
+          "all_setters_returned_zero": true,
+          "output_tap": "decoder object PCM before OAR",
+          "scene_sha256": "532aa8f53d6bf5f9eab804b2e625078bb557d7b11c61c2a1813e9f0451b0a659"
+        },
+        "identity_evidence": "参考侧 normalized OAMD scene 的 21 路布局核为 LFE + 20 个 dynamic object；索引 1..20 对应本地 ajoc_object 0..19。固定映射，不以相关性重排。"
+      },
+      "alignment": {
+        "reference_lag_samples": 2079,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。",
+        "local_frames": 96000,
+        "reference_frames": 100352,
+        "local_start": 0,
+        "reference_start": 2079,
+        "compared_frames": 96000,
+        "uncompared_local_prefix": 0,
+        "uncompared_reference_prefix": 2079,
+        "uncompared_local_suffix": 0,
+        "uncompared_reference_suffix": 2273
+      },
+      "scale": {
+        "local_multiplier": 1.52587890625e-05,
+        "reference_multiplier": 1.0,
+        "evidence": "CLI ±32768 -> Scene 为 2^-15；ADR-0006 决策 3 明示公开 PCM 相对字面 QMF PCM 的全局 2 倍表示，本比较另乘精确 0.5。参考 target_reference_level=0；固定换算，不由最小二乘估计。",
+        "gain_fit_applied": false
+      },
+      "spectral_method": {
+        "fft_samples": 4096,
+        "hop_samples": 4096,
+        "window": "numpy.hanning",
+        "discarded_tail_samples": 1792,
+        "drp_reference_upper_hz_exclusive": 18000
+      },
+      "verdict": "observation_only",
+      "excited_tracks": 10,
+      "max_abs_error": 0.0031036301515996456,
+      "full_report_sha256": "cf4f60ba2495ffe32ef6c11a2105f0bad10ccb1e96c3cabdbafe1837615dbfdb",
+      "both_zero_tracks": [
+        "object:9",
+        "object:10",
+        "object:11",
+        "object:12",
+        "object:13",
+        "object:14",
+        "object:15",
+        "object:16",
+        "object:17",
+        "object:18",
+        "object:19"
+      ],
+      "tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "activity": "both_nonzero",
+          "local_rms": 0.08533529988174614,
+          "reference_rms": 0.08509827872078424,
+          "correlation": 0.9997007518798536,
+          "rmse": 0.002098187593600033,
+          "snr_db": 32.161529219250355,
+          "max_abs_error": 0.0031036301515996456,
+          "fitted_gain_db_diagnostic_only": -0.02675849089184349,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.08498215224138243,
+              "reference_rms": 0.0847483103017584,
+              "correlation": 0.9997012259612162,
+              "rmse": 0.002087649243121387,
+              "snr_db": 32.16947031395413,
+              "fitted_gain_db_diagnostic_only": -0.0265290597292318
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 5.630918540060722e-07,
+              "reference_rms": 2.61560027772232e-07,
+              "correlation": 0.8485070635615092,
+              "rmse": 3.6816559427927036e-07,
+              "snr_db": -2.969436513584167,
+              "fitted_gain_db_diagnostic_only": -8.087048156089413
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 5.040319210813319e-07,
+              "reference_rms": 2.48224924842482e-07,
+              "correlation": 0.9027613885987155,
+              "rmse": 2.996145918825561e-07,
+              "snr_db": -1.6343514551332738,
+              "fitted_gain_db_diagnostic_only": -7.040793561323309
+            }
+          ]
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "activity": "both_nonzero",
+          "local_rms": 0.0907516463107533,
+          "reference_rms": 0.09075154134699051,
+          "correlation": 0.9999999625375785,
+          "rmse": 2.484111411402776e-05,
+          "snr_db": 71.25365880124733,
+          "max_abs_error": 6.999820470809937e-05,
+          "fitted_gain_db_diagnostic_only": -1.0371539344218132e-05,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.09033920076930294,
+              "reference_rms": 0.09033905898310982,
+              "correlation": 0.9999999625366474,
+              "rmse": 2.4728703732384813e-05,
+              "snr_db": 71.25348421970129,
+              "fitted_gain_db_diagnostic_only": -1.3957803344538724e-05
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 2.1261401911766602e-06,
+              "reference_rms": 1.2372962445276957e-06,
+              "correlation": 0.8792582266586724,
+              "rmse": 1.193861776742387e-06,
+              "snr_db": 0.31039293817644253,
+              "fitted_gain_db_diagnostic_only": -5.820035240182499
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.7321523911617743e-06,
+              "reference_rms": 5.898694318586401e-07,
+              "correlation": 0.8074560029718306,
+              "rmse": 1.3031775048070068e-06,
+              "snr_db": -6.884953677251842,
+              "fitted_gain_db_diagnostic_only": -11.214226785525144
+            }
+          ]
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "activity": "both_nonzero",
+          "local_rms": 0.08542798023215935,
+          "reference_rms": 0.08542278311108899,
+          "correlation": 0.9999991884157303,
+          "rmse": 0.00010895905532928182,
+          "snr_db": 57.8862077510744,
+          "max_abs_error": 0.00023286975920200348,
+          "fitted_gain_db_diagnostic_only": -0.0005354826778784072,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.08503897364997964,
+              "reference_rms": 0.08503369427206019,
+              "correlation": 0.999999202965505,
+              "rmse": 0.00010749357466144917,
+              "snr_db": 57.9641708377308,
+              "fitted_gain_db_diagnostic_only": -0.0005461759068317333
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 9.70621215278449e-06,
+              "reference_rms": 9.13503565635485e-06,
+              "correlation": 0.12279367116706322,
+              "rmse": 1.248535292244306e-05,
+              "snr_db": -2.713811523483096,
+              "fitted_gain_db_diagnostic_only": -18.743270982208408
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 7.698433818154375e-06,
+              "reference_rms": 5.387902833414972e-07,
+              "correlation": 0.33030561637154715,
+              "rmse": 7.537643374576395e-06,
+              "snr_db": -22.916316620814502,
+              "fitted_gain_db_diagnostic_only": -32.721333346330546
+            }
+          ]
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "activity": "both_nonzero",
+          "local_rms": 0.08466008489825665,
+          "reference_rms": 0.08471656128841099,
+          "correlation": 0.999998350721337,
+          "rmse": 0.00016385116061872642,
+          "snr_db": 54.270375942105574,
+          "max_abs_error": 0.0008775442838668823,
+          "fitted_gain_db_diagnostic_only": 0.005778063525137657,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.0842869921838685,
+              "reference_rms": 0.08434342092612146,
+              "correlation": 0.9999984562950078,
+              "rmse": 0.000158533166818667,
+              "snr_db": 54.51862153461799,
+              "fitted_gain_db_diagnostic_only": 0.005799704806451789
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 8.635691191136428e-06,
+              "reference_rms": 8.107386233446083e-06,
+              "correlation": 0.04085233380727212,
+              "rmse": 1.1601055748544935e-05,
+              "snr_db": -3.112333012374646,
+              "fitted_gain_db_diagnostic_only": -28.32398737346626
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 6.942929236156694e-06,
+              "reference_rms": 4.868945076205115e-07,
+              "correlation": 0.07069929665462897,
+              "rmse": 6.925556898596089e-06,
+              "snr_db": -23.06039652256811,
+              "fitted_gain_db_diagnostic_only": -46.09385540060536
+            }
+          ]
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "activity": "both_nonzero",
+          "local_rms": 0.09004502855757267,
+          "reference_rms": 0.09002683103789169,
+          "correlation": 0.9999994392989685,
+          "rmse": 9.706575261943114e-05,
+          "snr_db": 59.34611873758815,
+          "max_abs_error": 0.00016638170927762985,
+          "fitted_gain_db_diagnostic_only": -0.0017604098773970312,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.08963041902322681,
+              "reference_rms": 0.08961227596896247,
+              "correlation": 0.9999994381715006,
+              "rmse": 9.671797921847917e-05,
+              "snr_db": 59.33720587323333,
+              "fitted_gain_db_diagnostic_only": -0.0017632620187889776
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 1.3209770630318404e-06,
+              "reference_rms": 7.095047293956585e-07,
+              "correlation": 0.7033244933652174,
+              "rmse": 9.643704714297015e-07,
+              "snr_db": -2.665772186114892,
+              "fitted_gain_db_diagnostic_only": -8.455684799992898
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 9.753509960006557e-07,
+              "reference_rms": 2.10289011747728e-07,
+              "correlation": 0.4061636415923326,
+              "rmse": 9.104494282708547e-07,
+              "snr_db": -12.728784949552093,
+              "fitted_gain_db_diagnostic_only": -21.15286615051901
+            }
+          ]
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "activity": "both_nonzero",
+          "local_rms": 0.1133755291232947,
+          "reference_rms": 0.11337332836858847,
+          "correlation": 0.9999973237104074,
+          "rmse": 0.0002623082488603881,
+          "snr_db": 52.71397897030749,
+          "max_abs_error": 0.0020659733563661575,
+          "fitted_gain_db_diagnostic_only": -0.00019185113656876155,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.11287724128288328,
+              "reference_rms": 0.11287474609834813,
+              "correlation": 0.9999977804588266,
+              "rmse": 0.00023783298653535124,
+              "snr_db": 53.526493939087764,
+              "fitted_gain_db_diagnostic_only": -0.00021128497202590297
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 1.3909484888729742e-06,
+              "reference_rms": 8.408351196778047e-07,
+              "correlation": 0.7108867971332076,
+              "rmse": 9.893908397013491e-07,
+              "snr_db": -1.4131408455422312,
+              "fitted_gain_db_diagnostic_only": -7.335995115213182
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.0504230187072687e-06,
+              "reference_rms": 4.5617619151063566e-07,
+              "correlation": 0.4892293652074596,
+              "rmse": 9.179484547944653e-07,
+              "snr_db": -6.073713600696715,
+              "fitted_gain_db_diagnostic_only": -13.454381962998582
+            }
+          ]
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "activity": "both_nonzero",
+          "local_rms": 0.11449083593017269,
+          "reference_rms": 0.11448532137506187,
+          "correlation": 0.9999978029138936,
+          "rmse": 0.0002400564748948023,
+          "snr_db": 53.56872766356023,
+          "max_abs_error": 0.0015231221914291382,
+          "fitted_gain_db_diagnostic_only": -0.0004374575084500584,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.11401182614049235,
+              "reference_rms": 0.1140073073470249,
+              "correlation": 0.9999981848663271,
+              "rmse": 0.00021727239265788861,
+              "snr_db": 54.39856283145096,
+              "fitted_gain_db_diagnostic_only": -0.0003600331514358034
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 2.1351573383036617e-06,
+              "reference_rms": 1.2783964366110914e-06,
+              "correlation": 0.8604964494194285,
+              "rmse": 1.2229516578817395e-06,
+              "snr_db": 0.3851252259353055,
+              "fitted_gain_db_diagnostic_only": -5.76030498605149
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.7426604031562485e-06,
+              "reference_rms": 6.832811618476096e-07,
+              "correlation": 0.7516790674499343,
+              "rmse": 1.3090642716933712e-06,
+              "snr_db": -5.647230449731886,
+              "fitted_gain_db_diagnostic_only": -10.611617192137707
+            }
+          ]
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "activity": "both_nonzero",
+          "local_rms": 0.07559002503342814,
+          "reference_rms": 0.07558559198673961,
+          "correlation": 0.9999914282884974,
+          "rmse": 0.00031299981964719875,
+          "snr_db": 47.65789863037025,
+          "max_abs_error": 0.0017315149307250977,
+          "fitted_gain_db_diagnostic_only": -0.0005838602001891147,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.07523773684913124,
+              "reference_rms": 0.07523507332055958,
+              "correlation": 0.9999922201290697,
+              "rmse": 0.00029678826157760466,
+              "snr_db": 48.07947257209361,
+              "fitted_gain_db_diagnostic_only": -0.00037507430861980406
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 9.222615694958156e-06,
+              "reference_rms": 8.496852359555271e-06,
+              "correlation": 0.03359775386133218,
+              "rmse": 1.2328320445307477e-05,
+              "snr_db": -3.232916844906022,
+              "fitted_gain_db_diagnostic_only": -30.185715917134853
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 7.281614971479532e-06,
+              "reference_rms": 5.506791685496717e-07,
+              "correlation": 0.04526911601135933,
+              "rmse": 7.277507876163421e-06,
+              "snr_db": -22.421680722273607,
+              "fitted_gain_db_diagnostic_only": -49.31054098305382
+            }
+          ]
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "activity": "both_nonzero",
+          "local_rms": 0.04806953250380196,
+          "reference_rms": 0.04807668935020349,
+          "correlation": 0.9999872223328911,
+          "rmse": 0.00024312591529589356,
+          "snr_db": 45.92206600083533,
+          "max_abs_error": 0.0016144439578056335,
+          "fitted_gain_db_diagnostic_only": 0.001182118843189031,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.047863589805620506,
+              "reference_rms": 0.047872003273652236,
+              "correlation": 0.9999888041851664,
+              "rmse": 0.0002266656305598169,
+              "snr_db": 46.49391857501676,
+              "fitted_gain_db_diagnostic_only": 0.0014294264766990812
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 9.522974508331728e-06,
+              "reference_rms": 8.960353593444627e-06,
+              "correlation": 0.09273768370337301,
+              "rmse": 1.245586254693117e-05,
+              "snr_db": -2.860973178552415,
+              "fitted_gain_db_diagnostic_only": -21.183824585559407
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 7.5847742743838375e-06,
+              "reference_rms": 3.9621321781830487e-07,
+              "correlation": 0.1710260361883366,
+              "rmse": 7.527141222605184e-06,
+              "snr_db": -25.574022091659117,
+              "fitted_gain_db_diagnostic_only": -40.97902941081652
+            }
+          ]
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "activity": "both_nonzero",
+          "local_rms": 0.07041156522134906,
+          "reference_rms": 0.07040886692999243,
+          "correlation": 0.9999961682035496,
+          "rmse": 0.00019493665038706977,
+          "snr_db": 51.15467712244186,
+          "max_abs_error": 0.00039614737033843994,
+          "fitted_gain_db_diagnostic_only": -0.0003661471187297183,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.0700574010939208,
+              "reference_rms": 0.07005450244689838,
+              "correlation": 0.9999961968999382,
+              "rmse": 0.00019323143583457636,
+              "snr_db": 51.18716543843135,
+              "fitted_gain_db_diagnostic_only": -0.00039242222305292717
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 9.595113483834462e-06,
+              "reference_rms": 9.000556913024513e-06,
+              "correlation": 0.039053937534150686,
+              "rmse": 1.2896926951962213e-05,
+              "snr_db": -3.1243371518225316,
+              "fitted_gain_db_diagnostic_only": -28.72231811832808
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 7.718497593489981e-06,
+              "reference_rms": 4.894937544163498e-07,
+              "correlation": 0.07775519399405847,
+              "rmse": 7.695925329292505e-06,
+              "snr_db": -23.930273807173062,
+              "fitted_gain_db_diagnostic_only": -46.141124179008024
+            }
+          ]
+        }
+      ],
+      "reference_level_ab": {
+        "default_capture_pcm_sha256": "f32727460f90ab7784cd53d9803f8a67c2a19681dfa28f8ac3135a538f18b291",
+        "explicit_zero_capture_pcm_sha256": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+        "measurement_channel": 1,
+        "explicit_zero_over_default_gain_db": 20.99990532777758,
+        "note": "同一输入、同一参考路径，只新增 target_reference_level=0；数值为诊断拟合，不用于本地 PCM 比较补偿。"
+      },
+      "local_trace": {
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 49,
+          "parsed": 49,
+          "parsed_substreams": 49,
+          "substreams": 49
+        },
+        "configuration": {
+          "companding_active_frames": 0,
+          "companding_frames": 49,
+          "differential_positions": 0,
+          "oamd_extension_present": 0,
+          "position_changes": 0,
+          "some_signals_inactive": 0,
+          "state_failures": 0
+        },
+        "full_reconstructed_frames": 48,
+        "full_warmup_frames": 1,
+        "full_wet_frames": 48
+      }
+    },
+    {
+      "case": "music_prefix",
+      "provenance": {
+        "input_sha256": "be50ed1a2ab06ce81e822839c59ca2be1508b512ec0e2643bd050734df17abd5",
+        "local_pcm_sha256": "b318685aec6f293f298ae54dbd14b48cca869af9547d8c1ac58eb14cb67b4545",
+        "local_export_sha256": "a1c76408bee4aa61cfe8724e81319692b8e91038ff2111f5d4022802f0778ba6",
+        "reference_pcm_sha256": "a859cdfcaf27c5cab4dee2e6db41d5230376fa7941be4cbae2f37c6a7a2d5218",
+        "reference_runtime": "DRP 4.3.0.19350 arm64",
+        "reference_processing": {
+          "requested": {
+            "target_reference_level": 0,
+            "setup_b_dap_enable": 0,
+            "drc_enable": 0,
+            "limiter_enable": 0,
+            "dap_param_ieq_profile": 0,
+            "dap_param_ieq_strength": 0,
+            "presentation_selection_mode": 0,
+            "presentation_selection_b_select_by_presentation_index": 1,
+            "presentation_selection_index": 1,
+            "cplx_sample_mem_size": 4,
+            "buffer_format": 7,
+            "setup_output_cplx_level": 12287,
+            "cplx_num_channels": 21,
+            "output_channel_config": 12032,
+            "output_num_channels": 21
+          },
+          "all_setters_returned_zero": true,
+          "output_tap": "decoder object PCM before OAR",
+          "scene_sha256": "772296fc655f27bf49822e44d118d7a71bcac9d4a89285b5893c78f562283a7b"
+        },
+        "identity_evidence": "参考侧 normalized OAMD scene 的 21 路布局核为 LFE + 20 个 dynamic object；索引 1..20 对应本地 ajoc_object 0..19。固定映射，不以相关性重排。"
+      },
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。",
+        "local_frames": 819200,
+        "reference_frames": 819200,
+        "local_start": 0,
+        "reference_start": 31,
+        "compared_frames": 819169,
+        "uncompared_local_prefix": 0,
+        "uncompared_reference_prefix": 31,
+        "uncompared_local_suffix": 31,
+        "uncompared_reference_suffix": 0
+      },
+      "scale": {
+        "local_multiplier": 1.52587890625e-05,
+        "reference_multiplier": 1.0,
+        "evidence": "CLI ±32768 -> Scene 为 2^-15；ADR-0006 决策 3 明示公开 PCM 相对字面 QMF PCM 的全局 2 倍表示，本比较另乘精确 0.5。参考 target_reference_level=0；固定换算，不由最小二乘估计。",
+        "gain_fit_applied": false
+      },
+      "spectral_method": {
+        "fft_samples": 4096,
+        "hop_samples": 4096,
+        "window": "numpy.hanning",
+        "discarded_tail_samples": 4065,
+        "drp_reference_upper_hz_exclusive": 18000
+      },
+      "verdict": "observation_only",
+      "excited_tracks": 21,
+      "max_abs_error": 0.001447923481464386,
+      "full_report_sha256": "69cede9256bcbb057f9fc11b6f29f92a42774e80afbe2a2f04e5b7c473d2c55c",
+      "both_zero_tracks": [],
+      "tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "activity": "both_nonzero",
+          "local_rms": 0.00011694066509209285,
+          "reference_rms": 0.00011686081413879042,
+          "correlation": 0.9994650584284486,
+          "rmse": 3.824547719082299e-06,
+          "snr_db": 29.701776471879295,
+          "max_abs_error": 3.041211311938241e-05,
+          "fitted_gain_db_diagnostic_only": -0.010580725236160543,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.00011753430340333505,
+              "reference_rms": 0.00011745395378308298,
+              "correlation": 0.999465229561851,
+              "rmse": 3.843348457249725e-06,
+              "snr_db": 29.70315758385464,
+              "fitted_gain_db_diagnostic_only": -0.01058613848129332
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 1.297387897639276e-09,
+              "reference_rms": 6.606266521398917e-10,
+              "correlation": 0.8533847294345848,
+              "rmse": 8.104255437006249e-10,
+              "snr_db": -1.7751406055018748,
+              "fitted_gain_db_diagnostic_only": -7.2393776872407445
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.191915547789894e-09,
+              "reference_rms": 5.819176527312838e-10,
+              "correlation": 0.9345310607452273,
+              "rmse": 6.803789474478272e-10,
+              "snr_db": -1.357786702568422,
+              "fitted_gain_db_diagnostic_only": -6.815804250460317
+            }
+          ]
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "activity": "both_nonzero",
+          "local_rms": 0.023098892005350705,
+          "reference_rms": 0.023097893372943098,
+          "correlation": 0.9999887886008669,
+          "rmse": 0.00010938172440825864,
+          "snr_db": 46.492552128205844,
+          "max_abs_error": 0.0009138919413089752,
+          "fitted_gain_db_diagnostic_only": -0.0004729059572654672,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.02295315720511947,
+              "reference_rms": 0.02295318668798777,
+              "correlation": 0.9999901266085861,
+              "rmse": 0.00010199782317151552,
+              "snr_db": 47.04504171624745,
+              "fitted_gain_db_diagnostic_only": -7.460276834638073e-05
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 9.264265531643246e-05,
+              "reference_rms": 9.42967328127762e-05,
+              "correlation": 0.9176676018993161,
+              "rmse": 3.796354986881997e-05,
+              "snr_db": 7.902596604689435,
+              "fitted_gain_db_diagnostic_only": -0.5925789880842589
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.1439386142560756e-05,
+              "reference_rms": 5.209854017629817e-06,
+              "correlation": 0.48374810341495406,
+              "rmse": 1.9460840964554663e-05,
+              "snr_db": -11.446720984545482,
+              "fitted_gain_db_diagnostic_only": -18.595350333912556
+            }
+          ]
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "activity": "both_nonzero",
+          "local_rms": 0.005412750498956835,
+          "reference_rms": 0.005413028643153529,
+          "correlation": 0.9998881622261545,
+          "rmse": 8.095449818480711e-05,
+          "snr_db": 36.5039868024207,
+          "max_abs_error": 0.0008351113647222519,
+          "fitted_gain_db_diagnostic_only": -0.0005251358469723838,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.005365022016254693,
+              "reference_rms": 0.005367106133313952,
+              "correlation": 0.9998868753196452,
+              "rmse": 8.074102437395719e-05,
+              "snr_db": 36.45291856752842,
+              "fitted_gain_db_diagnostic_only": 0.002390854781595087
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 5.796231432263389e-07,
+              "reference_rms": 5.748510376126292e-07,
+              "correlation": 0.9685175783749442,
+              "rmse": 1.4492228153053866e-07,
+              "snr_db": 11.968403140651592,
+              "fitted_gain_db_diagnostic_only": -0.34965781206365876
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 7.557205708084704e-08,
+              "reference_rms": 1.9846161484418347e-08,
+              "correlation": 0.2824461122325625,
+              "rmse": 7.251049555108628e-08,
+              "snr_db": -11.254487047740493,
+              "fitted_gain_db_diagnostic_only": -22.594982438301837
+            }
+          ]
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "activity": "both_nonzero",
+          "local_rms": 7.990025431571787e-06,
+          "reference_rms": 7.800474060684278e-06,
+          "correlation": 0.9498628905548478,
+          "rmse": 2.507113738400223e-06,
+          "snr_db": 9.85893920565415,
+          "max_abs_error": 2.559996210038662e-05,
+          "fitted_gain_db_diagnostic_only": -0.655324874668506,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 6.910979388461946e-06,
+              "reference_rms": 6.850134731652525e-06,
+              "correlation": 0.9985303795143691,
+              "rmse": 3.779538204544717e-07,
+              "snr_db": 25.165207476465877,
+              "fitted_gain_db_diagnostic_only": -0.08958403503324018
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 3.848477478595237e-06,
+              "reference_rms": 3.7762800556272634e-06,
+              "correlation": 0.8409386526945589,
+              "rmse": 2.1513872086286243e-06,
+              "snr_db": 4.886912254617226,
+              "fitted_gain_db_diagnostic_only": -1.6692087957434933
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.427427063453777e-06,
+              "reference_rms": 2.9099417068034467e-07,
+              "correlation": 0.4054396541513945,
+              "rmse": 1.3361917133360943e-06,
+              "snr_db": -13.23968969920883,
+              "fitted_gain_db_diagnostic_only": -21.654868294190873
+            }
+          ]
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "activity": "both_nonzero",
+          "local_rms": 0.0384291575114736,
+          "reference_rms": 0.038426958339538395,
+          "correlation": 0.9999939066434504,
+          "rmse": 0.00013416834994279202,
+          "snr_db": 49.13971861710877,
+          "max_abs_error": 0.001447923481464386,
+          "fitted_gain_db_diagnostic_only": -0.0005500049706272292,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.03800615575599537,
+              "reference_rms": 0.038004937787825585,
+              "correlation": 0.9999944245116289,
+              "rmse": 0.0001269180638993714,
+              "snr_db": 49.52633175032698,
+              "fitted_gain_db_diagnostic_only": -0.0003267859253476492
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 7.498625787143267e-05,
+              "reference_rms": 7.609463181536601e-05,
+              "correlation": 0.9178296455834595,
+              "rmse": 3.064253695724738e-05,
+              "snr_db": 7.900586029550313,
+              "fitted_gain_db_diagnostic_only": -0.6173115967505252
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.7546948354654224e-05,
+              "reference_rms": 4.328552585473622e-06,
+              "correlation": 0.49209390402280917,
+              "rmse": 1.5870723267498114e-05,
+              "snr_db": -11.285080422911493,
+              "fitted_gain_db_diagnostic_only": -18.316218296470012
+            }
+          ]
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "activity": "both_nonzero",
+          "local_rms": 0.009798741251338868,
+          "reference_rms": 0.009798070697293071,
+          "correlation": 0.999984133663236,
+          "rmse": 5.520021978687833e-05,
+          "snr_db": 44.98399523640498,
+          "max_abs_error": 0.0005859266966581345,
+          "fitted_gain_db_diagnostic_only": -0.0007322333188615302,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.009777610029066342,
+              "reference_rms": 0.009779593320573732,
+              "correlation": 0.9999863787976258,
+              "rmse": 5.107720416073864e-05,
+              "snr_db": 45.64187356412887,
+              "fitted_gain_db_diagnostic_only": 0.0016433550928880874
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 2.4207495691405952e-05,
+              "reference_rms": 2.5219653067416182e-05,
+              "correlation": 0.8392703218458905,
+              "rmse": 1.4045529256868856e-05,
+              "snr_db": 5.084019984235591,
+              "fitted_gain_db_diagnostic_only": -1.1661777873391852
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 5.7206938144653835e-06,
+              "reference_rms": 1.2591577115516672e-06,
+              "correlation": 0.39787455738810673,
+              "rmse": 5.346010801452657e-06,
+              "snr_db": -12.558994045903036,
+              "fitted_gain_db_diagnostic_only": -21.1524481155313
+            }
+          ]
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "activity": "both_nonzero",
+          "local_rms": 0.004578322053447003,
+          "reference_rms": 0.004577839945822257,
+          "correlation": 0.9998635175652006,
+          "rmse": 7.563898148038188e-05,
+          "snr_db": 35.638298644848014,
+          "max_abs_error": 0.0006693992763757706,
+          "fitted_gain_db_diagnostic_only": -0.002100244175542598,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.004612362087225289,
+              "reference_rms": 0.004614873057060474,
+              "correlation": 0.9998656193124037,
+              "rmse": 7.567705039070006e-05,
+              "snr_db": 35.70391125382229,
+              "fitted_gain_db_diagnostic_only": 0.003560017246671012
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 1.4553795613076806e-06,
+              "reference_rms": 8.439526642936125e-07,
+              "correlation": 0.4403721780261784,
+              "rmse": 1.3223436060348622e-06,
+              "snr_db": -3.9005246211023126,
+              "fitted_gain_db_diagnostic_only": -11.856766197357786
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 3.4586502280867083e-07,
+              "reference_rms": 4.5054757554190894e-08,
+              "correlation": 0.22979870367205493,
+              "rmse": 3.383647454198206e-07,
+              "snr_db": -17.512889001786718,
+              "fitted_gain_db_diagnostic_only": -30.476368254661207
+            }
+          ]
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "activity": "both_nonzero",
+          "local_rms": 7.923489013117645e-06,
+          "reference_rms": 6.164508438246423e-06,
+          "correlation": 0.6901916964700707,
+          "rmse": 5.775709764661602e-06,
+          "snr_db": 0.5658618006463456,
+          "max_abs_error": 3.532900473146583e-05,
+          "fitted_gain_db_diagnostic_only": -5.4009655713129945,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 2.8032326400951323e-06,
+              "reference_rms": 2.7982890809647508e-06,
+              "correlation": 0.999583949197751,
+              "rmse": 8.09423015997811e-08,
+              "snr_db": 30.774340568339266,
+              "fitted_gain_db_diagnostic_only": -0.018945793036916053
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 7.094039996579656e-06,
+              "reference_rms": 5.53235393091787e-06,
+              "correlation": 0.6656017618567546,
+              "rmse": 5.3560194945800895e-06,
+              "snr_db": 0.2813561427364575,
+              "fitted_gain_db_diagnostic_only": -5.6953842729471225
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.4776668304546e-06,
+              "reference_rms": 3.537465498154502e-07,
+              "correlation": 0.2983112101351462,
+              "rmse": 2.3960488773459987e-06,
+              "snr_db": -16.616069205606607,
+              "fitted_gain_db_diagnostic_only": -27.413622403137015
+            }
+          ]
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "activity": "both_nonzero",
+          "local_rms": 0.004707666216684599,
+          "reference_rms": 0.0047073583345814555,
+          "correlation": 0.9998446460769875,
+          "rmse": 8.297945163295396e-05,
+          "snr_db": 35.076133970902376,
+          "max_abs_error": 0.0007666879682801664,
+          "fitted_gain_db_diagnostic_only": -0.0019175689675992624,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.004679879810592128,
+              "reference_rms": 0.0046789200917761176,
+              "correlation": 0.9998428151569861,
+              "rmse": 8.297352631017444e-05,
+              "snr_db": 35.02412161125915,
+              "fitted_gain_db_diagnostic_only": -0.0031468250102201015
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 4.4927454019922236e-07,
+              "reference_rms": 4.3825264609033687e-07,
+              "correlation": 0.941829125740502,
+              "rmse": 1.51752030253715e-07,
+              "snr_db": 9.211800737167852,
+              "fitted_gain_db_diagnostic_only": -0.7363028940640487
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 8.154061544927098e-08,
+              "reference_rms": 2.0421946479760502e-08,
+              "correlation": 0.26276806236020356,
+              "rmse": 7.868160907643145e-08,
+              "snr_db": -11.715521983494153,
+              "fitted_gain_db_diagnostic_only": -23.634085455634064
+            }
+          ]
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "activity": "both_nonzero",
+          "local_rms": 0.02324926857235643,
+          "reference_rms": 0.023250037432437788,
+          "correlation": 0.9999898155308462,
+          "rmse": 0.00010493305817456592,
+          "snr_db": 46.91022652580328,
+          "max_abs_error": 0.0009615481831133366,
+          "fitted_gain_db_diagnostic_only": 0.00019877852437748822,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.023336723292565902,
+              "reference_rms": 0.023338932116361684,
+              "correlation": 0.999992450739116,
+              "rmse": 9.07102651832547e-05,
+              "snr_db": 48.20849088505989,
+              "fitted_gain_db_diagnostic_only": 0.000756509348219754
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 9.917936758077003e-05,
+              "reference_rms": 0.00010091103329381776,
+              "correlation": 0.8797731080712233,
+              "rmse": 4.9086968322195895e-05,
+              "snr_db": 6.259448858186065,
+              "fitted_gain_db_diagnostic_only": -0.9622399728838643
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.3766957422515396e-05,
+              "reference_rms": 5.047203319533823e-06,
+              "correlation": 0.42537458524878946,
+              "rmse": 2.2097273407334704e-05,
+              "snr_db": -12.825757783276943,
+              "fitted_gain_db_diagnostic_only": -20.88302498937475
+            }
+          ]
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "activity": "both_nonzero",
+          "local_rms": 0.006145566557954389,
+          "reference_rms": 0.006148461723400758,
+          "correlation": 0.9998637829416003,
+          "rmse": 0.00010150131915006667,
+          "snr_db": 35.64589574365244,
+          "max_abs_error": 0.0008258447051048279,
+          "fitted_gain_db_diagnostic_only": 0.0029076966497865427,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.006173459523625094,
+              "reference_rms": 0.006177057991850876,
+              "correlation": 0.9998730737758206,
+              "rmse": 9.84546185216271e-05,
+              "snr_db": 35.950911697073366,
+              "fitted_gain_db_diagnostic_only": 0.003958934765988508
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 1.874779969761874e-05,
+              "reference_rms": 1.8944659216328406e-05,
+              "correlation": 0.9347614706373785,
+              "rmse": 6.810314153015041e-06,
+              "snr_db": 8.886393029625287,
+              "fitted_gain_db_diagnostic_only": -0.49525408503630075
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 3.24922789485383e-06,
+              "reference_rms": 7.836925535397173e-07,
+              "correlation": 0.4649865743081505,
+              "rmse": 2.9670821186620482e-06,
+              "snr_db": -11.563676920821298,
+              "fitted_gain_db_diagnostic_only": -19.003880784841407
+            }
+          ]
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "activity": "both_nonzero",
+          "local_rms": 0.005541474022924153,
+          "reference_rms": 0.0055428982703113645,
+          "correlation": 0.999922836862109,
+          "rmse": 6.886426965089764e-05,
+          "snr_db": 38.11485924223239,
+          "max_abs_error": 0.0005660159513354301,
+          "fitted_gain_db_diagnostic_only": 0.001561869260643123,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.005495754150552845,
+              "reference_rms": 0.005497290119551319,
+              "correlation": 0.9999198740869146,
+              "rmse": 6.959775937369497e-05,
+              "snr_db": 37.95106798566415,
+              "fitted_gain_db_diagnostic_only": 0.0017312252472282868
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 5.049260005055254e-06,
+              "reference_rms": 5.0596749175480045e-06,
+              "correlation": 0.9963987308221596,
+              "rmse": 4.2908756865257425e-07,
+              "snr_db": 21.431533638866533,
+              "fitted_gain_db_diagnostic_only": -0.013439091298647305
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.9792976647457085e-07,
+              "reference_rms": 2.6620708126228867e-08,
+              "correlation": 0.149631696101056,
+              "rmse": 1.9572436384865717e-07,
+              "snr_db": -17.328505728013724,
+              "fitted_gain_db_diagnostic_only": -33.92535819439403
+            }
+          ]
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "activity": "both_nonzero",
+          "local_rms": 7.563626724575234e-06,
+          "reference_rms": 7.517246144329119e-06,
+          "correlation": 0.9974679614193281,
+          "rmse": 5.385932173763469e-07,
+          "snr_db": 22.895957821044234,
+          "max_abs_error": 2.415076596662402e-05,
+          "fitted_gain_db_diagnostic_only": -0.07544723180964633,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 7.65406411266977e-06,
+              "reference_rms": 7.5733357994902025e-06,
+              "correlation": 0.9987271853317168,
+              "rmse": 3.925290326379742e-07,
+              "snr_db": 25.708308594701457,
+              "fitted_gain_db_diagnostic_only": -0.10316020831621849
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 5.722412024292538e-07,
+              "reference_rms": 5.124495532153875e-07,
+              "correlation": 0.6933484463705881,
+              "rmse": 4.282790641253644e-07,
+              "snr_db": 1.55848547677083,
+              "fitted_gain_db_diagnostic_only": -4.13952918083823
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.3832578525217537e-07,
+              "reference_rms": 1.9152394228953755e-08,
+              "correlation": 0.09869089452335905,
+              "rmse": 2.3720253601183148e-07,
+              "snr_db": -21.857925106441634,
+              "fitted_gain_db_diagnostic_only": -42.01341749337609
+            }
+          ]
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "activity": "both_nonzero",
+          "local_rms": 0.03298714436613181,
+          "reference_rms": 0.03298890633005218,
+          "correlation": 0.9999923636070562,
+          "rmse": 0.0001289306016114647,
+          "snr_db": 48.16023817217754,
+          "max_abs_error": 0.0011689066886901855,
+          "fitted_gain_db_diagnostic_only": 0.00039760359539825463,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.03311461144724788,
+              "reference_rms": 0.033122688134455715,
+              "correlation": 0.9999931123303051,
+              "rmse": 0.0001231854061631518,
+              "snr_db": 48.59132631486253,
+              "fitted_gain_db_diagnostic_only": 0.0020584132086921515
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 6.53838949785969e-05,
+              "reference_rms": 6.643503220328691e-05,
+              "correlation": 0.8918909354784863,
+              "rmse": 3.06644603194984e-05,
+              "snr_db": 6.715236483028284,
+              "fitted_gain_db_diagnostic_only": -0.8552377675946028
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.5319220865865466e-05,
+              "reference_rms": 3.245423966208685e-06,
+              "correlation": 0.42783621373397995,
+              "rmse": 1.4236204723926184e-05,
+              "snr_db": -12.842455716374843,
+              "fitted_gain_db_diagnostic_only": -20.85375393135677
+            }
+          ]
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "activity": "both_nonzero",
+          "local_rms": 0.009949788582014335,
+          "reference_rms": 0.00995193168993045,
+          "correlation": 0.9999641479503529,
+          "rmse": 8.428941398954579e-05,
+          "snr_db": 41.442687037681466,
+          "max_abs_error": 0.0006246939301490784,
+          "fitted_gain_db_diagnostic_only": 0.0015592598209141558,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.009909453353945073,
+              "reference_rms": 0.009914842029350774,
+              "correlation": 0.9999665839824119,
+              "rmse": 8.121163522115793e-05,
+              "snr_db": 41.733350877251326,
+              "fitted_gain_db_diagnostic_only": 0.0044317755195545025
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 4.534659704243491e-05,
+              "reference_rms": 4.65769381161744e-05,
+              "correlation": 0.8963322584591709,
+              "rmse": 2.0962542384513604e-05,
+              "snr_db": 6.934539633590946,
+              "fitted_gain_db_diagnostic_only": -0.7180947926253511
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.1697356942999365e-05,
+              "reference_rms": 3.0003177934405405e-06,
+              "correlation": 0.5018813645760387,
+              "rmse": 1.0516759110866523e-05,
+              "snr_db": -10.894293376160537,
+              "fitted_gain_db_diagnostic_only": -17.806388296133004
+            }
+          ]
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "activity": "both_nonzero",
+          "local_rms": 0.006294096849751001,
+          "reference_rms": 0.006296420412269237,
+          "correlation": 0.999868089826745,
+          "rmse": 0.00010227743208290193,
+          "snr_db": 35.78627805361958,
+          "max_abs_error": 0.0008391011506319046,
+          "fitted_gain_db_diagnostic_only": 0.002060105053346285,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.006338510025085043,
+              "reference_rms": 0.006340493140432881,
+              "correlation": 0.9998742929449861,
+              "rmse": 0.00010053897076796062,
+              "snr_db": 35.99577204114299,
+              "fitted_gain_db_diagnostic_only": 0.0016251634510554864
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 1.8106259531609747e-05,
+              "reference_rms": 1.8320179619966688e-05,
+              "correlation": 0.9342136312228388,
+              "rmse": 6.609821855069351e-06,
+              "snr_db": 8.85479945305158,
+              "fitted_gain_db_diagnostic_only": -0.489056278875476
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 3.3119073378148917e-06,
+              "reference_rms": 7.542218603792937e-07,
+              "correlation": 0.45408365791582317,
+              "rmse": 3.0445127628082305e-06,
+              "snr_db": -12.120373662723479,
+              "fitted_gain_db_diagnostic_only": -19.70886378464398
+            }
+          ]
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "activity": "both_nonzero",
+          "local_rms": 0.004149593493177868,
+          "reference_rms": 0.004149244043456053,
+          "correlation": 0.9998703188289552,
+          "rmse": 6.682618431192427e-05,
+          "snr_db": 35.86044630041893,
+          "max_abs_error": 0.0008227163925766945,
+          "fitted_gain_db_diagnostic_only": -0.0018579650179985129,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.004176241189678262,
+              "reference_rms": 0.004176559800132771,
+              "correlation": 0.9998801554920299,
+              "rmse": 6.46593712096689e-05,
+              "snr_db": 36.20374454199944,
+              "fitted_gain_db_diagnostic_only": -0.00037838687845833454
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 4.854538266024284e-06,
+              "reference_rms": 4.847778497109495e-06,
+              "correlation": 0.9966713428498772,
+              "rmse": 3.958751148713075e-07,
+              "snr_db": 21.7596913118059,
+              "fitted_gain_db_diagnostic_only": -0.04106379104390487
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.5740240936063174e-07,
+              "reference_rms": 2.0520227509072774e-08,
+              "correlation": 0.15218233420938487,
+              "rmse": 1.5560694279734335e-07,
+              "snr_db": -17.59693597431295,
+              "fitted_gain_db_diagnostic_only": -34.04929926357161
+            }
+          ]
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "activity": "both_nonzero",
+          "local_rms": 0.0033919801098877514,
+          "reference_rms": 0.003390746158018508,
+          "correlation": 0.9998782169659561,
+          "rmse": 5.2942040548974005e-05,
+          "snr_db": 36.129892040087356,
+          "max_abs_error": 0.0005468670278787613,
+          "fitted_gain_db_diagnostic_only": -0.004218230640227011,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.0033738320123416587,
+              "reference_rms": 0.0033736975862869198,
+              "correlation": 0.9998794165675347,
+              "rmse": 5.2393215248414895e-05,
+              "snr_db": 36.17662199055683,
+              "fitted_gain_db_diagnostic_only": -0.0013935226835605544
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 3.312837105484212e-06,
+              "reference_rms": 3.2899645981360567e-06,
+              "correlation": 0.9903799458476884,
+              "rmse": 4.585011877635127e-07,
+              "snr_db": 17.117015193205503,
+              "fitted_gain_db_diagnostic_only": -0.1441403872444871
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.6149855343361462e-07,
+              "reference_rms": 1.833956279705572e-08,
+              "correlation": 0.10246349865571949,
+              "rmse": 1.6065854134860584e-07,
+              "snr_db": -18.850296828623918,
+              "fitted_gain_db_diagnostic_only": -38.68420955063718
+            }
+          ]
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "activity": "both_nonzero",
+          "local_rms": 0.009349217848836673,
+          "reference_rms": 0.009349316817011462,
+          "correlation": 0.9999535212467306,
+          "rmse": 9.014052285632787e-05,
+          "snr_db": 40.317196079306036,
+          "max_abs_error": 0.0008587227202951908,
+          "fitted_gain_db_diagnostic_only": -0.00031177282027301724,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.009329138987895487,
+              "reference_rms": 0.009330712522870321,
+              "correlation": 0.9999572924244811,
+              "rmse": 8.624182608455393e-05,
+              "snr_db": 40.683937308560886,
+              "fitted_gain_db_diagnostic_only": 0.0010939541099835364
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 4.625719786309993e-05,
+              "reference_rms": 4.684551528385315e-05,
+              "correlation": 0.8589171769301414,
+              "rmse": 2.4734243125755792e-05,
+              "snr_db": 5.547387900312783,
+              "fitted_gain_db_diagnostic_only": -1.2112002487723743
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.1101394137430539e-05,
+              "reference_rms": 2.4298506007798393e-06,
+              "correlation": 0.4268484591986797,
+              "rmse": 1.0301304894614617e-05,
+              "snr_db": -12.54625339234453,
+              "fitted_gain_db_diagnostic_only": -20.59048463870954
+            }
+          ]
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "activity": "both_nonzero",
+          "local_rms": 0.0029858154239276223,
+          "reference_rms": 0.002986490159466316,
+          "correlation": 0.9998471197519339,
+          "rmse": 5.2220252305269266e-05,
+          "snr_db": 35.14644244532656,
+          "max_abs_error": 0.0004171188920736313,
+          "fitted_gain_db_diagnostic_only": 0.0006346159338215515,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.0030007018881618407,
+              "reference_rms": 0.0030016986945132665,
+              "correlation": 0.999854362847555,
+              "rmse": 5.123046357750673e-05,
+              "snr_db": 35.35677621153083,
+              "fitted_gain_db_diagnostic_only": 0.0016198154174697197
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 2.430959815102403e-06,
+              "reference_rms": 2.363367886644631e-06,
+              "correlation": 0.9692722267299968,
+              "rmse": 5.980353606869429e-07,
+              "snr_db": 11.936089326118573,
+              "fitted_gain_db_diagnostic_only": -0.5160136200153513
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 1.5475564750708295e-07,
+              "reference_rms": 1.7992176302261824e-08,
+              "correlation": 0.09603046549204507,
+              "rmse": 1.54072243237246e-07,
+              "snr_db": -18.65281415522969,
+              "fitted_gain_db_diagnostic_only": -39.043075492985174
+            }
+          ]
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "activity": "both_nonzero",
+          "local_rms": 0.004078556311329529,
+          "reference_rms": 0.00407920405973723,
+          "correlation": 0.9998224732833756,
+          "rmse": 7.686050409925491e-05,
+          "snr_db": 34.4974440533815,
+          "max_abs_error": 0.0006160372868180275,
+          "fitted_gain_db_diagnostic_only": -0.00016274773093912878,
+          "bands": [
+            {
+              "hz": [
+                0,
+                12000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 0.004084015317657038,
+              "reference_rms": 0.004086996899861495,
+              "correlation": 0.9998213877907155,
+              "rmse": 7.727516074654114e-05,
+              "snr_db": 34.46728782269244,
+              "fitted_gain_db_diagnostic_only": 0.004787375187515495
+            },
+            {
+              "hz": [
+                12000,
+                18000
+              ],
+              "usable_as_drp_reference": true,
+              "activity": "both_nonzero",
+              "local_rms": 3.066158505061805e-07,
+              "reference_rms": 3.024031251362489e-07,
+              "correlation": 0.9853665733709686,
+              "rmse": 5.226295308031156e-08,
+              "snr_db": 15.247846588374987,
+              "fitted_gain_db_diagnostic_only": -0.24821002706217798
+            },
+            {
+              "hz": [
+                18000,
+                24000.0
+              ],
+              "usable_as_drp_reference": false,
+              "activity": "both_nonzero",
+              "local_rms": 2.6780226303963608e-08,
+              "reference_rms": 1.6172957297345958e-08,
+              "correlation": 0.6331494440875663,
+              "rmse": 2.074346759121943e-08,
+              "snr_db": -2.1618383461367063,
+              "fitted_gain_db_diagnostic_only": -8.350371458286691
+            }
+          ]
+        }
+      ],
+      "reference_level_ab": {
+        "default_capture_pcm_sha256": "82111571b550030d44346686ccb96674160061305de341e7f120b78584962f36",
+        "explicit_zero_capture_pcm_sha256": "a859cdfcaf27c5cab4dee2e6db41d5230376fa7941be4cbae2f37c6a7a2d5218",
+        "measurement_channel": 1,
+        "explicit_zero_over_default_gain_db": 17.00594327348699,
+        "note": "同一输入、同一参考路径，只新增 target_reference_level=0；数值为诊断拟合，不用于本地 PCM 比较补偿。"
+      },
+      "local_trace": {
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 400,
+          "parsed": 400,
+          "parsed_substreams": 400,
+          "substreams": 400
+        },
+        "configuration": {
+          "companding_active_frames": 0,
+          "companding_frames": 0,
+          "differential_positions": 1,
+          "oamd_extension_present": 0,
+          "position_changes": 45,
+          "some_signals_inactive": 0,
+          "state_failures": 0
+        },
+        "full_reconstructed_frames": 399,
+        "full_warmup_frames": 1,
+        "full_wet_frames": 399
+      }
+    }
+  ],
+  "lfe_timing_sensitivity": {
+    "method": "在同一个公共时间轴和同一比较长度上，仅把本地 LFE PCM 提前 384 samples，观察误差对 6 个 QMF 时隙的敏感性。",
+    "claim_boundary": "这是输出时间移位反事实，不是另编译一个缺少延迟的解码器。它支持当前长帧相对对齐，不能独立关闭短帧/绝对时间轴问题。",
+    "cases": [
+      {
+        "case": "bed_256k",
+        "samples": 95616,
+        "current": {
+          "activity": "both_nonzero",
+          "local_rms": 0.08536264308243535,
+          "reference_rms": 0.08512903657304269,
+          "correlation": 0.9997012449317917,
+          "rmse": 0.0020968028760527564,
+          "snr_db": 32.17040229531349
+        },
+        "advance_local_lfe_by_384_samples": {
+          "activity": "both_nonzero",
+          "local_rms": 0.08550648404256599,
+          "reference_rms": 0.08512903657304269,
+          "correlation": -0.40260407394400066,
+          "rmse": 0.14289678063600184,
+          "snr_db": -4.498894523055554
+        }
+      },
+      {
+        "case": "music_prefix",
+        "samples": 818816,
+        "current": {
+          "activity": "both_nonzero",
+          "local_rms": 0.00011694702035702483,
+          "reference_rms": 0.00011686718912222307,
+          "correlation": 0.9994650018083506,
+          "rmse": 3.824957778739351e-06,
+          "snr_db": 29.7013190588314
+        },
+        "advance_local_lfe_by_384_samples": {
+          "activity": "both_nonzero",
+          "local_rms": 0.00011696715241033703,
+          "reference_rms": 0.00011686718912222307,
+          "correlation": 0.16093470591165038,
+          "rmse": 0.00015145765526951567,
+          "snr_db": -2.25197261254513
+        }
+      }
+    ]
+  },
+  "conclusions": [
+    "固定身份、明确参考处理与 ADR-0006 表示换算后，三类输入已能在同一对象 PCM 层进行可重复比较。",
+    "单对象和 bed 主信号高度相关，但本轮没有逐位一致或 conformance 结论。",
+    "真实音乐的 object:2 与 object:6 为低能量输出，12–18 kHz 残差仍显著；没有按能量阈值删去它们。",
+    ">=18 kHz 的参考带宽限制被单独报告，不据此给本地解码器加低通。",
+    "规范追踪第 7 节的 17 项判读未因本轮整体验证而批量关闭。",
+    "表 D.2 实虚列序单变量 A/B 中，交换读法使 20 路对象的 12–18 kHz 误差均下降，合计误差能量改善约 1.12 dB；残差尚未消除，不据此直接改动判读。"
+  ],
+  "limits": [
+    "只覆盖当前三类动态 A-JOC、48 kHz、2048-sample 长帧；未覆盖 IMS/channel PCM、direct-object 或短帧。",
+    "真实音乐只覆盖前 400 AU，不能外推为全曲通过。",
+    "静音槽的数值相同不证明其重建分支正确；对应关系来自参考描述符。",
+    "全区间误差使用固定尺度和整数延迟；逐轨拟合增益只作诊断。",
+    "默认检查器成功退出代表 observation 生成成功，不代表数值门禁通过。",
+    "私有参考和媒体不在 CI；CI 只验证检查器逻辑。",
+    "音乐 object:2 与 object:6 的本地比较尺度 RMS 约 8e-6（约 -102 dBFS）；其相对误差不应表述为已证明的可听缺陷。"
+  ],
+  "checker_validation": {
+    "unit_tests": 16,
+    "fault_and_equivalence_audit": [
+      {
+        "variant": "auto_fit_gain_hides_error",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_all_silence_is_insufficient_and_one_sided_signal_fails",
+          "test_gain_error_fails_even_when_fitted_residual_is_zero",
+          "test_observation_is_not_a_pass_and_cli_never_overwrites",
+          "test_polarity_inversion_is_visible_and_not_corrected",
+          "test_threshold_is_inclusive_and_has_two_sided_boundary"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "ignore_integer_delay",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_no_overlap_or_invalid_calibration_fails (lag=48)",
+          "test_no_overlap_or_invalid_calibration_fails (lag=-48)",
+          "test_signed_delay_and_uncompared_ranges_are_explicit (lag=5)",
+          "test_signed_delay_and_uncompared_ranges_are_explicit (lag=-5)"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "pair_by_output_index",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_permuted_pcm_needs_matching_identity_map"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "remove_reference_finite_check",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_nonfinite_samples_outside_overlap_are_rejected (value=nan)",
+          "test_nonfinite_samples_outside_overlap_are_rejected (value=inf)",
+          "test_nonfinite_samples_outside_overlap_are_rejected (value=-inf)"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "accept_all_silence",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_all_silence_is_insufficient_and_one_sided_signal_fails"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "ignore_error_budget",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_all_silence_is_insufficient_and_one_sided_signal_fails",
+          "test_band_exclusion_never_hides_time_domain_error",
+          "test_gain_error_fails_even_when_fitted_residual_is_zero",
+          "test_observation_is_not_a_pass_and_cli_never_overwrites",
+          "test_permuted_pcm_needs_matching_identity_map",
+          "test_polarity_inversion_is_visible_and_not_corrected",
+          "test_signed_delay_and_uncompared_ranges_are_explicit (lag=5)",
+          "test_signed_delay_and_uncompared_ranges_are_explicit (lag=-5)",
+          "test_threshold_is_inclusive_and_has_two_sided_boundary"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "ignore_file_identity",
+        "equivalent": false,
+        "tests_run": 16,
+        "failed_tests": [
+          "test_hash_and_export_shape_are_checked"
+        ],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "equivalent_identity_lookup",
+        "equivalent": true,
+        "tests_run": 16,
+        "failed_tests": [],
+        "expected_outcome_observed": true
+      },
+      {
+        "variant": "equivalent_error_inequality",
+        "equivalent": true,
+        "tests_run": 16,
+        "failed_tests": [],
+        "expected_outcome_observed": true
+      }
+    ],
+    "existing_pcm_baselines": {
+      "core": 12,
+      "aspx": 12,
+      "objects": 12,
+      "result": "all_bitwise_unchanged",
+      "unsupported_channel_based_inputs_skipped_per_stage": 8
+    },
+    "python_related_suite": {
+      "passed": 55
+    },
+    "workspace_default_tests": {
+      "passed": 514,
+      "failed": 0,
+      "ignored": 3
+    },
+    "workspace_audio_decode_tests": {
+      "passed": 1274,
+      "failed": 0,
+      "ignored": 21
+    },
+    "clippy_default": "passed",
+    "clippy_audio_decode": "passed",
+    "rustfmt": "passed",
+    "layer_audit": "passed"
+  },
+  "noise_column_order_ab": {
+    "purpose": "直接比较规范追踪第 7 节表 D.2 实虚列序的两个候选解释，检查其对本轮 12–18 kHz 残差的影响。",
+    "input_case": "music_prefix",
+    "input_sha256": "be50ed1a2ab06ce81e822839c59ca2be1508b512ec0e2643bd050734df17abd5",
+    "reference_pcm_sha256": "a859cdfcaf27c5cab4dee2e6db41d5230376fa7941be4cbae2f37c6a7a2d5218",
+    "local_variant_pcm_sha256": "99b451ec021fd77087dc65d5b2d0fa7e2e97372595ef95d3b315ab3a862a75cf",
+    "local_variant_export_sha256": "c1b26b06b25b5ca6ea0e19c2a918d36cbf2483a747d9edd0d1c9921f5341081a",
+    "fixed_reference_lag_samples": 31,
+    "fixed_local_scale": 1.52587890625e-05,
+    "gain_fit_applied": false,
+    "provenance": {
+      "changed_expression_before": "let [re, im] = table::ASPX_NOISE[index as usize];",
+      "changed_expression_after": "let [im, re] = table::ASPX_NOISE[index as usize];",
+      "source_original_sha256": "e5659333332f229f964e6e3da0da694be90c9c56593c1c9aeeb82a2dff4a3249",
+      "source_variant_sha256": "9c38ad220381df3924d75bed5447c899a584b77764e35c2e8fc47f87e418ed5d",
+      "production_binary_before_sha256": "03bc81c16b3400c575c3424c9b18f29e1f173fcbc4d974ba7527d56e5867ad8a",
+      "production_binary_after_sha256": "03bc81c16b3400c575c3424c9b18f29e1f173fcbc4d974ba7527d56e5867ad8a",
+      "production_binary_bitwise_identical": true
+    },
+    "tracks": [
+      {
+        "identity": "lfe",
+        "current_re_im": {
+          "fullband_correlation": 0.9994650584284486,
+          "fullband_snr_db": 29.701776471879295,
+          "band_12_18khz_correlation": 0.8533847294345848,
+          "band_12_18khz_rmse": 8.104255437006249e-10,
+          "band_12_18khz_snr_db": -1.7751406055018748
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9994650584284486,
+          "fullband_snr_db": 29.701776471879295,
+          "band_12_18khz_correlation": 0.8533847294345848,
+          "band_12_18khz_rmse": 8.104255437006249e-10,
+          "band_12_18khz_snr_db": -1.7751406055018748
+        }
+      },
+      {
+        "identity": "object:0",
+        "current_re_im": {
+          "fullband_correlation": 0.9999887886008669,
+          "fullband_snr_db": 46.492552128205844,
+          "band_12_18khz_correlation": 0.9176676018993161,
+          "band_12_18khz_rmse": 3.796354986881997e-05,
+          "band_12_18khz_snr_db": 7.902596604689435
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999889245578368,
+          "fullband_snr_db": 46.54553495295615,
+          "band_12_18khz_correlation": 0.9297951038080866,
+          "band_12_18khz_rmse": 3.503483871858571e-05,
+          "band_12_18khz_snr_db": 8.599930460251864
+        }
+      },
+      {
+        "identity": "object:1",
+        "current_re_im": {
+          "fullband_correlation": 0.9998881622261545,
+          "fullband_snr_db": 36.5039868024207,
+          "band_12_18khz_correlation": 0.9685175783749442,
+          "band_12_18khz_rmse": 1.4492228153053866e-07,
+          "band_12_18khz_snr_db": 11.968403140651592
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998881622718762,
+          "fullband_snr_db": 36.50398857788915,
+          "band_12_18khz_correlation": 0.9747295072347125,
+          "band_12_18khz_rmse": 1.2976331478176456e-07,
+          "band_12_18khz_snr_db": 12.92806777233459
+        }
+      },
+      {
+        "identity": "object:2",
+        "current_re_im": {
+          "fullband_correlation": 0.9498628905548478,
+          "fullband_snr_db": 9.85893920565415,
+          "band_12_18khz_correlation": 0.8409386526945589,
+          "band_12_18khz_rmse": 2.1513872086286243e-06,
+          "band_12_18khz_snr_db": 4.886912254617226
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9507429533037386,
+          "fullband_snr_db": 9.929751168463241,
+          "band_12_18khz_correlation": 0.8525462263372877,
+          "band_12_18khz_rmse": 2.0706946610012663e-06,
+          "band_12_18khz_snr_db": 5.218962622744099
+        }
+      },
+      {
+        "identity": "object:3",
+        "current_re_im": {
+          "fullband_correlation": 0.9999939066434504,
+          "fullband_snr_db": 49.13971861710877,
+          "band_12_18khz_correlation": 0.9178296455834595,
+          "band_12_18khz_rmse": 3.064253695724738e-05,
+          "band_12_18khz_snr_db": 7.900586029550313
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999939305742644,
+          "fullband_snr_db": 49.156803856506954,
+          "band_12_18khz_correlation": 0.9279360364685613,
+          "band_12_18khz_rmse": 2.8675484248284367e-05,
+          "band_12_18khz_snr_db": 8.476865187846721
+        }
+      },
+      {
+        "identity": "object:4",
+        "current_re_im": {
+          "fullband_correlation": 0.999984133663236,
+          "fullband_snr_db": 44.98399523640498,
+          "band_12_18khz_correlation": 0.8392703218458905,
+          "band_12_18khz_rmse": 1.4045529256868856e-05,
+          "band_12_18khz_snr_db": 5.084019984235591
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999843479853349,
+          "fullband_snr_db": 45.043050423116185,
+          "band_12_18khz_correlation": 0.8815249957812064,
+          "band_12_18khz_rmse": 1.206730277867243e-05,
+          "band_12_18khz_snr_db": 6.402577965069601
+        }
+      },
+      {
+        "identity": "object:5",
+        "current_re_im": {
+          "fullband_correlation": 0.9998635175652006,
+          "fullband_snr_db": 35.638298644848014,
+          "band_12_18khz_correlation": 0.4403721780261784,
+          "band_12_18khz_rmse": 1.3223436060348622e-06,
+          "band_12_18khz_snr_db": -3.9005246211023126
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998635192021378,
+          "fullband_snr_db": 35.63835073421671,
+          "band_12_18khz_correlation": 0.47848879642084463,
+          "band_12_18khz_rmse": 1.2576238776446058e-06,
+          "band_12_18khz_snr_db": -3.4646537174420677
+        }
+      },
+      {
+        "identity": "object:6",
+        "current_re_im": {
+          "fullband_correlation": 0.6901916964700707,
+          "fullband_snr_db": 0.5658618006463456,
+          "band_12_18khz_correlation": 0.6656017618567546,
+          "band_12_18khz_rmse": 5.3560194945800895e-06,
+          "band_12_18khz_snr_db": 0.2813561427364575
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.6957516418136713,
+          "fullband_snr_db": 0.6083595056531621,
+          "band_12_18khz_correlation": 0.6874563596015311,
+          "band_12_18khz_rmse": 5.112397721078526e-06,
+          "band_12_18khz_snr_db": 0.6857064724325834
+        }
+      },
+      {
+        "identity": "object:7",
+        "current_re_im": {
+          "fullband_correlation": 0.9998446460769875,
+          "fullband_snr_db": 35.076133970902376,
+          "band_12_18khz_correlation": 0.941829125740502,
+          "band_12_18khz_rmse": 1.51752030253715e-07,
+          "band_12_18khz_snr_db": 9.211800737167852
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998446461834525,
+          "fullband_snr_db": 35.076136947002865,
+          "band_12_18khz_correlation": 0.9566274389994339,
+          "band_12_18khz_rmse": 1.3130918068353287e-07,
+          "band_12_18khz_snr_db": 10.468589108940849
+        }
+      },
+      {
+        "identity": "object:8",
+        "current_re_im": {
+          "fullband_correlation": 0.9999898155308462,
+          "fullband_snr_db": 46.91022652580328,
+          "band_12_18khz_correlation": 0.8797731080712233,
+          "band_12_18khz_rmse": 4.9086968322195895e-05,
+          "band_12_18khz_snr_db": 6.259448858186065
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999903382558872,
+          "fullband_snr_db": 47.13904287242406,
+          "band_12_18khz_correlation": 0.9142370415787144,
+          "band_12_18khz_rmse": 4.147945354629326e-05,
+          "band_12_18khz_snr_db": 7.722112537938026
+        }
+      },
+      {
+        "identity": "object:9",
+        "current_re_im": {
+          "fullband_correlation": 0.9998637829416003,
+          "fullband_snr_db": 35.64589574365244,
+          "band_12_18khz_correlation": 0.9347614706373785,
+          "band_12_18khz_rmse": 6.810314153015041e-06,
+          "band_12_18khz_snr_db": 8.886393029625287
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998638402361899,
+          "fullband_snr_db": 35.647721372861795,
+          "band_12_18khz_correlation": 0.9445049805320485,
+          "band_12_18khz_rmse": 6.27780451933437e-06,
+          "band_12_18khz_snr_db": 9.593580181613332
+        }
+      },
+      {
+        "identity": "object:10",
+        "current_re_im": {
+          "fullband_correlation": 0.999922836862109,
+          "fullband_snr_db": 38.11485924223239,
+          "band_12_18khz_correlation": 0.9963987308221596,
+          "band_12_18khz_rmse": 4.2908756865257425e-07,
+          "band_12_18khz_snr_db": 21.431533638866533
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999228372167736,
+          "fullband_snr_db": 38.114879194706326,
+          "band_12_18khz_correlation": 0.9970240674500762,
+          "band_12_18khz_rmse": 3.9007118899835074e-07,
+          "band_12_18khz_snr_db": 22.25957480669907
+        }
+      },
+      {
+        "identity": "object:11",
+        "current_re_im": {
+          "fullband_correlation": 0.9974679614193281,
+          "fullband_snr_db": 22.895957821044234,
+          "band_12_18khz_correlation": 0.6933484463705881,
+          "band_12_18khz_rmse": 4.282790641253644e-07,
+          "band_12_18khz_snr_db": 1.55848547677083
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9978342995698719,
+          "fullband_snr_db": 23.56854574995989,
+          "band_12_18khz_correlation": 0.7788762652975438,
+          "band_12_18khz_rmse": 3.6731537082302604e-07,
+          "band_12_18khz_snr_db": 2.892240328812461
+        }
+      },
+      {
+        "identity": "object:12",
+        "current_re_im": {
+          "fullband_correlation": 0.9999923636070562,
+          "fullband_snr_db": 48.16023817217754,
+          "band_12_18khz_correlation": 0.8918909354784863,
+          "band_12_18khz_rmse": 3.06644603194984e-05,
+          "band_12_18khz_snr_db": 6.715236483028284
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999924606578899,
+          "fullband_snr_db": 48.215776012929354,
+          "band_12_18khz_correlation": 0.9216534234136136,
+          "band_12_18khz_rmse": 2.6114923270559375e-05,
+          "band_12_18khz_snr_db": 8.11016791406026
+        }
+      },
+      {
+        "identity": "object:13",
+        "current_re_im": {
+          "fullband_correlation": 0.9999641479503529,
+          "fullband_snr_db": 41.442687037681466,
+          "band_12_18khz_correlation": 0.8963322584591709,
+          "band_12_18khz_rmse": 2.0962542384513604e-05,
+          "band_12_18khz_snr_db": 6.934539633590946
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.999964468227326,
+          "fullband_snr_db": 41.481632981654556,
+          "band_12_18khz_correlation": 0.9153910977129117,
+          "band_12_18khz_rmse": 1.8933810954279183e-05,
+          "band_12_18khz_snr_db": 7.818657976739352
+        }
+      },
+      {
+        "identity": "object:14",
+        "current_re_im": {
+          "fullband_correlation": 0.999868089826745,
+          "fullband_snr_db": 35.78627805361958,
+          "band_12_18khz_correlation": 0.9342136312228388,
+          "band_12_18khz_rmse": 6.609821855069351e-06,
+          "band_12_18khz_snr_db": 8.85479945305158
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998681849832115,
+          "fullband_snr_db": 35.78941046897071,
+          "band_12_18khz_correlation": 0.9488327851047095,
+          "band_12_18khz_rmse": 5.830468079668231e-06,
+          "band_12_18khz_snr_db": 9.944526106918323
+        }
+      },
+      {
+        "identity": "object:15",
+        "current_re_im": {
+          "fullband_correlation": 0.9998703188289552,
+          "fullband_snr_db": 35.86044630041893,
+          "band_12_18khz_correlation": 0.9966713428498772,
+          "band_12_18khz_rmse": 3.958751148713075e-07,
+          "band_12_18khz_snr_db": 21.7596913118059
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998703190507066,
+          "fullband_snr_db": 35.860453723476496,
+          "band_12_18khz_correlation": 0.9968923287400726,
+          "band_12_18khz_rmse": 3.826070279995395e-07,
+          "band_12_18khz_snr_db": 22.055796495871043
+        }
+      },
+      {
+        "identity": "object:16",
+        "current_re_im": {
+          "fullband_correlation": 0.9998782169659561,
+          "fullband_snr_db": 36.129892040087356,
+          "band_12_18khz_correlation": 0.9903799458476884,
+          "band_12_18khz_rmse": 4.585011877635127e-07,
+          "band_12_18khz_snr_db": 17.117015193205503
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998782185532525,
+          "fullband_snr_db": 36.12994861458084,
+          "band_12_18khz_correlation": 0.9928149179556787,
+          "band_12_18khz_rmse": 3.961667400895526e-07,
+          "band_12_18khz_snr_db": 18.386264257783782
+        }
+      },
+      {
+        "identity": "object:17",
+        "current_re_im": {
+          "fullband_correlation": 0.9999535212467306,
+          "fullband_snr_db": 40.317196079306036,
+          "band_12_18khz_correlation": 0.8589171769301414,
+          "band_12_18khz_rmse": 2.4734243125755792e-05,
+          "band_12_18khz_snr_db": 5.547387900312783
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9999543794538175,
+          "fullband_snr_db": 40.39813569540001,
+          "band_12_18khz_correlation": 0.9011232413458045,
+          "band_12_18khz_rmse": 2.070793145422032e-05,
+          "band_12_18khz_snr_db": 7.090626033021836
+        }
+      },
+      {
+        "identity": "object:18",
+        "current_re_im": {
+          "fullband_correlation": 0.9998471197519339,
+          "fullband_snr_db": 35.14644244532656,
+          "band_12_18khz_correlation": 0.9692722267299968,
+          "band_12_18khz_rmse": 5.980353606869429e-07,
+          "band_12_18khz_snr_db": 11.936089326118573
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998471210092528,
+          "fullband_snr_db": 35.14647815907838,
+          "band_12_18khz_correlation": 0.9733382293715142,
+          "band_12_18khz_rmse": 5.576175340914109e-07,
+          "band_12_18khz_snr_db": 12.543898170207605
+        }
+      },
+      {
+        "identity": "object:19",
+        "current_re_im": {
+          "fullband_correlation": 0.9998224732833756,
+          "fullband_snr_db": 34.4974440533815,
+          "band_12_18khz_correlation": 0.9853665733709686,
+          "band_12_18khz_rmse": 5.226295308031156e-08,
+          "band_12_18khz_snr_db": 15.247846588374987
+        },
+        "alternative_im_re": {
+          "fullband_correlation": 0.9998224732772344,
+          "fullband_snr_db": 34.49744390315057,
+          "band_12_18khz_correlation": 0.9868605091566061,
+          "band_12_18khz_rmse": 4.9551790172845555e-08,
+          "band_12_18khz_snr_db": 15.710538520055533
+        }
+      }
+    ],
+    "claim_boundary": "只改变噪声表读出的实虚列序，沿用同一源、参考、整数延迟和固定尺度；结束后生产源码和 release 二进制均恢复，二进制逐字节相同。这是两种候选在本次输入的鉴别证据，不是外部逐位一致证明。",
+    "observation": {
+      "tracks_with_lower_band_rmse": 20,
+      "tracks_with_higher_band_rmse": 0,
+      "tracks_unchanged": 1,
+      "aggregate_band_error_energy_change_db": -1.1185796745673657,
+      "conclusion": "交换列序后 20 路对象的 12–18 kHz 误差均下降，频带合计误差能量改善约 1.12 dB，但没有消除弱信号残差；这是另一读法的线索，尚不足以裁决表 D.2 列序，生产实现保持不变。"
+    }
+  }
+}

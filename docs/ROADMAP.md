@@ -13,6 +13,13 @@ M7 已按 ADR-0011/0013 完成 syntax/decode/scene 物理拆包，ARM64 性能�
 落地；共享 MP4 sample 定界与时间换算也已收口到 `macindecode-ac4-mp4::Ac4Mp4`，公共 ABI、
 fuzz、x86-64 实测和长期稳定性门禁仍未完成。
 
+2026-09-23 新增对象 PCM 的首轮外部差分：单对象、含 LFE/wet 的 bed 和真实音乐前 400 AU
+均已建立参考处理、固定轨道身份、尺度及整数延迟凭证。单对象和 bed 主信号高度相关；真实音乐
+部分低能量对象的 12–18 kHz 残差仍待裁决。检查器及独立离线测试已加入，现有三层逐位基线不变。
+这是 [外部差分的首轮观察](OBJECT_PCM_REFERENCE.md)，不代表第 7 节的 17 项判读已关闭。
+同日的[相位与游标排查](ASPX_PHASE_INVESTIGATION.md)进一步锁定了两项耦合差异，并在留出
+时间段、独立音乐和强音调探针上复核；当前保留规范字面的生产实现，不把诊断候选当成已完成的修复。
+
 下一阶段按以下顺序推进：
 
 1. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
@@ -667,7 +674,7 @@ direct-object 仍属于 M5，当前没有真实输入与公共场景出口。
 
 | 路径或工具 | 真实正向样本 | 当前实现 | 缺口与原因 | 对当前 core 输出的影响 |
 | --- | --- | --- | --- | --- |
-| A-JOC full 对象重建 | 12 条长帧 A-SPX 向量 | 已执行参数差分/插值、对象矩阵、wet/去相关、LFE 插回与终端 QMF 合成；`export-objects-pcm` 输出对象序列，`export-full-adm-bwf` 与 `export-full-damf` 分别封装为 ADM 或 DAMF | 外部对象 PCM 差分 oracle 留到下一轮；当前基线只证明无意外变化 | 已支持当前 full 子集；活动 DE 等未覆盖分支显式拒绝 |
+| A-JOC full 对象重建 | 12 条长帧 A-SPX 向量 | 已执行参数差分/插值、对象矩阵、wet/去相关、LFE 插回与终端 QMF 合成；`export-objects-pcm` 输出对象序列，`export-full-adm-bwf` 与 `export-full-damf` 分别封装为 ADM 或 DAMF | 三类输入的首轮外部差分已记录；12–18 kHz 残差与规范判读仍待裁决，本地逐位基线只证明无意外变化 | 已支持当前 full 子集；活动 DE 等未覆盖分支显式拒绝 |
 | A-JOC 动态 core（`b_static_dmx = 0`） | 12 条长帧 A-SPX 向量 | 已执行 P1 `5.3` 联合声道矩阵、`5.6`/`5.7.2` 表 188 帧对齐与 A-SPX；`export-core-caf` 对严格固定网格直接写 Apple 布局 | 这是 core 对象场景，不恢复 full/创作对象 identity；CAF 不接受动态/带修饰网格 | 当前已支持的真实可听输出 |
 | Core dialogue enhancement | 当前 A-JOC 向量均为 `b_de_data_present = 0`；DE-positive IMS 样本属于 channel-based | 已解析 `ajoc_dmx_de_data()` 并检测活动 core DE；尚未执行 P2 `5.8.2.4` 的 core DE 矩阵 | 缺少 A-JOC DE-positive 样本与数值参考 | 不阻塞现有 12 条向量；活动 DE 返回 `unsupported.coding_path` |
 | Companding | 256K 向量传输控制但全部关闭；其他向量不传输 | 语法、统计和活动检测已实现；`5.7.5` 数值逆处理未实现 | 当前素材没有活动压扩帧，无法验证数值实现 | 不阻塞当前向量；活动压扩返回 `unsupported.coding_path` |
