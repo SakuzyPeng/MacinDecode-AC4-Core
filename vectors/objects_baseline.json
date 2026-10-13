@@ -5,7 +5,7 @@
     "内容已执行 A-SPX、full A-JOC 矩阵、LFE 插回与终端 QMF 合成。",
     "Core PCM 的 2 倍接口因子在 QMF 分析后撤销、终端合成后补回。",
     "逐路来源同时记录 ajoc_object 与 output_channel；LFE 只记录插回后的 output_channel。",
-    "外部参考解码器对象 PCM 差分验证留待下一轮；本基线不替代正确性 oracle。",
+    "外部参考解码器对象 PCM 差分见 docs/OBJECT_PCM_REFERENCE.md；本基线不替代正确性 oracle。",
     "与 core/aspx 两份各自冻结；--stage objects --update 只改这一份。",
     "多 presentation 向量必须由 presentation_overrides 显式选择，禁止依赖默认第一项。",
     "data 块直接写 f32::to_bits()，整个文件的摘要覆盖呈现 PCM 与容器形状。",
@@ -46,7 +46,7 @@
       ]
     },
     "probe_axes_single_object/master_ac4_768K.m4a": {
-      "sha256": "1f04c27a4ddb936d7aa3d159e0072e92914131559b9a230119ebc03b7d930921",
+      "sha256": "2afb7b31d32e9b29eebf3f59106f2d8eaed20e0cb67a1864ca08a15d90e1339c",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 288000,
@@ -75,7 +75,7 @@
       ]
     },
     "probe_axes_single_object/master_ac4_dme_l3_768K.m4a": {
-      "sha256": "5218b0207d256981c892e75f55b70c09d9ca79bd7e3ca4131e88125329008b48",
+      "sha256": "cfd1965fea00e60653137ab98179dbd9e7c5ef921badd6170e80d442efd0ba75",
       "sample_rate": 48000,
       "channels": 16,
       "frames": 288000,
@@ -128,7 +128,7 @@
       ]
     },
     "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a": {
-      "sha256": "c9cbcc39227916765e54f753041b4bac485f4ea09cc82fbb1b5beb1d801e09f7",
+      "sha256": "060bbb8c1f7de2a321827bda8765553fae0aec888d67bb55847c5c29c238432b",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 288000,
@@ -157,7 +157,7 @@
       ]
     },
     "probe_bed_only/master_ac4_256K.m4a": {
-      "sha256": "b962f24c5ca50bb9eb4132ed715bcab69c608ba2bbd01d7b374ef9a271c9308b",
+      "sha256": "2ec1658cbd00784fe2ca6a53b0aeb89f77a0cbfe0a29078fc2d0ebf3671a0ac4",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 96000,
@@ -186,7 +186,7 @@
       ]
     },
     "probe_bed_only/master_ac4_448K.m4a": {
-      "sha256": "c51bd4b728d04178c4c4db6e2a5b6a116ae462724155eb1ac002ecc8472cda32",
+      "sha256": "ee45265a70b4cf879bd3dde90db286beb3e61433a95e5190467c8b1951ebc30b",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 96000,
@@ -244,7 +244,7 @@
       ]
     },
     "probe_ramp_control/master_ac4_768K.m4a": {
-      "sha256": "6dbec2fad166ee70e5bbfbcec875f40912f9811ca1816c11e48f1c11f803ff0f",
+      "sha256": "275d9b3c86c9d26bf4c6f6b7d564fe9c5db99f97b793e5b6031f3a0d22dc33a1",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 81920,
@@ -273,7 +273,7 @@
       ]
     },
     "probe_ramp_lengths/master_ac4_768K.m4a": {
-      "sha256": "6dbec2fad166ee70e5bbfbcec875f40912f9811ca1816c11e48f1c11f803ff0f",
+      "sha256": "275d9b3c86c9d26bf4c6f6b7d564fe9c5db99f97b793e5b6031f3a0d22dc33a1",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 81920,
@@ -302,7 +302,7 @@
       ]
     },
     "probe_subframe_control/master_ac4_768K.m4a": {
-      "sha256": "40d3f79810301d95da3ae9398c741e8e201eff804c2d0d76e1ee5fc5f7de7e7d",
+      "sha256": "87150c6311cb4017161b07b8179d5f7d1bfa76b5442720bab8d044750dc87e79",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 98304,
@@ -331,7 +331,7 @@
       ]
     },
     "probe_subframe_updates/master_ac4_768K.m4a": {
-      "sha256": "d745b4913d6e05fbd8d639d7f20c76e5ad334465e40ddf9bf0bcac25e4ea8ae9",
+      "sha256": "566b5fa628583ba81b79ef5b0ad9d4f661820e581a484265b17ea282e6875a94",
       "sample_rate": 48000,
       "channels": 21,
       "frames": 98304,

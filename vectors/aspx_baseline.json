@@ -38,7 +38,7 @@
       ]
     },
     "probe_axes_single_object/master_ac4_768K.m4a": {
-      "sha256": "7e6dacc7192cf4948fba90e287560376bad4ed2f4e7efca1e4b6a4049ad7e4bc",
+      "sha256": "5a8b9d085dada9c62cb7ea9c81754482db8ba1a762d20179938d483541f99b5b",
       "sample_rate": 48000,
       "channels": 10,
       "frames": 288000,
@@ -56,7 +56,7 @@
       ]
     },
     "probe_axes_single_object/master_ac4_dme_l3_768K.m4a": {
-      "sha256": "e4f052f122c7cd5ef8d242c8fcdc509211938e6e14277913de44a19678fda760",
+      "sha256": "f785850f943c252acb38832c7d46459a97d2732b613076b11c24aa8c8ac4bf71",
       "sample_rate": 48000,
       "channels": 8,
       "frames": 288000,
@@ -92,7 +92,7 @@
       ]
     },
     "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a": {
-      "sha256": "b2138d7d743b347f640510bd9e866edc57c638ceb4fff8f05b04d8479ed5429a",
+      "sha256": "90bb420bdaea47e7f674f2e8785b97df87e3265e09f8cc1c6e12819b2025b731",
       "sample_rate": 48000,
       "channels": 10,
       "frames": 288000,
@@ -110,7 +110,7 @@
       ]
     },
     "probe_bed_only/master_ac4_256K.m4a": {
-      "sha256": "64e6e83c45a30c98a4eb78b77e116007b49b65d6d23efa304279d8e8d000ffd3",
+      "sha256": "1ab382de60be2076462eb81a13ea5ffde42bc5eab3127173b8233fd5bd33af56",
       "sample_rate": 48000,
       "channels": 6,
       "frames": 96000,
@@ -124,7 +124,7 @@
       ]
     },
     "probe_bed_only/master_ac4_448K.m4a": {
-      "sha256": "dd55349eb267d5649b52f70c4ddee4b6b76aad3803ecb9ac6dc583dd9606b165",
+      "sha256": "7fbc4856998a2dfd6fcab65ef2a2093d31bfd4684c25f33c7f8f5c63f13495c3",
       "sample_rate": 48000,
       "channels": 8,
       "frames": 96000,
@@ -158,7 +158,7 @@
       ]
     },
     "probe_ramp_control/master_ac4_768K.m4a": {
-      "sha256": "ce2e8acc77e6cc1a6b12671df239a47ccf17619dedbd75a4208edd83b8681b95",
+      "sha256": "01e5f961f1f86903347461f74fb9cbb23b689a43a5e67b0b06fad76e584d379f",
       "sample_rate": 48000,
       "channels": 10,
       "frames": 81920,
@@ -176,7 +176,7 @@
       ]
     },
     "probe_ramp_lengths/master_ac4_768K.m4a": {
-      "sha256": "ce2e8acc77e6cc1a6b12671df239a47ccf17619dedbd75a4208edd83b8681b95",
+      "sha256": "01e5f961f1f86903347461f74fb9cbb23b689a43a5e67b0b06fad76e584d379f",
       "sample_rate": 48000,
       "channels": 10,
       "frames": 81920,
@@ -194,7 +194,7 @@
       ]
     },
     "probe_subframe_control/master_ac4_768K.m4a": {
-      "sha256": "06575a3467a15464d35c3d5fd254d776225d7011f94b4e3b4c12a722642b735d",
+      "sha256": "a537f3b1f05a33423cc635f177e69face04b78b1ee30b185f1987d921421a962",
       "sample_rate": 48000,
       "channels": 10,
       "frames": 98304,
@@ -212,7 +212,7 @@
       ]
     },
     "probe_subframe_updates/master_ac4_768K.m4a": {
-      "sha256": "34f189d016ab51b5e6b54eec73166d50a2fa061327b0e0870b704f9c33d96a6c",
+      "sha256": "07855b22947371c484194af07ab0ec586cd5b8eeb6f108dfe0f32c9a4c21fd59",
       "sample_rate": 48000,
       "channels": 10,
       "frames": 98304,
