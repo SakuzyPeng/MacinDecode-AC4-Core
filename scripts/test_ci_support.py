@@ -59,5 +59,20 @@ class ToolchainTests(unittest.TestCase):
                 ci.check_toolchain(root, "rustc 1.98.0 (test)")
 
 
+class ReleaseReuseTests(unittest.TestCase):
+    def test_missing_or_rebuilt_production_artifacts_fail(self):
+        artifacts = [{"reason": "compiler-artifact", "target": {"name": name}, "fresh": True}
+                     for name in ("macindecode_ac4_decode", "macinac4")]
+        ci.check_reused_artifacts(artifacts)
+        for missing in ([], artifacts[:1], artifacts[1:]):
+            with self.assertRaises(ValueError):
+                ci.check_reused_artifacts(missing)
+        for artifact in artifacts:
+            artifact["fresh"] = False
+            with self.assertRaises(ValueError):
+                ci.check_reused_artifacts(artifacts)
+            artifact["fresh"] = True
+
+
 if __name__ == "__main__":
     unittest.main()

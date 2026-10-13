@@ -97,7 +97,15 @@ def check_test_result(output: str) -> None:
         raise ValueError("一致性测试未全部执行成功（不允许 ignored 或 filtered）")
 
 
-def consistency(target: str | None) -> None:
+def check_reused_artifacts(messages: list[dict]) -> None:
+    expected = {"macindecode_ac4_decode", "macinac4"}
+    reused = {message["target"]["name"] for message in messages
+              if message.get("reason") == "compiler-artifact" and message.get("fresh") is True}
+    if not expected <= reused:
+        raise ValueError(f"发布测试未复用已构建产物：{sorted(expected - reused)}；检查规范目录环境、profile 和 feature 是否一致")
+
+
+def consistency(target: str | None, require_reuse: bool = False) -> None:
     command = ["cargo", "test", "--locked", "--release", "-p", "macindecode-ac4-cli",
                "--features", "audio-decode", "--test", "platform_consistency",
                "--no-run", "--message-format=json"]
@@ -105,6 +113,8 @@ def consistency(target: str | None) -> None:
         command.extend(["--target", target])
     with measured("consistency release build"):
         messages = [json.loads(line) for line in run(command, capture=True).splitlines()]
+    if require_reuse:
+        check_reused_artifacts(messages)
     binaries = [message["executable"] for message in messages
                 if message.get("reason") == "compiler-artifact"
                 and message["target"]["name"] == "platform_consistency"
@@ -128,6 +138,7 @@ def main() -> int:
     gate.add_argument("jobs", nargs="+")
     tests = commands.add_parser("consistency")
     tests.add_argument("--target")
+    tests.add_argument("--require-reuse", action="store_true", help="要求复用前一步已构建的解码库与 CLI")
     args = parser.parse_args()
     try:
         if args.command == "gate":
@@ -137,7 +148,7 @@ def main() -> int:
         elif args.command == "prepare-spec":
             prepare_spec()
         else:
-            consistency(args.target)
+            consistency(args.target, args.require_reuse)
     except (OSError, ValueError, KeyError, IndexError) as error:
         print(f"CI 检查失败：{error}", file=sys.stderr)
         return 1

@@ -25,6 +25,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   PYTHONUTF8: "1"
+  MACINDECODE_AC4_SPEC_DIR: ${{ github.workspace }}/spec
 
 jobs:
   quality:
@@ -165,8 +166,6 @@ jobs:
         run: cargo test --locked --workspace --features audio-decode
 
       - name: Verify crates.io packages with audio-decode
-        env:
-          MACINDECODE_AC4_SPEC_DIR: ${{ github.workspace }}/spec
         run: cargo package --locked --workspace --all-features
 
   spec_audit:
