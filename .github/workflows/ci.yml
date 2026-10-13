@@ -94,6 +94,7 @@ jobs:
         run: |
           python3 -m pip install -r scripts/requirements-pcm.txt
           python3 -m unittest scripts/test_compare_object_pcm.py
+          python3 scripts/check_aspx_math.py
 
       - name: Test A-JOC census checker
         run: python3 -m unittest scripts/test_ajoc_census.py

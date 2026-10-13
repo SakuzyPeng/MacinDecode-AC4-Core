@@ -1814,7 +1814,6 @@ mod tests {
         assert_eq!(default.presentation(), PresentationSelection::AutoUnique);
         assert_eq!(default.decode_mode(), DecodeMode::Full);
         assert!(!default.core_band_diagnostics());
-
         let core = Ac4DecoderConfig::new(PresentationSelection::Index(2))
             .with_decode_mode(DecodeMode::Core)
             .with_core_band_diagnostics(true);

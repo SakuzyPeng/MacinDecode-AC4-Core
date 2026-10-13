@@ -946,7 +946,7 @@ pub struct HfAdjustParams<'a> {
     pub add_harmonic: &'a [bool],
     /// `aspx_interpolation`。
     pub interpolation: bool,
-    /// `aspx_limiter`：假时只到 `Pseudocode 95`，真时走 `96`–`101`。
+    /// 码流的 `aspx_limiter`：真时走 `Pseudocode 96`–`101`。
     pub limiter: bool,
     /// `5.7.6.3.1.1` 的 `master_reset`，供 `5.7.6.4.3` 的噪声表游标。
     ///
@@ -1287,13 +1287,12 @@ fn adjust_high_band(
         &mut next_sines,
         &mut estimated,
     )?;
-
-    // `aspx_limiter == 0` 时没有表：表 122 规定那种流只执行 `Pseudocode 95`。
     let mode = match limiter {
         Some(table) => LimiterMode::On {
             table,
             patches: &tables.patches,
         },
+
         None => LimiterMode::Off,
     };
     let mut gains = AdjustedGains::new();

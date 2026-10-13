@@ -555,7 +555,6 @@ mod tests {
             panic!("应解析为 export-objects-pcm");
         };
         assert_eq!(args.presentation, None);
-
         let explicit = Cli::try_parse_from([
             "macinac4",
             "export-objects-pcm",

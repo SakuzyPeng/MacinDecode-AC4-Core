@@ -9,7 +9,6 @@
 //! `Pseudocode 95` 的初始增益始终计算。`aspx_limiter == 0` 时不进入
 //! `Pseudocode 96`–`101` 的 limiter 链：信号使用初始增益，噪声与正弦电平保持
 //! `Pseudocode 94` 的值，诊断用 boost 为中性值 `1`。打开时才执行下面的两级钳制。
-//! [`LimiterMode`] 把开关与开启路径所需的两张表绑定在同一个参数里。
 //!
 //! # 两级钳制
 //!
@@ -248,8 +247,8 @@ pub enum LimiterMode<'a> {
 /// `Pseudocode 95`–`101`：算出当前区间的补偿增益。
 ///
 /// `estimate` 是 [`super::hfadjust::estimate`] 的输出。`mode` 直接对应
-/// `aspx_limiter`：关闭时不需要 limiter 表，打开时同时提供 `5.7.6.3.1.5` 的表与
-/// 创建 `Q_high` 时所用的 patch 表。
+/// `aspx_limiter`。关闭路径采用初始增益；开启路径提供
+/// `5.7.6.3.1.5` 的表与创建 `Q_high` 时所用的 patch 表。
 ///
 /// # Errors
 ///
@@ -275,6 +274,7 @@ pub fn adjust(
     }
     let sbx = usize::from(bands.sbx());
     let num_sb_aspx = usize::from(estimate.subbands());
+    let limit_gain = matches!(mode, LimiterMode::On { .. });
     let limiter = match mode {
         LimiterMode::Off => None,
         LimiterMode::On { table, patches } => {
@@ -356,42 +356,50 @@ pub fn adjust(
             low..high
         };
 
-        // `Pseudocode 96`：限幅器组的增益上限。`nom` 从 0 起，与 `Pseudocode 99`
-        // 不同。整组的量留在 f64，只在映射到子带时收窄一次。
-        let mut group_gain = [0.0f64; MAX_SBG_LIM];
-        for sbg in 0..groups {
-            let mut nom = 0.0f64;
-            let mut denom = EPSILON0;
-            for sb in group_span(sbg) {
-                nom += scf_sig(sb);
-                denom += est(sb);
-            }
-            group_gain[sbg] = sqrt(nom / denom) * LIM_GAIN;
-        }
-        let mut max_gain = [0.0f32; SUBBANDS];
-        let mut sbg = 0usize;
-        for sb in 0..num_sb_aspx {
-            if sb + sbx == usize::from(limiter.border(sbg + 1).unwrap_or(0)) {
-                sbg += 1;
-            }
-            max_gain[sb] = group_gain[sbg].min(MAX_SIG_GAIN) as f32;
-        }
-
-        // `Pseudocode 97`/`98`：噪声按增益的损失比例下调，增益本身钳到上限。
         let mut noise_lim = [0.0f32; SUBBANDS];
         let mut gain_lim = [0.0f32; SUBBANDS];
-        for sb in 0..num_sb_aspx {
-            let gain = sig_gain[sb];
-            if gain == 0.0 {
-                return Err(GainError::DegenerateSignalGain {
-                    subband: sb,
-                    envelope: atsg,
-                });
+        if limit_gain {
+            // `Pseudocode 96`：限幅器组的增益上限。`nom` 从 0 起，与 `Pseudocode 99`
+            // 不同。整组的量留在 f64，只在映射到子带时收窄一次。
+            let mut group_gain = [0.0f64; MAX_SBG_LIM];
+            for sbg in 0..groups {
+                let mut nom = 0.0f64;
+                let mut denom = EPSILON0;
+                for sb in group_span(sbg) {
+                    nom += scf_sig(sb);
+                    denom += est(sb);
+                }
+                group_gain[sbg] = sqrt(nom / denom) * LIM_GAIN;
             }
-            let noise = estimate.noise_level(sb, atsg).unwrap_or(0.0);
-            let scaled = (f64::from(noise) * f64::from(max_gain[sb]) / f64::from(gain)) as f32;
-            noise_lim[sb] = noise.min(scaled);
-            gain_lim[sb] = gain.min(max_gain[sb]);
+            let mut max_gain = [0.0f32; SUBBANDS];
+            let mut sbg = 0usize;
+            for sb in 0..num_sb_aspx {
+                if sb + sbx == usize::from(limiter.border(sbg + 1).unwrap_or(0)) {
+                    sbg += 1;
+                }
+                max_gain[sb] = group_gain[sbg].min(MAX_SIG_GAIN) as f32;
+            }
+
+            // `Pseudocode 97`/`98`：噪声按增益的损失比例下调，增益本身钳到上限。
+            for sb in 0..num_sb_aspx {
+                let gain = sig_gain[sb];
+                if gain == 0.0 {
+                    return Err(GainError::DegenerateSignalGain {
+                        subband: sb,
+                        envelope: atsg,
+                    });
+                }
+                let noise = estimate.noise_level(sb, atsg).unwrap_or(0.0);
+                let scaled = (f64::from(noise) * f64::from(max_gain[sb]) / f64::from(gain)) as f32;
+                noise_lim[sb] = noise.min(scaled);
+                gain_lim[sb] = gain.min(max_gain[sb]);
+            }
+        } else {
+            // 只保留能量补偿：直接把 P95/P94 的结果送入 P99，不引入限幅损失。
+            for sb in 0..num_sb_aspx {
+                gain_lim[sb] = sig_gain[sb];
+                noise_lim[sb] = estimate.noise_level(sb, atsg).unwrap_or(0.0);
+            }
         }
 
         // `Pseudocode 99`：按限幅损失的能量算 boost。`nom` 从 EPSILON0 起。
@@ -525,6 +533,12 @@ mod tests {
         estimated
     }
 
+    #[derive(Debug, Clone, Copy)]
+    enum TestLimiter {
+        Off,
+        On,
+    }
+
     /// 跑完 `5.7.6.4.2.1` 与 `5.7.6.4.2.2`，并显式选择 limiter 分支。
     #[expect(
         clippy::too_many_arguments,
@@ -538,7 +552,7 @@ mod tests {
         placement: SinePlacement,
         envelopes: u8,
         sines: &mut SineState,
-        limiter_enabled: bool,
+        limiter_mode: TestLimiter,
     ) -> AdjustedGains {
         let bands = bands();
         let (patches, table) = limits(&bands);
@@ -569,13 +583,12 @@ mod tests {
         )
         .expect("应能估计包络");
         let mut out = AdjustedGains::new();
-        let mode = if limiter_enabled {
-            LimiterMode::On {
+        let mode = match limiter_mode {
+            TestLimiter::On => LimiterMode::On {
                 table: &table,
                 patches: &patches,
-            }
-        } else {
-            LimiterMode::Off
+            },
+            TestLimiter::Off => LimiterMode::Off,
         };
         adjust(&estimated, &bands, mode, &mut out).expect("应能算出补偿增益");
         out
@@ -592,7 +605,14 @@ mod tests {
         sines: &mut SineState,
     ) -> AdjustedGains {
         run_with_limiter(
-            est, scf_sig, scf_noise, harmonic, placement, envelopes, sines, true,
+            est,
+            scf_sig,
+            scf_noise,
+            harmonic,
+            placement,
+            envelopes,
+            sines,
+            TestLimiter::On,
         )
     }
 
@@ -670,7 +690,7 @@ mod tests {
             SinePlacement::from_params(-1),
             1,
             &mut SineState::new(),
-            false,
+            TestLimiter::Off,
         );
 
         close(out.signal_gain(0, 0), 0.408_248_3, "P95 的 sqrt(1/6)");
@@ -698,7 +718,7 @@ mod tests {
             SinePlacement::from_params(-1),
             1,
             &mut SineState::new(),
-            false,
+            TestLimiter::Off,
         );
         close(
             tonal.signal_gain(0, 0),

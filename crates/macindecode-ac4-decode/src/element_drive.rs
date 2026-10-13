@@ -64,7 +64,7 @@ pub const fn empty_channel_frame() -> QmfChannelFrame {
     [QmfSlot::zero(); MAX_QMF_TIMESLOTS]
 }
 
-/// 驱动一个元素所需的、不在 `aspx_data_*()` 里的三个值。
+/// 驱动一个元素所需的帧上下文与调用方解码策略。
 #[derive(Debug, Clone, Copy)]
 pub struct ElementParams {
     /// TOC 的基础采样率是否为 48 kHz 族，喂给 `5.7.6.3.1.4` 的 patch 表推导。

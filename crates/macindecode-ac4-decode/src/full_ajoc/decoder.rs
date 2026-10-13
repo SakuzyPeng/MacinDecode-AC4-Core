@@ -1990,6 +1990,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         match asf.decode_frame(input) {
             Ok(decoded) => Ok(decoded),
@@ -2023,6 +2024,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         let mut syntax_frame = match syntax.decode_frame(input) {
             Ok(decoded) => decoded,
@@ -2080,6 +2082,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         match syntax.decode_frame(input) {
             Ok(decoded) => {
@@ -2150,6 +2153,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         let syntax_result = match input_exhaustion {
             InputExhaustionPolicy::PreserveForRetry => syntax.decode_frame(syntax_input),
@@ -2278,6 +2282,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         let state = prepare_decode_state(substreams, substream_index)?;
         let result = drive_frame(

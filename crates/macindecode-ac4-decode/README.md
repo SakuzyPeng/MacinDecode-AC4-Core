@@ -64,6 +64,10 @@ MSRV 为 Rust 1.98，禁止 unsafe Rust。完整设计、支持矩阵和规范�
 
 [`macindecode-ac4-bitstream`]: https://docs.rs/macindecode-ac4-bitstream
 
+## A-SPX 能量配平
+
+码流关闭 limiter 时采用 P95/P94 的初始结果，开启时执行 P96–101 的限幅与能量补偿。
+
 ## License
 
 [MIT](LICENSE)
