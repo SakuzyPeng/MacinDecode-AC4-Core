@@ -946,8 +946,12 @@ pub struct HfAdjustParams<'a> {
     pub add_harmonic: &'a [bool],
     /// `aspx_interpolation`。
     pub interpolation: bool,
-    /// `aspx_limiter`：假时只到 `Pseudocode 95`，真时走 `96`–`101`。
+    /// 码流的 `aspx_limiter`：真时走 `Pseudocode 96`–`101`。
     pub limiter: bool,
+    /// 码流关闭 limiter 时，是否仍执行 `Pseudocode 99`–`101` 的能量补偿。
+    ///
+    /// 默认解析入口设为假；调用方可显式启用。不改变码流标志或开启 limiter 的路径。
+    pub limiter_off_boost: bool,
     /// `5.7.6.3.1.1` 的 `master_reset`，供 `5.7.6.4.3` 的噪声表游标。
     ///
     /// `aspx_master_freq_scale`、`aspx_start_freq` 或 `aspx_stop_freq` 相对上一个
@@ -977,8 +981,7 @@ fn hf_adjust_limiter(
         }
         .into());
     }
-    params
-        .limiter
+    (params.limiter || params.limiter_off_boost)
         .then(|| LimiterTable::derive(bands, &tables.patches))
         .transpose()
         .map_err(Into::into)
@@ -1228,6 +1231,7 @@ impl<'a> ChannelInputs<'a> {
                 add_harmonic: hfgen.add_harmonic_slice().ok_or(missing)?,
                 interpolation: config.interpolation,
                 limiter: config.limiter,
+                limiter_off_boost: false,
                 master_reset,
                 first_frame,
             },
@@ -1288,9 +1292,13 @@ fn adjust_high_band(
         &mut estimated,
     )?;
 
-    // `aspx_limiter == 0` 时没有表：表 122 规定那种流只执行 `Pseudocode 95`。
+    // 是否保留关闭状态下的 boost 是调用方策略，不改写码流的 limiter 标志。
     let mode = match limiter {
-        Some(table) => LimiterMode::On {
+        Some(table) if params.limiter => LimiterMode::On {
+            table,
+            patches: &tables.patches,
+        },
+        Some(table) => LimiterMode::OffWithBoost {
             table,
             patches: &tables.patches,
         },
@@ -2989,6 +2997,7 @@ mod tests {
     fn adjust_params(bands: &AspxBandTables) -> HfAdjustParams<'static> {
         static HARMONICS: [bool; 32] = [true; 32];
         HfAdjustParams {
+            limiter_off_boost: false,
             add_harmonic: &HARMONICS[..usize::from(bands.num_sbg_sig_highres())],
             interpolation: true,
             limiter: true,
@@ -4729,6 +4738,12 @@ mod tests {
         let mut no_limit = adjust_params(&bands);
         no_limit.limiter = false;
         assert_ne!(base, run(no_limit), "aspx_limiter 必须传到 5.7.6.4.2.2");
+        let without_boost = run(no_limit);
+        no_limit.limiter_off_boost = true;
+        assert_ne!(without_boost, run(no_limit), "关闭分支的补偿策略必须生效");
+        let mut enabled_limiter = adjust_params(&bands);
+        enabled_limiter.limiter_off_boost = true;
+        assert_eq!(base, run(enabled_limiter), "新开关不得改变 limiter=1");
     }
 
     #[test]

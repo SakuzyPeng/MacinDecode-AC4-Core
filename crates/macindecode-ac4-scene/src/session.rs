@@ -88,7 +88,9 @@ impl Ac4DecoderSession {
             audio_metadata: Default::default(),
             audio_metadata_record: None,
             #[cfg(feature = "audio-decode")]
-            full_decoder: FullAjocDecoder::new(),
+            full_decoder: FullAjocDecoder::with_aspx_limiter_off_boost(
+                config.aspx_limiter_off_boost(),
+            ),
             #[cfg(feature = "audio-decode")]
             scene_assembler: SceneAssembler::new(),
             #[cfg(feature = "audio-decode")]
@@ -1607,6 +1609,21 @@ mod tests {
         session.reset();
         assert!(!session.topology.is_waiting_for_random_access());
         assert_eq!(session.config, Ac4DecoderConfig::default());
+    }
+
+    #[cfg(feature = "audio-decode")]
+    #[test]
+    fn aspx_limiter_off_boost_reaches_engine_and_survives_resets() {
+        for enabled in [false, true] {
+            let config = Ac4DecoderConfig::default().with_aspx_limiter_off_boost(enabled);
+            let mut session = Ac4DecoderSession::new(config);
+            assert_eq!(session.full_decoder.aspx_limiter_off_boost(), enabled);
+            session.mark_discontinuity();
+            assert_eq!(session.full_decoder.aspx_limiter_off_boost(), enabled);
+            session.reset();
+            assert_eq!(session.config(), config);
+            assert_eq!(session.full_decoder.aspx_limiter_off_boost(), enabled);
+        }
     }
 
     /// TOC 前置字段：version 2、48 kHz、frame_rate_index 13、I-frame、单 presentation。

@@ -41,7 +41,8 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
         None => PresentationSelection::AutoUnique,
     };
     let FullSceneBatch { metadata, pcm } =
-        collect_full_scene_batch(&data, presentation_selection).map_err(full_batch_error)?;
+        collect_full_scene_batch(&data, presentation_selection, args.aspx_limiter_off_boost)
+            .map_err(full_batch_error)?;
     if pcm.sample_rate != OUTPUT_SAMPLE_RATE {
         return Err(full_error(
             DiagnosticCode::UnsupportedCodingPath,

@@ -159,7 +159,8 @@ mod enabled {
                 )
             })?),
         };
-        let batch = collect_core_scene_batch(&data, requested).map_err(batch_error)?;
+        let batch = collect_core_scene_batch(&data, requested, args.aspx_limiter_off_boost)
+            .map_err(batch_error)?;
         let metadata = batch.metadata;
         let pcm = batch.pcm;
         let selection = select_core_sources(&metadata).map_err(scene_error)?;

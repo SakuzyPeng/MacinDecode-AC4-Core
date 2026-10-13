@@ -186,6 +186,7 @@ pub struct Ac4DecoderConfig {
     presentation: PresentationSelection,
     decode_mode: DecodeMode,
     core_band_diagnostics: bool,
+    aspx_limiter_off_boost: bool,
 }
 
 impl Ac4DecoderConfig {
@@ -196,6 +197,7 @@ impl Ac4DecoderConfig {
             presentation,
             decode_mode: DecodeMode::Full,
             core_band_diagnostics: false,
+            aspx_limiter_off_boost: false,
         }
     }
 
@@ -213,6 +215,22 @@ impl Ac4DecoderConfig {
     pub const fn with_core_band_diagnostics(mut self, enabled: bool) -> Self {
         self.core_band_diagnostics = enabled;
         self
+    }
+
+    /// 码流关闭 A-SPX limiter 时，保留按频带组计算的能量补偿。
+    ///
+    /// 默认关闭，沿用初始增益；启用时额外执行 P99–101，boost 上限约 4 dB。
+    /// 不修改码流标志，不启用组限幅或信号增益硬上限，也不承诺杜比逐位兼容。
+    #[must_use]
+    pub const fn with_aspx_limiter_off_boost(mut self, enabled: bool) -> Self {
+        self.aspx_limiter_off_boost = enabled;
+        self
+    }
+
+    /// limiter 关闭时是否保留能量补偿。配置在 Session 创建时固定。
+    #[must_use]
+    pub const fn aspx_limiter_off_boost(&self) -> bool {
+        self.aspx_limiter_off_boost
     }
 
     /// 当前 presentation 选择策略。
@@ -1814,13 +1832,21 @@ mod tests {
         assert_eq!(default.presentation(), PresentationSelection::AutoUnique);
         assert_eq!(default.decode_mode(), DecodeMode::Full);
         assert!(!default.core_band_diagnostics());
+        assert!(!default.aspx_limiter_off_boost());
 
         let core = Ac4DecoderConfig::new(PresentationSelection::Index(2))
             .with_decode_mode(DecodeMode::Core)
-            .with_core_band_diagnostics(true);
+            .with_core_band_diagnostics(true)
+            .with_aspx_limiter_off_boost(true);
         assert_eq!(core.presentation(), PresentationSelection::Index(2));
         assert_eq!(core.decode_mode(), DecodeMode::Core);
         assert!(core.core_band_diagnostics());
+        assert!(core.aspx_limiter_off_boost());
+        assert!(
+            !core
+                .with_aspx_limiter_off_boost(false)
+                .aspx_limiter_off_boost()
+        );
     }
 
     #[test]

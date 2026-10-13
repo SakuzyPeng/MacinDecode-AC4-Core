@@ -8,6 +8,13 @@
 //! 子带信号是复数，因此协方差矩阵与滤波系数都是复数。协方差按 ADR-0002 第 2
 //! 条在 f64 里累加，系数写回时收窄为 f32。
 //!
+//! # 预测器交叉项的符号
+//!
+//! `Pseudocode 87` 的 `alpha0` 写成加交叉项，但它与 `86` 的协方差定义、`89`
+//! 的加法滤波器不相容。此处按第一条正规方程减去交叉项，保留原正则项和稳定性
+//! 上界。推导、独立最小二乘证据及 PCM 基线变化见 ADR-0017；这是一项跨条款
+//! 解释，不是已发布的 ETSI 勘误。
+//!
 //! # 时间轴的衔接
 //!
 //! `Pseudocode 86` 先把 `Q_low` 向前延长 `ts_offset_hfadj = 4` 个时隙，取的是
@@ -431,6 +438,10 @@ fn covariance(ext: ExtendedLowBand<'_>, sb: usize, num_ts_ext: usize) -> Covaria
 /// 规范原文把第二行写成 `abs(cov[1][2])`，漏了 `[sb]` 一维。同一段落里其余六处
 /// 都带 `[sb]`，且 `cov` 在 `Pseudocode 86` 中就是三维的，因此这是排印脱漏，按
 /// `cov[sb][1][2]` 实现。
+///
+/// `TS103190-1:v1.4.1:5.7.6.4.1.3` 的协方差与 `5.7.6.4.1.4` 的滤波器要求
+/// `c01 + alpha0*c11 + alpha1*conj(c12) = 0`。因此 alpha0 的交叉项取减号，
+/// 偏离 `Pseudocode 87` 的加号字面，见 ADR-0017。
 fn solve(cov: &Covariance) -> (Complex, Complex) {
     let c11 = cov.get(1, 1);
     let c12 = cov.get(1, 2);
@@ -453,7 +464,7 @@ fn solve(cov: &Covariance) -> (Complex, Complex) {
     let alpha0 = if c11 == Complex::ZERO {
         Complex::ZERO
     } else {
-        let numerator = Complex::ZERO.sub(cov.get(0, 1)).add(alpha1.mul(c12.conj()));
+        let numerator = Complex::ZERO.sub(cov.get(0, 1)).sub(alpha1.mul(c12.conj()));
         numerator.div_real(c11.re)
     };
 
@@ -815,34 +826,80 @@ mod tests {
     }
 
     #[test]
-    fn alpha0_conjugates_the_cross_term() {
-        // alpha1 必须非零、cov[1][2] 必须非实，漏掉 cplx_conj 才看得出来。
-        let c01 = Complex::new(1.0, 0.0);
-        let c11 = Complex::new(2.0, 0.0);
-        let c12 = Complex::new(1.0, 1.0);
-        let cov = assemble(c01, Complex::ZERO, c11, c12, Complex::new(1.0, 0.0));
+    fn prediction_residual_is_orthogonal_to_the_first_delayed_signal() {
+        // 不重算 alpha0 的闭式解：将系数施加到原始时序，再检查最小二乘的
+        // 正交条件。非零 alpha1 和非实 c12 同时约束交叉项的符号与共轭。
+        let samples = linear_ramp();
+        let (state, q_low) = spread(&samples, 0);
+        let cov = covariance(ExtendedLowBand::new(&state, &q_low), 0, samples.len());
         let (alpha0, alpha1) = solve(&cov);
         assert_ne!(alpha1, Complex::ZERO, "本用例需要非零的 alpha1");
-        assert_ne!(c12.im, 0.0, "本用例需要非实的 cov[1][2]");
+        assert_ne!(cov.get(1, 2).im, 0.0, "本用例需要非实的 cov[1][2]");
 
-        // alpha0 = (−cov[0][1] + alpha1·conj(cov[1][2])) / cov[1][1]，逐项按
-        // Pseudocode 87 重算，共轭写成显式的取负虚部。
-        let cross = Complex::new(
-            alpha1.re * c12.re + alpha1.im * c12.im,
-            alpha1.im * c12.re - alpha1.re * c12.im,
-        );
-        let expected = Complex::new((-c01.re + cross.re) / c11.re, (-c01.im + cross.im) / c11.re);
+        let sample = |ts: usize| {
+            let (re, im) = samples[ts];
+            Complex::new(f64::from(re), f64::from(im))
+        };
+        let mut projection = Complex::ZERO;
+        for ts in (4..samples.len()).step_by(2) {
+            let residual = sample(ts)
+                .add(alpha0.mul(sample(ts - 2)))
+                .add(alpha1.mul(sample(ts - 4)));
+            projection = projection.add(residual.mul_conj(sample(ts - 2)));
+        }
+        // 原文行列式的正则项只等价于对第二抽头加 ridge；第一条正交条件不变。
         assert!(
-            (alpha0.re - expected.re).abs() <= expected.re.abs() * 1e-9,
-            "alpha0 实部 {} 应为 {}",
-            alpha0.re,
-            expected.re
+            projection.norm_sqr() < 1e-20,
+            "预测残差应与前一抽头正交，实际投影为 {projection:?}"
         );
+    }
+
+    #[test]
+    fn prediction_filter_removes_two_complex_tones_before_chirp_damping() {
+        use crate::aspx::hfgen::hf_generate;
+        use crate::aspx::patches::PatchTable;
+
+        // 每隔两个时隙的信号为 1 + 0.5*i^m，两个根分别是 1 和 i。
+        // 它满足二阶递推；单频用例中 alpha1=0，无法发现交叉项符号错误。
+        let cycle = [(1.5, 0.0), (1.0, 0.5), (0.5, 0.0), (1.0, -0.5)];
+        let mut samples = [(0.0, 0.0); N + HFGEN + TS_OFFSET_HFADJ];
+        for (ts, sample) in samples.iter_mut().enumerate() {
+            *sample = cycle[(ts / 2) % 4];
+        }
+        let (state, q_low) = spread(&samples, 0);
+        let ext = ExtendedLowBand::new(&state, &q_low);
+        let mut filters = TnaFilters::new();
+        prediction_filters(ext, N, 1, &mut filters).expect("两音复数时序应可预测");
+        let (_, alpha1) = filters.coefficients(0).expect("应有源子带的系数");
+        assert!(alpha1.im.abs() > 0.5, "第二抽头必须实际参与重建");
+
+        let patches = PatchTable::from_parts(&[1], &[0], 36);
+        let mut high = [QmfSlot::zero(); N];
+        // 用 chirp=1 隔离未阻尼预测器，让真实 HF 生成器消费这组系数。
+        hf_generate(
+            ext,
+            &patches,
+            &filters,
+            &[1.0],
+            &[36, 37],
+            None,
+            0,
+            N,
+            &mut high,
+        )
+        .expect("单 patch 应能生成");
+        let input_energy: f64 = q_low[..N]
+            .iter()
+            .map(|slot| f64::from(slot.re[0]).powi(2) + f64::from(slot.im[0]).powi(2))
+            .sum();
+        let residual_energy: f64 = high
+            .iter()
+            .map(|slot| f64::from(slot.re[36]).powi(2) + f64::from(slot.im[36]).powi(2))
+            .sum();
+        // 留出 2^-20 正则项及 f32 系数舍入的余量，不要求正则化后的残差精确为零。
         assert!(
-            (alpha0.im - expected.im).abs() <= expected.im.abs() * 1e-9,
-            "alpha0 虚部 {} 应为 {}",
-            alpha0.im,
-            expected.im
+            residual_energy < input_energy * 1e-8,
+            "两音预测应消除可预测分量：输入能量 {input_energy}，残差 {residual_energy}"
         );
     }
 

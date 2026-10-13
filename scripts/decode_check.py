@@ -151,7 +151,7 @@ def stages() -> dict:
                 "内容已执行 A-SPX、full A-JOC 矩阵、LFE 插回与终端 QMF 合成。",
                 "Core PCM 的 2 倍接口因子在 QMF 分析后撤销、终端合成后补回。",
                 "逐路来源同时记录 ajoc_object 与 output_channel；LFE 只记录插回后的 output_channel。",
-                "外部参考解码器对象 PCM 差分验证留待下一轮；本基线不替代正确性 oracle。",
+                "外部参考解码器对象 PCM 差分见 docs/OBJECT_PCM_REFERENCE.md；本基线不替代正确性 oracle。",
                 "与 core/aspx 两份各自冻结；--stage objects --update 只改这一份。",
                 "多 presentation 向量必须由 presentation_overrides 显式选择，禁止依赖默认第一项。",
                 *OBJECT_SHARED_COMMENT,

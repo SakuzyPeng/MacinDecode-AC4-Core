@@ -143,7 +143,8 @@ pub(crate) fn run_aspx(args: ExportAspxPcmArgs) -> Result<String, CliError> {
             )
         })?),
     };
-    let pcm = collect_aspx_pcm(&data, selection).map_err(aspx_batch_error)?;
+    let pcm = collect_aspx_pcm(&data, selection, args.aspx_limiter_off_boost)
+        .map_err(aspx_batch_error)?;
     let (frames, channels) = layout(&pcm)
         .map_err(|message| aspx_error(DiagnosticCode::InternalInvariantFailed, message))?;
     write_atomic_wave_for(ASPX_COMMAND, &args.output, &pcm, frames, channels)?;
@@ -182,7 +183,8 @@ pub(crate) fn run_objects(args: ExportObjectsPcmArgs) -> Result<String, CliError
             )
         })?),
     };
-    let pcm = collect_objects_pcm(&data, selection).map_err(objects_batch_error)?;
+    let pcm = collect_objects_pcm(&data, selection, args.aspx_limiter_off_boost)
+        .map_err(objects_batch_error)?;
     let (frames, channels) = layout(&pcm)
         .map_err(|message| objects_error(DiagnosticCode::InternalInvariantFailed, message))?;
     let descriptors = objects_descriptors(&pcm)?;

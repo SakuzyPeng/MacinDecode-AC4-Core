@@ -92,6 +92,10 @@ impl From<InspectMetadataDetail> for MetadataDetail {
 /// Arguments for `export-objects-pcm`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportObjectsPcmArgs {
+    /// Keep A-SPX energy compensation when the bitstream disables its limiter.
+    /// Defaults to off; the enabled-bitstream path is unchanged.
+    #[arg(long)]
+    pub aspx_limiter_off_boost: bool,
     /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
@@ -111,6 +115,10 @@ pub(crate) struct ExportObjectsPcmArgs {
 /// Arguments for `export-aspx-pcm`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportAspxPcmArgs {
+    /// Keep A-SPX energy compensation when the bitstream disables its limiter.
+    /// Defaults to off; the enabled-bitstream path is unchanged.
+    #[arg(long)]
+    pub aspx_limiter_off_boost: bool,
     /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
@@ -158,6 +166,10 @@ pub(crate) struct ExportCorePcmArgs {
 /// Arguments for `export-core-caf`.
 #[derive(Debug, Args)]
 pub(crate) struct ExportCoreCafArgs {
+    /// Keep A-SPX energy compensation when the bitstream disables its limiter.
+    /// Defaults to off; the enabled-bitstream path is unchanged.
+    #[arg(long)]
+    pub aspx_limiter_off_boost: bool,
     /// MP4/M4A or raw AC-4 input.
     pub input: PathBuf,
 
@@ -296,6 +308,10 @@ struct ExportDamfArgs {
 /// Arguments for `export-full-damf`.
 #[derive(Debug, Args)]
 struct ExportFullDamfArgs {
+    /// Keep A-SPX energy compensation when the bitstream disables its limiter.
+    /// Defaults to off; the enabled-bitstream path is unchanged.
+    #[arg(long)]
+    pub aspx_limiter_off_boost: bool,
     /// MP4/M4A or raw AC-4 input.
     input: PathBuf,
     /// New DAMF package directory; existing paths are never overwritten.
@@ -360,6 +376,10 @@ struct ExportAdmBwfArgs {
 /// Arguments for `export-full-adm-bwf`.
 #[derive(Debug, Args)]
 struct ExportFullAdmBwfArgs {
+    /// Keep A-SPX energy compensation when the bitstream disables its limiter.
+    /// Defaults to off; the enabled-bitstream path is unchanged.
+    #[arg(long)]
+    pub aspx_limiter_off_boost: bool,
     /// MP4/M4A or raw AC-4 input.
     input: PathBuf,
     /// New ADM BWF file; existing paths are never overwritten.
@@ -430,6 +450,14 @@ fn main() -> ExitCode {
         };
     }
 
+    let aspx_limiter_off_boost = match &cli.command {
+        Command::ExportFullDamf(args) => Some(args.aspx_limiter_off_boost),
+        Command::ExportFullAdmBwf(args) => Some(args.aspx_limiter_off_boost),
+        Command::ExportCoreCaf(args) => Some(args.aspx_limiter_off_boost),
+        Command::ExportAspxPcm(args) => Some(args.aspx_limiter_off_boost),
+        Command::ExportObjectsPcm(args) => Some(args.aspx_limiter_off_boost),
+        _ => None,
+    };
     let (command, result) = match cli.command {
         Command::Trace { input } => ("trace", run_trace(&input)),
         Command::Inspect { .. } => unreachable!("inspect is handled before legacy JSON commands"),
@@ -443,7 +471,10 @@ fn main() -> ExitCode {
         Command::ExportObjectsPcm(args) => ("export-objects-pcm", corepcm::run_objects(args)),
     };
     match result.and_then(|legacy| wire::prepare(command, &legacy)) {
-        Ok(success) => match success.write() {
+        Ok(success) => match success
+            .with_aspx_limiter_off_boost(aspx_limiter_off_boost)
+            .write()
+        {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
                 wire::write_error(&error);
@@ -555,6 +586,7 @@ mod tests {
             panic!("应解析为 export-objects-pcm");
         };
         assert_eq!(args.presentation, None);
+        assert!(!args.aspx_limiter_off_boost);
 
         let explicit = Cli::try_parse_from([
             "macinac4",
@@ -570,6 +602,48 @@ mod tests {
             panic!("应解析为 export-objects-pcm");
         };
         assert_eq!(args.presentation, Some(1));
+    }
+
+    #[test]
+    fn aspx_limiter_off_boost_is_explicit_on_audio_exports() {
+        for command in [
+            "export-objects-pcm",
+            "export-aspx-pcm",
+            "export-core-caf",
+            "export-full-damf",
+            "export-full-adm-bwf",
+        ] {
+            let parsed = Cli::try_parse_from([
+                "macinac4",
+                command,
+                "in.ac4",
+                "-o",
+                "output",
+                "--aspx-limiter-off-boost",
+            ])
+            .expect("支持 A-SPX 的音频出口应接受开关");
+            let enabled = match parsed.command {
+                Command::ExportObjectsPcm(args) => args.aspx_limiter_off_boost,
+                Command::ExportAspxPcm(args) => args.aspx_limiter_off_boost,
+                Command::ExportCoreCaf(args) => args.aspx_limiter_off_boost,
+                Command::ExportFullDamf(args) => args.aspx_limiter_off_boost,
+                Command::ExportFullAdmBwf(args) => args.aspx_limiter_off_boost,
+                _ => panic!("应解析为对应音频出口"),
+            };
+            assert!(enabled);
+        }
+        assert!(
+            Cli::try_parse_from([
+                "macinac4",
+                "export-core-pcm",
+                "in.ac4",
+                "-o",
+                "out.wav",
+                "--aspx-limiter-off-boost",
+            ])
+            .is_err(),
+            "pre-A-SPX 出口不接受无作用的开关"
+        );
     }
 
     #[test]
@@ -878,6 +952,7 @@ mod tests {
     #[test]
     fn full_damf_entry_explains_required_feature() {
         let args = ExportFullDamfArgs {
+            aspx_limiter_off_boost: false,
             input: PathBuf::from("unused.ac4"),
             output: PathBuf::from("unused-output"),
             presentation: None,
@@ -915,6 +990,7 @@ mod tests {
     #[test]
     fn full_adm_entry_explains_required_feature() {
         let args = ExportFullAdmBwfArgs {
+            aspx_limiter_off_boost: false,
             input: PathBuf::from("unused.ac4"),
             output: PathBuf::from("unused.wav"),
             presentation: None,

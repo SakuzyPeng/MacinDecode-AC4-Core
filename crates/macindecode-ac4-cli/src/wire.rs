@@ -200,6 +200,16 @@ pub(crate) struct PreparedSuccess {
 }
 
 impl PreparedSuccess {
+    /// 将调用方实际选择的 A-SPX 策略写入音频导出的可复现信息。
+    pub(crate) fn with_aspx_limiter_off_boost(mut self, enabled: Option<bool>) -> Self {
+        if let (SuccessResult::Export(export), Some(enabled)) = (&mut self.result, enabled) {
+            export
+                .details
+                .insert("aspx_limiter_off_boost".to_owned(), json!(enabled));
+        }
+        self
+    }
+
     pub(crate) fn write(self) -> Result<(), CliError> {
         for warning in &self.warnings {
             let mut context = BTreeMap::new();
@@ -657,6 +667,16 @@ fn export_result(command: &str, value: Value) -> Result<ExportResult, CliError> 
     let unmapped = legacy.remove("unmapped").unwrap_or_else(|| json!([]));
     let object_count = objects.as_array().map_or(0, Vec::len);
     let mut details = BTreeMap::new();
+    if matches!(
+        command,
+        "export-full-damf"
+            | "export-full-adm-bwf"
+            | "export-core-caf"
+            | "export-aspx-pcm"
+            | "export-objects-pcm"
+    ) {
+        details.insert("aspx_limiter_off_boost".to_owned(), json!(false));
+    }
 
     match command {
         "export-damf" => {
@@ -999,6 +1019,34 @@ mod tests {
     impl Drop for TestArtifacts {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn export_reports_the_requested_limiter_off_policy_as_a_boolean() {
+        let artifacts = TestArtifacts::new();
+        let legacy = json!({
+            "file": artifacts.write("limiter-policy.wav"),
+            "sample_rate": 48_000, "channels": 1, "frames": 64,
+            "tracks": [], "scale": "±32768", "bandwidth": "aspx",
+            "channel_order": "ajoc_objects_with_lfe_reinserted",
+        });
+        for enabled in [false, true] {
+            let prepared = prepare("export-objects-pcm", &legacy.to_string())
+                .unwrap()
+                .with_aspx_limiter_off_boost(Some(enabled));
+            let value = serde_json::to_value(SuccessEnvelope {
+                schema: RESULT_SCHEMA,
+                version: VERSION,
+                command: &prepared.command,
+                result: &prepared.result,
+            })
+            .unwrap();
+            assert_eq!(value["result"]["aspx_limiter_off_boost"], json!(enabled));
+            crate::result_schema::success(
+                "export-objects-pcm",
+                &serde_json::to_vec(&value).unwrap(),
+            );
         }
     }
 

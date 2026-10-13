@@ -1861,18 +1861,34 @@ pub struct FullAjocDecoder {
     asf: FullAjocAsfDecoder,
     substreams: Vec<FullAjocSubstreamState>,
     workspace: FullAjocWorkspace,
+    aspx_limiter_off_boost: bool,
 }
 
 impl FullAjocDecoder {
     /// 建立没有任何历史的新 decoder。
     #[must_use]
     pub fn new() -> Self {
+        Self::with_aspx_limiter_off_boost(false)
+    }
+
+    /// 建立空 decoder，并固定 limiter 关闭时是否保留 A-SPX 能量补偿。
+    ///
+    /// `true` 只额外执行 P99–101，不引入 P96–98 限幅；`reset` 保留此策略。
+    #[must_use]
+    pub fn with_aspx_limiter_off_boost(enabled: bool) -> Self {
         Self {
             syntax: FullAjocSyntaxDecoder::new(),
             asf: FullAjocAsfDecoder::new(),
             substreams: Vec::new(),
             workspace: FullAjocWorkspace::new(),
+            aspx_limiter_off_boost: enabled,
         }
+    }
+
+    /// 创建 decoder 时固定的关闭分支补偿策略。
+    #[must_use]
+    pub const fn aspx_limiter_off_boost(&self) -> bool {
+        self.aspx_limiter_off_boost
     }
 
     /// 丢弃一条物理 substream 的全部跨帧历史。
@@ -1990,6 +2006,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         match asf.decode_frame(input) {
             Ok(decoded) => Ok(decoded),
@@ -2023,6 +2040,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         let mut syntax_frame = match syntax.decode_frame(input) {
             Ok(decoded) => decoded,
@@ -2080,6 +2098,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         match syntax.decode_frame(input) {
             Ok(decoded) => {
@@ -2136,6 +2155,7 @@ impl FullAjocDecoder {
         input: FullAjocAudioFrameInput<'_>,
         input_exhaustion: InputExhaustionPolicy,
     ) -> Result<DecodedFullAjocAudioFrame<'decoder>, FullAjocAudioFrameError> {
+        let aspx_limiter_off_boost = self.aspx_limiter_off_boost;
         self.clear_frontend_observations();
         let FullAjocAudioFrameInput {
             syntax: syntax_input,
@@ -2150,6 +2170,7 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         let syntax_result = match input_exhaustion {
             InputExhaustionPolicy::PreserveForRetry => syntax.decode_frame(syntax_input),
@@ -2202,6 +2223,7 @@ impl FullAjocDecoder {
         let result = drive_frame(
             state,
             workspace,
+            aspx_limiter_off_boost,
             FullAjocFrameInput {
                 parsed: &parsed,
                 frame_length,
@@ -2271,6 +2293,7 @@ impl FullAjocDecoder {
     where
         P: AsRef<[f32]>,
     {
+        let aspx_limiter_off_boost = self.aspx_limiter_off_boost;
         self.clear_frontend_observations();
         let substream_index = input.substream_index;
         let Self {
@@ -2278,11 +2301,13 @@ impl FullAjocDecoder {
             asf,
             substreams,
             workspace,
+            ..
         } = self;
         let state = prepare_decode_state(substreams, substream_index)?;
         let result = drive_frame(
             state,
             workspace,
+            aspx_limiter_off_boost,
             input,
             FullAjocInputSideInformation::empty(),
         );
@@ -2437,6 +2462,7 @@ fn validate_object_payloads<'a>(
 fn drive_frame<P>(
     drive: &mut FullAjocSubstreamState,
     scratch: &mut FullAjocWorkspace,
+    aspx_limiter_off_boost: bool,
     input: FullAjocFrameInput<'_, P>,
     side_information: FullAjocInputSideInformation<'_>,
 ) -> Result<FullAjocObservation, FullAjocDecodeError>
@@ -2647,6 +2673,7 @@ where
         // `master_reset` 按控制数据真正应用的顺序比对，而不是按解析到达顺序。
         let decision = drive.master_reset.frame(queued.config.as_ref());
         let params = ElementParams {
+            aspx_limiter_off_boost,
             base_samp_freq_48: queued.sampling_frequency_hz == 48_000,
             master_reset: decision.is_reset(),
             first_frame: drive.fresh,
@@ -2670,6 +2697,7 @@ where
         // 还没有到期控制：只预热 QMF、低带、TNA 输入和终端输出历史。当前控制
         // 留在 FIFO，绝不能在这里提前推进 envelope/noise/tone 等控制状态。
         let params = ElementParams {
+            aspx_limiter_off_boost,
             base_samp_freq_48: sampling_frequency_hz == 48_000,
             master_reset: false,
             first_frame: true,

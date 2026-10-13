@@ -64,7 +64,7 @@ pub const fn empty_channel_frame() -> QmfChannelFrame {
     [QmfSlot::zero(); MAX_QMF_TIMESLOTS]
 }
 
-/// 驱动一个元素所需的、不在 `aspx_data_*()` 里的三个值。
+/// 驱动一个元素所需的帧上下文与调用方解码策略。
 #[derive(Debug, Clone, Copy)]
 pub struct ElementParams {
     /// TOC 的基础采样率是否为 48 kHz 族，喂给 `5.7.6.3.1.4` 的 patch 表推导。
@@ -73,6 +73,8 @@ pub struct ElementParams {
     pub master_reset: bool,
     /// 解码器初始化标志，只在编解码启动时为真。
     pub first_frame: bool,
+    /// limiter 关闭时是否保留 A-SPX 能量补偿；默认调用方策略为假。
+    pub aspx_limiter_off_boost: bool,
 }
 
 /// 元素级驱动的一路跨帧状态。
@@ -961,7 +963,7 @@ fn channel_inputs<'a>(
     params: ElementParams,
 ) -> Result<ChannelInputs<'a>, DriveError> {
     let config = config.ok_or(DriveError::MissingAspxConfig)?;
-    let parsed = crate::aspx::pipeline::ChannelInputs::from_parsed(
+    let mut parsed = crate::aspx::pipeline::ChannelInputs::from_parsed(
         data,
         config,
         channel,
@@ -969,6 +971,7 @@ fn channel_inputs<'a>(
         params.master_reset,
         params.first_frame,
     )?;
+    parsed.hf_adjust.limiter_off_boost = params.aspx_limiter_off_boost;
     Ok(ChannelInputs {
         hf_gen: parsed.hf_gen,
         hf_adjust: parsed.hf_adjust,
@@ -1091,6 +1094,7 @@ mod tests {
 
     fn params() -> ElementParams {
         ElementParams {
+            aspx_limiter_off_boost: false,
             base_samp_freq_48: true,
             master_reset: false,
             first_frame: true,

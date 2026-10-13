@@ -45,7 +45,8 @@ pub(super) fn run(args: ExportFullAdmBwfArgs) -> Result<String, CliError> {
         None => PresentationSelection::AutoUnique,
     };
     let FullSceneBatch { metadata, pcm } =
-        collect_full_scene_batch(&data, presentation_selection).map_err(full_batch_error)?;
+        collect_full_scene_batch(&data, presentation_selection, args.aspx_limiter_off_boost)
+            .map_err(full_batch_error)?;
     let selection = select_full_objects(&metadata)?;
     validate_selected_common(&selection.objects)
         .map_err(|message| full_error(DiagnosticCode::SelectionInvalid, message))?;

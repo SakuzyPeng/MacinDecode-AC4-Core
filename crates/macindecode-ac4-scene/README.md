@@ -40,6 +40,22 @@ macindecode-ac4-scene = { version = "0.1.0", features = ["audio-decode"] }
 MSRV 为 Rust 1.98，禁止 unsafe Rust。容器 sample table、priming 与 edit list
 换算不属于本 crate，相关功能由 `macindecode-ac4-mp4` 提供。
 
+## A-SPX 关闭分支的能量补偿
+
+默认保持 limiter 关闭时的初始增益。可在创建会话时显式保留能量补偿：
+
+```rust
+use macindecode_ac4_scene::{Ac4DecoderConfig, Ac4DecoderSession};
+
+let config = Ac4DecoderConfig::default().with_aspx_limiter_off_boost(true);
+let mut session = Ac4DecoderSession::new(config);
+session.reset(); // 保留所选策略，清除解码历史。
+```
+
+选项只在码流声明 `aspx_limiter=0` 时执行 P99–101，补偿上限约 4 dB；不启用 P96–98
+组限幅或信号增益硬上限，不更改 limiter=1 的输出。它不承诺与参考库逐位兼容。
+`config.aspx_limiter_off_boost()` 可读取配置；要换策略，应创建新会话。
+
 ## 有效耳机策略
 
 renderer 从 `SceneObjectState::headphone_policy()` 读取内容策略：

@@ -26,12 +26,93 @@ def db_to_linear(db: float) -> float:
     return 10.0 ** (db / 20.0)
 
 
+def prbs_samples(seed: int, count: int) -> list[float]:
+    """Generate deterministic broadband PCM without depending on NumPy state."""
+    state = seed & 0xFFFFFFFF
+    if state == 0:
+        raise ValueError("PRBS seed must be nonzero")
+    out = []
+    for _ in range(count):
+        state ^= (state << 13) & 0xFFFFFFFF
+        state ^= state >> 17
+        state ^= (state << 5) & 0xFFFFFFFF
+        state &= 0xFFFFFFFF
+        out.append((float(state) / 2147483647.5) - 1.0)
+    return out
+
+
+def build_prbs_object_signal(spec: dict, total: int) -> list[float]:
+    signal = [0.0] * total
+    amplitude = db_to_linear(spec["signal"]["level_dbfs"])
+    seed = int(spec["signal"]["seed"])
+    fade = int(spec["signal"].get("fade_samples", 0))
+    burst = spec.get("burst_samples")
+    if burst is None:
+        samples = prbs_samples(seed, total)
+        for n, value in enumerate(samples):
+            gain = 1.0
+            if fade and n < fade:
+                gain = n / fade
+            elif fade and n >= total - fade:
+                gain = (total - 1 - n) / fade
+            signal[n] = amplitude * value * gain
+        return signal
+
+    burst = int(burst)
+    for segment_index, segment in enumerate(spec.get("signal_segments", spec["segments"])):
+        if segment.get("silent"):
+            continue
+        start = int(segment["start_samples"])
+        segment_seed = int(segment.get("seed", seed ^ ((segment_index + 1) * 0x9E3779B9))) & 0xFFFFFFFF
+        if segment_seed == 0:
+            raise ValueError("PRBS segment seed must be nonzero")
+        segment_amplitude = db_to_linear(float(segment.get("level_dbfs", spec["signal"]["level_dbfs"])))
+        for n, value in enumerate(prbs_samples(segment_seed, burst)):
+            index = start + n
+            if index >= total:
+                break
+            gain = 1.0
+            if fade and n < fade:
+                gain = n / fade
+            elif fade and n >= burst - fade:
+                gain = (burst - 1 - n) / fade
+            value = segment_amplitude * value * gain
+            if segment.get("additive", False):
+                signal[index] += value
+            else:
+                signal[index] = value
+    return signal
+
+
 def build_object_signal(spec: dict, total: int) -> list[float]:
     """按 segments 生成对象通道的浮点样本。"""
     signal = [0.0] * total
     kind = spec["signal"]["kind"]
     if kind == "silence":
         return signal
+    if kind == "impulses":
+        seen: set[int] = set()
+        for pulse in spec["signal"]["pulses"]:
+            sample = int(pulse["sample"])
+            amplitude = float(pulse["amplitude"])
+            if sample < 0 or sample >= total or sample in seen:
+                raise ValueError(f"invalid or duplicate impulse sample: {sample}")
+            if not math.isfinite(amplitude) or abs(amplitude) > 1.0:
+                raise ValueError(f"impulse amplitude must be finite and within [-1, 1]: {amplitude}")
+            seen.add(sample)
+            signal[sample] = amplitude
+        return signal
+    if kind == "prbs":
+        result = build_prbs_object_signal(spec, total)
+        for pulse in spec["signal"].get("impulses", []):
+            sample = int(pulse["sample"])
+            amplitude = float(pulse["amplitude"])
+            if sample < 0 or sample >= total or not math.isfinite(amplitude) or abs(amplitude) > 1.0:
+                raise ValueError(f"invalid PRBS-overlay impulse: {pulse}")
+            result[sample] += amplitude
+            if abs(result[sample]) > 1.0:
+                raise ValueError(f"PRBS-overlay impulse clips source PCM: {pulse}")
+        return result
     if kind != "sine":
         raise ValueError(f"暂不支持的信号类型：{kind}")
 
@@ -45,7 +126,7 @@ def build_object_signal(spec: dict, total: int) -> list[float]:
         return continuous_signal(amplitude, frequency, fade, total)
     burst = int(burst)
 
-    for segment in spec["segments"]:
+    for segment in spec.get("signal_segments", spec["segments"]):
         # 静音段仍然产生位置事件，只是不发声，用于观察槽位的占用与释放
         if segment.get("silent"):
             continue
@@ -221,10 +302,10 @@ def build_metadata(case: dict) -> str:
                 f"    snap: {str(fields['snap']).lower()}",
                 f"    elevation: {str(fields['elevation']).lower()}",
                 f"    zones: {fields['zones']}",
-                f"    size: {fields['size']:g}",
+                f"    size: {float(segment.get('size', fields['size'])):g}",
                 f"    decorr: {fields['decorr']:g}",
                 f"    importance: {fields['importance']}",
-                f"    gain: {fields['gain']}",
+                f"    gain: {segment.get('gain', fields['gain'])}",
                 f"    rampLength: {int(segment.get('ramp_samples', 0))}",
                 "    trimBypass: false",
                 "    dialog: -1",

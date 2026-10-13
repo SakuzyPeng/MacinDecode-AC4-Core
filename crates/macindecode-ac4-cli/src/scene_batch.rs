@@ -133,7 +133,7 @@ pub(crate) fn collect_core_pcm(
     data: &[u8],
     selection: PresentationSelection,
 ) -> Result<PcmBatch, SceneBatchError> {
-    collect_batch(data, selection, DecodeMode::Core, false, false, true)?
+    collect_batch(data, selection, DecodeMode::Core, false, false, true, false)?
         .core_band_pcm
         .ok_or_else(|| {
             SceneBatchError::Invariant("Core-band scene batch produced no PCM".to_owned())
@@ -144,28 +144,55 @@ pub(crate) fn collect_core_pcm(
 pub(crate) fn collect_objects_pcm(
     data: &[u8],
     selection: PresentationSelection,
+    aspx_limiter_off_boost: bool,
 ) -> Result<PcmBatch, SceneBatchError> {
-    collect_batch(data, selection, DecodeMode::Full, true, false, false)?
-        .pcm
-        .ok_or_else(|| SceneBatchError::Invariant("Object scene batch produced no PCM".to_owned()))
+    collect_batch(
+        data,
+        selection,
+        DecodeMode::Full,
+        true,
+        false,
+        false,
+        aspx_limiter_off_boost,
+    )?
+    .pcm
+    .ok_or_else(|| SceneBatchError::Invariant("Object scene batch produced no PCM".to_owned()))
 }
 
 /// 通过流式 Core Scene Session 累积 A-SPX 诊断基线所需的整文件 PCM。
 pub(crate) fn collect_aspx_pcm(
     data: &[u8],
     selection: PresentationSelection,
+    aspx_limiter_off_boost: bool,
 ) -> Result<PcmBatch, SceneBatchError> {
-    collect_batch(data, selection, DecodeMode::Core, true, false, false)?
-        .pcm
-        .ok_or_else(|| SceneBatchError::Invariant("A-SPX scene batch produced no PCM".to_owned()))
+    collect_batch(
+        data,
+        selection,
+        DecodeMode::Core,
+        true,
+        false,
+        false,
+        aspx_limiter_off_boost,
+    )?
+    .pcm
+    .ok_or_else(|| SceneBatchError::Invariant("A-SPX scene batch produced no PCM".to_owned()))
 }
 
 /// 通过流式 Scene Session 一趟采集 full artifact writer 所需的 PCM 与 OAMD 场景。
 pub(crate) fn collect_full_scene_batch(
     data: &[u8],
     selection: PresentationSelection,
+    aspx_limiter_off_boost: bool,
 ) -> Result<FullSceneBatch, SceneBatchError> {
-    let batch = collect_batch(data, selection, DecodeMode::Full, true, true, false)?;
+    let batch = collect_batch(
+        data,
+        selection,
+        DecodeMode::Full,
+        true,
+        true,
+        false,
+        aspx_limiter_off_boost,
+    )?;
     let metadata = batch.metadata.ok_or_else(|| {
         SceneBatchError::Invariant("Full scene batch produced no scene metadata".to_owned())
     })?;
@@ -179,8 +206,17 @@ pub(crate) fn collect_full_scene_batch(
 pub(crate) fn collect_core_scene_batch(
     data: &[u8],
     selection: PresentationSelection,
+    aspx_limiter_off_boost: bool,
 ) -> Result<CoreSceneBatch, SceneBatchError> {
-    let batch = collect_batch(data, selection, DecodeMode::Core, true, true, false)?;
+    let batch = collect_batch(
+        data,
+        selection,
+        DecodeMode::Core,
+        true,
+        true,
+        false,
+        aspx_limiter_off_boost,
+    )?;
     let metadata = batch.metadata.ok_or_else(|| {
         SceneBatchError::Invariant("Core scene batch produced no scene metadata".to_owned())
     })?;
@@ -199,7 +235,7 @@ pub(crate) fn collect_diagnostic_scene_batch(
     selection: PresentationSelection,
     mode: DecodeMode,
 ) -> Result<DiagnosticSceneBatch, SceneBatchError> {
-    let batch = collect_batch(data, selection, mode, false, true, false)?;
+    let batch = collect_batch(data, selection, mode, false, true, false, false)?;
     let metadata = batch.metadata.ok_or_else(|| {
         SceneBatchError::Invariant("Diagnostic scene batch produced no scene metadata".to_owned())
     })?;
@@ -213,6 +249,7 @@ fn collect_batch(
     collect_pcm: bool,
     collect_metadata: bool,
     collect_core_band_pcm: bool,
+    aspx_limiter_off_boost: bool,
 ) -> Result<CollectedBatch, SceneBatchError> {
     if matches!(data.get(0..2), Some([0xAC, 0x40] | [0xAC, 0x41])) {
         collect_raw(
@@ -222,6 +259,7 @@ fn collect_batch(
             collect_pcm,
             collect_metadata,
             collect_core_band_pcm,
+            aspx_limiter_off_boost,
         )
     } else {
         collect_mp4(
@@ -231,6 +269,7 @@ fn collect_batch(
             collect_pcm,
             collect_metadata,
             collect_core_band_pcm,
+            aspx_limiter_off_boost,
         )
     }
 }
@@ -242,11 +281,13 @@ fn collect_raw(
     collect_pcm: bool,
     collect_metadata: bool,
     collect_core_band_pcm: bool,
+    aspx_limiter_off_boost: bool,
 ) -> Result<CollectedBatch, SceneBatchError> {
     let mut session = Ac4DecoderSession::new(
         Ac4DecoderConfig::new(selection)
             .with_decode_mode(mode)
-            .with_core_band_diagnostics(collect_core_band_pcm),
+            .with_core_band_diagnostics(collect_core_band_pcm)
+            .with_aspx_limiter_off_boost(aspx_limiter_off_boost),
     );
     let mut accumulator = SceneBatchAccumulator::new(
         None,
@@ -321,6 +362,7 @@ fn collect_mp4(
     collect_pcm: bool,
     collect_metadata: bool,
     collect_core_band_pcm: bool,
+    aspx_limiter_off_boost: bool,
 ) -> Result<CollectedBatch, SceneBatchError> {
     let source = Ac4Mp4::parse(data).map_err(|error| SceneBatchError::Failed(error.to_string()))?;
     let timeline = source
@@ -349,7 +391,8 @@ fn collect_mp4(
     let mut session = Ac4DecoderSession::new(
         Ac4DecoderConfig::new(selection)
             .with_decode_mode(mode)
-            .with_core_band_diagnostics(collect_core_band_pcm),
+            .with_core_band_diagnostics(collect_core_band_pcm)
+            .with_aspx_limiter_off_boost(aspx_limiter_off_boost),
     );
     let mut accumulator = SceneBatchAccumulator::new(
         capacity_hint,
@@ -1607,7 +1650,7 @@ mod tests {
 
     #[test]
     fn scene_batch_reports_an_invalid_explicit_presentation_as_selection() {
-        let error = collect_objects_pcm(&sync_stream(), PresentationSelection::Index(1))
+        let error = collect_objects_pcm(&sync_stream(), PresentationSelection::Index(1), false)
             .expect_err("单 presentation 输入不存在下标 1");
         assert!(matches!(error, SceneBatchError::Selection(_)));
     }

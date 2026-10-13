@@ -64,6 +64,14 @@ MSRV 为 Rust 1.98，禁止 unsafe Rust。完整设计、支持矩阵和规范�
 
 [`macindecode-ac4-bitstream`]: https://docs.rs/macindecode-ac4-bitstream
 
+## A-SPX limiter 关闭时的补偿选项
+
+`FullAjocDecoder::new()` 保持原输出。启用 `audio-decode` 后，可用
+`full_ajoc::FullAjocDecoder::with_aspx_limiter_off_boost(true)` 创建保留关闭分支能量补偿的
+decoder；reset 保留该策略。选项只增加 P99–101 的补偿，不启用 P96–98 限幅或修改码流标志。
+直接调用元素／A-SPX 通路时，分别通过 `ElementParams::aspx_limiter_off_boost`、
+`HfAdjustParams::limiter_off_boost` 传入；低层 struct literal 沿用原行为时填 `false`。
+
 ## License
 
 [MIT](LICENSE)
