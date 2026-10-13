@@ -1,0 +1,4262 @@
+{
+  "schema": "macinac4.aspx-tna-sign-fix",
+  "version": 1,
+  "recorded_on": "2026-10-01",
+  "base_commit": "a1410f01ee30e006f938472be9ebbcd341ffb4a3",
+  "decision": "docs/decisions/0017-correct-aspx-prediction-cross-term-sign.md",
+  "change": {
+    "module": "crates/macindecode-ac4-decode/src/aspx/tna.rs",
+    "before": "alpha0 = (-c01 + alpha1*conj(c12))/c11",
+    "after": "alpha0 = (-c01 - alpha1*conj(c12))/c11",
+    "before_source_sha256": "ac40baef11326e4fcd348ad28b946b08246323b9e18727ec6f187ba541004354",
+    "after_source_sha256": "3e218feeccd645cad913a5b29b845e992b347669fe76d4e52a668895dfed8297",
+    "before_binary_sha256": "03bc81c16b3400c575c3424c9b18f29e1f173fcbc4d974ba7527d56e5867ad8a",
+    "after_binary_sha256": "f72c156347fd5379a5491ae3b147b5dd661a5dac159b4c52df226b9d9a3255de",
+    "production_other_dsp_changes": false
+  },
+  "regression_tests": {
+    "old_implementation": {
+      "failed": 2,
+      "two_tone_input_energy": 10.0,
+      "two_tone_residual_energy": 36.212872199213734,
+      "first_delayed_signal_projection": [
+        571.9733950664329,
+        -23.998883709081113
+      ]
+    },
+    "fixed_implementation": {
+      "passed": 2
+    },
+    "names": [
+      "prediction_residual_is_orthogonal_to_the_first_delayed_signal",
+      "prediction_filter_removes_two_complex_tones_before_chirp_damping"
+    ],
+    "independent_math_script_sha256": "9aa690bcda855a1a5b9ff9fa1ecaebc91bd18e6e337b4054bb12271020122a97"
+  },
+  "comparison": {
+    "runtime": "DRP 4.3.0.19350 arm64",
+    "metric": "sum of per-track squared RMSE; fixed scale and integer lag from each original manifest",
+    "scope": "production sign fix only; no diagnostic phase, cursor, preflatten or limiter variants",
+    "before_after_all_physical_tracks_retained": true,
+    "fitted_gain_used": false,
+    "conformance": "not_assessed"
+  },
+  "cases": {
+    "axes_raw": {
+      "before_pcm_sha256": "b10f3efee41e68acb7b0da9e01f69ba27d274cd21b9f91f0502cfc320a459016",
+      "after_pcm_sha256": "89ec72ae0595f09c157c4ca0664c121ca8dfb83bebe96a52c0b465cc4cc21257",
+      "input_sha256": "7e6e874c9a0151d871b5a50ac8665f94d622b7539266d955d89d0c7ac3978448",
+      "reference_sha256": "6a284d284843ca321316b069bee6f6330d50c954ff3a9753c0df3cf206f1c0db",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 3.738273371544984e-08,
+        "bands": [
+          4.098852549273541e-08,
+          6.114109500563221e-12,
+          3.865899971090162e-12
+        ]
+      },
+      "after": {
+        "whole": 3.738274671358508e-08,
+        "bands": [
+          4.098852532353967e-08,
+          6.0925468448390054e-12,
+          3.877445354472589e-12
+        ]
+      },
+      "improvement_db": {
+        "whole": -1.5100600909592142e-06,
+        "bands": [
+          1.7927158079669252e-08,
+          0.015343353448534717,
+          -0.012950733305188037
+        ]
+      },
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 0.00019334614998869215,
+            "max_abs_error": 0.0015468746423721313,
+            "correlation": 0.99999859262541
+          },
+          "after": {
+            "rmse": 0.00019334618360232787,
+            "max_abs_error": 0.0015468746423721313,
+            "correlation": 0.999998592624917
+          },
+          "band12_18_before": {
+            "rmse": 2.4726725421218277e-06,
+            "reference_rms": 3.1891687731419636e-06,
+            "correlation": 0.7482140054099243
+          },
+          "band12_18_after": {
+            "rmse": 2.468308498717088e-06,
+            "reference_rms": 3.1891687731419636e-06,
+            "correlation": 0.7499357787842565
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        }
+      ]
+    },
+    "bed_256k": {
+      "before_pcm_sha256": "b962f24c5ca50bb9eb4132ed715bcab69c608ba2bbd01d7b374ef9a271c9308b",
+      "after_pcm_sha256": "2ec1658cbd00784fe2ca6a53b0aeb89f77a0cbfe0a29078fc2d0ebf3671a0ac4",
+      "input_sha256": "4831735e2463b4a98b44d0b6c4f5d137175d8a1fba874878f70a6adb3ac527dc",
+      "reference_sha256": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 2079,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 4.772661421804351e-06,
+        "bands": [
+          4.68550366235038e-06,
+          7.689006209174269e-10,
+          2.787998858519225e-10
+        ]
+      },
+      "after": {
+        "whole": 4.772662014081152e-06,
+        "bands": [
+          4.685503904721651e-06,
+          7.688024710019609e-10,
+          2.793063198814642e-10
+        ]
+      },
+      "improvement_db": {
+        "whole": -5.389498814984189e-07,
+        "bands": [
+          -2.2465141565221954e-07,
+          0.0005544108868359186,
+          -0.007881710061108407
+        ]
+      },
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 0.002098187593600033,
+            "max_abs_error": 0.0031036301515996456,
+            "correlation": 0.9997007518798536
+          },
+          "after": {
+            "rmse": 0.002098187593600033,
+            "max_abs_error": 0.0031036301515996456,
+            "correlation": 0.9997007518798536
+          },
+          "band12_18_before": {
+            "rmse": 3.6816559427927036e-07,
+            "reference_rms": 2.61560027772232e-07,
+            "correlation": 0.8485070635615092
+          },
+          "band12_18_after": {
+            "rmse": 3.6816559427927036e-07,
+            "reference_rms": 2.61560027772232e-07,
+            "correlation": 0.8485070635615092
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 2.484111411402776e-05,
+            "max_abs_error": 6.999820470809937e-05,
+            "correlation": 0.9999999625375785
+          },
+          "after": {
+            "rmse": 2.484111411402776e-05,
+            "max_abs_error": 6.999820470809937e-05,
+            "correlation": 0.9999999625375785
+          },
+          "band12_18_before": {
+            "rmse": 1.193861776742387e-06,
+            "reference_rms": 1.2372962445276957e-06,
+            "correlation": 0.8792582266586724
+          },
+          "band12_18_after": {
+            "rmse": 1.193861776742387e-06,
+            "reference_rms": 1.2372962445276957e-06,
+            "correlation": 0.8792582266586724
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 0.00010895905532928182,
+            "max_abs_error": 0.00023286975920200348,
+            "correlation": 0.9999991884157303
+          },
+          "after": {
+            "rmse": 0.00010895905532928182,
+            "max_abs_error": 0.00023286975920200348,
+            "correlation": 0.9999991884157303
+          },
+          "band12_18_before": {
+            "rmse": 1.248535292244306e-05,
+            "reference_rms": 9.13503565635485e-06,
+            "correlation": 0.12279367116706322
+          },
+          "band12_18_after": {
+            "rmse": 1.248535292244306e-05,
+            "reference_rms": 9.13503565635485e-06,
+            "correlation": 0.12279367116706322
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 0.00016385116061872642,
+            "max_abs_error": 0.0008775442838668823,
+            "correlation": 0.999998350721337
+          },
+          "after": {
+            "rmse": 0.00016385145455089423,
+            "max_abs_error": 0.0008787810802459717,
+            "correlation": 0.9999983507144368
+          },
+          "band12_18_before": {
+            "rmse": 1.1601055748544935e-05,
+            "reference_rms": 8.107386233446083e-06,
+            "correlation": 0.04085233380727212
+          },
+          "band12_18_after": {
+            "rmse": 1.1598686049663334e-05,
+            "reference_rms": 8.107386233446083e-06,
+            "correlation": 0.04634863214292564
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 9.706575261943114e-05,
+            "max_abs_error": 0.00016638170927762985,
+            "correlation": 0.9999994392989685
+          },
+          "after": {
+            "rmse": 9.706575261943114e-05,
+            "max_abs_error": 0.00016638170927762985,
+            "correlation": 0.9999994392989685
+          },
+          "band12_18_before": {
+            "rmse": 9.643704714297015e-07,
+            "reference_rms": 7.095047293956585e-07,
+            "correlation": 0.7033244933652174
+          },
+          "band12_18_after": {
+            "rmse": 9.643704714297015e-07,
+            "reference_rms": 7.095047293956585e-07,
+            "correlation": 0.7033244933652174
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 0.0002623082488603881,
+            "max_abs_error": 0.0020659733563661575,
+            "correlation": 0.9999973237104074
+          },
+          "after": {
+            "rmse": 0.0002623082450797842,
+            "max_abs_error": 0.0020659752190113068,
+            "correlation": 0.999997323710485
+          },
+          "band12_18_before": {
+            "rmse": 9.893908397013491e-07,
+            "reference_rms": 8.408351196778047e-07,
+            "correlation": 0.7108867971332076
+          },
+          "band12_18_after": {
+            "rmse": 9.893978844537854e-07,
+            "reference_rms": 8.408351196778047e-07,
+            "correlation": 0.7108839845707341
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 0.0002400564748948023,
+            "max_abs_error": 0.0015231221914291382,
+            "correlation": 0.9999978029138936
+          },
+          "after": {
+            "rmse": 0.00024005647619438773,
+            "max_abs_error": 0.0015231221914291382,
+            "correlation": 0.9999978029138711
+          },
+          "band12_18_before": {
+            "rmse": 1.2229516578817395e-06,
+            "reference_rms": 1.2783964366110914e-06,
+            "correlation": 0.8604964494194285
+          },
+          "band12_18_after": {
+            "rmse": 1.2229565979751788e-06,
+            "reference_rms": 1.2783964366110914e-06,
+            "correlation": 0.8604963099373757
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 0.00031299981964719875,
+            "max_abs_error": 0.0017315149307250977,
+            "correlation": 0.9999914282884974
+          },
+          "after": {
+            "rmse": 0.000313000412615192,
+            "max_abs_error": 0.0017328858375549316,
+            "correlation": 0.9999914282560218
+          },
+          "band12_18_before": {
+            "rmse": 1.2328320445307477e-05,
+            "reference_rms": 8.496852359555271e-06,
+            "correlation": 0.03359775386133218
+          },
+          "band12_18_after": {
+            "rmse": 1.2329050779484174e-05,
+            "reference_rms": 8.496852359555271e-06,
+            "correlation": 0.038396432178845856
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 0.00024312591529589356,
+            "max_abs_error": 0.0016144439578056335,
+            "correlation": 0.9999872223328911
+          },
+          "after": {
+            "rmse": 0.00024312591600779808,
+            "max_abs_error": 0.0016145110130310059,
+            "correlation": 0.9999872223328192
+          },
+          "band12_18_before": {
+            "rmse": 1.245586254693117e-05,
+            "reference_rms": 8.960353593444627e-06,
+            "correlation": 0.09273768370337301
+          },
+          "band12_18_after": {
+            "rmse": 1.2455861793120674e-05,
+            "reference_rms": 8.960353593444627e-06,
+            "correlation": 0.09273749827891675
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.00019493665038706977,
+            "max_abs_error": 0.00039614737033843994,
+            "correlation": 0.9999961682035496
+          },
+          "after": {
+            "rmse": 0.00019493697297779384,
+            "max_abs_error": 0.00039605051279067993,
+            "correlation": 0.9999961681908804
+          },
+          "band12_18_before": {
+            "rmse": 1.2896926951962213e-05,
+            "reference_rms": 9.000556913024513e-06,
+            "correlation": 0.039053937534150686
+          },
+          "band12_18_after": {
+            "rmse": 1.2894554506678012e-05,
+            "reference_rms": 9.000556913024513e-06,
+            "correlation": 0.04446810316974786
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        }
+      ]
+    },
+    "music_prefix": {
+      "before_pcm_sha256": "b318685aec6f293f298ae54dbd14b48cca869af9547d8c1ac58eb14cb67b4545",
+      "after_pcm_sha256": "5c13dc892b79b58c5a87760fe0bd7598ee940b895f822795692bb642eafeefe2",
+      "input_sha256": "be50ed1a2ab06ce81e822839c59ca2be1508b512ec0e2643bd050734df17abd5",
+      "reference_sha256": "a859cdfcaf27c5cab4dee2e6db41d5230376fa7941be4cbae2f37c6a7a2d5218",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 1.3650024425185704e-07,
+        "bands": [
+          1.258695590889752e-07,
+          7.104796651135948e-09,
+          1.5927559400937573e-09
+        ]
+      },
+      "after": {
+        "whole": 1.3621245502914499e-07,
+        "bands": [
+          1.2586956014228252e-07,
+          6.786618828215098e-09,
+          1.5890997399427555e-09
+        ]
+      },
+      "improvement_db": {
+        "whole": 0.00916607976820506,
+        "bands": [
+          -3.634282683990028e-08,
+          0.1989819470624845,
+          0.009980768512789565
+        ]
+      },
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 3.824547719082299e-06,
+            "max_abs_error": 3.041211311938241e-05,
+            "correlation": 0.9994650584284486
+          },
+          "after": {
+            "rmse": 3.824547719082299e-06,
+            "max_abs_error": 3.041211311938241e-05,
+            "correlation": 0.9994650584284486
+          },
+          "band12_18_before": {
+            "rmse": 8.104255437006249e-10,
+            "reference_rms": 6.606266521398917e-10,
+            "correlation": 0.8533847294345848
+          },
+          "band12_18_after": {
+            "rmse": 8.104255437006249e-10,
+            "reference_rms": 6.606266521398917e-10,
+            "correlation": 0.8533847294345848
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 0.00010938172440825864,
+            "max_abs_error": 0.0009138919413089752,
+            "correlation": 0.9999887886008669
+          },
+          "after": {
+            "rmse": 0.00010921933394221554,
+            "max_abs_error": 0.0009191744029521942,
+            "correlation": 0.9999888218681452
+          },
+          "band12_18_before": {
+            "rmse": 3.796354986881997e-05,
+            "reference_rms": 9.42967328127762e-05,
+            "correlation": 0.9176676018993161
+          },
+          "band12_18_after": {
+            "rmse": 3.734720746036158e-05,
+            "reference_rms": 9.42967328127762e-05,
+            "correlation": 0.9203232177555869
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 8.095449818480711e-05,
+            "max_abs_error": 0.0008351113647222519,
+            "correlation": 0.9998881622261545
+          },
+          "after": {
+            "rmse": 8.095449728643738e-05,
+            "max_abs_error": 0.0008351113647222519,
+            "correlation": 0.9998881622286366
+          },
+          "band12_18_before": {
+            "rmse": 1.4492228153053866e-07,
+            "reference_rms": 5.748510376126292e-07,
+            "correlation": 0.9685175783749442
+          },
+          "band12_18_after": {
+            "rmse": 1.445668869558993e-07,
+            "reference_rms": 5.748510376126292e-07,
+            "correlation": 0.9686841833640814
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 2.507113738400223e-06,
+            "max_abs_error": 2.559996210038662e-05,
+            "correlation": 0.9498628905548478
+          },
+          "after": {
+            "rmse": 2.4791586875619624e-06,
+            "max_abs_error": 2.5567966076778248e-05,
+            "correlation": 0.9509707000511495
+          },
+          "band12_18_before": {
+            "rmse": 2.1513872086286243e-06,
+            "reference_rms": 3.7762800556272634e-06,
+            "correlation": 0.8409386526945589
+          },
+          "band12_18_after": {
+            "rmse": 2.11821617891763e-06,
+            "reference_rms": 3.7762800556272634e-06,
+            "correlation": 0.8456199589777539
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 0.00013416834994279202,
+            "max_abs_error": 0.001447923481464386,
+            "correlation": 0.9999939066434504
+          },
+          "after": {
+            "rmse": 0.00013408444560794545,
+            "max_abs_error": 0.0014468058943748474,
+            "correlation": 0.9999939142642633
+          },
+          "band12_18_before": {
+            "rmse": 3.064253695724738e-05,
+            "reference_rms": 7.609463181536601e-05,
+            "correlation": 0.9178296455834595
+          },
+          "band12_18_after": {
+            "rmse": 3.0168322022424493e-05,
+            "reference_rms": 7.609463181536601e-05,
+            "correlation": 0.9203616668771748
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 5.520021978687833e-05,
+            "max_abs_error": 0.0005859266966581345,
+            "correlation": 0.999984133663236
+          },
+          "after": {
+            "rmse": 5.5156982187431184e-05,
+            "max_abs_error": 0.0005843807011842728,
+            "correlation": 0.9999841585132239
+          },
+          "band12_18_before": {
+            "rmse": 1.4045529256868856e-05,
+            "reference_rms": 2.5219653067416182e-05,
+            "correlation": 0.8392703218458905
+          },
+          "band12_18_after": {
+            "rmse": 1.3857892683021204e-05,
+            "reference_rms": 2.5219653067416182e-05,
+            "correlation": 0.8436613710279349
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 7.563898148038188e-05,
+            "max_abs_error": 0.0006693992763757706,
+            "correlation": 0.9998635175652006
+          },
+          "after": {
+            "rmse": 7.563895053572257e-05,
+            "max_abs_error": 0.0006693992763757706,
+            "correlation": 0.9998635176768763
+          },
+          "band12_18_before": {
+            "rmse": 1.3223436060348622e-06,
+            "reference_rms": 8.439526642936125e-07,
+            "correlation": 0.4403721780261784
+          },
+          "band12_18_after": {
+            "rmse": 1.3207759369865989e-06,
+            "reference_rms": 8.439526642936125e-07,
+            "correlation": 0.4415708275862872
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 5.775709764661602e-06,
+            "max_abs_error": 3.532900473146583e-05,
+            "correlation": 0.6901916964700707
+          },
+          "after": {
+            "rmse": 5.690127792531488e-06,
+            "max_abs_error": 3.532900473146583e-05,
+            "correlation": 0.7004525520578483
+          },
+          "band12_18_before": {
+            "rmse": 5.3560194945800895e-06,
+            "reference_rms": 5.53235393091787e-06,
+            "correlation": 0.6656017618567546
+          },
+          "band12_18_after": {
+            "rmse": 5.269775712835988e-06,
+            "reference_rms": 5.53235393091787e-06,
+            "correlation": 0.6772067754943499
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 8.297945163295396e-05,
+            "max_abs_error": 0.0007666879682801664,
+            "correlation": 0.9998446460769875
+          },
+          "after": {
+            "rmse": 8.297945115011162e-05,
+            "max_abs_error": 0.0007666879682801664,
+            "correlation": 0.9998446460787959
+          },
+          "band12_18_before": {
+            "rmse": 1.51752030253715e-07,
+            "reference_rms": 4.3825264609033687e-07,
+            "correlation": 0.941829125740502
+          },
+          "band12_18_after": {
+            "rmse": 1.509559405862286e-07,
+            "reference_rms": 4.3825264609033687e-07,
+            "correlation": 0.9424215607881791
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.00010493305817456592,
+            "max_abs_error": 0.0009615481831133366,
+            "correlation": 0.9999898155308462
+          },
+          "after": {
+            "rmse": 0.00010432794360761048,
+            "max_abs_error": 0.0009139594621956348,
+            "correlation": 0.9999899326594078
+          },
+          "band12_18_before": {
+            "rmse": 4.9086968322195895e-05,
+            "reference_rms": 0.00010091103329381776,
+            "correlation": 0.8797731080712233
+          },
+          "band12_18_after": {
+            "rmse": 4.771789675709826e-05,
+            "reference_rms": 0.00010091103329381776,
+            "correlation": 0.8864343914016397
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.00010150131915006667,
+            "max_abs_error": 0.0008258447051048279,
+            "correlation": 0.9998637829416003
+          },
+          "after": {
+            "rmse": 0.00010149529420857476,
+            "max_abs_error": 0.0008258447051048279,
+            "correlation": 0.9998637991254451
+          },
+          "band12_18_before": {
+            "rmse": 6.810314153015041e-06,
+            "reference_rms": 1.8944659216328406e-05,
+            "correlation": 0.9347614706373785
+          },
+          "band12_18_after": {
+            "rmse": 6.692003930412091e-06,
+            "reference_rms": 1.8944659216328406e-05,
+            "correlation": 0.9370199128646954
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 6.886426965089764e-05,
+            "max_abs_error": 0.0005660159513354301,
+            "correlation": 0.999922836862109
+          },
+          "after": {
+            "rmse": 6.886426910501831e-05,
+            "max_abs_error": 0.0005660159513354301,
+            "correlation": 0.9999228368633327
+          },
+          "band12_18_before": {
+            "rmse": 4.2908756865257425e-07,
+            "reference_rms": 5.0596749175480045e-06,
+            "correlation": 0.9963987308221596
+          },
+          "band12_18_after": {
+            "rmse": 4.28891718488436e-07,
+            "reference_rms": 5.0596749175480045e-06,
+            "correlation": 0.996402022478536
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 5.385932173763469e-07,
+            "max_abs_error": 2.415076596662402e-05,
+            "correlation": 0.9974679614193281
+          },
+          "after": {
+            "rmse": 5.384657119146837e-07,
+            "max_abs_error": 2.4392422346863896e-05,
+            "correlation": 0.9974691695718518
+          },
+          "band12_18_before": {
+            "rmse": 4.282790641253644e-07,
+            "reference_rms": 5.124495532153875e-07,
+            "correlation": 0.6933484463705881
+          },
+          "band12_18_after": {
+            "rmse": 4.280144015901032e-07,
+            "reference_rms": 5.124495532153875e-07,
+            "correlation": 0.6937678228138549
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.0001289306016114647,
+            "max_abs_error": 0.0011689066886901855,
+            "correlation": 0.9999923636070562
+          },
+          "after": {
+            "rmse": 0.00012874437102322004,
+            "max_abs_error": 0.0011587291955947876,
+            "correlation": 0.9999923856556215
+          },
+          "band12_18_before": {
+            "rmse": 3.06644603194984e-05,
+            "reference_rms": 6.643503220328691e-05,
+            "correlation": 0.8918909354784863
+          },
+          "band12_18_after": {
+            "rmse": 2.9846052674037344e-05,
+            "reference_rms": 6.643503220328691e-05,
+            "correlation": 0.8976197546009725
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 8.428941398954579e-05,
+            "max_abs_error": 0.0006246939301490784,
+            "correlation": 0.9999641479503529
+          },
+          "after": {
+            "rmse": 8.421814195763956e-05,
+            "max_abs_error": 0.0006010439246892929,
+            "correlation": 0.9999642085946722
+          },
+          "band12_18_before": {
+            "rmse": 2.0962542384513604e-05,
+            "reference_rms": 4.65769381161744e-05,
+            "correlation": 0.8963322584591709
+          },
+          "band12_18_after": {
+            "rmse": 2.05960752208127e-05,
+            "reference_rms": 4.65769381161744e-05,
+            "correlation": 0.8999414554535278
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.00010227743208290193,
+            "max_abs_error": 0.0008391011506319046,
+            "correlation": 0.999868089826745
+          },
+          "after": {
+            "rmse": 0.0001022659301439205,
+            "max_abs_error": 0.0008376836776733398,
+            "correlation": 0.9998681195094595
+          },
+          "band12_18_before": {
+            "rmse": 6.609821855069351e-06,
+            "reference_rms": 1.8320179619966688e-05,
+            "correlation": 0.9342136312228388
+          },
+          "band12_18_after": {
+            "rmse": 6.425014481422428e-06,
+            "reference_rms": 1.8320179619966688e-05,
+            "correlation": 0.9378474096032703
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 6.682618431192427e-05,
+            "max_abs_error": 0.0008227163925766945,
+            "correlation": 0.9998703188289552
+          },
+          "after": {
+            "rmse": 6.682618363717265e-05,
+            "max_abs_error": 0.0008227163925766945,
+            "correlation": 0.999870318831575
+          },
+          "band12_18_before": {
+            "rmse": 3.958751148713075e-07,
+            "reference_rms": 4.847778497109495e-06,
+            "correlation": 0.9966713428498772
+          },
+          "band12_18_after": {
+            "rmse": 3.9572612680882444e-07,
+            "reference_rms": 4.847778497109495e-06,
+            "correlation": 0.9966738580397511
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 5.2942040548974005e-05,
+            "max_abs_error": 0.0005468670278787613,
+            "correlation": 0.9998782169659561
+          },
+          "after": {
+            "rmse": 5.294203950615547e-05,
+            "max_abs_error": 0.0005468670278787613,
+            "correlation": 0.9998782169707565
+          },
+          "band12_18_before": {
+            "rmse": 4.585011877635127e-07,
+            "reference_rms": 3.2899645981360567e-06,
+            "correlation": 0.9903799458476884
+          },
+          "band12_18_after": {
+            "rmse": 4.58408665132191e-07,
+            "reference_rms": 3.2899645981360567e-06,
+            "correlation": 0.9903838391317936
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 9.014052285632787e-05,
+            "max_abs_error": 0.0008587227202951908,
+            "correlation": 0.9999535212467306
+          },
+          "after": {
+            "rmse": 8.995347700124697e-05,
+            "max_abs_error": 0.0008554081432521343,
+            "correlation": 0.9999537139380588
+          },
+          "band12_18_before": {
+            "rmse": 2.4734243125755792e-05,
+            "reference_rms": 4.684551528385315e-05,
+            "correlation": 0.8589171769301414
+          },
+          "band12_18_after": {
+            "rmse": 2.4009371849135786e-05,
+            "reference_rms": 4.684551528385315e-05,
+            "correlation": 0.8671018640468913
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 5.2220252305269266e-05,
+            "max_abs_error": 0.0004171188920736313,
+            "correlation": 0.9998471197519339
+          },
+          "after": {
+            "rmse": 5.2220251909226455e-05,
+            "max_abs_error": 0.0004171188920736313,
+            "correlation": 0.9998471197542529
+          },
+          "band12_18_before": {
+            "rmse": 5.980353606869429e-07,
+            "reference_rms": 2.363367886644631e-06,
+            "correlation": 0.9692722267299968
+          },
+          "band12_18_after": {
+            "rmse": 5.979789263675961e-07,
+            "reference_rms": 2.363367886644631e-06,
+            "correlation": 0.9692779262397356
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 7.686050409925491e-05,
+            "max_abs_error": 0.0006160372868180275,
+            "correlation": 0.9998224732833756
+          },
+          "after": {
+            "rmse": 7.686050359184221e-05,
+            "max_abs_error": 0.0006160372868180275,
+            "correlation": 0.9998224732857196
+          },
+          "band12_18_before": {
+            "rmse": 5.226295308031156e-08,
+            "reference_rms": 3.024031251362489e-07,
+            "correlation": 0.9853665733709686
+          },
+          "band12_18_after": {
+            "rmse": 5.095272421629465e-08,
+            "reference_rms": 3.024031251362489e-07,
+            "correlation": 0.9860886071558788
+          }
+        }
+      ]
+    },
+    "high_tone": {
+      "before_pcm_sha256": "1542d0bcece5173652c44fd7d34fc40dd9c0b908fa0f7499a326a43642b6d488",
+      "after_pcm_sha256": "b7d10afbafffae5f0e1a2016b4e2af7cf1b81b19feb087e24fb717ad20d215f9",
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "reference_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 0.00917361884363344,
+        "bands": [
+          2.6086508003138466e-12,
+          0.00915052416211311,
+          9.640903519276517e-11
+        ]
+      },
+      "after": {
+        "whole": 0.009173618843220769,
+        "bands": [
+          2.608650887080666e-12,
+          0.009150524161765079,
+          9.640751112441196e-11
+        ]
+      },
+      "improvement_db": {
+        "whole": 1.9536599442703586e-10,
+        "bands": [
+          -1.4445149311431156e-07,
+          1.651796517427713e-10,
+          6.86553606009435e-05
+        ]
+      },
+      "matches_isolated_diagnostic_bitwise": true,
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 0.09577901045444895,
+            "max_abs_error": 0.6397300958633423,
+            "correlation": 0.2376023908404042
+          },
+          "after": {
+            "rmse": 0.09577901045229466,
+            "max_abs_error": 0.6397300958633423,
+            "correlation": 0.23760239089884105
+          },
+          "band12_18_before": {
+            "rmse": 0.09565837214856371,
+            "reference_rms": 0.08526509037066708,
+            "correlation": 0.20045547652541795
+          },
+          "band12_18_after": {
+            "rmse": 0.09565837214674458,
+            "reference_rms": 0.08526509037066708,
+            "correlation": 0.20045547659006102
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        }
+      ]
+    },
+    "anchored_tone": {
+      "before_pcm_sha256": "373207ab0b0bd3fce051e23ef4ccaec7309b7a46953bc9e844147d7c1b52ac10",
+      "after_pcm_sha256": "610abd4fd0a4e66c351e276509cfd6bb56e5cf026644d6a1185d2b9dcc9c83c4",
+      "input_sha256": "5abad530fdaee377939c71f87f73730bd6237a2d4207afd6e4e41482d2e19f13",
+      "reference_sha256": "ecb6876574365e6dccc64751e729a8d7984df0fe9f79a10f5b36500b54d3a4bf",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 0.016142272737308547,
+        "bands": [
+          2.3525188773153464e-08,
+          0.01583165905214643,
+          7.005365257646165e-10
+        ]
+      },
+      "after": {
+        "whole": 0.01614227277589008,
+        "bands": [
+          2.3525189388529723e-08,
+          0.01583165906454969,
+          7.016161018746579e-10
+        ]
+      },
+      "improvement_db": {
+        "whole": -1.0380042077588479e-08,
+        "bands": [
+          -1.1360355577815195e-07,
+          -3.4024650492330508e-09,
+          -0.0066876320136732125
+        ]
+      },
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 0.08009950852189844,
+            "max_abs_error": 0.6676607131958008,
+            "correlation": 0.8166182245573398
+          },
+          "after": {
+            "rmse": 0.0800995085222086,
+            "max_abs_error": 0.6676607131958008,
+            "correlation": 0.8166182245537792
+          },
+          "band12_18_before": {
+            "rmse": 0.079908084157722,
+            "reference_rms": 0.04492303786010895,
+            "correlation": -0.5724339553155949
+          },
+          "band12_18_after": {
+            "rmse": 0.07990808415767499,
+            "reference_rms": 0.04492303786010895,
+            "correlation": -0.5724339552934843
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 0.09862221591436114,
+            "max_abs_error": 0.6398172080516815,
+            "correlation": 0.14562879735277753
+          },
+          "after": {
+            "rmse": 0.09862221610971188,
+            "max_abs_error": 0.6398172080516815,
+            "correlation": 0.1456287931134684
+          },
+          "band12_18_before": {
+            "rmse": 0.09719237181172628,
+            "reference_rms": 0.08253480078194818,
+            "correlation": 0.13169251796388076
+          },
+          "band12_18_after": {
+            "rmse": 0.09719237187557274,
+            "reference_rms": 0.08253480078194818,
+            "correlation": 0.13169251855132838
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "after": {
+            "rmse": 0.0,
+            "max_abs_error": 0.0,
+            "correlation": null
+          },
+          "band12_18_before": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          },
+          "band12_18_after": {
+            "rmse": 0.0,
+            "reference_rms": 0.0,
+            "correlation": null
+          }
+        }
+      ]
+    },
+    "independent768": {
+      "before_pcm_sha256": "daa83c47729864f3a9e481779bfedd9c396da768180e070de0ec567b6204b3df",
+      "after_pcm_sha256": "51c94e0fdebe9bb2d28dfc286e59200762afa71c0118a998cf2c7a334347b8db",
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "reference_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 7.711319163500812e-06,
+        "bands": [
+          4.4838393371807453e-07,
+          7.522061080611707e-06,
+          3.9068189972686275e-07
+        ]
+      },
+      "after": {
+        "whole": 7.165904416253898e-06,
+        "bands": [
+          4.4838394263550135e-07,
+          6.839975491025084e-06,
+          3.896008799101724e-07
+        ]
+      },
+      "improvement_db": {
+        "whole": 0.31857667543794965,
+        "bands": [
+          -8.637216736998256e-08,
+          0.4128231009657386,
+          0.012033617909850103
+        ]
+      },
+      "matches_isolated_diagnostic_bitwise": true,
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 5.58847099029219e-05,
+            "max_abs_error": 0.0004068819362146314,
+            "correlation": 0.9995334017221512
+          },
+          "after": {
+            "rmse": 5.58847099029219e-05,
+            "max_abs_error": 0.0004068819362146314,
+            "correlation": 0.9995334017221512
+          },
+          "band12_18_before": {
+            "rmse": 1.4394588396353499e-08,
+            "reference_rms": 9.680640976701487e-09,
+            "correlation": 0.7873907688889951
+          },
+          "band12_18_after": {
+            "rmse": 1.4394588396353499e-08,
+            "reference_rms": 9.680640976701487e-09,
+            "correlation": 0.7873907688889951
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 0.00012804913075484598,
+            "max_abs_error": 0.0016826298087835312,
+            "correlation": 0.9998197169730416
+          },
+          "after": {
+            "rmse": 0.00012779966220742504,
+            "max_abs_error": 0.0017045782878994942,
+            "correlation": 0.9998204188634777
+          },
+          "band12_18_before": {
+            "rmse": 6.221250884468913e-05,
+            "reference_rms": 0.00012609283322816424,
+            "correlation": 0.8839121706405252
+          },
+          "band12_18_after": {
+            "rmse": 6.168685466653777e-05,
+            "reference_rms": 0.00012609283322816424,
+            "correlation": 0.8860773217073494
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 0.0002071519182035171,
+            "max_abs_error": 0.0036130899097770452,
+            "correlation": 0.9996636836142017
+          },
+          "after": {
+            "rmse": 0.00020476243796125904,
+            "max_abs_error": 0.0032780799083411694,
+            "correlation": 0.9996713993774891
+          },
+          "band12_18_before": {
+            "rmse": 0.000176466036246354,
+            "reference_rms": 0.000396342820193853,
+            "correlation": 0.8996064313923959
+          },
+          "band12_18_after": {
+            "rmse": 0.00017338910870840984,
+            "reference_rms": 0.000396342820193853,
+            "correlation": 0.9032051465834365
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 0.0002459577738531429,
+            "max_abs_error": 0.004953853785991669,
+            "correlation": 0.999746884301952
+          },
+          "after": {
+            "rmse": 0.0002448500344914474,
+            "max_abs_error": 0.00472819060087204,
+            "correlation": 0.9997491650629925
+          },
+          "band12_18_before": {
+            "rmse": 0.00017218675961116787,
+            "reference_rms": 0.000432815806665076,
+            "correlation": 0.921517505413229
+          },
+          "band12_18_after": {
+            "rmse": 0.00017039964422652847,
+            "reference_rms": 0.000432815806665076,
+            "correlation": 0.92316177809519
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 0.00013584305616711175,
+            "max_abs_error": 0.00265453162137419,
+            "correlation": 0.9996365341328078
+          },
+          "after": {
+            "rmse": 0.00013564568424728955,
+            "max_abs_error": 0.0026017256313934922,
+            "correlation": 0.9996375900382901
+          },
+          "band12_18_before": {
+            "rmse": 6.917141078682387e-05,
+            "reference_rms": 0.00012679461294247944,
+            "correlation": 0.8530486698114537
+          },
+          "band12_18_after": {
+            "rmse": 6.837571879131921e-05,
+            "reference_rms": 0.00012679461294247944,
+            "correlation": 0.8562240208909969
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 0.0006403175272046561,
+            "max_abs_error": 0.010965563356876373,
+            "correlation": 0.9998434117055389
+          },
+          "after": {
+            "rmse": 0.0006302428784832644,
+            "max_abs_error": 0.010185591876506805,
+            "correlation": 0.9998483009438455
+          },
+          "band12_18_before": {
+            "rmse": 0.0005998536939159958,
+            "reference_rms": 0.0013218681745725493,
+            "correlation": 0.8948397820066883
+          },
+          "band12_18_after": {
+            "rmse": 0.000587858227995225,
+            "reference_rms": 0.0013218681745725493,
+            "correlation": 0.8991301591774096
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 0.0005222875441896154,
+            "max_abs_error": 0.007372226566076279,
+            "correlation": 0.9998928506142176
+          },
+          "after": {
+            "rmse": 0.0005145487530584149,
+            "max_abs_error": 0.007004819810390472,
+            "correlation": 0.9998960024887936
+          },
+          "band12_18_before": {
+            "rmse": 0.0004831808337688581,
+            "reference_rms": 0.0010624010622015093,
+            "correlation": 0.8948669372549032
+          },
+          "band12_18_after": {
+            "rmse": 0.00047366417847315227,
+            "reference_rms": 0.0010624010622015093,
+            "correlation": 0.8991148816628984
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 0.0001647938468803056,
+            "max_abs_error": 0.0022883981000632048,
+            "correlation": 0.9999080400923809
+          },
+          "after": {
+            "rmse": 0.000162695691104391,
+            "max_abs_error": 0.002208941848948598,
+            "correlation": 0.9999103674121242
+          },
+          "band12_18_before": {
+            "rmse": 0.00011367142419658564,
+            "reference_rms": 0.0002045082312149814,
+            "correlation": 0.8547875027140668
+          },
+          "band12_18_after": {
+            "rmse": 0.00011027302521783038,
+            "reference_rms": 0.0002045082312149814,
+            "correlation": 0.8633368820489727
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 0.00013067617687578182,
+            "max_abs_error": 0.0019484534859657288,
+            "correlation": 0.9997701172717683
+          },
+          "after": {
+            "rmse": 0.00013037676756585116,
+            "max_abs_error": 0.001948334276676178,
+            "correlation": 0.9997711718798258
+          },
+          "band12_18_before": {
+            "rmse": 3.890792524855174e-05,
+            "reference_rms": 0.00010582332312379743,
+            "correlation": 0.931611645079805
+          },
+          "band12_18_after": {
+            "rmse": 3.775673884193544e-05,
+            "reference_rms": 0.00010582332312379743,
+            "correlation": 0.9356502908468906
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.0003423511884656171,
+            "max_abs_error": 0.004794544616743224,
+            "correlation": 0.9996840767482144
+          },
+          "after": {
+            "rmse": 0.0003331569527077394,
+            "max_abs_error": 0.004856770683545619,
+            "correlation": 0.9997008242431333
+          },
+          "band12_18_before": {
+            "rmse": 0.0003127928082359719,
+            "reference_rms": 0.0007085605034545155,
+            "correlation": 0.9008197234902243
+          },
+          "band12_18_after": {
+            "rmse": 0.0002998417187528166,
+            "reference_rms": 0.0007085605034545155,
+            "correlation": 0.9088801920918687
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.0024824474384598253,
+            "max_abs_error": 0.04045958770439029,
+            "correlation": 0.999659137583342
+          },
+          "after": {
+            "rmse": 0.002378995717603373,
+            "max_abs_error": 0.038436819799244404,
+            "correlation": 0.9996869552975518
+          },
+          "band12_18_before": {
+            "rmse": 0.0025334231403729627,
+            "reference_rms": 0.006230058753920437,
+            "correlation": 0.9153637986640586
+          },
+          "band12_18_after": {
+            "rmse": 0.0024052158788728374,
+            "reference_rms": 0.006230058753920437,
+            "correlation": 0.9237903136034815
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 0.00037513158591928624,
+            "max_abs_error": 0.006486937403678894,
+            "correlation": 0.9999560686683855
+          },
+          "after": {
+            "rmse": 0.0003712504784894866,
+            "max_abs_error": 0.006007835268974304,
+            "correlation": 0.9999569732000173
+          },
+          "band12_18_before": {
+            "rmse": 0.0002989251175496289,
+            "reference_rms": 0.0006568450724422456,
+            "correlation": 0.8941080046464083
+          },
+          "band12_18_after": {
+            "rmse": 0.0002938507333850296,
+            "reference_rms": 0.0006568450724422456,
+            "correlation": 0.8977675746357978
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 0.0003915490701693573,
+            "max_abs_error": 0.0050797914154827595,
+            "correlation": 0.9996745611385136
+          },
+          "after": {
+            "rmse": 0.0003827287624977056,
+            "max_abs_error": 0.005133763421326876,
+            "correlation": 0.9996890938829733
+          },
+          "band12_18_before": {
+            "rmse": 0.000345102920253367,
+            "reference_rms": 0.0008227310741895517,
+            "correlation": 0.9106718816591955
+          },
+          "band12_18_after": {
+            "rmse": 0.0003331677224518502,
+            "reference_rms": 0.0008227310741895517,
+            "correlation": 0.9167751645107501
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.0002574800052336984,
+            "max_abs_error": 0.003248205699492246,
+            "correlation": 0.9996890508122337
+          },
+          "after": {
+            "rmse": 0.0002555385308486736,
+            "max_abs_error": 0.0031032173428684473,
+            "correlation": 0.9996937257971128
+          },
+          "band12_18_before": {
+            "rmse": 0.00020710920215663355,
+            "reference_rms": 0.00041024561172854987,
+            "correlation": 0.8739985936300404
+          },
+          "band12_18_after": {
+            "rmse": 0.0002045215716011342,
+            "reference_rms": 0.00041024561172854987,
+            "correlation": 0.877211626765587
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 0.00015601247601512564,
+            "max_abs_error": 0.001960181398317218,
+            "correlation": 0.9998798618779533
+          },
+          "after": {
+            "rmse": 0.00015597870847332125,
+            "max_abs_error": 0.0019865932408720255,
+            "correlation": 0.9998799138896992
+          },
+          "band12_18_before": {
+            "rmse": 4.593873976269853e-05,
+            "reference_rms": 8.514187934234184e-05,
+            "correlation": 0.8561133930196516
+          },
+          "band12_18_after": {
+            "rmse": 4.552199840128326e-05,
+            "reference_rms": 8.514187934234184e-05,
+            "correlation": 0.8585309185279519
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.0003092873451628513,
+            "max_abs_error": 0.004335802048444748,
+            "correlation": 0.9999705372873624
+          },
+          "after": {
+            "rmse": 0.0003069018349520483,
+            "max_abs_error": 0.004179723560810089,
+            "correlation": 0.9999709901261523
+          },
+          "band12_18_before": {
+            "rmse": 0.0002250774256776511,
+            "reference_rms": 0.000493043715822525,
+            "correlation": 0.8942232626086144
+          },
+          "band12_18_after": {
+            "rmse": 0.00022137000238533756,
+            "reference_rms": 0.000493043715822525,
+            "correlation": 0.897749262082429
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 0.0001396140140787797,
+            "max_abs_error": 0.002740655792877078,
+            "correlation": 0.9995767983235935
+          },
+          "after": {
+            "rmse": 0.00013932658481166928,
+            "max_abs_error": 0.0026767770759761333,
+            "correlation": 0.9995785399306567
+          },
+          "band12_18_before": {
+            "rmse": 8.339214999327689e-05,
+            "reference_rms": 0.0001566058347123504,
+            "correlation": 0.8597546835044632
+          },
+          "band12_18_after": {
+            "rmse": 8.247209820083388e-05,
+            "reference_rms": 0.0001566058347123504,
+            "correlation": 0.8627416558300688
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 0.00016238438946312937,
+            "max_abs_error": 0.002081860788166523,
+            "correlation": 0.9999102586667613
+          },
+          "after": {
+            "rmse": 0.00016011136873789845,
+            "max_abs_error": 0.00202604616060853,
+            "correlation": 0.9999127544620973
+          },
+          "band12_18_before": {
+            "rmse": 0.00011886682358837424,
+            "reference_rms": 0.00021351294387260045,
+            "correlation": 0.8526006842639728
+          },
+          "band12_18_after": {
+            "rmse": 0.00011527525628567526,
+            "reference_rms": 0.00021351294387260045,
+            "correlation": 0.8612747994680295
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 0.00013439504207295164,
+            "max_abs_error": 0.0019484232179820538,
+            "correlation": 0.9999211590746784
+          },
+          "after": {
+            "rmse": 0.0001343643783479193,
+            "max_abs_error": 0.0019640903919935226,
+            "correlation": 0.9999211950926072
+          },
+          "band12_18_before": {
+            "rmse": 4.7016000588291946e-05,
+            "reference_rms": 8.863022440448506e-05,
+            "correlation": 0.8592538162306641
+          },
+          "band12_18_after": {
+            "rmse": 4.6643869517820444e-05,
+            "reference_rms": 8.863022440448506e-05,
+            "correlation": 0.8613372947727522
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 0.0001028831832672282,
+            "max_abs_error": 0.001372532919049263,
+            "correlation": 0.9999075579012787
+          },
+          "after": {
+            "rmse": 0.0001028302286239377,
+            "max_abs_error": 0.0013751182705163956,
+            "correlation": 0.9999076530600151
+          },
+          "band12_18_before": {
+            "rmse": 2.5809968769792342e-05,
+            "reference_rms": 4.3524054571500224e-05,
+            "correlation": 0.8288668940165974
+          },
+          "band12_18_after": {
+            "rmse": 2.5469311371703635e-05,
+            "reference_rms": 4.3524054571500224e-05,
+            "correlation": 0.8329979315523122
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 9.126151557443086e-05,
+            "max_abs_error": 0.0009189285337924957,
+            "correlation": 0.999927626740598
+          },
+          "after": {
+            "rmse": 9.121015826654862e-05,
+            "max_abs_error": 0.0009191427379846573,
+            "correlation": 0.9999277082121606
+          },
+          "band12_18_before": {
+            "rmse": 2.7298308596307703e-05,
+            "reference_rms": 4.63393593295667e-05,
+            "correlation": 0.8281764841804389
+          },
+          "band12_18_after": {
+            "rmse": 2.7139708435650074e-05,
+            "reference_rms": 4.63393593295667e-05,
+            "correlation": 0.8300301501276622
+          }
+        }
+      ]
+    },
+    "continuation800": {
+      "before_pcm_sha256": "49e51371d3f268c5eb59b87231f387612ed57a37b4cd7c1bc990c8cb80d0c264",
+      "after_pcm_sha256": "7b926299ba375bcd630cdd65716534b5182a0f5949855a31f761f2aafda80bfb",
+      "input_sha256": "e437797d489c1eab8e37b3a903506ce4aeb19b4047f9c679e45a055a33b32c01",
+      "reference_sha256": "635f8e4df59843d02700749b02d327ef81cba76527a8a5ca0ae415d90736b2e4",
+      "local_scale": 1.52587890625e-05,
+      "alignment": {
+        "reference_lag_samples": 31,
+        "evidence": "单对象突发正弦的包络边缘与独立真实音乐的低频相关性确认 raw 差 31 samples；MP4 相比同载荷 raw 再多 2048 samples，恰为已解析 edit 裁剪。全轨共用，未逐轨拟合。"
+      },
+      "before": {
+        "whole": 5.288034771917302e-07,
+        "bands": [
+          3.911368560313872e-07,
+          1.2857300707086912e-07,
+          1.879813953542934e-08
+        ]
+      },
+      "after": {
+        "whole": 5.238148931421818e-07,
+        "bands": [
+          3.911368575932372e-07,
+          1.2335747197267594e-07,
+          1.883339043952643e-08
+        ]
+      },
+      "improvement_db": {
+        "whole": 0.041164600706006346,
+        "bands": [
+          -1.7341828254826513e-08,
+          0.17984340739620905,
+          -0.008136409877309545
+        ]
+      },
+      "last400": {
+        "local_start": 819200,
+        "samples": 819169,
+        "before": {
+          "local_start_sample": 819200,
+          "samples": 819169,
+          "whole_error_energy": 9.211129354385891e-07,
+          "band_error_energy": [
+            6.562756705253723e-07,
+            2.5062070553938885e-07,
+            3.6083604293176116e-08
+          ]
+        },
+        "after": {
+          "whole": 9.11423368364541e-07,
+          "bands": [
+            6.562756724664858e-07,
+            2.4048160745042793e-07,
+            3.615793054353127e-08
+          ]
+        },
+        "band_improvement_db": 0.17935082056680568
+      },
+      "all_tracks": [
+        {
+          "identity": "lfe",
+          "local_channel": 0,
+          "reference_channel": 0,
+          "before": {
+            "rmse": 0.0001412667822373737,
+            "max_abs_error": 0.0009182423818856478,
+            "correlation": 0.9995332903665145
+          },
+          "after": {
+            "rmse": 0.0001412667822373737,
+            "max_abs_error": 0.0009182423818856478,
+            "correlation": 0.9995332903665145
+          },
+          "band12_18_before": {
+            "rmse": 3.317314418750221e-08,
+            "reference_rms": 2.1355157009689324e-08,
+            "correlation": 0.7669653694464037
+          },
+          "band12_18_after": {
+            "rmse": 3.317314418750221e-08,
+            "reference_rms": 2.1355157009689324e-08,
+            "correlation": 0.7669653694464037
+          }
+        },
+        {
+          "identity": "object:0",
+          "local_channel": 1,
+          "reference_channel": 1,
+          "before": {
+            "rmse": 0.0002496479726956296,
+            "max_abs_error": 0.002809867262840271,
+            "correlation": 0.9999786738099223
+          },
+          "after": {
+            "rmse": 0.000247867300138023,
+            "max_abs_error": 0.0028549106791615486,
+            "correlation": 0.9999789769617878
+          },
+          "band12_18_before": {
+            "rmse": 0.0001717013791885324,
+            "reference_rms": 0.0004154633474871363,
+            "correlation": 0.9129235906954745
+          },
+          "band12_18_after": {
+            "rmse": 0.00016891538682499682,
+            "reference_rms": 0.0004154633474871363,
+            "correlation": 0.9158093661525917
+          }
+        },
+        {
+          "identity": "object:1",
+          "local_channel": 2,
+          "reference_channel": 2,
+          "before": {
+            "rmse": 0.00011731029761713013,
+            "max_abs_error": 0.001720912754535675,
+            "correlation": 0.9998652267652366
+          },
+          "after": {
+            "rmse": 0.00011722531892344218,
+            "max_abs_error": 0.00176987424492836,
+            "correlation": 0.9998654219726854
+          },
+          "band12_18_before": {
+            "rmse": 1.8369445301087602e-05,
+            "reference_rms": 4.890376061178674e-05,
+            "correlation": 0.9322064267008432
+          },
+          "band12_18_after": {
+            "rmse": 1.777785785177353e-05,
+            "reference_rms": 4.890376061178674e-05,
+            "correlation": 0.936507922001539
+          }
+        },
+        {
+          "identity": "object:2",
+          "local_channel": 3,
+          "reference_channel": 3,
+          "before": {
+            "rmse": 9.151795721855882e-05,
+            "max_abs_error": 0.001516789197921753,
+            "correlation": 0.9998815937282117
+          },
+          "after": {
+            "rmse": 9.145686162950422e-05,
+            "max_abs_error": 0.0015151947736740112,
+            "correlation": 0.99988175252472
+          },
+          "band12_18_before": {
+            "rmse": 1.0861760463345839e-05,
+            "reference_rms": 3.293436508892716e-05,
+            "correlation": 0.9480663001780906
+          },
+          "band12_18_after": {
+            "rmse": 1.032094648468599e-05,
+            "reference_rms": 3.293436508892716e-05,
+            "correlation": 0.9528318369467573
+          }
+        },
+        {
+          "identity": "object:3",
+          "local_channel": 4,
+          "reference_channel": 4,
+          "before": {
+            "rmse": 0.00023771640775958596,
+            "max_abs_error": 0.0022754520177841187,
+            "correlation": 0.9999886070440553
+          },
+          "after": {
+            "rmse": 0.0002370682751873053,
+            "max_abs_error": 0.002227410674095154,
+            "correlation": 0.9999886690856653
+          },
+          "band12_18_before": {
+            "rmse": 0.00011468388746683694,
+            "reference_rms": 0.00027239782447955127,
+            "correlation": 0.9094001127479215
+          },
+          "band12_18_after": {
+            "rmse": 0.00011313348323734606,
+            "reference_rms": 0.00027239782447955127,
+            "correlation": 0.9119440476851559
+          }
+        },
+        {
+          "identity": "object:4",
+          "local_channel": 5,
+          "reference_channel": 5,
+          "before": {
+            "rmse": 0.00018857013849051904,
+            "max_abs_error": 0.0017892718315124512,
+            "correlation": 0.9999960617180621
+          },
+          "after": {
+            "rmse": 0.00018823832337599354,
+            "max_abs_error": 0.001767084002494812,
+            "correlation": 0.999996075565977
+          },
+          "band12_18_before": {
+            "rmse": 5.8114962397921894e-05,
+            "reference_rms": 9.478678711241211e-05,
+            "correlation": 0.8145069067164658
+          },
+          "band12_18_after": {
+            "rmse": 5.694339727664876e-05,
+            "reference_rms": 9.478678711241211e-05,
+            "correlation": 0.8218949863113195
+          }
+        },
+        {
+          "identity": "object:5",
+          "local_channel": 6,
+          "reference_channel": 6,
+          "before": {
+            "rmse": 0.00011473863183403572,
+            "max_abs_error": 0.002036595018580556,
+            "correlation": 0.9997412564942755
+          },
+          "after": {
+            "rmse": 0.00011409774042387505,
+            "max_abs_error": 0.0017998421972151846,
+            "correlation": 0.9997441383305056
+          },
+          "band12_18_before": {
+            "rmse": 4.3401924262289676e-05,
+            "reference_rms": 8.554724332349026e-05,
+            "correlation": 0.8793823222071014
+          },
+          "band12_18_after": {
+            "rmse": 4.148209816600096e-05,
+            "reference_rms": 8.554724332349026e-05,
+            "correlation": 0.8889937183331472
+          }
+        },
+        {
+          "identity": "object:6",
+          "local_channel": 7,
+          "reference_channel": 7,
+          "before": {
+            "rmse": 8.30529020433278e-05,
+            "max_abs_error": 0.002070300281047821,
+            "correlation": 0.9998052658956282
+          },
+          "after": {
+            "rmse": 8.296436256035922e-05,
+            "max_abs_error": 0.002095818519592285,
+            "correlation": 0.999805682578381
+          },
+          "band12_18_before": {
+            "rmse": 1.8702737234763934e-05,
+            "reference_rms": 4.572633370507542e-05,
+            "correlation": 0.9217725424283448
+          },
+          "band12_18_after": {
+            "rmse": 1.8382841082124325e-05,
+            "reference_rms": 4.572633370507542e-05,
+            "correlation": 0.9243045656094544
+          }
+        },
+        {
+          "identity": "object:7",
+          "local_channel": 8,
+          "reference_channel": 8,
+          "before": {
+            "rmse": 0.00011968484949630391,
+            "max_abs_error": 0.0015942002646625042,
+            "correlation": 0.9997884353638044
+          },
+          "after": {
+            "rmse": 0.00011855105133353228,
+            "max_abs_error": 0.001432761549949646,
+            "correlation": 0.999792425829107
+          },
+          "band12_18_before": {
+            "rmse": 5.856295254524437e-05,
+            "reference_rms": 0.00016883737874328608,
+            "correlation": 0.9401901781114052
+          },
+          "band12_18_after": {
+            "rmse": 5.613724504247348e-05,
+            "reference_rms": 0.00016883737874328608,
+            "correlation": 0.9449657027996372
+          }
+        },
+        {
+          "identity": "object:8",
+          "local_channel": 9,
+          "reference_channel": 9,
+          "before": {
+            "rmse": 0.00027742757054315885,
+            "max_abs_error": 0.0032517164945602417,
+            "correlation": 0.9999718702158157
+          },
+          "after": {
+            "rmse": 0.00027407333274338694,
+            "max_abs_error": 0.003331609070301056,
+            "correlation": 0.9999725463185811
+          },
+          "band12_18_before": {
+            "rmse": 0.00021282823068109798,
+            "reference_rms": 0.00048363680894193304,
+            "correlation": 0.9012374536067738
+          },
+          "band12_18_after": {
+            "rmse": 0.00020832974653608758,
+            "reference_rms": 0.00048363680894193304,
+            "correlation": 0.9054274609830554
+          }
+        },
+        {
+          "identity": "object:9",
+          "local_channel": 10,
+          "reference_channel": 10,
+          "before": {
+            "rmse": 0.0001662825932194997,
+            "max_abs_error": 0.001563279889523983,
+            "correlation": 0.9998368369661939
+          },
+          "after": {
+            "rmse": 0.00016623780096767157,
+            "max_abs_error": 0.001563279889523983,
+            "correlation": 0.9998369248803044
+          },
+          "band12_18_before": {
+            "rmse": 2.5059927487830958e-05,
+            "reference_rms": 6.0454826756132875e-05,
+            "correlation": 0.9132508537694982
+          },
+          "band12_18_after": {
+            "rmse": 2.4679703484886327e-05,
+            "reference_rms": 6.0454826756132875e-05,
+            "correlation": 0.9159403410034238
+          }
+        },
+        {
+          "identity": "object:10",
+          "local_channel": 11,
+          "reference_channel": 11,
+          "before": {
+            "rmse": 0.00010661061293056714,
+            "max_abs_error": 0.0010090060532093048,
+            "correlation": 0.9998908327795255
+          },
+          "after": {
+            "rmse": 0.0001066076176501384,
+            "max_abs_error": 0.0010089799761772156,
+            "correlation": 0.9998908389138097
+          },
+          "band12_18_before": {
+            "rmse": 4.628490017866123e-06,
+            "reference_rms": 2.727030444521512e-05,
+            "correlation": 0.9856470364807532
+          },
+          "band12_18_after": {
+            "rmse": 4.540717683585978e-06,
+            "reference_rms": 2.727030444521512e-05,
+            "correlation": 0.9861865546393053
+          }
+        },
+        {
+          "identity": "object:11",
+          "local_channel": 12,
+          "reference_channel": 12,
+          "before": {
+            "rmse": 7.590658956461531e-05,
+            "max_abs_error": 0.0018511847592890263,
+            "correlation": 0.9995680944157429
+          },
+          "after": {
+            "rmse": 7.531778618935897e-05,
+            "max_abs_error": 0.0018163127824664116,
+            "correlation": 0.9995747691096987
+          },
+          "band12_18_before": {
+            "rmse": 5.00452985758368e-05,
+            "reference_rms": 0.0001087642953552862,
+            "correlation": 0.9007377781847464
+          },
+          "band12_18_after": {
+            "rmse": 4.908110489060037e-05,
+            "reference_rms": 0.0001087642953552862,
+            "correlation": 0.9045871236622149
+          }
+        },
+        {
+          "identity": "object:12",
+          "local_channel": 13,
+          "reference_channel": 13,
+          "before": {
+            "rmse": 0.00024185953405236318,
+            "max_abs_error": 0.0023679547011852264,
+            "correlation": 0.9999853846474105
+          },
+          "after": {
+            "rmse": 0.0002405234194573645,
+            "max_abs_error": 0.002416849136352539,
+            "correlation": 0.9999855456879555
+          },
+          "band12_18_before": {
+            "rmse": 0.00012575908725266768,
+            "reference_rms": 0.0002952719305477758,
+            "correlation": 0.9075188977324631
+          },
+          "band12_18_after": {
+            "rmse": 0.00012310938073639973,
+            "reference_rms": 0.0002952719305477758,
+            "correlation": 0.9114307000275419
+          }
+        },
+        {
+          "identity": "object:13",
+          "local_channel": 14,
+          "reference_channel": 14,
+          "before": {
+            "rmse": 0.00015008730156575316,
+            "max_abs_error": 0.0016657784581184387,
+            "correlation": 0.9999335232632777
+          },
+          "after": {
+            "rmse": 0.00014969580200633088,
+            "max_abs_error": 0.0016046538949012756,
+            "correlation": 0.9999338696190628
+          },
+          "band12_18_before": {
+            "rmse": 6.765370676189895e-05,
+            "reference_rms": 0.00010305977239419113,
+            "correlation": 0.7893000975513089
+          },
+          "band12_18_after": {
+            "rmse": 6.650814553216681e-05,
+            "reference_rms": 0.00010305977239419113,
+            "correlation": 0.7962310254099876
+          }
+        },
+        {
+          "identity": "object:14",
+          "local_channel": 15,
+          "reference_channel": 15,
+          "before": {
+            "rmse": 0.0001658384478373061,
+            "max_abs_error": 0.001612447202205658,
+            "correlation": 0.9998298145173912
+          },
+          "after": {
+            "rmse": 0.0001657575137272426,
+            "max_abs_error": 0.0016144923865795135,
+            "correlation": 0.999829980589677
+          },
+          "band12_18_before": {
+            "rmse": 2.495598601294717e-05,
+            "reference_rms": 6.227934818353179e-05,
+            "correlation": 0.9196295963528741
+          },
+          "band12_18_after": {
+            "rmse": 2.4416487310990356e-05,
+            "reference_rms": 6.227934818353179e-05,
+            "correlation": 0.9230748934582159
+          }
+        },
+        {
+          "identity": "object:15",
+          "local_channel": 16,
+          "reference_channel": 16,
+          "before": {
+            "rmse": 0.00010618115408606813,
+            "max_abs_error": 0.0010592788457870483,
+            "correlation": 0.9998650437788638
+          },
+          "after": {
+            "rmse": 0.00010617671256033419,
+            "max_abs_error": 0.0010593757033348083,
+            "correlation": 0.9998650550698206
+          },
+          "band12_18_before": {
+            "rmse": 4.469883262786885e-06,
+            "reference_rms": 2.6637884807814333e-05,
+            "correlation": 0.9859218842766784
+          },
+          "band12_18_after": {
+            "rmse": 4.356304340695937e-06,
+            "reference_rms": 2.6637884807814333e-05,
+            "correlation": 0.9866263301221234
+          }
+        },
+        {
+          "identity": "object:16",
+          "local_channel": 17,
+          "reference_channel": 17,
+          "before": {
+            "rmse": 9.17930815461613e-05,
+            "max_abs_error": 0.0009235315956175327,
+            "correlation": 0.999814724068015
+          },
+          "after": {
+            "rmse": 9.179256608384121e-05,
+            "max_abs_error": 0.0009231544099748135,
+            "correlation": 0.9998147261488348
+          },
+          "band12_18_before": {
+            "rmse": 1.6316433709666623e-06,
+            "reference_rms": 1.9972781129724042e-05,
+            "correlation": 0.9966592654560967
+          },
+          "band12_18_after": {
+            "rmse": 1.603341601299854e-06,
+            "reference_rms": 1.9972781129724042e-05,
+            "correlation": 0.9967741556116886
+          }
+        },
+        {
+          "identity": "object:17",
+          "local_channel": 18,
+          "reference_channel": 18,
+          "before": {
+            "rmse": 0.00015845607463823663,
+            "max_abs_error": 0.0016953349113464355,
+            "correlation": 0.9999153514319699
+          },
+          "after": {
+            "rmse": 0.00015706587912532328,
+            "max_abs_error": 0.0017192939849337563,
+            "correlation": 0.9999168302419424
+          },
+          "band12_18_before": {
+            "rmse": 8.141393750255294e-05,
+            "reference_rms": 0.00012484382737728991,
+            "correlation": 0.7936840293086397
+          },
+          "band12_18_after": {
+            "rmse": 7.880558028302594e-05,
+            "reference_rms": 0.00012484382737728991,
+            "correlation": 0.8068341166812367
+          }
+        },
+        {
+          "identity": "object:18",
+          "local_channel": 19,
+          "reference_channel": 19,
+          "before": {
+            "rmse": 9.419447908384402e-05,
+            "max_abs_error": 0.0010615624487400055,
+            "correlation": 0.9998065621944519
+          },
+          "after": {
+            "rmse": 9.419332940527686e-05,
+            "max_abs_error": 0.0010615624487400055,
+            "correlation": 0.9998065669169082
+          },
+          "band12_18_before": {
+            "rmse": 2.480872738929895e-06,
+            "reference_rms": 1.98985410668293e-05,
+            "correlation": 0.9922241932631166
+          },
+          "band12_18_after": {
+            "rmse": 2.4338282123177125e-06,
+            "reference_rms": 1.98985410668293e-05,
+            "correlation": 0.9925154249821452
+          }
+        },
+        {
+          "identity": "object:19",
+          "local_channel": 20,
+          "reference_channel": 20,
+          "before": {
+            "rmse": 0.00011824247551226961,
+            "max_abs_error": 0.002092421054840088,
+            "correlation": 0.9998476775899703
+          },
+          "after": {
+            "rmse": 0.00011813973362038483,
+            "max_abs_error": 0.002091735601425171,
+            "correlation": 0.9998479424987197
+          },
+          "band12_18_before": {
+            "rmse": 1.792585662692353e-05,
+            "reference_rms": 3.7080615313198015e-05,
+            "correlation": 0.8859888359305523
+          },
+          "band12_18_after": {
+            "rmse": 1.724867113593233e-05,
+            "reference_rms": 3.7080615313198015e-05,
+            "correlation": 0.8939854974367383
+          }
+        }
+      ]
+    }
+  },
+  "baselines": {
+    "core": {
+      "file": "vectors/decode_baseline.json",
+      "before_file_sha256": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "after_file_sha256": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "changed": [],
+      "unchanged": [
+        "probe_axes_single_object/master_ac4_1500K.m4a",
+        "probe_axes_single_object/master_ac4_768K.m4a",
+        "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+        "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+        "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+        "probe_bed_only/master_ac4_256K.m4a",
+        "probe_bed_only/master_ac4_448K.m4a",
+        "probe_delayed_onset/master_ac4_768K.m4a",
+        "probe_ramp_control/master_ac4_768K.m4a",
+        "probe_ramp_lengths/master_ac4_768K.m4a",
+        "probe_subframe_control/master_ac4_768K.m4a",
+        "probe_subframe_updates/master_ac4_768K.m4a"
+      ],
+      "shape_and_identity_unchanged": true
+    },
+    "aspx": {
+      "file": "vectors/aspx_baseline.json",
+      "before_file_sha256": "ffe505dab88f99e7d90fbfe546b1739752e91275205739d8ed70c426525b6f4c",
+      "after_file_sha256": "1f9982a36385e80a659cf803d6334f541466eb8fb413a3892b84c0344179e275",
+      "changed": [
+        {
+          "vector": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_sha256": "7e6dacc7192cf4948fba90e287560376bad4ed2f4e7efca1e4b6a4049ad7e4bc",
+          "after_sha256": "5a8b9d085dada9c62cb7ea9c81754482db8ba1a762d20179938d483541f99b5b"
+        },
+        {
+          "vector": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_sha256": "e4f052f122c7cd5ef8d242c8fcdc509211938e6e14277913de44a19678fda760",
+          "after_sha256": "f785850f943c252acb38832c7d46459a97d2732b613076b11c24aa8c8ac4bf71"
+        },
+        {
+          "vector": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_sha256": "b2138d7d743b347f640510bd9e866edc57c638ceb4fff8f05b04d8479ed5429a",
+          "after_sha256": "90bb420bdaea47e7f674f2e8785b97df87e3265e09f8cc1c6e12819b2025b731"
+        },
+        {
+          "vector": "probe_bed_only/master_ac4_256K.m4a",
+          "before_sha256": "64e6e83c45a30c98a4eb78b77e116007b49b65d6d23efa304279d8e8d000ffd3",
+          "after_sha256": "1ab382de60be2076462eb81a13ea5ffde42bc5eab3127173b8233fd5bd33af56"
+        },
+        {
+          "vector": "probe_bed_only/master_ac4_448K.m4a",
+          "before_sha256": "dd55349eb267d5649b52f70c4ddee4b6b76aad3803ecb9ac6dc583dd9606b165",
+          "after_sha256": "7fbc4856998a2dfd6fcab65ef2a2093d31bfd4684c25f33c7f8f5c63f13495c3"
+        },
+        {
+          "vector": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_sha256": "ce2e8acc77e6cc1a6b12671df239a47ccf17619dedbd75a4208edd83b8681b95",
+          "after_sha256": "01e5f961f1f86903347461f74fb9cbb23b689a43a5e67b0b06fad76e584d379f"
+        },
+        {
+          "vector": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_sha256": "ce2e8acc77e6cc1a6b12671df239a47ccf17619dedbd75a4208edd83b8681b95",
+          "after_sha256": "01e5f961f1f86903347461f74fb9cbb23b689a43a5e67b0b06fad76e584d379f"
+        },
+        {
+          "vector": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_sha256": "06575a3467a15464d35c3d5fd254d776225d7011f94b4e3b4c12a722642b735d",
+          "after_sha256": "a537f3b1f05a33423cc635f177e69face04b78b1ee30b185f1987d921421a962"
+        },
+        {
+          "vector": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_sha256": "34f189d016ab51b5e6b54eec73166d50a2fa061327b0e0870b704f9c33d96a6c",
+          "after_sha256": "07855b22947371c484194af07ab0ec586cd5b8eeb6f108dfe0f32c9a4c21fd59"
+        }
+      ],
+      "unchanged": [
+        "probe_axes_single_object/master_ac4_1500K.m4a",
+        "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+        "probe_delayed_onset/master_ac4_768K.m4a"
+      ],
+      "shape_and_identity_unchanged": true
+    },
+    "objects": {
+      "file": "vectors/objects_baseline.json",
+      "before_file_sha256": "8aecb9abd9e06ff64d1377eac90653324a42166b67c5b62852c680c761f29fb0",
+      "after_file_sha256": "66643f10402f9f6e82ff3cc8259e541ce9e4f37c6ef4338db8f564e20b2b1d2c",
+      "changed": [
+        {
+          "vector": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_sha256": "1f04c27a4ddb936d7aa3d159e0072e92914131559b9a230119ebc03b7d930921",
+          "after_sha256": "2afb7b31d32e9b29eebf3f59106f2d8eaed20e0cb67a1864ca08a15d90e1339c"
+        },
+        {
+          "vector": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_sha256": "5218b0207d256981c892e75f55b70c09d9ca79bd7e3ca4131e88125329008b48",
+          "after_sha256": "cfd1965fea00e60653137ab98179dbd9e7c5ef921badd6170e80d442efd0ba75"
+        },
+        {
+          "vector": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_sha256": "c9cbcc39227916765e54f753041b4bac485f4ea09cc82fbb1b5beb1d801e09f7",
+          "after_sha256": "060bbb8c1f7de2a321827bda8765553fae0aec888d67bb55847c5c29c238432b"
+        },
+        {
+          "vector": "probe_bed_only/master_ac4_256K.m4a",
+          "before_sha256": "b962f24c5ca50bb9eb4132ed715bcab69c608ba2bbd01d7b374ef9a271c9308b",
+          "after_sha256": "2ec1658cbd00784fe2ca6a53b0aeb89f77a0cbfe0a29078fc2d0ebf3671a0ac4"
+        },
+        {
+          "vector": "probe_bed_only/master_ac4_448K.m4a",
+          "before_sha256": "c51bd4b728d04178c4c4db6e2a5b6a116ae462724155eb1ac002ecc8472cda32",
+          "after_sha256": "ee45265a70b4cf879bd3dde90db286beb3e61433a95e5190467c8b1951ebc30b"
+        },
+        {
+          "vector": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_sha256": "6dbec2fad166ee70e5bbfbcec875f40912f9811ca1816c11e48f1c11f803ff0f",
+          "after_sha256": "275d9b3c86c9d26bf4c6f6b7d564fe9c5db99f97b793e5b6031f3a0d22dc33a1"
+        },
+        {
+          "vector": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_sha256": "6dbec2fad166ee70e5bbfbcec875f40912f9811ca1816c11e48f1c11f803ff0f",
+          "after_sha256": "275d9b3c86c9d26bf4c6f6b7d564fe9c5db99f97b793e5b6031f3a0d22dc33a1"
+        },
+        {
+          "vector": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_sha256": "40d3f79810301d95da3ae9398c741e8e201eff804c2d0d76e1ee5fc5f7de7e7d",
+          "after_sha256": "87150c6311cb4017161b07b8179d5f7d1bfa76b5442720bab8d044750dc87e79"
+        },
+        {
+          "vector": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_sha256": "d745b4913d6e05fbd8d639d7f20c76e5ad334465e40ddf9bf0bcac25e4ea8ae9",
+          "after_sha256": "566b5fa628583ba81b79ef5b0ad9d4f661820e581a484265b17ea282e6875a94"
+        }
+      ],
+      "unchanged": [
+        "probe_axes_single_object/master_ac4_1500K.m4a",
+        "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+        "probe_delayed_onset/master_ac4_768K.m4a"
+      ],
+      "shape_and_identity_unchanged": true
+    }
+  },
+  "checks": [
+    {
+      "name": "test_default",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--workspace"
+      ],
+      "returncode": 0,
+      "totals": {
+        "passed": 514,
+        "failed": 0,
+        "ignored": 3
+      }
+    },
+    {
+      "name": "test_audio",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--workspace",
+        "--features",
+        "audio-decode"
+      ],
+      "returncode": 0,
+      "totals": {
+        "passed": 1275,
+        "failed": 0,
+        "ignored": 21
+      }
+    },
+    {
+      "name": "clippy_default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "clippy_audio",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--workspace",
+        "--all-targets",
+        "--features",
+        "audio-decode",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "python_checkers",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts/test_compare_object_pcm.py",
+        "scripts/test_decode_check.py",
+        "scripts/test_check_layers.py"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "math",
+      "command": [
+        "python3",
+        "scripts/check_aspx_math.py"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "layers",
+      "command": [
+        "python3",
+        "scripts/check_layers.py"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "baseline_all",
+      "command": [
+        "python3",
+        "scripts/decode_check.py"
+      ],
+      "returncode": 0
+    }
+  ],
+  "conclusions": [
+    "修复建立在协方差与滤波器的数学闭合上；参考差分是支持证据，不作为规范勘误。",
+    "生产单项修复对三段音乐的12–18 kHz误差能量改善约0.18–0.41 dB，不借用此前联合实验的18–30 dB。",
+    "纯音主要幅度差仍在；单对象与bed整段误差也并非单调改善，细微恶化完整记录。",
+    "Core基线12条不变；A-SPX和objects各改9条、3条不变，全部形状与轨道身份不变，三层36条通过。",
+    "本修复未更改媒体、case.json或公开输出格式。"
+  ]
+}

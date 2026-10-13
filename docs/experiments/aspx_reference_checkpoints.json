@@ -1,0 +1,237 @@
+{
+  "schema": "macinac4.aspx-reference-checkpoints",
+  "version": 1,
+  "recorded_on": "2026-10-04",
+  "runtime": "DRP 4.3.0.19350 arm64",
+  "production_dsp_changed": false,
+  "baseline_changed": false,
+  "private_artifacts_directory": "tmp/drp_pcm_crosscheck/internal_capture",
+  "method": {
+    "boundary_observation": "Version-validated A-SPX call boundaries; bounded copies of parameters, QMF matrices, native state and results; original operations are forwarded",
+    "independent_replay": "Owned copies of captured inputs and native state, replayed after all PCM was exported and the full decoder closed",
+    "full_reference_pcm_unchanged": true,
+    "matrix_valid_shape": [
+      38,
+      64,
+      2
+    ],
+    "matrix_storage_shape": [
+      40,
+      64,
+      2
+    ],
+    "matrix_storage_padding_rows": 2,
+    "matrix_dtype": "little-endian float32",
+    "observation_order_is_object_identity": false,
+    "last_aspx_call_has_golden_gain_endpoint": false,
+    "standalone_comparison_uses_native_inputs_not_upstream_local_decode": true
+  },
+  "cases": {
+    "aspx_final_tone_r1": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+      "adapter_sha256": "065e4f28a7a1b920b830efc46d3009d21b8f788c5c3e0cbc4861a481b4e2d8f4",
+      "expected_frames": 143,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "observed_au": 8,
+      "aspx_calls": 9,
+      "hf_replayed_calls": 9,
+      "hf_preflat_toggle_comparisons": 9,
+      "envelope_estimates": 9,
+      "nonzero_envelope_estimates": 2,
+      "envelope_mean_max_normalized_error": 1.342983637381729e-07,
+      "gain_and_assembly_replayed_calls": 8,
+      "gain_and_assembly_samples_compared": 38912,
+      "golden_replay_bit_exact": true,
+      "selected_checkpoint_file_count": 43,
+      "sorted_selected_hash_list_sha256": "211f757d4eeedd81ce2467a26bbd85e90adfcca053b9636343a6f0c668470664"
+    },
+    "aspx_final_tone_r2": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+      "adapter_sha256": "065e4f28a7a1b920b830efc46d3009d21b8f788c5c3e0cbc4861a481b4e2d8f4",
+      "expected_frames": 143,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "observed_au": 8,
+      "aspx_calls": 9,
+      "hf_replayed_calls": 9,
+      "hf_preflat_toggle_comparisons": 9,
+      "envelope_estimates": 9,
+      "nonzero_envelope_estimates": 2,
+      "envelope_mean_max_normalized_error": 1.342983637381729e-07,
+      "gain_and_assembly_replayed_calls": 8,
+      "gain_and_assembly_samples_compared": 38912,
+      "golden_replay_bit_exact": true,
+      "selected_checkpoint_file_count": 43,
+      "sorted_selected_hash_list_sha256": "211f757d4eeedd81ce2467a26bbd85e90adfcca053b9636343a6f0c668470664"
+    },
+    "aspx_final_preflat0": {
+      "input_sha256": "0983024ff1474bb394259fb016575b73d14161ca2fcd93c08c76b6d87aa44fc7",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+      "adapter_sha256": "065e4f28a7a1b920b830efc46d3009d21b8f788c5c3e0cbc4861a481b4e2d8f4",
+      "expected_frames": 143,
+      "accepted_attempt": 1,
+      "rejected_attempts": 1,
+      "observed_au": 8,
+      "aspx_calls": 9,
+      "hf_replayed_calls": 9,
+      "hf_preflat_toggle_comparisons": 9,
+      "envelope_estimates": 9,
+      "nonzero_envelope_estimates": 2,
+      "envelope_mean_max_normalized_error": 1.342983637381729e-07,
+      "gain_and_assembly_replayed_calls": 8,
+      "gain_and_assembly_samples_compared": 38912,
+      "golden_replay_bit_exact": true,
+      "selected_checkpoint_file_count": 43,
+      "sorted_selected_hash_list_sha256": "211f757d4eeedd81ce2467a26bbd85e90adfcca053b9636343a6f0c668470664"
+    },
+    "aspx_final_limiter0": {
+      "input_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+      "pcm_sha256": "e8345b5e12e2f2df377af74cf2e0b01effff703de64488bdf88834e9b348a3d4",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+      "adapter_sha256": "065e4f28a7a1b920b830efc46d3009d21b8f788c5c3e0cbc4861a481b4e2d8f4",
+      "expected_frames": 143,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "observed_au": 8,
+      "aspx_calls": 9,
+      "hf_replayed_calls": 9,
+      "hf_preflat_toggle_comparisons": 9,
+      "envelope_estimates": 9,
+      "nonzero_envelope_estimates": 2,
+      "envelope_mean_max_normalized_error": 1.342983637381729e-07,
+      "gain_and_assembly_replayed_calls": 8,
+      "gain_and_assembly_samples_compared": 38912,
+      "golden_replay_bit_exact": true,
+      "selected_checkpoint_file_count": 43,
+      "sorted_selected_hash_list_sha256": "02bd0789e373e3d94a7a323449d406278808fc32f9319d807947bfa47d2c8cc8"
+    },
+    "aspx_final_music_r1": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+      "adapter_sha256": "065e4f28a7a1b920b830efc46d3009d21b8f788c5c3e0cbc4861a481b4e2d8f4",
+      "expected_frames": 400,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "observed_au": 100,
+      "aspx_calls": 9,
+      "hf_replayed_calls": 9,
+      "hf_preflat_toggle_comparisons": 9,
+      "envelope_estimates": 23,
+      "nonzero_envelope_estimates": 23,
+      "envelope_mean_max_normalized_error": 2.9211003850524146e-07,
+      "gain_and_assembly_replayed_calls": 8,
+      "gain_and_assembly_samples_compared": 38912,
+      "golden_replay_bit_exact": true,
+      "selected_checkpoint_file_count": 71,
+      "sorted_selected_hash_list_sha256": "8e1e010c44aaa2a1d2dc3a11a66d4616457482b34d4e2f1fbe5cf9b2d576908b"
+    },
+    "aspx_final_music_r2": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+      "adapter_sha256": "065e4f28a7a1b920b830efc46d3009d21b8f788c5c3e0cbc4861a481b4e2d8f4",
+      "expected_frames": 400,
+      "accepted_attempt": 1,
+      "rejected_attempts": 1,
+      "observed_au": 100,
+      "aspx_calls": 9,
+      "hf_replayed_calls": 9,
+      "hf_preflat_toggle_comparisons": 9,
+      "envelope_estimates": 23,
+      "nonzero_envelope_estimates": 23,
+      "envelope_mean_max_normalized_error": 2.9211003850524146e-07,
+      "gain_and_assembly_replayed_calls": 8,
+      "gain_and_assembly_samples_compared": 38912,
+      "golden_replay_bit_exact": true,
+      "selected_checkpoint_file_count": 71,
+      "sorted_selected_hash_list_sha256": "8e1e010c44aaa2a1d2dc3a11a66d4616457482b34d4e2f1fbe5cf9b2d576908b"
+    }
+  },
+  "repetition": {
+    "tone": true,
+    "music": true,
+    "scope": "HF inputs/outputs, envelope values, and all eight captured gain/assembly outputs; ASLR-bearing pointer fields excluded"
+  },
+  "findings": {
+    "envelope_estimate": {
+      "reference_replays_bit_exact": true,
+      "normalization": "Mean squared complex magnitude divided by QMF slot count, not ATS span",
+      "packed_energy_observation": "physical mean energy = mantissa * 2^(exponent - 46); this describes this private interface, not a production rescale"
+    },
+    "preflatten": {
+      "flag_reaches_internal_configuration": true,
+      "live_bitstream_toggle_changes_hf_or_estimate_or_gain": false,
+      "owned_hf_replay_flag_toggle_changes_qmf": false,
+      "scope": "Nine A-SPX calls in tone AU 8 and nine in music AU 100; no codec-wide absence claim"
+    },
+    "limiter_off": {
+      "envelope_inputs_unchanged": true,
+      "single_internal_flag_toggle_predicts_mutated_bitstream": true,
+      "predicted_calls": 8,
+      "predicted_outputs": "Whole captured gain buffer and all 38 valid QMF rows, bit exact",
+      "compensatory_boost_still_present": true,
+      "local_off_current_behavior": "Returns P95 gains directly and skips P96-P101",
+      "p95_formula_comparisons": [
+        {
+          "internal_call_index": 3,
+          "subbands_compared": 26,
+          "ratio_near_plus_4db_count": 24,
+          "gain_ratio_min": 0.816847798853848,
+          "gain_ratio_max": 1.5848932414293921,
+          "comparison_kind": "P95 formula using captured targets, actual envelope, noise ratio and sine flags; not a full local decoder PCM comparison"
+        },
+        {
+          "internal_call_index": 4,
+          "subbands_compared": 26,
+          "ratio_near_plus_4db_count": 26,
+          "gain_ratio_min": 1.5848931041313794,
+          "gain_ratio_max": 1.5848932297455665,
+          "comparison_kind": "P95 formula using captured targets, actual envelope, noise ratio and sine flags; not a full local decoder PCM comparison"
+        }
+      ],
+      "new_production_policy": "not_decided"
+    }
+  },
+  "specification_review": {
+    "document": "TS103190-1:v1.4.1",
+    "sha256": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f",
+    "pages_visually_reviewed": [
+      98,
+      224,
+      225,
+      226
+    ],
+    "other_clause": "4.3.10.1.7 / Table 122",
+    "conclusion": "Table 122 defines limiter off/on, while P95-P101 do not explicitly place the complete boost chain under that flag. The previous claim that skipping every step P96-P101 is the uniquely correct reading is withdrawn; production behavior is preserved pending a separate decision."
+  },
+  "limits": [
+    "Only the first eight of nine A-SPX calls have a trusted post-gain/assembly endpoint; the ninth is not counted as fully replayed",
+    "No producer-level DSP, PCM baseline, preflatten bypass or limiter semantics change made",
+    "P95 gain-domain ratios are not an end-to-end error reduction or a listening test",
+    "Reference startup failures and an early reference-path selection error were excluded; only complete process/status/PCM-hash-validated attempts counted",
+    "Initial HF replay omitted patch-index arrays and mismatched nonzero channels; repaired by copying those inputs. Only repaired replay results accepted"
+  ],
+  "tools_sha256": {
+    "reference_aspx_capture.c": "0a1c491f26245eb8b06e63cd49871620130b9cc081afedfca688dbea2d90732f",
+    "aspx_boundary_support.h": "0dd169f8aa5a45df765375d6ea9f86a632c587f2d1d26a47bc4c9c8ea047d2b3",
+    "aspx_estimate_support.h": "67fac3ca486b4c53bd74436a66957b310c2c60017650ca38a43407a1a59fe1d8",
+    "aspx_gain_replay.h": "ba710473c31a9dbc5a90d3a7de5cd7760272d147f94602ce516534ad9f366598",
+    "aspx_hf_replay.h": "6518ba97a05c7ba1a23e9e91605c833dfaac56bc1fc53b869cf9aefa3eccfd48",
+    "capture_aspx.py": "6233f1e3ad29881117a91e881c95abf8f45ff276a37946d3d4d55e73639f2eb5",
+    "check_gain_boundary.py": "9048d9367d9d181927d3a2ea89a7aede65b38edd8a66a353457c0d151683acda"
+  },
+  "protected_files_unchanged": true
+}

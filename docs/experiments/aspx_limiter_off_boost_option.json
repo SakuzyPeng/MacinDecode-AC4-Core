@@ -1,0 +1,140 @@
+{
+  "schema": "macinac4.aspx-limiter-off-boost-option",
+  "version": 1,
+  "recorded_on": "2026-10-04",
+  "decision": "docs/decisions/0018-opt-in-aspx-limiter-off-boost.md",
+  "cli_option": "--aspx-limiter-off-boost",
+  "scene_config": "Ac4DecoderConfig::with_aspx_limiter_off_boost(bool)",
+  "default": false,
+  "semantics": {
+    "bitstream_limiter_on": "unchanged P95-P101 path",
+    "bitstream_limiter_off_default": "initial gains and unadjusted levels",
+    "bitstream_limiter_off_opt_in": "P99-P101 applied to initial gains/levels; no P96-P98 signal gain limiting",
+    "boost_amplitude_ceiling": 1.584893192,
+    "reference_bit_exact_compatibility_claimed": false
+  },
+  "validation": {
+    "tests": {
+      "default": {
+        "passed": 516,
+        "failed": 0,
+        "ignored": 3
+      },
+      "audio_decode": {
+        "passed": 1283,
+        "failed": 0,
+        "ignored": 21
+      }
+    },
+    "clippy_default": true,
+    "clippy_audio_decode": true,
+    "format": true,
+    "layer_audit": true,
+    "default_pcm_baseline_entries": 36,
+    "default_pcm_stages": 3,
+    "existing_pcm_baselines_updated": false,
+    "cli_ab": [
+      {
+        "case": "limiter_on",
+        "stage": "aspx",
+        "source_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "before_sha256": "733b889381e9b5eb6a27898eca08e3a365fe66079bddbb622f9a07ea10480e99",
+        "default_unchanged": true,
+        "variants": [
+          {
+            "enabled": false,
+            "wave_sha256": "733b889381e9b5eb6a27898eca08e3a365fe66079bddbb622f9a07ea10480e99",
+            "flag_reported": false
+          },
+          {
+            "enabled": true,
+            "wave_sha256": "733b889381e9b5eb6a27898eca08e3a365fe66079bddbb622f9a07ea10480e99",
+            "flag_reported": true
+          }
+        ],
+        "boost_pcm_changed": false,
+        "nonfinite_samples": 0,
+        "differing_samples": 0,
+        "total_samples": 2928640
+      },
+      {
+        "case": "limiter_on",
+        "stage": "objects",
+        "source_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "before_sha256": "b7d10afbafffae5f0e1a2016b4e2af7cf1b81b19feb087e24fb717ad20d215f9",
+        "default_unchanged": true,
+        "variants": [
+          {
+            "enabled": false,
+            "wave_sha256": "b7d10afbafffae5f0e1a2016b4e2af7cf1b81b19feb087e24fb717ad20d215f9",
+            "flag_reported": false
+          },
+          {
+            "enabled": true,
+            "wave_sha256": "b7d10afbafffae5f0e1a2016b4e2af7cf1b81b19feb087e24fb717ad20d215f9",
+            "flag_reported": true
+          }
+        ],
+        "boost_pcm_changed": false,
+        "nonfinite_samples": 0,
+        "differing_samples": 0,
+        "total_samples": 6150144
+      },
+      {
+        "case": "limiter_off",
+        "stage": "aspx",
+        "source_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+        "before_sha256": "5cdb4c5291cece2ac907695c53b20b13907a43d04be54fd59d5b200c04d34f76",
+        "default_unchanged": true,
+        "variants": [
+          {
+            "enabled": false,
+            "wave_sha256": "5cdb4c5291cece2ac907695c53b20b13907a43d04be54fd59d5b200c04d34f76",
+            "flag_reported": false
+          },
+          {
+            "enabled": true,
+            "wave_sha256": "949dd0ed957e7da91bbe64386dd3f1bfff0494c34c9df231f32836d05c3518e9",
+            "flag_reported": true
+          }
+        ],
+        "boost_pcm_changed": true,
+        "nonfinite_samples": 0,
+        "differing_samples": 2617308,
+        "total_samples": 2928640
+      },
+      {
+        "case": "limiter_off",
+        "stage": "objects",
+        "source_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+        "before_sha256": "1bfdcd43b4fe38bfc2e121d5f843832602996fc97cd28dccf215c0cd54369f26",
+        "default_unchanged": true,
+        "variants": [
+          {
+            "enabled": false,
+            "wave_sha256": "1bfdcd43b4fe38bfc2e121d5f843832602996fc97cd28dccf215c0cd54369f26",
+            "flag_reported": false
+          },
+          {
+            "enabled": true,
+            "wave_sha256": "65c1d4a80804c00034840325233fbb1e0e6bae84c22535c382041db5664a46d9",
+            "flag_reported": true
+          }
+        ],
+        "boost_pcm_changed": true,
+        "nonfinite_samples": 0,
+        "differing_samples": 185313,
+        "total_samples": 6150144
+      }
+    ]
+  },
+  "binary_sha256": "4df9617449127575b621affc81cc07ca4db5f46bf8f8dd7311b93c3c3faac272",
+  "previous_binary_sha256": "f72c156347fd5379a5491ae3b147b5dd661a5dac159b4c52df226b9d9a3255de",
+  "protected_files_unchanged": {
+    "scripts/gen_damf.py": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+    "crates/macindecode-ac4-decode/src/aspx/tna.rs": "3e218feeccd645cad913a5b29b845e992b347669fe76d4e52a668895dfed8297",
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "1f9982a36385e80a659cf803d6334f541466eb8fb413a3892b84c0344179e275",
+    "vectors/objects_baseline.json": "66643f10402f9f6e82ff3cc8259e541ce9e4f37c6ef4338db8f564e20b2b1d2c"
+  }
+}

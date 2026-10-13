@@ -8,7 +8,7 @@
 `5.7.6.4.2.2` 的 P95–101 未明确关闭标志对整个 boost 链的作用范围。本地原实现
 在 `aspx_limiter=0` 时直接使用 P95/P94 的初始信号增益与噪声／正弦电平。
 
-[内部参考检查点](../ASPX_REMAINING_INVESTIGATION.md#2026-10-04-续查a-spx-分段重放与-limiter-关闭语义)
+[内部参考检查点记录](../experiments/aspx_reference_checkpoints.json)
 确认，已测 DRP 路径在关闭 limiter 后仍执行补偿并保留有限增益约束。用户要求将这项
 行为差异做成可配置开关，以便独立比较，不强制改变既有输出。
 
