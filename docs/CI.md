@@ -65,12 +65,32 @@ requirements 区分。纯规范审计不写 Cargo 缓存，避免先结束的轻
 发布入口通过 `--require-reuse` 检查 Cargo 的产物记录；库或 CLI 发生意外重编译时直接失败。
 
 2026-10-12 在 macOS ARM64、Rust 1.98.0、Python 3.13 上，同一份 PDF 的快速生成约
-**1.67 秒**，全量扫描约 **48.66 秒**，9036 字节的结果完全相同。该比较仅反映本地提取过程，
-不能当作 GitHub 全流程耗时。首轮本地 release 一致性构建约 18.77 秒，后续修改后的测量
-以实际运行日志为准。
+**1.67 秒**，全量扫描约 **48.66 秒**，9036 字节的结果完全相同。统一规范目录后，本地发布
+测试的 Cargo 复用检查约 0.70 秒、7 项测试约 0.13 秒。这些局部数字不代表云端总耗时。
 
-改动前最近一次 GitHub CI 约 4 分 18 秒，六平台发布约 11 分 46 秒；其中 Linux 音频 job
-的规范准备与审计约 2 分 23 秒，Intel macOS 发布的规范准备约 5 分 23 秒。
-新流程每个 PR 增加六平台实际解码，比较速度时须同时记录整体等待时间、各 job／step 时间
-和总 runner 分钟，区分覆盖增加与同等工作的提速。规范准备、release 编译和测试的分段秒数
-写入 Actions job summary；云端冷／暖缓存的完整对比需要该提交在 GitHub 实跑后补录。
+下表取自 GitHub Actions 的已完成成功运行。工作流耗时为 `created_at → updated_at`，包含调度
+与收尾；累计 runner 分钟为各非 skipped job 的运行秒数之和除以 60，不做平台计费权重折算。
+新版本三个运行均使用代码提交 `baa69f8ceea26f02325e99f2e7a61c81cae314f1`。
+逐平台日志确认：冷运行的六个平台均未命中 Cargo／pip 缓存，暖运行均恢复了对应缓存。
+
+| 流程 | 工作流耗时 | 累计 runner 分钟 | 覆盖 |
+| --- | ---: | ---: | --- |
+| [旧 CI](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/actions/runs/36112018437) | 4 分 18 秒 | 8.28 | Ubuntu 完整检查，独立 MSRV 重复测试 |
+| [新 CI 冷缓存](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/actions/runs/38336269608) | 9 分 00 秒 | 29.93 | 完整检查、规范审计、六平台 release PCM |
+| [新 CI 暖缓存](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/actions/runs/38337216613) | 8 分 43 秒 | 30.25 | 与冷缓存相同的提交和覆盖 |
+| [旧六平台发布](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/actions/runs/36112018477) | 11 分 46 秒 | 36.72 | 六平台构建、版本冒烟和打包 |
+| [新六平台发布](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/actions/runs/38336282508) | 8 分 32 秒 | 23.13 | 六平台构建、逐位 PCM、产物复用检查和打包 |
+
+主 CI 新增了六平台实际执行，等待时间和总计算量增加。冷／暖运行的关键路径均为 Intel macOS
+release 编译及随后汇总，对应平台 job 分别为 525／507 秒。依赖下载缓存不能消除每次完整编译；
+暖缓存的累计 runner 时间也没有下降，不能把单次壁钟差异解释成稳定的缓存加速比例。
+例如 Intel macOS 的 Python 依赖准备从 115.2 秒降到 5.4 秒，但 release 编译从 363.2 秒
+变为 453.4 秒，抵消了大部分下载缓存收益。
+
+旧记录使用 `a1410f0`，新快照还包含用户已有的 A-SPX／CLI 修改；不同 runner 的负载也有波动，
+这些整体数字是运行记录，不是严格隔离变量的 A/B 实验。可单独复核的优化是 PDF 快／全路径
+逐字节等价、移除重复 MSRV 测试，以及发布测试要求实际复用已构建产物。
+
+全部六平台的三阶段冻结摘要、CLI PCM／通道语义、重置／截断恢复测试通过。Linux 完整检查、
+147 项本地 Python 测试、`no_std`、Clippy、Rustdoc、默认／全 feature 打包和工作流语法检查通过。
+真实媒体仍未进入这些 CI 运行。
