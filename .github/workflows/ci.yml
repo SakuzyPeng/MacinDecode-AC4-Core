@@ -41,6 +41,7 @@ jobs:
         uses: ./.github/actions/setup-build
         with:
           target: thumbv7em-none-eabi
+          python-dependencies: scripts/requirements-pcm.txt
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -179,6 +180,7 @@ jobs:
       - uses: ./.github/actions/setup-build
         with:
           spec-tables: "true"
+          cargo-cache: "false"
       - name: Compare fast and full PDF extraction
         run: python scripts/generate_spec_tables.py --check-full-scan
       - name: Audit generated tables
