@@ -16,10 +16,11 @@ import hashlib
 import json
 import re
 import sys
+import time
 from decimal import Decimal
 from pathlib import Path
 
-from _pdf_tables import Failure, merge_cells, words_by_line
+from _pdf_tables import Failure, merge_cells, open_pdf_section, words_by_line
 from check_ajoc_tables import (
     BAND_COUNTS,
     DECORRELATOR_TABLES,
@@ -78,10 +79,8 @@ def _segment(text: str, marker: str, next_marker: str) -> str:
     return text[start:end]
 
 
-def _extract_asf_auxiliary() -> dict[str, object]:
-    import pdfplumber
-
-    with pdfplumber.open(PDF_PART1) as pdf:
+def _extract_asf_auxiliary(*, full_scan: bool = False) -> dict[str, object]:
+    with open_pdf_section(PDF_PART1, "asf", full_scan=full_scan) as pdf:
         pages = list(pdf.pages)
         page_texts = [page.extract_text() or "" for page in pages]
         text = "\n".join(page_texts)
@@ -280,9 +279,9 @@ def _derive_quantizers(
     return rows
 
 
-def generate() -> str:
-    counts, offsets = extract_sfb()
-    aspx = extract_aspx()
+def generate(*, full_scan: bool = False) -> str:
+    counts, offsets = extract_sfb(full_scan=full_scan)
+    aspx = extract_aspx(full_scan=full_scan)
     (
         table_28,
         table_197,
@@ -290,8 +289,8 @@ def generate() -> str:
         regions,
         decorrelator_tables,
         cycle,
-    ) = extract_ajoc()
-    auxiliary = _extract_asf_auxiliary()
+    ) = extract_ajoc(full_scan=full_scan)
+    auxiliary = _extract_asf_auxiliary(full_scan=full_scan)
 
     lengths = sorted(counts, reverse=True)
     if lengths != list(auxiliary["bit_rows"][index][0] for index in range(15)):
@@ -398,11 +397,26 @@ def generate() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--full-scan", action="store_true", help="使用原始全量 PDF 扫描")
+    mode.add_argument("--check-full-scan", action="store_true", help="比较快速与全量生成结果的全部字节")
     args = parser.parse_args()
 
     try:
         _verify_pdf_inputs()
-        generated = generate().encode("utf-8")
+        start = time.perf_counter()
+        generated = generate(full_scan=args.full_scan).encode("utf-8")
+        print(f"规范表生成耗时：{time.perf_counter() - start:.3f}s", flush=True)
+        if args.check_full_scan:
+            start = time.perf_counter()
+            reference = generate(full_scan=True).encode("utf-8")
+            print(f"全量扫描耗时：{time.perf_counter() - start:.3f}s", flush=True)
+            if generated != reference:
+                raise Failure("快速路径与全量扫描生成字节不一致")
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        expected = manifest["generated_artifacts"][0]["sha256"]
+        if hashlib.sha256(generated).hexdigest() != expected:
+            raise Failure("生成结果与 MANIFEST.json 的冻结摘要不一致")
     except (Failure, ImportError) as error:
         print(f"生成规范表失败：{error}", file=sys.stderr)
         return 1
