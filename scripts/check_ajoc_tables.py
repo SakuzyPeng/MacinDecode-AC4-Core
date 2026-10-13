@@ -37,7 +37,7 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-from _pdf_tables import Failure
+from _pdf_tables import Failure, open_pdf_section
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PDF_PART1 = REPO_ROOT / "spec" / "ts_10319001v010401p.pdf"
@@ -223,7 +223,7 @@ def _extract_ajoc_decorrelator_cycle(text: str) -> list[int]:
     return [int(value) for value in re.findall(r"[012]", match.group(1))]
 
 
-def extract_pdf() -> tuple[
+def extract_pdf(*, full_scan: bool = False) -> tuple[
     list[list[int]],
     list[list[int]],
     dict[str, list[tuple[Decimal, int]]],
@@ -231,9 +231,7 @@ def extract_pdf() -> tuple[
     dict[str, list[list[Decimal]]],
     list[int],
 ]:
-    import pdfplumber
-
-    with pdfplumber.open(PDF_PART2) as pdf:
+    with open_pdf_section(PDF_PART2, "ajoc_part2", full_scan=full_scan) as pdf:
         page_texts = [page.extract_text() or "" for page in pdf.pages]
         part2_text = "\n".join(page_texts)
         dequant_tables = _extract_dequant_tables(part2_text)
@@ -247,7 +245,7 @@ def extract_pdf() -> tuple[
         else:
             raise Failure("P2 中找不到表 28")
 
-    with pdfplumber.open(PDF_PART1) as pdf:
+    with open_pdf_section(PDF_PART1, "ajoc_part1", full_scan=full_scan) as pdf:
         page_texts = [page.extract_text() or "" for page in pdf.pages]
         part1_text = "\n".join(page_texts)
         decorrelator_regions, decorrelator_tables = _extract_decorrelator_tables(part1_text)

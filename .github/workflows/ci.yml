@@ -24,6 +24,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  PYTHONUTF8: "1"
 
 jobs:
   quality:
@@ -36,10 +37,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install repository Rust toolchain
-        run: |
-          rustc --version --verbose
-          rustup target add thumbv7em-none-eabi
+      - name: Set up build
+        uses: ./.github/actions/setup-build
+        with:
+          target: thumbv7em-none-eabi
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -78,6 +79,9 @@ jobs:
       - name: Audit syntax/decode layer direction
         run: python3 scripts/check_layers.py
 
+      - name: Test CI gates and PDF page selection
+        run: python3 -m unittest scripts/test_ci_support.py scripts/test_pdf_tables.py
+
       - name: Test layer dependency checker
         run: python3 -m unittest scripts/test_check_layers.py
 
@@ -114,8 +118,8 @@ jobs:
       - name: Test DAMF headphone timeline checker
         run: python3 -m unittest scripts/test_check_damf_headphone.py
 
-  audio_decode:
-    name: audio-decode
+  audio_checks:
+    name: audio checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -124,20 +128,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install repository Rust toolchain
-        run: |
-          rustc --version --verbose
-          rustup target add thumbv7em-none-eabi
-
-      - name: Generate local specification tables
-        run: |
-          python3 -m pip install -r scripts/requirements-spec.txt
-          python3 scripts/fetch_specs.py
-          python3 scripts/generate_spec_tables.py
-          python3 scripts/check_sfb_tables.py
-          python3 scripts/check_aspx_tables.py
-          python3 scripts/check_ajoc_tables.py
-          python3 scripts/check_spec_distribution.py --generated
+      - name: Set up audio build
+        uses: ./.github/actions/setup-build
+        with:
+          target: thumbv7em-none-eabi
+          spec-tables: "true"
 
       - name: Check Scene no_std decoder
         run: cargo check --locked -p macindecode-ac4-scene --lib --target thumbv7em-none-eabi --no-default-features --features audio-decode
@@ -173,25 +168,85 @@ jobs:
           MACINDECODE_AC4_SPEC_DIR: ${{ github.workspace }}/spec
         run: cargo package --locked --workspace --all-features
 
-  msrv:
-    name: msrv
-    runs-on: ubuntu-latest
+  spec_audit:
+    name: specification audit
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-
-      - name: Install repository Rust toolchain
-        run: rustc --version --verbose
-
-      - name: Generate local specification tables
+      - uses: ./.github/actions/setup-build
+        with:
+          spec-tables: "true"
+      - name: Compare fast and full PDF extraction
+        run: python scripts/generate_spec_tables.py --check-full-scan
+      - name: Audit generated tables
         run: |
-          python3 -m pip install -r scripts/requirements-spec.txt
-          python3 scripts/fetch_specs.py
-          python3 scripts/generate_spec_tables.py
-          python3 scripts/check_spec_distribution.py --generated
+          python scripts/check_sfb_tables.py
+          python scripts/check_aspx_tables.py
+          python scripts/check_ajoc_tables.py
+          python scripts/check_spec_distribution.py --generated
 
-      - name: Test on MSRV
-        run: cargo test --locked --workspace --features audio-decode
+  consistency:
+    name: consistency (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-build
+        with:
+          target: ${{ matrix.target }}
+          spec-tables: "true"
+      - name: Check frozen PCM and CLI contracts
+        run: python scripts/ci_support.py consistency --target ${{ matrix.target }}
+
+  audio_decode:
+    name: audio-decode
+    if: always()
+    needs: [audio_checks, spec_audit, consistency]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Require every audio check to succeed
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_support.py gate audio_checks spec_audit consistency
+
+  msrv:
+    name: msrv
+    if: always()
+    needs: [quality, audio_checks]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Require complete tests on the pinned MSRV
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 scripts/ci_support.py gate quality audio_checks
+          python3 scripts/ci_support.py toolchain

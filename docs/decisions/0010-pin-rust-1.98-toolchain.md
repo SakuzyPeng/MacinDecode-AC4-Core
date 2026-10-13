@@ -21,7 +21,10 @@ Rust 1.98.0 已通过默认配置、`audio-decode`、`no_std`、Rustdoc、crate 
 2. 仓库用 `rust-toolchain.toml` 精确固定 Rust 1.98.0、minimal profile、rustfmt 与
    Clippy。日常命令、CI 和 release 均服从该文件，不再单独跟随 `stable`。
 3. CI 保留独立的 `msrv` job，并使用不含版本号的稳定检查名；未来提升 MSRV 时不再迁移
-   分支保护上下文。
+   分支保护上下文。自 2026-10-12 起，该 job 校验 workspace MSRV、各 crate 的继承、
+   固定工具链与实际 rustc 一致，并要求同一工具链上的 `quality` 与 `audio_checks`
+   完整测试成功；不再另行重复生成规范表和运行同一套测试。任一依赖失败、取消或跳过
+   都使 `msrv` 失败。若以后决定将开发工具链与 MSRV 分离，须先恢复独立版本的测试。
 4. 后续 Rust 升级必须在同一变更中更新 Cargo 元数据、工具链文件、当前支持文档与 CI，
    并重新通过默认配置、`audio-decode`、`no_std`、打包和多平台 release 门禁。
 5. 编译器版本属于性能测量环境。已有 Rust 1.96 的 ADR、性能文档和实验 JSON 保持原样；

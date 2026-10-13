@@ -1,0 +1,62 @@
+name: Repository build setup
+description: Fixed toolchain, dependency downloads and optional local-only specification generation
+inputs:
+  target:
+    description: Additional Rust target
+    default: ""
+  spec-tables:
+    description: Fetch and generate specification tables on this runner
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      if: runner.os != 'Windows' || runner.arch != 'ARM64'
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      with:
+        python-version: "3.13"
+        cache: pip
+        cache-dependency-path: scripts/requirements-*.txt
+
+    # PDF wheels use the existing x64 Python workaround on Windows ARM.
+    - name: Set up x64 Python on Windows ARM
+      if: runner.os == 'Windows' && runner.arch == 'ARM64'
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      with:
+        python-version: "3.13"
+        architecture: x64
+        cache: pip
+        cache-dependency-path: scripts/requirements-*.txt
+
+    - name: Cache Cargo downloads
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/registry/src
+          ~/.cargo/git/db
+        key: cargo-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+
+    - name: Verify repository Rust toolchain
+      shell: bash
+      env:
+        BUILD_TARGET: ${{ inputs.target }}
+      run: |
+        rustc --version --verbose
+        python scripts/ci_support.py toolchain
+        if [[ -n "$BUILD_TARGET" ]]; then
+          rustup target add "$BUILD_TARGET"
+        fi
+
+    - name: Install musl tools
+      if: runner.os == 'Linux' && contains(inputs.target, '-linux-musl')
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes musl-tools
+
+    - name: Prepare local specification tables
+      if: inputs.spec-tables == 'true'
+      shell: bash
+      run: python scripts/ci_support.py prepare-spec

@@ -32,23 +32,21 @@ import re
 import sys
 from pathlib import Path
 
-from _pdf_tables import Failure, merge_cells, words_by_line
+from _pdf_tables import Failure, merge_cells, open_pdf_section, words_by_line
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PDF = REPO_ROOT / "spec" / "ts_10319001v010401p.pdf"
 GENERATED_RS = REPO_ROOT / "spec" / "generated" / "ts103190_pdf_tables.rs"
 
 
-def extract() -> dict[str, object]:
-    import pdfplumber
-
+def extract(*, full_scan: bool = False) -> dict[str, object]:
     templates: dict[str, list[int]] = {}
     start_stop: dict[str, dict[str, list[int]]] = {}
     table_189: list[tuple[int, int]] = []
     table_192: list[tuple[int, int, int]] = []
     table_194: list[tuple[int, list[int], list[int], list[int]]] = []
 
-    with pdfplumber.open(PDF) as pdf:
+    with open_pdf_section(PDF, "aspx", full_scan=full_scan) as pdf:
         for page in pdf.pages:
             text = page.extract_text() or ""
 

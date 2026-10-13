@@ -24,7 +24,7 @@ import sys
 import textwrap
 from pathlib import Path
 
-from _pdf_tables import Failure, merge_cells, words_by_line
+from _pdf_tables import Failure, merge_cells, open_pdf_section, words_by_line
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PDF = REPO_ROOT / "spec" / "ts_10319001v010401p.pdf"
@@ -58,10 +58,8 @@ def store_row(rows: dict[int, list[str]], cells: list[str]) -> None:
             rows[int(chunk[0])] = chunk[1:]
 
 
-def extract() -> tuple[dict[int, int], dict[int, list[int]]]:
-    import pdfplumber
-
-    with pdfplumber.open(PDF) as pdf:
+def extract(*, full_scan: bool = False) -> tuple[dict[int, int], dict[int, list[int]]]:
+    with open_pdf_section(PDF, "sfb", full_scan=full_scan) as pdf:
         pages = pdf.pages
         # 目录页含同样字样，故从后往前找正文标题。
         first = last = None

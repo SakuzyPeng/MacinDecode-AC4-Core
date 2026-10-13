@@ -190,6 +190,7 @@ MP4 / raw AC-4
 | [CLI 用法指南](docs/CLI_USAGE.md) | 全部 10 个子命令的完整参考 |
 | [CLI 输出契约 v1](docs/CLI_OUTPUT_CONTRACT.md) | 机器可读 JSON stdout/stderr 规范 |
 | [多平台二进制发布](docs/BINARY_RELEASE.md) | 六目标自动构建、GitHub Release 与 SHA-256 校验 |
+| [CI 与跨平台逐位回归](docs/CI.md) | 六平台 PCM 门禁、公开夹具、规范提取提速与本地运行 |
 | [crates.io 发布检查](docs/CRATES_IO_RELEASE.md) | 包元数据、归档门禁、人工发布顺序与发布后抽查 |
 | [渲染前输出契约](docs/OUTPUT_CONTRACT.md) | 场景帧语义与渲染前边界 |
 | [实施路线图](docs/ROADMAP.md) | 里程碑详情、支持矩阵、已知限制 |
