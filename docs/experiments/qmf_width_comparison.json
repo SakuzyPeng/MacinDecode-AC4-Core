@@ -1,0 +1,1236 @@
+{
+  "schema": "macinac4.qmf-width-investigation",
+  "version": 1,
+  "date": "2026-10-17",
+  "status": "observation_only",
+  "production_head": "8074a1cbb9b40e5f1fa1e6425b9a81e7a5c86106",
+  "production_dsp_changed": false,
+  "production_binary_sha256": "2654fffc3aa893c9e1427f4f9b30382e4c9ff06d85f8635dfbf43a8934a31b0f",
+  "production_source_hashes_unchanged": 190,
+  "baseline_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "2af876b199e3bb61e833ef8bb2cf12f6263de76af8ceb4469e1185aa5f91c8a3",
+    "vectors/objects_baseline.json": "6b2edae4ad105ebcc6184682e62d25b7413624b14eeae64920132b01c3a28217"
+  },
+  "baseline_reexported": false,
+  "user_file_unchanged": true,
+  "reference_captures_reused": true,
+  "new_reference_processes": 0,
+  "reference_source_evidence_sha256": {
+    "docs/experiments/asf_imdct_boundary_comparison.json": "95cfd5a1f6e51c10ff49aa11e5d85c8a94817342a263f65c5ec641718b6540a4",
+    "docs/experiments/qmf_analysis_boundary_comparison.json": "a8a1490731f2ed71d0089164f6b7d1b59f343493e091f8429b78ac9c2713389e"
+  },
+  "reference_captures": [
+    {
+      "scope": "tone",
+      "records": [
+        {
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "expected_frames": 143,
+          "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+          "adapter_sha256": "9f33402cf8ab78d2476c56a517065955e242a774603fe6d14582ae553c2819a1"
+        },
+        {
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "expected_frames": 143,
+          "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+          "adapter_sha256": "9f33402cf8ab78d2476c56a517065955e242a774603fe6d14582ae553c2819a1"
+        }
+      ]
+    },
+    {
+      "scope": "music100",
+      "records": [
+        {
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "expected_frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "25c87e5a52a0442029d35bbfd66f9aea75b4303335fb7bcb83901ad6943bc39e"
+        },
+        {
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "expected_frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "25c87e5a52a0442029d35bbfd66f9aea75b4303335fb7bcb83901ad6943bc39e"
+        }
+      ]
+    },
+    {
+      "scope": "music33",
+      "records": [
+        {
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "expected_frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "25c87e5a52a0442029d35bbfd66f9aea75b4303335fb7bcb83901ad6943bc39e"
+        },
+        {
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "expected_frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "25c87e5a52a0442029d35bbfd66f9aea75b4303335fb7bcb83901ad6943bc39e"
+        }
+      ]
+    }
+  ],
+  "conventions": {
+    "sample_rate_basis_hz": 48000,
+    "asf_delay_samples": 352,
+    "core_to_physical_input_scale": 7.62939453125e-06,
+    "raw_production_qmf_to_reference": "R64(k)/128",
+    "final_object_pcm_scale_changed": false,
+    "delta_formula": "(64/N-1)/2",
+    "phase_formula": "exp(-j*2*pi*(f-f_k)*delta_N/48000)",
+    "carrier_hz": "f_k=375*(k+0.5)",
+    "real_alignment": "fractional-delay PCM by delta_N; multiply each QMF band by exp(+j*2*pi*f_k*delta_N/48000)",
+    "fir_beta": 12,
+    "fir_radii": [
+      256,
+      512
+    ],
+    "fir_precision": "Float64 FFT and coefficients; Float32 input to production analyse",
+    "fitting": false,
+    "source_resampling_additional_lowpass": false,
+    "source_resampling_fractional_advances": [
+      0.16666666666666666,
+      0.5,
+      0.8333333333333334
+    ]
+  },
+  "coverage": {
+    "real_contexts": 30,
+    "nonzero_real_contexts": 22,
+    "real_qmf_components": 168960,
+    "aspx_links": 27,
+    "lowband_handoff_components": 73872,
+    "hf_source_components": 28728,
+    "impulse_positions": 56,
+    "measured_kernel_components": 47360,
+    "passband_frequency_band_pairs": 280,
+    "grid_cases": 16,
+    "grid_components": 86016,
+    "production_replays": 90,
+    "production_control_components": 17694720,
+    "hf_contains_full_tna_gain_or_pcm_replay": false
+  },
+  "prototype_properties": [
+    {
+      "width": 8,
+      "delta_samples_48k": 3.5,
+      "symmetry_exact": true,
+      "prototype_interpolation": {
+        "components": 80,
+        "signal_energy": 7.999999652983394,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      },
+      "measured_vs_ideal_kernel": {
+        "components": 1280,
+        "signal_energy": 0.2499999767985247,
+        "error_energy": 8.556652655878836e-16,
+        "snr_db": 144.656360655347,
+        "max_abs_error": 7.450580596923828e-09,
+        "max_relative_error_nonzero_reference": 3.7480964355228087e-06,
+        "max_ulp": 60,
+        "differing_components": 650,
+        "bit_differing_components": 654,
+        "signed_zero_only_differences": 4
+      }
+    },
+    {
+      "width": 48,
+      "delta_samples_48k": 0.16666666666666663,
+      "symmetry_exact": true,
+      "prototype_interpolation": {
+        "components": 480,
+        "signal_energy": 47.998146366617185,
+        "error_energy": 3.6932765942771253e-14,
+        "snr_db": 151.1381263199815,
+        "max_abs_error": 5.960464477539063e-08,
+        "max_relative_error_nonzero_reference": 1.181958491036145e-07,
+        "max_ulp": 1,
+        "differing_components": 66,
+        "bit_differing_components": 66,
+        "signed_zero_only_differences": 0
+      },
+      "measured_vs_ideal_kernel": {
+        "components": 46080,
+        "signal_energy": 0.24999030207475714,
+        "error_energy": 3.011081195914043e-12,
+        "snr_db": 109.19200694597954,
+        "max_abs_error": 5.320180207490921e-08,
+        "max_relative_error_nonzero_reference": 0.0014459759043185072,
+        "max_ulp": 23445,
+        "differing_components": 45041,
+        "bit_differing_components": 45079,
+        "signed_zero_only_differences": 38
+      }
+    }
+  ],
+  "passband_sweeps": [
+    {
+      "width": 8,
+      "cases": 40,
+      "offsets_hz": [
+        -187.5,
+        -93.75,
+        0.0,
+        93.75,
+        187.5
+      ],
+      "ideal_phase_residual_max_radians": 2.7309729320098564e-15,
+      "measured_phase_residual_max_radians": 1.7835172424708046e-08,
+      "measured_magnitude_ratio_range": [
+        0.9999826201407496,
+        1.0000127148677962
+      ]
+    },
+    {
+      "width": 48,
+      "cases": 240,
+      "offsets_hz": [
+        -187.5,
+        -93.75,
+        0.0,
+        93.75,
+        187.5
+      ],
+      "ideal_phase_residual_max_radians": 2.3062885079358552e-14,
+      "measured_phase_residual_max_radians": 5.9364724637491375e-06,
+      "measured_magnitude_ratio_range": [
+        0.9999550749036049,
+        0.9999995167109245
+      ]
+    }
+  ],
+  "real_qmf": [
+    {
+      "width": 8,
+      "nonzero_contexts": 2,
+      "comparisons": {
+        "base": {
+          "cases": 3,
+          "components": 3072,
+          "aggregate_snr_db": 25.551739283861718,
+          "snr_range_db": [
+            22.327556601505197,
+            25.551746755279158
+          ],
+          "max_abs_error": 8.733346840017475e-05,
+          "max_relative_error_nonzero_reference": 3129.693151875083,
+          "max_ulp": 1865323935,
+          "bit_differing_components": 2092
+        },
+        "shift256": {
+          "cases": 3,
+          "components": 3072,
+          "aggregate_snr_db": 83.4895800635799,
+          "snr_range_db": [
+            83.48957770920524,
+            85.34000223079792
+          ],
+          "max_abs_error": 4.405546327745924e-08,
+          "max_relative_error_nonzero_reference": 3219.301483003102,
+          "max_ulp": 1679267667,
+          "bit_differing_components": 2090
+        },
+        "same_source_native_operator": {
+          "cases": 3,
+          "components": 3072,
+          "aggregate_snr_db": 113.57755407120712,
+          "snr_range_db": [
+            112.91453760198502,
+            113.57755519049735
+          ],
+          "max_abs_error": 1.9186927602277137e-09,
+          "max_relative_error_nonzero_reference": 15.640042182252497,
+          "max_ulp": 1391637462,
+          "bit_differing_components": 2079
+        },
+        "short_imdct_native_operator": {
+          "cases": 3,
+          "components": 3072,
+          "aggregate_snr_db": 138.01352507427276,
+          "snr_range_db": [
+            137.4092939553666,
+            138.01352608727586
+          ],
+          "max_abs_error": 1.1641532182693481e-10,
+          "max_relative_error_nonzero_reference": 8.9220316719744,
+          "max_ulp": 27848536,
+          "bit_differing_components": 2027
+        }
+      },
+      "captured_input_operator_control": {
+        "cases": 3,
+        "components": 3072,
+        "aggregate_snr_db": 140.96420442199755,
+        "snr_range_db": [
+          140.9642043561793,
+          141.00653119472523
+        ],
+        "max_abs_error": 1.1641532182693481e-10,
+        "max_relative_error_nonzero_reference": 4.303561823863132,
+        "max_ulp": 20103081,
+        "bit_differing_components": 1961
+      },
+      "radius_convergence": {
+        "cases": 3,
+        "components": 3072,
+        "aggregate_snr_db": 142.29860555061586,
+        "snr_range_db": [
+          142.29860172623665,
+          145.8991403850306
+        ],
+        "max_abs_error": 1.1641532182693481e-10,
+        "max_relative_error_nonzero_reference": 0.26074262866382075,
+        "max_ulp": 3258188,
+        "bit_differing_components": 1947
+      },
+      "sampled_source_convergence": {
+        "cases": 3,
+        "components": 3072,
+        "aggregate_snr_db": 135.93215299862305,
+        "snr_range_db": [
+          135.93215266296815,
+          136.1524535463771
+        ],
+        "max_abs_error": 2.874003257602453e-10,
+        "max_relative_error_nonzero_reference": 0.336050833049983,
+        "max_ulp": 4531212,
+        "bit_differing_components": 1977
+      },
+      "source_sampling": {
+        "cases": 3,
+        "components": 1536,
+        "aggregate_snr_db": 114.5005913633098,
+        "snr_range_db": [
+          112.94215791027744,
+          114.5005937467823
+        ],
+        "max_abs_error": 3.282912075519562e-08,
+        "max_relative_error_nonzero_reference": 6.39101333054031e-05,
+        "max_ulp": 745,
+        "bit_differing_components": 1230
+      },
+      "short_source_control": {
+        "cases": 3,
+        "components": 1536,
+        "aggregate_snr_db": 140.41836480283965,
+        "snr_range_db": [
+          140.31911332590192,
+          140.41836493047808
+        ],
+        "max_abs_error": 4.656612873077393e-10,
+        "max_relative_error_nonzero_reference": 2.8708525339636508e-05,
+        "max_ulp": 431,
+        "bit_differing_components": 795
+      }
+    },
+    {
+      "width": 48,
+      "nonzero_contexts": 20,
+      "comparisons": {
+        "base": {
+          "cases": 27,
+          "components": 165888,
+          "aggregate_snr_db": 56.22989959251314,
+          "snr_range_db": [
+            50.402564527398354,
+            57.018095047888046
+          ],
+          "max_abs_error": 4.5761000365018845e-05,
+          "max_relative_error_nonzero_reference": 5232.049730185495,
+          "max_ulp": 1843417715,
+          "bit_differing_components": 123186
+        },
+        "shift256": {
+          "cases": 27,
+          "components": 165888,
+          "aggregate_snr_db": 93.31182710956654,
+          "snr_range_db": [
+            82.9842975113143,
+            94.19130403923418
+          ],
+          "max_abs_error": 6.28642737865448e-07,
+          "max_relative_error_nonzero_reference": 3725.194245855228,
+          "max_ulp": 1712527455,
+          "bit_differing_components": 123139
+        },
+        "same_source_native_operator": {
+          "cases": 27,
+          "components": 165888,
+          "aggregate_snr_db": 113.14362698499363,
+          "snr_range_db": [
+            80.72796686371157,
+            119.29180389480896
+          ],
+          "max_abs_error": 5.8396835811436176e-08,
+          "max_relative_error_nonzero_reference": 1902.0195760078454,
+          "max_ulp": 1706810067,
+          "bit_differing_components": 122120
+        },
+        "short_imdct_native_operator": {
+          "cases": 27,
+          "components": 165888,
+          "aggregate_snr_db": 124.17897079466343,
+          "snr_range_db": [
+            117.73326561729075,
+            125.27377510710346
+          ],
+          "max_abs_error": 1.2223608791828156e-08,
+          "max_relative_error_nonzero_reference": 351.71452154428994,
+          "max_ulp": 1642404928,
+          "bit_differing_components": 120953
+        }
+      },
+      "captured_input_operator_control": {
+        "cases": 27,
+        "components": 165888,
+        "aggregate_snr_db": 138.72478716721608,
+        "snr_range_db": [
+          138.19542277765896,
+          139.2565797761065
+        ],
+        "max_abs_error": 3.725290298461914e-09,
+        "max_relative_error_nonzero_reference": 105.26397717197457,
+        "max_ulp": 1597945361,
+        "bit_differing_components": 110726
+      },
+      "radius_convergence": {
+        "cases": 27,
+        "components": 165888,
+        "aggregate_snr_db": 148.11733429166856,
+        "snr_range_db": [
+          145.43929089957504,
+          150.19040085108725
+        ],
+        "max_abs_error": 1.862645149230957e-09,
+        "max_relative_error_nonzero_reference": 13.78257475432035,
+        "max_ulp": 1554031031,
+        "bit_differing_components": 97558
+      },
+      "sampled_source_convergence": {
+        "cases": 27,
+        "components": 165888,
+        "aggregate_snr_db": 142.46520111689017,
+        "snr_range_db": [
+          109.58625069010081,
+          145.42947704077562
+        ],
+        "max_abs_error": 5.042238626629114e-09,
+        "max_relative_error_nonzero_reference": 199.23191500407037,
+        "max_ulp": 1560512447,
+        "bit_differing_components": 102428
+      },
+      "source_sampling": {
+        "cases": 27,
+        "components": 82944,
+        "aggregate_snr_db": 110.59382407770734,
+        "snr_range_db": [
+          80.72811755608221,
+          119.22355949512861
+        ],
+        "max_abs_error": 4.695728421211243e-06,
+        "max_relative_error_nonzero_reference": 0.5528646629820135,
+        "max_ulp": 5953018,
+        "bit_differing_components": 70777
+      },
+      "short_source_control": {
+        "cases": 27,
+        "components": 82944,
+        "aggregate_snr_db": 123.97629756195997,
+        "snr_range_db": [
+          120.40927993721218,
+          125.53191824493044
+        ],
+        "max_abs_error": 1.4901161193847656e-07,
+        "max_relative_error_nonzero_reference": 0.027717161737606792,
+        "max_ulp": 350793,
+        "bit_differing_components": 58614
+      }
+    }
+  ],
+  "hf_sources": [
+    {
+      "scope": "tone",
+      "source_band_sets": [
+        [
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ]
+      ],
+      "comparisons": {
+        "base": {
+          "cases": 9,
+          "components": 12312,
+          "aggregate_snr_db": 53.95410005281316,
+          "snr_range_db": [
+            53.95360594768398,
+            57.07046460553955
+          ],
+          "max_abs_error": 9.337384199170629e-09,
+          "max_relative_error_nonzero_reference": 433.9421079570832,
+          "max_ulp": 1377181976,
+          "bit_differing_components": 2736
+        },
+        "shift256": {
+          "cases": 9,
+          "components": 12312,
+          "aggregate_snr_db": 89.68762805370217,
+          "snr_range_db": [
+            89.68716255440233,
+            92.54782083649579
+          ],
+          "max_abs_error": 1.4506440493278205e-10,
+          "max_relative_error_nonzero_reference": 109.92092210489253,
+          "max_ulp": 1379524048,
+          "bit_differing_components": 2733
+        },
+        "same_source_native_operator": {
+          "cases": 9,
+          "components": 12312,
+          "aggregate_snr_db": 85.91448320608575,
+          "snr_range_db": [
+            83.80270806324269,
+            85.9150875344693
+          ],
+          "max_abs_error": 2.842170943040401e-10,
+          "max_relative_error_nonzero_reference": 45.25258056547946,
+          "max_ulp": 1407603823,
+          "bit_differing_components": 2696
+        },
+        "short_imdct_native_operator": {
+          "cases": 9,
+          "components": 12312,
+          "aggregate_snr_db": 127.094746632362,
+          "snr_range_db": [
+            122.92974985624888,
+            127.09629971898008
+          ],
+          "max_abs_error": 1.4779288903810084e-12,
+          "max_relative_error_nonzero_reference": 7.432169345978425,
+          "max_ulp": 1309713637,
+          "bit_differing_components": 2634
+        }
+      },
+      "resampling_radius_convergence": {
+        "cases": 9,
+        "components": 12312,
+        "aggregate_snr_db": 109.46980154687554,
+        "snr_range_db": [
+          107.36566054270762,
+          109.47040308640942
+        ],
+        "max_abs_error": 1.432454155292362e-11,
+        "max_relative_error_nonzero_reference": 1.5097301477609537,
+        "max_ulp": 12869890,
+        "bit_differing_components": 1753
+      }
+    },
+    {
+      "scope": "music100",
+      "source_band_sets": [
+        [
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ]
+      ],
+      "comparisons": {
+        "base": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 51.32285807971738,
+          "snr_range_db": [
+            50.92304083930756,
+            51.49325720969786
+          ],
+          "max_abs_error": 4.487024853006005e-06,
+          "max_relative_error_nonzero_reference": 3.97266415230259,
+          "max_ulp": 1776385221,
+          "bit_differing_components": 8208
+        },
+        "shift256": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 72.09412901925779,
+          "snr_range_db": [
+            64.19522992162942,
+            74.92149320654906
+          ],
+          "max_abs_error": 3.2663228921592236e-07,
+          "max_relative_error_nonzero_reference": 3.5089498592761235,
+          "max_ulp": 1653532343,
+          "bit_differing_components": 8208
+        },
+        "same_source_native_operator": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 96.20502147344496,
+          "snr_range_db": [
+            84.68163341012753,
+            102.10610938530837
+          ],
+          "max_abs_error": 3.5393895814195275e-08,
+          "max_relative_error_nonzero_reference": 0.07906966379641747,
+          "max_ulp": 991003,
+          "bit_differing_components": 8177
+        },
+        "short_imdct_native_operator": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 105.82618981222765,
+          "snr_range_db": [
+            96.89158214850964,
+            110.3139211992364
+          ],
+          "max_abs_error": 6.963091436773539e-09,
+          "max_relative_error_nonzero_reference": 0.039629693534669067,
+          "max_ulp": 636671,
+          "bit_differing_components": 8180
+        }
+      },
+      "resampling_radius_convergence": {
+        "cases": 9,
+        "components": 8208,
+        "aggregate_snr_db": 118.42688997531985,
+        "snr_range_db": [
+          108.71187922279117,
+          120.77876008251926
+        ],
+        "max_abs_error": 5.042238626629114e-09,
+        "max_relative_error_nonzero_reference": 0.0016893388412381985,
+        "max_ulp": 25399,
+        "bit_differing_components": 7654
+      }
+    },
+    {
+      "scope": "music33",
+      "source_band_sets": [
+        [
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ]
+      ],
+      "comparisons": {
+        "base": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 51.40319140951843,
+          "snr_range_db": [
+            51.03773596013512,
+            52.09400844790483
+          ],
+          "max_abs_error": 9.447627235203981e-06,
+          "max_relative_error_nonzero_reference": 2.2760776003799643,
+          "max_ulp": 1717596595,
+          "bit_differing_components": 8208
+        },
+        "shift256": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 85.99105298040564,
+          "snr_range_db": [
+            85.10791392671167,
+            88.1571734533222
+          ],
+          "max_abs_error": 2.20548827201128e-07,
+          "max_relative_error_nonzero_reference": 0.086186391802504,
+          "max_ulp": 815791,
+          "bit_differing_components": 8203
+        },
+        "same_source_native_operator": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 107.1119988446047,
+          "snr_range_db": [
+            106.41171017665718,
+            115.15366870775836
+          ],
+          "max_abs_error": 2.7241185307502747e-08,
+          "max_relative_error_nonzero_reference": 0.017765763644598927,
+          "max_ulp": 178073,
+          "bit_differing_components": 8048
+        },
+        "short_imdct_native_operator": {
+          "cases": 9,
+          "components": 8208,
+          "aggregate_snr_db": 120.93212980997579,
+          "snr_range_db": [
+            119.13886337394877,
+            126.76041161690499
+          ],
+          "max_abs_error": 4.167304723523557e-09,
+          "max_relative_error_nonzero_reference": 0.0015016005992446642,
+          "max_ulp": 15494,
+          "bit_differing_components": 7838
+        }
+      },
+      "resampling_radius_convergence": {
+        "cases": 9,
+        "components": 8208,
+        "aggregate_snr_db": 132.9695525275068,
+        "snr_range_db": [
+          130.72638494085868,
+          139.02855108762597
+        ],
+        "max_abs_error": 1.2514647096395493e-09,
+        "max_relative_error_nonzero_reference": 0.00013612486621955363,
+        "max_ulp": 1604,
+        "bit_differing_components": 5534
+      }
+    }
+  ],
+  "hf_power": [
+    {
+      "scope": "tone",
+      "stage": "base",
+      "nonzero_contexts": 2,
+      "relative_power_error_norm_range": [
+        0.0029616488768410133,
+        0.0034194174972737913
+      ],
+      "aggregate_power_bias_range": [
+        -3.7609513179658674e-06,
+        1.2457865370840732e-05
+      ]
+    },
+    {
+      "scope": "tone",
+      "stage": "shift256",
+      "nonzero_contexts": 2,
+      "relative_power_error_norm_range": [
+        1.3250104213329686e-05,
+        2.5205775265681408e-05
+      ],
+      "aggregate_power_bias_range": [
+        3.1580784730869543e-06,
+        1.419369838538072e-05
+      ]
+    },
+    {
+      "scope": "tone",
+      "stage": "same_source_native_operator",
+      "nonzero_contexts": 2,
+      "relative_power_error_norm_range": [
+        8.492597858750951e-06,
+        0.00010246377953758525
+      ],
+      "aggregate_power_bias_range": [
+        -3.210193789863749e-06,
+        5.038439917711674e-05
+      ]
+    },
+    {
+      "scope": "tone",
+      "stage": "short_imdct_native_operator",
+      "nonzero_contexts": 2,
+      "relative_power_error_norm_range": [
+        2.0752461614290717e-07,
+        8.320194440095998e-07
+      ],
+      "aggregate_power_bias_range": [
+        -7.088184717724018e-07,
+        9.494046719519615e-09
+      ]
+    },
+    {
+      "scope": "music100",
+      "stage": "base",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        0.0019963787358888625,
+        0.002756825396905433
+      ],
+      "aggregate_power_bias_range": [
+        8.805598907365323e-05,
+        0.00014407604833613773
+      ]
+    },
+    {
+      "scope": "music100",
+      "stage": "shift256",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        0.0001266220065128878,
+        0.00046995947281629864
+      ],
+      "aggregate_power_bias_range": [
+        3.931547041638563e-05,
+        6.38616398550295e-05
+      ]
+    },
+    {
+      "scope": "music100",
+      "stage": "same_source_native_operator",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        5.388456043323915e-06,
+        8.343330836471129e-05
+      ],
+      "aggregate_power_bias_range": [
+        -2.0951985210138613e-05,
+        3.879387197772999e-07
+      ]
+    },
+    {
+      "scope": "music100",
+      "stage": "short_imdct_native_operator",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        2.5589749177121137e-06,
+        1.1358537148746547e-05
+      ],
+      "aggregate_power_bias_range": [
+        -3.4486517364355443e-06,
+        1.0205027765427062e-07
+      ]
+    },
+    {
+      "scope": "music33",
+      "stage": "base",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        0.0020355324538339947,
+        0.0025248076312028764
+      ],
+      "aggregate_power_bias_range": [
+        9.858340397565352e-05,
+        0.00016898388052022267
+      ]
+    },
+    {
+      "scope": "music33",
+      "stage": "shift256",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        4.11224292224362e-05,
+        6.488008885396772e-05
+      ],
+      "aggregate_power_bias_range": [
+        3.765732145445794e-05,
+        4.6588498539843524e-05
+      ]
+    },
+    {
+      "scope": "music33",
+      "stage": "same_source_native_operator",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        1.36253503266869e-06,
+        3.613823690668957e-06
+      ],
+      "aggregate_power_bias_range": [
+        3.967101527696647e-07,
+        1.6642391834965123e-06
+      ]
+    },
+    {
+      "scope": "music33",
+      "stage": "short_imdct_native_operator",
+      "nonzero_contexts": 9,
+      "relative_power_error_norm_range": [
+        2.875222272618834e-07,
+        7.548090082073345e-07
+      ],
+      "aggregate_power_bias_range": [
+        -2.2749372217080299e-07,
+        1.1181336710816032e-07
+      ]
+    }
+  ],
+  "grids": [
+    {
+      "width": 8,
+      "centered": false,
+      "comparisons": {
+        "base": {
+          "cases": 2,
+          "components": 2048,
+          "aggregate_snr_db": 8.1122552837706,
+          "snr_range_db": [
+            6.9215788421443705,
+            9.75854273850662
+          ],
+          "max_abs_error": 0.014804259408265352,
+          "max_relative_error_nonzero_reference": 57.81902822903776,
+          "max_ulp": 2009420085,
+          "bit_differing_components": 2048
+        },
+        "phase_only": {
+          "cases": 2,
+          "components": 2048,
+          "aggregate_snr_db": 87.34761194762143,
+          "snr_range_db": [
+            85.13278530949712,
+            92.09854893005911
+          ],
+          "max_abs_error": 1.8531146679379162e-06,
+          "max_relative_error_nonzero_reference": 12.448624237156091,
+          "max_ulp": 1777171672,
+          "bit_differing_components": 2048
+        },
+        "impulse_operator": {
+          "cases": 2,
+          "components": 2048,
+          "aggregate_snr_db": 140.06844893906225,
+          "snr_range_db": [
+            139.38187061498203,
+            140.88453971093537
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 0.030000819303993176,
+          "max_ulp": 352626,
+          "bit_differing_components": 1688
+        }
+      }
+    },
+    {
+      "width": 8,
+      "centered": true,
+      "comparisons": {
+        "base": {
+          "cases": 2,
+          "components": 2048,
+          "aggregate_snr_db": 25.984990425093784,
+          "snr_range_db": [
+            25.00052700405382,
+            27.260279657311624
+          ],
+          "max_abs_error": 0.0019079465419054031,
+          "max_relative_error_nonzero_reference": 24.548760917955477,
+          "max_ulp": 1951031178,
+          "bit_differing_components": 2048
+        },
+        "phase_only": {
+          "cases": 2,
+          "components": 2048,
+          "aggregate_snr_db": 87.23016600720436,
+          "snr_range_db": [
+            85.07049606270192,
+            91.71960603587587
+          ],
+          "max_abs_error": 1.965568344530766e-06,
+          "max_relative_error_nonzero_reference": 30.25504381878705,
+          "max_ulp": 1777822612,
+          "bit_differing_components": 2048
+        },
+        "impulse_operator": {
+          "cases": 2,
+          "components": 2048,
+          "aggregate_snr_db": 140.24899854061601,
+          "snr_range_db": [
+            139.88042380351544,
+            140.65172880712453
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 0.03712344982372769,
+          "max_ulp": 531709,
+          "bit_differing_components": 1611
+        }
+      }
+    },
+    {
+      "width": 48,
+      "centered": false,
+      "comparisons": {
+        "base": {
+          "cases": 4,
+          "components": 24576,
+          "aggregate_snr_db": 20.200927971874574,
+          "snr_range_db": [
+            16.11320280113039,
+            36.03009841335934
+          ],
+          "max_abs_error": 0.003998500294983387,
+          "max_relative_error_nonzero_reference": 86.07956164254541,
+          "max_ulp": 1961195236,
+          "bit_differing_components": 24576
+        },
+        "phase_only": {
+          "cases": 4,
+          "components": 24576,
+          "aggregate_snr_db": 86.46395625446111,
+          "snr_range_db": [
+            84.46869193405036,
+            91.2148685672613
+          ],
+          "max_abs_error": 1.4975666999816895e-06,
+          "max_relative_error_nonzero_reference": 70.87419093961039,
+          "max_ulp": 1768504194,
+          "bit_differing_components": 24576
+        },
+        "impulse_operator": {
+          "cases": 4,
+          "components": 24576,
+          "aggregate_snr_db": 138.3240279512352,
+          "snr_range_db": [
+            137.5552984084156,
+            139.6789981600803
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 3.5872604993763444,
+          "max_ulp": 1607848593,
+          "bit_differing_components": 23718
+        }
+      }
+    },
+    {
+      "width": 48,
+      "centered": true,
+      "comparisons": {
+        "base": {
+          "cases": 4,
+          "components": 24576,
+          "aggregate_snr_db": 49.49757823214743,
+          "snr_range_db": [
+            47.76351499981396,
+            53.701274775097254
+          ],
+          "max_abs_error": 0.00012273993343114853,
+          "max_relative_error_nonzero_reference": 246.8000451710898,
+          "max_ulp": 1768443113,
+          "bit_differing_components": 24576
+        },
+        "phase_only": {
+          "cases": 4,
+          "components": 24576,
+          "aggregate_snr_db": 86.46140426621456,
+          "snr_range_db": [
+            84.44703017774573,
+            91.21786506654472
+          ],
+          "max_abs_error": 1.51805579662323e-06,
+          "max_relative_error_nonzero_reference": 23509.89685280511,
+          "max_ulp": 1768605421,
+          "bit_differing_components": 24576
+        },
+        "impulse_operator": {
+          "cases": 4,
+          "components": 24576,
+          "aggregate_snr_db": 139.16186155240828,
+          "snr_range_db": [
+            137.88313397631504,
+            142.08139242451807
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 897.0065810907669,
+          "max_ulp": 1598666211,
+          "bit_differing_components": 23518
+        }
+      }
+    },
+    {
+      "width": 64,
+      "centered": false,
+      "comparisons": {
+        "base": {
+          "cases": 4,
+          "components": 32768,
+          "aggregate_snr_db": 138.83406102047564,
+          "snr_range_db": [
+            138.5283021871051,
+            139.13071812546102
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 13.330380265883978,
+          "max_ulp": 1611317215,
+          "bit_differing_components": 31723
+        },
+        "phase_only": {
+          "cases": 4,
+          "components": 32768,
+          "aggregate_snr_db": 138.83406102047564,
+          "snr_range_db": [
+            138.5283021871051,
+            139.13071812546102
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 13.330380265883978,
+          "max_ulp": 1611317215,
+          "bit_differing_components": 31723
+        },
+        "impulse_operator": {
+          "cases": 4,
+          "components": 32768,
+          "aggregate_snr_db": 138.83406102047564,
+          "snr_range_db": [
+            138.5283021871051,
+            139.13071812546102
+          ],
+          "max_abs_error": 3.725290298461914e-09,
+          "max_relative_error_nonzero_reference": 13.330380265883978,
+          "max_ulp": 1611317215,
+          "bit_differing_components": 31723
+        }
+      }
+    }
+  ],
+  "fir_checks": [
+    {
+      "width": 8,
+      "radius": 256,
+      "taps": 513,
+      "max_complex_error_0_to_18khz": 1.4699419106760054e-07,
+      "max_gain_error_0_to_18khz": 1.3751407024198414e-07
+    },
+    {
+      "width": 8,
+      "radius": 512,
+      "taps": 1025,
+      "max_complex_error_0_to_18khz": 7.930409451659623e-08,
+      "max_gain_error_0_to_18khz": 7.394488088507956e-08
+    },
+    {
+      "width": 48,
+      "radius": 256,
+      "taps": 513,
+      "max_complex_error_0_to_18khz": 7.375223736127104e-08,
+      "max_gain_error_0_to_18khz": 2.820885014465091e-08
+    },
+    {
+      "width": 48,
+      "radius": 512,
+      "taps": 1025,
+      "max_complex_error_0_to_18khz": 3.9544561420702634e-08,
+      "max_gain_error_0_to_18khz": 1.510247993330438e-08
+    },
+    {
+      "role": "centered_source_sampling",
+      "delta_samples": -0.16666666666666666,
+      "radius": 256,
+      "taps": 513,
+      "max_complex_error_0_to_18khz": 7.375223719468901e-08,
+      "max_gain_error_0_to_18khz": 2.8208850366695515e-08
+    },
+    {
+      "role": "centered_source_sampling",
+      "delta_samples": -0.16666666666666666,
+      "radius": 512,
+      "taps": 1025,
+      "max_complex_error_0_to_18khz": 3.9544561753769534e-08,
+      "max_gain_error_0_to_18khz": 1.5102480155348985e-08
+    },
+    {
+      "role": "centered_source_sampling",
+      "delta_samples": -0.5,
+      "radius": 256,
+      "taps": 513,
+      "max_complex_error_0_to_18khz": 1.474205183336339e-07,
+      "max_gain_error_0_to_18khz": 1.3618445815488656e-07
+    },
+    {
+      "role": "centered_source_sampling",
+      "delta_samples": -0.5,
+      "radius": 512,
+      "taps": 1025,
+      "max_complex_error_0_to_18khz": 7.911322359195779e-08,
+      "max_gain_error_0_to_18khz": 7.300870508153423e-08
+    },
+    {
+      "role": "centered_source_sampling",
+      "delta_samples": -0.8333333333333334,
+      "radius": 256,
+      "taps": 513,
+      "max_complex_error_0_to_18khz": 7.36798615097328e-08,
+      "max_gain_error_0_to_18khz": 6.805648544716547e-08
+    },
+    {
+      "role": "centered_source_sampling",
+      "delta_samples": -0.8333333333333334,
+      "radius": 512,
+      "taps": 1025,
+      "max_complex_error_0_to_18khz": 3.956627886192171e-08,
+      "max_gain_error_0_to_18khz": 3.662970327056314e-08
+    }
+  ],
+  "production_model_control": {
+    "cases": 90,
+    "components": 17694720,
+    "aggregate_snr_db": 146.3580030974072,
+    "snr_range_db": [
+      145.65235017935598,
+      149.6337586684071
+    ],
+    "max_abs_error": 3.725290298461914e-09,
+    "max_relative_error_nonzero_reference": 84770.06972509302,
+    "max_ulp": 1575899110,
+    "bit_differing_components": 14735748
+  },
+  "decomposition_closure_max_abs": 3.3881317890172014e-21,
+  "validation": {
+    "new_python_tests": 16,
+    "related_python_tests": 92,
+    "rustfmt": true,
+    "layer_audit": true,
+    "diff_check": true,
+    "base_replays_bit_equal_after_fir_precision_normalization": true
+  },
+  "artifacts": {
+    "comparison_sha256": "934145cb5e6977d7cac46c2289aa5731dd93d76257d091894a91e6ee4ed2278a",
+    "manifest_sha256": "f9e0a7a4f6a6337386a09d0861ff3a1c3e00ce3669ec5029effec22831e707d6",
+    "file_hash_manifest_sha256": "e30d21637ef2d8c10e250abbc5c82f645d1abea7d926c32ec8522c0554046cc9",
+    "public_checker_sha256": "956e8d072fa1e0690a82b2cc9e140738fe2bff2c7a966de720828b2f29214fd8",
+    "production_replay_helper_sha256": "f6bdf0816e065f0c7eafce8e60ebf3923230f621bad174a63c4a1dcb12f98440",
+    "linked_decode_rlib_sha256": "39da512c7d8d4088f1dd13f7cfa3655c544dc9014efd38f1b4d4afe50088ef6e",
+    "python_version": "3.13.2",
+    "numpy_version": "2.3.2"
+  },
+  "limitations": [
+    "所有 SNR 均属于内部 QMF 或源带比较，不是端到端对象 PCM 修复收益。",
+    "时间中心关系的精确推导使用理想调制；测得原语另保留旋转表和 FFT 的数值偏差。",
+    "固定插值只定义诊断中的公共物理输入；较短 IMDCT 的直接输出不等于对完整 PCM 任意重采样。",
+    "同源算子变更会在纯音案例上使残差增大；误差分量存在抵消，不能相加各段 SNR。",
+    "弱 HF 源带的 SNR 不能用全带平均值代替；近零值处的大相对误差和 ULP 全部保留。",
+    "此前纯音清零重放的捕获限制沿用原报告，本轮没有补采或将其标成已解决。",
+    "未改变生产相位、音调初相、预平坦化或 limiter 策略；尚未测量实际对象 PCM A/B。"
+  ],
+  "reference_runtime": {
+    "name": "DRP",
+    "version": "4.3.0.19350",
+    "arch": "arm64",
+    "sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d"
+  }
+}
