@@ -172,3 +172,8 @@ python3 -m unittest scripts/test_check_qmf_analysis_checkpoints.py
 
 下一步从该分析输入向前追到 **ASF／IMDCT 输出及其采样网格**，同时取得本地 QMF 前的 PCM
 和必要历史。先完成这一层的真实同输入对照，再裁决生产 QMF 基底和音调初相。
+
+同日后续的 [ASF／IMDCT 对照](ASF_IMDCT_BOUNDARY_INVESTIGATION.md)已固定这个来源：较短
+变换、按原始块长归一化的频谱、居中窗取样及 352 样本延迟，可以数值级精度解释真实分析
+输入。下一步回到相同物理输入上的 8／48 与 64 宽分析器比较，不能把较短 IMDCT 的可解释性
+直接当成两种 QMF 已经等价。

@@ -2069,6 +2069,15 @@ last，先按 `next=(last+1)%4` 对齐表示；40 个短时隙探针确认推进
 生产数值代码与基线保持不变，见[分析边界报告](QMF_ANALYSIS_BOUNDARY_INVESTIGATION.md)及
 [机器记录](experiments/qmf_analysis_boundary_comparison.json)。
 
+**同日 ASF／IMDCT 检查点补充。** P1 `5.5.2–5.5.3` 的频谱、窗口和重叠时间轴已与实际
+分析入口独立核对。参考使用较短变换，原语输入按原始块长 M 采用
+`X_ref = X_local/(M*65536)`；居中采样、窗口与表 188 的 352 样本延迟能解释已测真实 PCM。
+频谱约 146 dB、PCM 约 120–140 dB SNR，82 次原生变换重放逐位一致；数学余弦模型的主要
+细差在非二次幂 FFT 步骤。它未证明不同宽度 QMF 的全链等价，不改 ADR-0006 的生产尺度或
+P65/P66、P105 的既有裁决。范围、无效工作区清零的覆盖限制及失败捕获见
+[ASF／IMDCT 报告](ASF_IMDCT_BOUNDARY_INVESTIGATION.md)和
+[机器记录](experiments/asf_imdct_boundary_comparison.json)。
+
 **裁决时的规矩**（`docs/TEST_VECTOR_STRATEGY.md` 9.2）：参考解码器是参照物而非真理，三方不一致时以规范裁决。上表任一条与参考解码器冲突时，正确处理是回到条款重新论证，而不是直接改成参考解码器的行为——否则等于把某个实现的行为当成规范。
 
 **新增判读要同步登记此表。** 判读散落在各模块文档里时，接 oracle 的那一步只能靠回忆，而回忆会漏。

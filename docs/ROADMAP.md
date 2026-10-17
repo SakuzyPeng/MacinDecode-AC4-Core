@@ -81,11 +81,16 @@ Core 基线不变，A-SPX/objects 各 9 条摘要有意更新，三层 36 条复
 数值残差也已分开。公共波形的半采样网格仍未达到等价，下一处缺口是 QMF 之前的真实 PCM
 采样位置与历史。生产代码、二进制和基线摘要保持不变。
 
+同日的 [ASF／IMDCT 对照](ASF_IMDCT_BOUNDARY_INVESTIGATION.md)继续固定了这一入口：参考采用
+较短变换，按原始块长统一频谱尺度后约 146 dB SNR；82 次原生变换重放逐位一致。居中采样
+网格、窗和固定 352 样本延迟能以约 120–140 dB SNR 解释实际 QMF 输入。较大的数值残差已
+分离到非二次幂 FFT；新纯音清零对照未通过完整捕获门禁，另行保留。生产与基线未改。
+
 下一阶段按以下顺序推进：
 
-1. 先核对本地 QMF 前的 48 kHz PCM 与参考内部 6／36 kHz PCM 的采样网格和历史，追到 ASF／IMDCT 输出，再裁决 QMF 基底与音调初相，并独立核对预平坦化，
-   依据已固定的[相位比较契约](ASPX_PHASE_CONTRACT.md)继续裁决生产相位/初相，并用有效 limiter=0
-   材料核对包络路径；避免把参考拟合方案整体当作修复。
+1. 以已经固定的真实 ASF 输入、采样网格和历史为基准，比较 8／48 与 64 子带 QMF 的作用，
+   追踪其差异怎样进入 HF 源子带。按[相位比较契约](ASPX_PHASE_CONTRACT.md)再裁决基底、
+   音调初相与预平坦化；FFT 细差和纯音清零捕获分别保留，不把联合参考拟合方案整体当作修复。
 2. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
    [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →
    scene 单向边界；后续重构不得混入数值变化。
