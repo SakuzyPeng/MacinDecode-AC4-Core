@@ -231,6 +231,9 @@ fn scale(value: Coefficient, factor: f32) -> Coefficient {
 }
 
 #[cfg(test)]
+mod basis_replay_tests;
+
+#[cfg(test)]
 #[expect(
     clippy::float_cmp,
     reason = "判据取的都是在 f32 上精确可表示的值，容差会让它们变松"

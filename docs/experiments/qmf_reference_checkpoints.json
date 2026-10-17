@@ -1,0 +1,586 @@
+{
+  "schema": "macinac4.qmf-reference-checkpoints",
+  "version": 1,
+  "recorded_on": "2026-10-04",
+  "base_commit": "a1410f01ee30e006f938472be9ebbcd341ffb4a3",
+  "runtime": {
+    "profile": "DRP 4.3.0.19350 arm64",
+    "executable_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d"
+  },
+  "scope": "Selected QMF boundaries and isolated 64-band QMF primitives; not all AC-4 or A-SPX stages",
+  "production_dsp_changed": false,
+  "baseline_changed": false,
+  "private_artifacts_directory": "tmp/drp_pcm_crosscheck/internal_capture",
+  "fixed_comparison": {
+    "omega_k": "pi*(k+0.5)/64",
+    "R_k": "-exp(j*omega_k/2)",
+    "reference_analysis": "R_k * local_raw_analysis / 128",
+    "reference_synthesis": "64 * local_raw_synthesis(reference_qmf / R_k)",
+    "local_functions": [
+      "analyse",
+      "synthesise"
+    ],
+    "fitted_coefficients_used_in_confirmation": false,
+    "band_mask": null,
+    "delay_search": false,
+    "local_history": "Feed the complete captured preceding AU (32 slots) into a zero-initialized local synthesis filter. This exceeds its finite memory; compare every sample of the next AU. Reference replay restores the captured native history exactly."
+  },
+  "isolated_qmf": {
+    "initial_discovery_cases": 6,
+    "confirmation_cases": 196,
+    "captures": [
+      {
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "expected_frames": 143,
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+        "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "adapter_sha256": "e90b6ec50ae9585ed8c07d11226b689ca997f56a0c1cd4d0499054d484185c98",
+        "rejected_attempts": 0,
+        "accepted_attempt": 0
+      },
+      {
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "expected_frames": 143,
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+        "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "adapter_sha256": "e90b6ec50ae9585ed8c07d11226b689ca997f56a0c1cd4d0499054d484185c98",
+        "rejected_attempts": 0,
+        "accepted_attempt": 0
+      }
+    ],
+    "analysis": {
+      "cases": 66,
+      "unit_basis_cases": 64,
+      "random_holdout_cases": 2,
+      "random_seeds": [
+        847012,
+        419284
+      ],
+      "basis_slots": 24,
+      "random_slots": 128,
+      "snr_db_min": 139.6010082938889,
+      "snr_db_max": 149.6850095111771,
+      "max_abs_error": 7.238435022966321e-09,
+      "repeat_bit_exact": true,
+      "sorted_output_hash_list_sha256": "d21c0a12b2e1f4ce03a877ef1e74c6b2427885b3f36f71969ae9dac7cbac5536"
+    },
+    "synthesis": {
+      "cases": 130,
+      "unit_basis_cases": 128,
+      "random_holdout_cases": 2,
+      "random_seeds": [
+        847012,
+        419284
+      ],
+      "basis_slots": 24,
+      "random_slots": 128,
+      "snr_db_min": 138.6485709959336,
+      "snr_db_max": 148.9144482247785,
+      "max_abs_error": 1.430511474609375e-06,
+      "repeat_bit_exact": true,
+      "sorted_output_hash_list_sha256": "85c816e02d9ec3a02cb775daee2e5d7f18cbfa8b69f08987d1bb3a39a9e70945"
+    },
+    "guards_and_finite_checks": true,
+    "schedule": "After exporting all PCM and closing the full decoder; independent module state and buffers"
+  },
+  "live": {
+    "tone": {
+      "captures": [
+        {
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "expected_frames": 143,
+          "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+          "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+          "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+          "adapter_sha256": "ebf195f6adb305c21e7aa6290bf0ec464b926af9c814d5c38b1db3f01bc732ba",
+          "rejected_attempts": 0,
+          "accepted_attempt": 0
+        },
+        {
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "expected_frames": 143,
+          "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+          "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+          "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+          "adapter_sha256": "ebf195f6adb305c21e7aa6290bf0ec464b926af9c814d5c38b1db3f01bc732ba",
+          "rejected_attempts": 0,
+          "accepted_attempt": 0
+        }
+      ],
+      "first_au": 7,
+      "last_au": 8,
+      "shape": {
+        "qmf": [
+          21,
+          64,
+          64,
+          2
+        ],
+        "modulated": [
+          21,
+          64,
+          128
+        ],
+        "pcm": [
+          21,
+          64,
+          64
+        ],
+        "history_before": [
+          21,
+          576
+        ],
+        "history_after": [
+          21,
+          576
+        ]
+      },
+      "dtype": "little-endian float32",
+      "qmf_component_order": [
+        "real",
+        "imag"
+      ],
+      "nonzero_channels_in_compared_au": 1,
+      "repeat_bit_exact": true,
+      "reference_replay": {
+        "pcm_mismatches": 0,
+        "state_mismatches": 0,
+        "modulation_mismatches": 0,
+        "samples": 86016
+      },
+      "local_replay": {
+        "compared_au": 8,
+        "warmup_au": 7,
+        "samples": 43008,
+        "snr_db": 140.41870589681918,
+        "max_abs_error": 2.9802322387695312e-08,
+        "reference_peak": 0.16634662449359894,
+        "per_channel": [
+          {
+            "channel": 0,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 1,
+            "signal_energy": 1.907247091920869,
+            "error_energy": 1.7319540739624906e-14,
+            "snr_db": 140.41870589681918
+          },
+          {
+            "channel": 2,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 3,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 4,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 5,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 6,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 7,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 8,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 9,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 10,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 11,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 12,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 13,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 14,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 15,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 16,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 17,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 18,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 19,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          },
+          {
+            "channel": 20,
+            "signal_energy": 0.0,
+            "error_energy": 0.0,
+            "snr_db": null
+          }
+        ]
+      },
+      "artifacts": {
+        "qmf": {
+          "bytes": 688128,
+          "sha256": "a83e5e6837b30506c60c2b2c5d4261e3843db8dcd426ec2a8269d4d19d62a4e9"
+        },
+        "modulated": {
+          "bytes": 688128,
+          "sha256": "7e3a01668ec0f36574319a871a909850d081768a7dcc47dd20a54d35bd88f65f"
+        },
+        "pcm": {
+          "bytes": 344064,
+          "sha256": "f02b3777ed2cf072b213b8c7c9b23b14dc481eedd683e55455973b2428ab9edf"
+        },
+        "before": {
+          "bytes": 48384,
+          "sha256": "0029b8a8538c34edd33c25a2d6b7bb579bdfb31d04ed9e3b9194351ed5428eb6"
+        },
+        "after": {
+          "bytes": 48384,
+          "sha256": "0c58fcbca1593db1d84774d8aa2a472c286b5cca0646c8d7834a866724bcaa0c"
+        },
+        "replay": {
+          "bytes": 344064,
+          "sha256": "f02b3777ed2cf072b213b8c7c9b23b14dc481eedd683e55455973b2428ab9edf"
+        }
+      }
+    },
+    "music": {
+      "captures": [
+        {
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "expected_frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+          "adapter_sha256": "ebf195f6adb305c21e7aa6290bf0ec464b926af9c814d5c38b1db3f01bc732ba",
+          "rejected_attempts": 0,
+          "accepted_attempt": 0
+        },
+        {
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "expected_frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "parameter_log_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+          "adapter_sha256": "ebf195f6adb305c21e7aa6290bf0ec464b926af9c814d5c38b1db3f01bc732ba",
+          "rejected_attempts": 1,
+          "accepted_attempt": 1
+        }
+      ],
+      "first_au": 99,
+      "last_au": 100,
+      "shape": {
+        "qmf": [
+          21,
+          64,
+          64,
+          2
+        ],
+        "modulated": [
+          21,
+          64,
+          128
+        ],
+        "pcm": [
+          21,
+          64,
+          64
+        ],
+        "history_before": [
+          21,
+          576
+        ],
+        "history_after": [
+          21,
+          576
+        ]
+      },
+      "dtype": "little-endian float32",
+      "qmf_component_order": [
+        "real",
+        "imag"
+      ],
+      "nonzero_channels_in_compared_au": 21,
+      "repeat_bit_exact": true,
+      "reference_replay": {
+        "pcm_mismatches": 0,
+        "state_mismatches": 0,
+        "modulation_mismatches": 0,
+        "samples": 86016
+      },
+      "local_replay": {
+        "compared_au": 100,
+        "warmup_au": 99,
+        "samples": 43008,
+        "snr_db": 140.28375917946744,
+        "max_abs_error": 1.4901161193847656e-08,
+        "reference_peak": 0.07750307768583298,
+        "per_channel": [
+          {
+            "channel": 0,
+            "signal_energy": 0.0006015325367050889,
+            "error_energy": 3.961698092284912e-18,
+            "snr_db": 141.81377746823992
+          },
+          {
+            "channel": 1,
+            "signal_energy": 0.003393771761575615,
+            "error_energy": 2.935362471107783e-17,
+            "snr_db": 140.6302089429461
+          },
+          {
+            "channel": 2,
+            "signal_energy": 9.10215263554588e-05,
+            "error_energy": 7.51362454143529e-19,
+            "snr_db": 140.83294624573912
+          },
+          {
+            "channel": 3,
+            "signal_energy": 0.0020745911337260964,
+            "error_energy": 1.865944991156188e-17,
+            "snr_db": 140.46033681084486
+          },
+          {
+            "channel": 4,
+            "signal_energy": 0.0029209444670878957,
+            "error_energy": 2.251199345090051e-17,
+            "snr_db": 141.13109346510385
+          },
+          {
+            "channel": 5,
+            "signal_energy": 0.10043913756376324,
+            "error_energy": 7.8778855538348145e-16,
+            "snr_db": 141.0549330762416
+          },
+          {
+            "channel": 6,
+            "signal_energy": 0.05390115040309387,
+            "error_energy": 4.4179909813056725e-16,
+            "snr_db": 140.863732093725
+          },
+          {
+            "channel": 7,
+            "signal_energy": 0.015550166256411275,
+            "error_energy": 1.604685079308639e-16,
+            "snr_db": 139.86345222223463
+          },
+          {
+            "channel": 8,
+            "signal_energy": 0.0010298980818358938,
+            "error_energy": 7.73447245481268e-18,
+            "snr_db": 141.24363552161134
+          },
+          {
+            "channel": 9,
+            "signal_energy": 0.035042496978647336,
+            "error_energy": 3.469694132132209e-16,
+            "snr_db": 140.0430385294227
+          },
+          {
+            "channel": 10,
+            "signal_energy": 1.818309504773508,
+            "error_energy": 1.766164788407471e-14,
+            "snr_db": 140.12636586811155
+          },
+          {
+            "channel": 11,
+            "signal_energy": 0.11509990345383905,
+            "error_energy": 8.606512495379327e-16,
+            "snr_db": 141.26247755721758
+          },
+          {
+            "channel": 12,
+            "signal_energy": 0.0358178418394297,
+            "error_energy": 3.240067271461238e-16,
+            "snr_db": 140.4354538713362
+          },
+          {
+            "channel": 13,
+            "signal_energy": 0.00014781540591041258,
+            "error_energy": 1.4425535195193115e-18,
+            "snr_db": 140.10587765630737
+          },
+          {
+            "channel": 14,
+            "signal_energy": 0.007859969545787698,
+            "error_energy": 6.928595717326755e-17,
+            "snr_db": 140.54775642281416
+          },
+          {
+            "channel": 15,
+            "signal_energy": 0.08716863123763156,
+            "error_energy": 6.485546578035152e-16,
+            "snr_db": 141.2841364383973
+          },
+          {
+            "channel": 16,
+            "signal_energy": 0.0015426315488697045,
+            "error_energy": 1.20768565952761e-17,
+            "snr_db": 141.06308299647947
+          },
+          {
+            "channel": 17,
+            "signal_energy": 0.011161105595996514,
+            "error_energy": 9.779198606572583e-17,
+            "snr_db": 140.57403950702636
+          },
+          {
+            "channel": 18,
+            "signal_energy": 0.010748030704382981,
+            "error_energy": 8.408990157256914e-17,
+            "snr_db": 141.06585054293976
+          },
+          {
+            "channel": 19,
+            "signal_energy": 0.005198738177499011,
+            "error_energy": 4.549793568395584e-17,
+            "snr_db": 140.579062532904
+          },
+          {
+            "channel": 20,
+            "signal_energy": 0.0013871200330928407,
+            "error_energy": 9.085192222833715e-18,
+            "snr_db": 141.83779923488703
+          }
+        ]
+      },
+      "artifacts": {
+        "qmf": {
+          "bytes": 688128,
+          "sha256": "79261834ff4b70946d18d39036a56ce2f0cb83e2c4c8d600a1e9a72d1348ac7a"
+        },
+        "modulated": {
+          "bytes": 688128,
+          "sha256": "8223d475771247527728802dbfc929f42ebbc495cb84d7dc8077b860fb4fa8d5"
+        },
+        "pcm": {
+          "bytes": 344064,
+          "sha256": "823ac1a142ce2282556e8556e7cfe0f2459acc5ae6e85fb058a3be3037861aad"
+        },
+        "before": {
+          "bytes": 48384,
+          "sha256": "a673dff880549b043caa65cf1cf303b4215b65955b2e2cd41595dc224040469e"
+        },
+        "after": {
+          "bytes": 48384,
+          "sha256": "d66d202e08af27094631856c14196f18fb939c14768db6f8a63e8d6117373185"
+        },
+        "replay": {
+          "bytes": 344064,
+          "sha256": "823ac1a142ce2282556e8556e7cfe0f2459acc5ae6e85fb058a3be3037861aad"
+        }
+      }
+    }
+  },
+  "acceptance": [
+    "Whole-process and status success; all 143 or 400 expected AUs returned with code 0 and complete Float32 output",
+    "All output finite; all decoder parameter setters returned 0",
+    "Whole PCM SHA-256 equals the pre-existing uninstrumented reference",
+    "Exactly 64 captured slots per physical channel; capture reports no errors; instance callbacks restored",
+    "Original-state module replay reproduces all 86016 PCM samples, modulation values and final native history bit for bit",
+    "Independent-process repeated captures match for QMF, modulation, PCM and native history"
+  ],
+  "rejected_experiments": [
+    {
+      "kind": "hardware breakpoint attempts",
+      "conclusion": "Occupied hardware resources and incomplete attempts did not yield an accepted checkpoint; no internal values from them used in comparison"
+    },
+    {
+      "kind": "mid-decode independent QMF replay prototype",
+      "conclusion": "One complete run changed 577 PCM values in the AU where experiments were inserted; rejected. Cause not uniquely established. Independent module experiments moved after decoder close."
+    },
+    {
+      "kind": "early live music repeat",
+      "conclusion": "One complete attempt had a different PCM hash and was rejected. Final recorder writes the current AU PCM before boundary logging."
+    },
+    {
+      "kind": "final live music repeat",
+      "rejected_attempts": 1,
+      "conclusion": "Decoder returned zero complete AUs before instrumentation activation. Retained as a capture failure; successful retry met every acceptance condition."
+    }
+  ],
+  "limits": [
+    "Live checkpoints are at the terminal QMF synthesis boundary, after upstream reconstruction; no A-SPX preflatten, limiter gain or noise/tone cursor checkpoints yet",
+    "64-band analysis relation is established for the isolated primitive. Observed real input used 8-/48-band analysis contexts; its entire analysis path is not validated by this experiment",
+    "Fixed raw-primitive scales are interface conversions, not production gain changes or replacement of the existing end-to-end PCM scale",
+    "Non-bit-exact local residual at about 139-140 dB does not establish codec-wide compliance or make DRP a normative authority",
+    "No production phase, preflatten, limiter or cursor changes made"
+  ],
+  "protected_file_sha256": {
+    "target/release/macinac4": "f72c156347fd5379a5491ae3b147b5dd661a5dac159b4c52df226b9d9a3255de",
+    "crates/macindecode-ac4-decode/src/aspx/tna.rs": "3e218feeccd645cad913a5b29b845e992b347669fe76d4e52a668895dfed8297",
+    "scripts/gen_damf.py": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "1f9982a36385e80a659cf803d6334f541466eb8fb413a3892b84c0344179e275",
+    "vectors/objects_baseline.json": "66643f10402f9f6e82ff3cc8259e541ce9e4f37c6ef4338db8f564e20b2b1d2c"
+  }
+}
