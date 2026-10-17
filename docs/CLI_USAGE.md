@@ -144,6 +144,24 @@ cargo run -p macindecode-ac4-cli --features audio-decode --bin macinac4 -- \
 | `--presentation <INDEX>` | 否 | 唯一 eligible presentation | 按零基下标选择；省略时若不唯一则拒绝。 |
 | `-o, --output <FILE>` | 是 | — | 新建的 WAVE_FORMAT_EXTENSIBLE Float32 文件；不会覆盖已有路径。 |
 
+### A-SPX limiter 关闭时的可选补偿
+
+以下音频出口支持 `--aspx-limiter-off-boost`：`export-aspx-pcm`、`export-objects-pcm`、
+`export-core-caf`、`export-full-damf`、`export-full-adm-bwf`。默认不传，保持原输出。
+启用后仅在码流声明 `aspx_limiter=0` 时保留按组能量补偿；补偿因子最多约 4 dB。
+码流声明 limiter 开启时，此选项没有影响。
+
+```bash
+# 保持既有关闭分支
+target/release/macinac4 export-objects-pcm input.ac4 -o initial.wav
+# 同一输入，保留关闭分支的能量补偿
+target/release/macinac4 export-objects-pcm input.ac4 -o boosted.wav --aspx-limiter-off-boost
+```
+
+这五类命令在成功 JSON 的 `result.aspx_limiter_off_boost` 中报告所选布尔值。
+选项只控制补偿，不强制覆盖码流开关，也不启用信号增益硬上限或其它相位修正；它不是
+完整杜比兼容模式。语义与依据见 [ADR-0018](decisions/0018-opt-in-aspx-limiter-off-boost.md)。
+
 ### `export-damf`
 生成指定对象的粉红噪声 DAMF 试听探针。
 

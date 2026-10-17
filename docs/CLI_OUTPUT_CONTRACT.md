@@ -227,6 +227,9 @@ Rust library `macindecode-ac4-inspect` 直接序列化 `InspectReport` 时只产
 - core PCM 另有 `tracks`、`scale`、`bandwidth`；`tracks` 保留物理
   `(substream, element, channel)` 描述。
 - A-SPX PCM 再以 `channel_order = "ajoc_input_then_lfe"` 明确其逐路语义。
+  A-SPX PCM、objects PCM、core CAF、full DAMF、full ADM 五类命令另固定包含布尔字段
+  `aspx_limiter_off_boost`，报告是否请求在码流关闭 limiter 时保留能量补偿。默认 `false`；
+  这是解码策略声明，不是码流中开关值或实际触发次数。schema 的对应命令分支同步包含此键。
 - objects PCM 的 artifact `kind` 为 `objects_pcm_wave`，并以
   `channel_order = "ajoc_objects_with_lfe_reinserted"` 明确最终逐路语义。
 - `path` 是命令显示给用户的路径；`bytes` 从已经原子提交的 artifact 读取。
