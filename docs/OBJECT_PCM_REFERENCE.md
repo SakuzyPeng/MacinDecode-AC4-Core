@@ -135,3 +135,10 @@ manifest 的路径相对其所在目录解析；下面仅展示字段，摘要�
 即误差增大；音乐分别为 −0.000716／−0.000429 dB，基本不变。该 A/B 使用当前生产算法，
 没有联合启用相位、游标或预平坦化变体；两份 limiter=1 原流对选项保持逐位不变。增益域的
 单独收益、参考的剩余约束及捕获验证见[专项报告](ASPX_LIMITER_OFF_INVESTIGATION.md)。
+
+**2026-10-16 噪声起点单项修复：** 按 [ADR-0019](decisions/0019-correct-aspx-noise-origin-time-unit.md)
+应用 ATS→QMF 起点换算，未叠加其它相位或增益变体。固定原比较契约，独立音乐 limiter=1 的
+全区间／12–18 kHz 误差分别增加约 2.636／2.893 dB，纯音则增加约 0.00038／0.00378 dB。
+原语时钟对照全部通过，但该单项不能称为整体参考精度提升。不同 limiter／boost 组合及基线
+变化见[修复记录](experiments/aspx_noise_origin_fix.json)；Core 12 条逐位不变，A-SPX／objects
+各 12 条摘要有意更新，形状、时长和轨道身份均不变。
