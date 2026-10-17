@@ -190,6 +190,16 @@ impl AdjustedGains {
         true
     }
 
+    /// 为噪声原语对照设置固定电平；保留已验证的频带、时间与倍率来源。
+    #[cfg(test)]
+    pub(crate) fn set_noise_level_for_test(&mut self, sb: usize, atsg: usize, value: f32) -> bool {
+        if !self.in_range(sb, atsg) || !value.is_finite() || value < 0.0 {
+            return false;
+        }
+        self.noise_lev[sb][atsg] = value;
+        true
+    }
+
     /// `noise_lev_sb_adj[sb][atsg]`：`5.7.6.4.3` 噪声发生器的幅度。
     #[must_use]
     pub fn noise_level(&self, sb: usize, atsg: usize) -> Option<f32> {

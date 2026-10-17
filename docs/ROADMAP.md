@@ -25,6 +25,13 @@ fuzz、x86-64 实测和长期稳定性门禁仍未完成。
 开关单项 A/B 对强纯音的 12–18 kHz 误差增加约 1.11 dB，对音乐基本无影响；不能称为普遍的
 精度提升。生产算法、默认开关与三层 36 条 PCM 基线保持不变。
 
+同日的[噪声游标独立对照](ASPX_NOISE_CURSOR_INVESTIGATION.md)确认了 ATS／QMF 起点单位差异：
+464 个构造案例中，原字面式有 128 个游标不符，换算起点后全部对齐；真实音乐非零左边界也
+复现额外跳号。现有噪声表列序在该边界吻合参考。随后按
+[ADR-0019](decisions/0019-correct-aspx-noise-origin-time-unit.md)仅修正生产噪声起点，Core 12 条
+基线不变，A-SPX／objects 各 12 条摘要有意更新。独立音乐高频端到端误差增加约 2.89 dB，
+因此这是时钟一致性修复；音调时序／初相、QMF 基底和预平坦化仍分别调查。
+
 下一阶段按以下顺序推进：
 
 1. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和

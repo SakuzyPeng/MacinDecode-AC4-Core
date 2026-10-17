@@ -20,22 +20,23 @@
 //!
 //! 与 `Pseudocode 91` 把循环变量 `atsg_noise` 当数组用是同一类排印错误。
 //!
-//! # `ts − atsg_sig[0]` 的单位不一致，按字面保留
+//! # 区间起点换算到 QMF 时隙
 //!
 //! `Pseudocode 102` 的 `ts` 以 QMF 时隙计（循环从 `atsg_sig[0]·num_ts_in_ats`
 //! 起），而 `Pseudocode 103` 减去的是未乘倍率的 `atsg_sig[0]`。倍率为 2 时两者
 //! 不同量纲，区间内第一个时隙的偏移不是 0 而是 `atsg_sig[0]`。
 //!
-//! 「本意应是区间内的时隙序号」只是推测：`% 512` 使字面读法不会越界，也不破坏
-//! 任何规范明写的性质，因此**没有旁证**说它是笔误，按字面执行。它不同于
-//! `Pseudocode 90` 的归一化——后者与同节定义、正文及相邻能量公式直接冲突；也
-//! 不同于分号那处——那里有语义矛盾加下标越界的双重证据。
+//! 按 ADR-0019，将左边界先乘 `num_ts_in_ats`，使光栅偏移取实际生成的相对 QMF
+//! 时隙。依据是连续序列不应因跨帧分界改变而跳号，以及 2026-10-16 的同输入
+//! 噪声原语对照；见 `docs/ASPX_NOISE_CURSOR_INVESTIGATION.md`。表列序、初始
+//! 下标、master_reset 与其它相位策略保持不变；该选择不冒充官方勘误。
 //!
-//! # 表的列序无法判定
+//! # 表的列序及参考观察
 //!
 //! 表 D.2 只给 `num_columns 2`，正文只说「512 个复数」。「随机相位」与「平均
 //! 能量为 1」在实虚互换下都成立，故数据也判不出来。取 C 的常规写法
-//! `{re, im}`，见 `build_support/noise.rs`。
+//! `{re, im}`，见 `build_support/noise.rs`。上述独立对照已确认在所测噪声原语边界，
+//! 本地列序与参考一致；这不裁决整条链的 QMF 基底或音调初相。
 //!
 //! # 增益、频带与时间布局必须同源
 //!
@@ -180,8 +181,8 @@ pub fn generate(
             return Err(NoiseError::EmptyEnvelope { envelope: atsg });
         }
     }
-    // `Pseudocode 103` 的 `ts − atsg_sig[0]` 只在起始边界非负时恒非负，而 C 的
-    // `%` 对负数向零取整会给出负下标。这里不重复检查：`AspxInterval` 只能由
+    // 起始边界必须非负；C 的 `%` 对负数向零取整会给出负下标。
+    // 这里不重复检查：`AspxInterval` 只能由
     // `derive` 构造，而它已用 `FrameError::NegativeStartBorder` 拒绝了负起点，
     // `empty()` 给出的全零边界则被上面的 `EmptyEnvelope` 挡住。
     let first = border(0);
@@ -206,13 +207,14 @@ pub fn generate(
 
     let mut atsg = 0usize;
     let mut index = 0i64;
+    let origin_qmf = first * factor;
     // `ts` 与伪码同为绝对 QMF 时隙号，从 `atsg_sig[0] · num_ts_in_ats` 起。
-    for (ts, slot) in (first * factor..).zip(out.iter_mut()) {
+    for (ts, slot) in (origin_qmf..).zip(out.iter_mut()) {
         if ts == border(atsg + 1) * factor {
             atsg += 1;
         }
-        // `ts − atsg_sig[0]` 按伪码字面：减的是未乘倍率的边界，见模块文档。
-        let raster = i64::from(num_sb_aspx as i32) * i64::from(ts - first);
+        // ADR-0019：P102 的循环和 P103 的起点使用同一 QMF 时隙单位。
+        let raster = i64::from(num_sb_aspx as i32) * i64::from(ts - origin_qmf);
         for sb in 0..num_sb_aspx {
             index = (base + raster + sb as i64 + 1) % NOISE_TABLE_LEN as i64;
             let [re, im] = table::ASPX_NOISE[index as usize];
@@ -226,6 +228,9 @@ pub fn generate(
     cursor.previous = u16::try_from(index).unwrap_or(0);
     Ok(())
 }
+
+#[cfg(test)]
+mod cursor_replay_tests;
 
 #[cfg(test)]
 mod tests {
@@ -366,7 +371,7 @@ mod tests {
 
     #[test]
     fn the_index_advances_by_one_per_subband_and_wraps_at_the_table_length() {
-        // `Pseudocode 103` 的偏移是 `num_sb_aspx·(ts − atsg_sig[0]) + sb + 1`：
+        // 偏移按区间内实际生成的 QMF 时隙计：
         // 同一时隙内逐子带加一，跨时隙时上一时隙末项与下一时隙首项也只差一。
         // 整段因此是一条连续的光栅扫描，且 `+1` 使首项落在下标 1 而非 0。
         let bands = bands();
@@ -431,6 +436,61 @@ mod tests {
     }
 
     #[test]
+    fn continuous_noise_is_independent_of_cross_frame_interval_boundaries() {
+        // 三个相邻 AC-4 帧覆盖同一条全局时间轴。只把第一个区间的尾部
+        // 延长 carry ATS，并在下一区间跳过已生成的部分，不能跳噪声表项。
+        // 比较完整波形与游标，不复写被测函数的索引公式。
+        let bands = bands();
+        for factor in [1u8, 2] {
+            let mut baseline = None;
+            for carry in 0..=3 {
+                let mut cursor = NoiseCursor { previous: 511 };
+                let mut continuous = Vec::new();
+                for (frame, (left, right)) in [(0, 16 + carry), (carry, 16), (0, 16)]
+                    .into_iter()
+                    .enumerate()
+                {
+                    let mut params = AspxIntervalParams::fixfix(1);
+                    if left != 0 {
+                        params.int_class = IntervalClass::VarFix;
+                        params.var_bord_left = Some(left);
+                    } else if right != 16 {
+                        params.int_class = IntervalClass::FixVar;
+                        params.var_bord_right = Some(right - 16);
+                    }
+                    let interval =
+                        AspxInterval::derive(&params, SLOTS, 1, true, 16).expect("合法的连续区间");
+                    let gains =
+                        gains_for(&bands, &interval, SinePlacement::from_params(-1), factor);
+                    let mut out = vec![QmfSlot::zero(); usize::from((right - left) * factor)];
+                    generate(
+                        &gains,
+                        &bands,
+                        &interval,
+                        factor,
+                        false,
+                        &mut cursor,
+                        &mut out,
+                    )
+                    .expect("连续生成");
+                    assert_eq!(
+                        continuous.len(),
+                        frame * usize::from(SLOTS * factor) + usize::from(left * factor),
+                        "生成的全局区间不能重叠或留下空洞"
+                    );
+                    continuous.extend(out);
+                }
+                let observed = (continuous, cursor.previous());
+                if let Some(expected) = &baseline {
+                    assert!(&observed == expected, "倍率 {factor}、分界 {carry}");
+                } else {
+                    baseline = Some(observed);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn a_master_reset_restarts_the_walk_at_one() {
         let bands = bands();
         let sbx = usize::from(bands.sbx());
@@ -447,11 +507,9 @@ mod tests {
     }
 
     #[test]
-    fn the_start_border_enters_the_offset_without_the_timeslot_factor() {
-        // `Pseudocode 102` 的 `ts` 以 QMF 时隙计，`Pseudocode 103` 却减去未乘
-        // `num_ts_in_ats` 的 `atsg_sig[0]`。倍率为 2 且起点非零时，区间内第一个
-        // 时隙的偏移不是 0 而是 `num_sb_aspx · atsg_sig[0]`，首项下标随之变化。
-        // 这条锁死的是规范字面，不是「本意」——见模块文档。
+    fn a_nonzero_ats_origin_is_converted_to_qmf_slots() {
+        // 从 ATS 2（QMF 4）开始仍是本区间第一个生成时隙。reset 后首项
+        // 必须为 1，结束时恰好消费实际生成的 28 个 QMF 时隙。
         let bands = bands();
         let sbx = usize::from(bands.sbx());
         let count = usize::from(bands.num_sb_aspx());
@@ -469,12 +527,11 @@ mod tests {
 
         let level = gains.noise_level(0, 0).expect("电平应在范围内");
         let first = recover_index(&out[0], 0, sbx, level);
+        assert_eq!(first, 1, "起点的位置不应额外消耗噪声表项");
         assert_eq!(
-            first,
-            (count * 2 + 1) % NOISE_TABLE_LEN,
-            "首项偏移应是 num_sb_aspx · atsg_sig[0] 加一"
+            usize::from(cursor.previous()),
+            (count * 28) % NOISE_TABLE_LEN
         );
-        assert_ne!(first, 1, "若按乘过倍率的起点相减，首项会退回下标 1");
     }
 
     #[test]

@@ -1,0 +1,520 @@
+{
+  "schema": "macinac4.aspx-noise-cursor-independent-comparison",
+  "version": 1,
+  "recorded_on": "2026-10-16",
+  "base_commit": "5c5b270203967a69f65d778ff7c3625cc80f8b01",
+  "runtime": "DRP 4.3.0.19350 arm64",
+  "runtime_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+  "production_dsp_changed": false,
+  "public_api_changed": false,
+  "cli_changed": false,
+  "defaults_changed": false,
+  "pcm_baselines_changed": false,
+  "method": {
+    "reference_boundary": "Isolated assembly primitive independently replayed with captured QMF, adjusted gains and cursors before testing synthetic pure noise",
+    "noise_gain_native_representation": "Restore pre-assembly noise mantissa/exponent representation before replay; do not reuse the post-assembly exponent with converted mantissas",
+    "independent_experiments_after_decoder_close": true,
+    "fixed_noise_amplitude_conversion": 8388608,
+    "conversion_replaces_object_pcm_scale": false,
+    "no_gain_phase_delay_or_index_fit": true,
+    "pure_noise_inputs": "Zero QMF, zero signal gain and zero sine level; controlled noise level and cursor",
+    "local_literal": "Calls the production noisegen::generate unchanged",
+    "local_qmf_origin": "Test-only algebraic compensation of the input cursor by N*L*(F-1); preserves the logical reset input and reports injected state separately",
+    "raw_bit_identity_claim_scope": "Only nonzero, nonsuppressed informative cases; signed zeros reported separately",
+    "onset_comparison": "Consumer suppression is applied explicitly; raw generator output is not claimed to be zero on onset"
+  },
+  "reference_captures": {
+    "noise_tone_r1": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "8d9926ab35f982f2c565aa22ed678770cef687b2e8905cbeb39168fc6234f58b",
+      "expected_frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "assembly_qmf_and_cursor_bit_exact": true,
+      "rejected_attempts": 0,
+      "accepted_attempt": 0,
+      "synthetic_cases": 464
+    },
+    "noise_tone_r2": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "bf9c849ad7f432322553b0d4933a1e0ac24f721b6012549feaf4c929fb2f7b31",
+      "expected_frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "assembly_qmf_and_cursor_bit_exact": true,
+      "rejected_attempts": 0,
+      "accepted_attempt": 0,
+      "synthetic_cases": 464
+    },
+    "noise_music_r1": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "bf9c849ad7f432322553b0d4933a1e0ac24f721b6012549feaf4c929fb2f7b31",
+      "expected_frames": 400,
+      "observed_au": 100,
+      "calls": 9,
+      "envelopes": 23,
+      "assembly_qmf_and_cursor_bit_exact": true,
+      "rejected_attempts": 0,
+      "accepted_attempt": 0,
+      "synthetic_cases": 464
+    },
+    "noise_music_r2": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "bf9c849ad7f432322553b0d4933a1e0ac24f721b6012549feaf4c929fb2f7b31",
+      "expected_frames": 400,
+      "observed_au": 100,
+      "calls": 9,
+      "envelopes": 23,
+      "assembly_qmf_and_cursor_bit_exact": true,
+      "rejected_attempts": 0,
+      "accepted_attempt": 0,
+      "synthetic_cases": 464
+    },
+    "noise_music33_r1": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "bf9c849ad7f432322553b0d4933a1e0ac24f721b6012549feaf4c929fb2f7b31",
+      "expected_frames": 400,
+      "observed_au": 33,
+      "calls": 9,
+      "envelopes": 18,
+      "assembly_qmf_and_cursor_bit_exact": true,
+      "rejected_attempts": 0,
+      "accepted_attempt": 0,
+      "synthetic_cases": 464
+    },
+    "noise_music33_r2": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "bf9c849ad7f432322553b0d4933a1e0ac24f721b6012549feaf4c929fb2f7b31",
+      "expected_frames": 400,
+      "observed_au": 33,
+      "calls": 9,
+      "envelopes": 18,
+      "assembly_qmf_and_cursor_bit_exact": true,
+      "rejected_attempts": 0,
+      "accepted_attempt": 0,
+      "synthetic_cases": 464
+    }
+  },
+  "repeat_verification": {
+    "noise_tone": {
+      "bit_exact": true,
+      "files": 482,
+      "sorted_digest": "1201cea3b82437904f5be18fa985e244ad3d13ecd5ea68af744173a3e6042f7f"
+    },
+    "noise_music": {
+      "bit_exact": true,
+      "files": 482,
+      "sorted_digest": "daeb1cb551743004e5add7662491b7ceca520f33135f6c5fa9b7da8aef7e2cca"
+    },
+    "noise_music33": {
+      "bit_exact": true,
+      "files": 482,
+      "sorted_digest": "720ebbb3b1d2ebcc1cd4cb3380be6e04047c27129385483ba0fc9b9b2accd51b"
+    }
+  },
+  "case_matrix": {
+    "cases": 464,
+    "groups": 336,
+    "factors": [
+      1,
+      2
+    ],
+    "left_ats": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "subband_counts": [
+      15,
+      20,
+      24,
+      26
+    ],
+    "noise_levels": [
+      0,
+      0.125,
+      1
+    ],
+    "initial_cursor_values": [
+      0,
+      1,
+      77,
+      255,
+      511
+    ],
+    "envelope_counts": [
+      1,
+      2,
+      4
+    ],
+    "all_noise_table_indices_covered": 512,
+    "kinds": [
+      "origin",
+      "level",
+      "onset",
+      "reset_input",
+      "continuous",
+      "envelope_split"
+    ]
+  },
+  "comparison": {
+    "status": "observation_only",
+    "cases": 464,
+    "informative_cases": 416,
+    "reference_to_local_amplitude_scale": 8388608,
+    "phase_or_index_fit": false,
+    "reference_integer_model_mismatch_cases": 0,
+    "reference_table_model_differing_components": 0,
+    "continuous_groups": 64,
+    "total": {
+      "literal": {
+        "cases": 464,
+        "clock_mismatch_cases": 128,
+        "complex_samples": 226440,
+        "differing_components": 137360,
+        "bit_differing_components": 144997,
+        "signed_zero_only_differences": 7637,
+        "max_abs_error": 1.9995890259742737,
+        "max_ulp": 2130699538
+      },
+      "qmf_origin": {
+        "cases": 464,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 226440,
+        "differing_components": 0,
+        "bit_differing_components": 7656,
+        "signed_zero_only_differences": 7656,
+        "max_abs_error": 0.0,
+        "max_ulp": 0
+      }
+    },
+    "by_kind": {
+      "origin": {
+        "literal": {
+          "cases": 128,
+          "clock_mismatch_cases": 48,
+          "complex_samples": 59160,
+          "differing_components": 57120,
+          "bit_differing_components": 57120,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 1.9995890259742737,
+          "max_ulp": 2130699538
+        },
+        "qmf_origin": {
+          "cases": 128,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 59160,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        }
+      },
+      "level": {
+        "literal": {
+          "cases": 32,
+          "clock_mismatch_cases": 8,
+          "complex_samples": 15300,
+          "differing_components": 4760,
+          "bit_differing_components": 12397,
+          "signed_zero_only_differences": 7637,
+          "max_abs_error": 0.24988962709903717,
+          "max_ulp": 2080359971
+        },
+        "qmf_origin": {
+          "cases": 32,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 15300,
+          "differing_components": 0,
+          "bit_differing_components": 7656,
+          "signed_zero_only_differences": 7656,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        }
+      },
+      "onset": {
+        "literal": {
+          "cases": 32,
+          "clock_mismatch_cases": 12,
+          "complex_samples": 14790,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        },
+        "qmf_origin": {
+          "cases": 32,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 14790,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        }
+      },
+      "reset_input": {
+        "literal": {
+          "cases": 32,
+          "clock_mismatch_cases": 12,
+          "complex_samples": 14790,
+          "differing_components": 14280,
+          "bit_differing_components": 14280,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 1.9995890259742737,
+          "max_ulp": 2130699538
+        },
+        "qmf_origin": {
+          "cases": 32,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 14790,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        }
+      },
+      "continuous": {
+        "literal": {
+          "cases": 192,
+          "clock_mismatch_cases": 48,
+          "complex_samples": 97920,
+          "differing_components": 61200,
+          "bit_differing_components": 61200,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 1.9995890259742737,
+          "max_ulp": 2130699538
+        },
+        "qmf_origin": {
+          "cases": 192,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 97920,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        }
+      },
+      "envelope_split": {
+        "literal": {
+          "cases": 48,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 24480,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        },
+        "qmf_origin": {
+          "cases": 48,
+          "clock_mismatch_cases": 0,
+          "complex_samples": 24480,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0,
+          "max_abs_error": 0.0,
+          "max_ulp": 0
+        }
+      }
+    },
+    "local_table_sha256": "6ef5390a34b211cf5f190019b8295f349b56eb493f7828b88cbba272890a2e9f"
+  },
+  "informative_bit_comparison": {
+    "components": 408000,
+    "differing_components": 0,
+    "all_512_indices_covered": true
+  },
+  "segmentation": {
+    "continuous_groups": 64,
+    "distinct_band_factor_seed_combinations": 16,
+    "carry_variants_each": 4,
+    "joined_reference_outputs_bit_exact": true
+  },
+  "real_stream_census": {
+    "frames": 400,
+    "active_aspx_aus": 399,
+    "calls": 3591,
+    "left_ats_counts": {
+      "0": 3453,
+      "3": 53,
+      "2": 50,
+      "1": 35
+    }
+  },
+  "real_nonzero_origin_calls": [
+    {
+      "call": 0,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    },
+    {
+      "call": 1,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    },
+    {
+      "call": 2,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    },
+    {
+      "call": 3,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    },
+    {
+      "call": 4,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    },
+    {
+      "call": 5,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    },
+    {
+      "call": 6,
+      "left_ats": 3,
+      "factor": 2,
+      "subbands": 20,
+      "initial_cursor": 504,
+      "actual_end": 0,
+      "literal_end_same_initial": 60,
+      "extra_entries": 60,
+      "reference_first_index": 505,
+      "literal_first_index_same_initial": 53
+    }
+  ],
+  "findings": {
+    "extra_index_advance": "N * L * (F - 1) modulo 512, where L is the ATS origin and F is QMF slots per ATS",
+    "next_noise_index": "previous + 1 modulo 512",
+    "expected_end_cursor": "previous + N * number_of_generated_QMF_slots modulo 512",
+    "onset_or_zero_level_still_advances_cursor": true,
+    "noise_table_columns_match_local_re_im": true,
+    "constant_phase_adjustment_required_at_this_noise_boundary": false,
+    "production_switch_applied": false
+  },
+  "validation": {
+    "rust_tests": {
+      "tests_default": {
+        "passed": 516,
+        "failed": 0,
+        "ignored": 3
+      },
+      "tests_audio": {
+        "passed": 1295,
+        "failed": 0,
+        "ignored": 23
+      }
+    },
+    "python_tests": 28,
+    "clippy_default": true,
+    "clippy_audio_decode": true,
+    "format": true,
+    "layer_audit": true,
+    "production_functions_match_after_excluding_test_items_and_comments": true,
+    "release_binary_before_sha256": "4df9617449127575b621affc81cc07ca4db5f46bf8f8dd7311b93c3c3faac272",
+    "release_binary_after_sha256": "3a0766c4fb05cfc91bfc0a96ad9ee9bc19b5bfec0a5c3b7d2de1ca76cedddefc",
+    "release_binary_bit_identical": false,
+    "default_pcm_baselines_rerun_bit_exact": 36,
+    "pcm_baseline_checker_status": {
+      "returncode": 0,
+      "seconds": 13.967638375004753
+    },
+    "protected_file_sha256": {
+      "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "vectors/aspx_baseline.json": "1f9982a36385e80a659cf803d6334f541466eb8fb413a3892b84c0344179e275",
+      "vectors/objects_baseline.json": "66643f10402f9f6e82ff3cc8259e541ce9e4f37c6ef4338db8f564e20b2b1d2c",
+      "scripts/gen_damf.py": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6"
+    }
+  },
+  "tools_sha256": {
+    "scripts/check_aspx_noise_replay.py": "83f24219bfd58f5df1191c14257fa8f8c290d4f15c14f00b783d887a2c8baffb",
+    "scripts/test_check_aspx_noise_replay.py": "d703c0f38da19c90aecf12b0a5df44f9602a9675e168f5a04087301c5188c214",
+    "crates/macindecode-ac4-decode/src/aspx/noisegen/cursor_replay_tests.rs": "631eb9651ca7482e931ee771d1c8bb146b4d28a2e472ba8c9ff01c7fe2029154"
+  },
+  "private_evidence_sha256": {
+    "verified_evidence.json": "c813aad4aa6df301b13abf776ca52fd556652e8da1f1764dfc7ab1ec413e465b",
+    "noise_cases.json": "6958b6f20a42be64c8d6fb6839c1319b6f19d1dd30f6c85639d7dc50ca4f920b",
+    "noise_cases.txt": "93dc2c86a49dddded3baf30ea09e3134f8adefe267c30bb8aa1c53091c8ab4f2",
+    "noise_comparison_final.json": "b292ab30cd478e62cc95e4f9240bda3d0299623fd21d380c12cebdcdc8d113bc",
+    "noise_assembly.h": "a12c8a122b2d29a09cb922f6775a89300b33a3dfb7aade400ae78854068799e5",
+    "noise_probes.h": "02793072dfcb13ab6c440548afef3b5fc1270e68bf351f62bc0b0be9abac5011",
+    "aspx_boundary_support.h": "510eb2b978fb9d11ba3ba41843294fc818d026dd6751e078257a79d81e2aff17",
+    "reference_aspx_capture.c": "58140a891347a3a926dbeb31b05e8c0f17dd547f439209bda4b28c968d0276c6",
+    "capture_aspx.py": "d2399af244af92770a238fb31847b3f228be3677a7092c3954c93a85912c0edf",
+    "checks.json": "7cfd77cede0ae8c9a814046dbdf387a02d1f97041fb2a83723ce2758697a59cb"
+  },
+  "storage": "Raw captures, native adapters and generated noise-table snapshot remain on the external cache volume; mount identity checked, no internal-disk fallback",
+  "limits": [
+    "Specific reference runtime and selected actual AUs; not all AC-4 paths or formal conformance",
+    "464 constructed cases use fixed levels 0, 1/8, and 1; full real assembly replay uses actual captured gains",
+    "Reference reset-input controls use explicit zero initial state; they do not validate every automatic decoder configuration-reset path",
+    "Signed-zero differences in silent cases are not strict whole-buffer bit identity or evidence about phase",
+    "Synthetic and captured tests establish the noise clock and raw table convention; QMF basis and generated sine phase remain separate",
+    "No new end-to-end cursor-fix A/B is claimed, and production still uses the historical literal origin",
+    "Prototype ABI-guard failure and incomplete reference startup attempts were excluded, not classified as unsupported bitstreams"
+  ]
+}
