@@ -1,0 +1,1011 @@
+{
+  "schema": "macinac4.hf-tna-preflat-investigation",
+  "version": 1,
+  "date": "2026-10-17",
+  "status": "observation_only",
+  "production_head": "a46026b8db6b90a301ab9d5a84daff710078a287",
+  "production_dsp_changed": false,
+  "public_api_or_cli_changed": false,
+  "production_binary_sha256": "2654fffc3aa893c9e1427f4f9b30382e4c9ff06d85f8635dfbf43a8934a31b0f",
+  "production_binary_rebuilt": false,
+  "existing_rust_sources": 190,
+  "unchanged_existing_rust_source_hashes": 189,
+  "remaining_source_change": "tna.rs only adds cfg(test) replay_tests module",
+  "baseline_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "2af876b199e3bb61e833ef8bb2cf12f6263de76af8ceb4469e1185aa5f91c8a3",
+    "vectors/objects_baseline.json": "6b2edae4ad105ebcc6184682e62d25b7413624b14eeae64920132b01c3a28217"
+  },
+  "baseline_reexported": false,
+  "user_file_unchanged": true,
+  "reference": {
+    "profile": "DRP 4.3.0.19350 arm64",
+    "runtime_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "accepted_processes": [
+      {
+        "name": "tone_checked_r1",
+        "frames": 143,
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "adapter_sha256": "1c8daf564ad2fe639b6b57ddbaea873310b8feabb362f0018103bca9228ee178",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "attempts": 1,
+        "accepted_attempt": 0,
+        "live_dsp_hooks": false,
+        "probes_run_after_full_pcm_export": true
+      },
+      {
+        "name": "tone_checked_r2",
+        "frames": 143,
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "adapter_sha256": "1c8daf564ad2fe639b6b57ddbaea873310b8feabb362f0018103bca9228ee178",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "attempts": 1,
+        "accepted_attempt": 0,
+        "live_dsp_hooks": false,
+        "probes_run_after_full_pcm_export": true
+      },
+      {
+        "name": "music_checked_r1",
+        "frames": 400,
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "adapter_sha256": "1c8daf564ad2fe639b6b57ddbaea873310b8feabb362f0018103bca9228ee178",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "attempts": 1,
+        "accepted_attempt": 0,
+        "live_dsp_hooks": false,
+        "probes_run_after_full_pcm_export": true
+      },
+      {
+        "name": "music_checked_r2",
+        "frames": 400,
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "adapter_sha256": "1c8daf564ad2fe639b6b57ddbaea873310b8feabb362f0018103bca9228ee178",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "attempts": 1,
+        "accepted_attempt": 0,
+        "live_dsp_hooks": false,
+        "probes_run_after_full_pcm_export": true
+      }
+    ],
+    "old_live_checkpoints_reused": true,
+    "live_hf_bit_exact_calls": 27,
+    "all_four_primitive_runs_bit_identical": true,
+    "owned_low_history_and_chirp_state_checks": true,
+    "new_live_tna_exit_hook": false,
+    "excluded_exploratory_attempt": {
+      "name": "tone_complete_r1",
+      "attempt": 0,
+      "returncode": -5,
+      "frames_returned": 143,
+      "reason": "完整运行门禁未通过；不解释为码流拒绝。最终四次独立进程均首轮通过。"
+    }
+  },
+  "conventions": {
+    "common_qmf_basis": "reference basis for both HF operators; no new phase fit",
+    "production_amplitude_scale": 8388608,
+    "reference_hf_interface_scale": 4,
+    "raw_mode": "unit-scale control only; not production preflatten units",
+    "covariance_window": "4 history + 38 current QMF slots; t=4,6,...,40 in extended sequence",
+    "valid_history_bands": "0 <= sb < sbx; suffix may contain generated HF",
+    "output_domain": "first:last, sbx:sbz; complex real/imag components",
+    "output_gain_phase_delay_fitting": false,
+    "object_pcm_scale_changed": false,
+    "metric_note": "max relative error excludes zero reference components and applies no energy threshold; null SNR is interpreted with zero/nonzero signal and error energies; signed zero bits retained"
+  },
+  "coverage": {
+    "hf_cases": 129,
+    "live_cases": 27,
+    "preflat_probes": 48,
+    "tna_probes": 54,
+    "nonzero_hf_cases": 116,
+    "amplitude_exponents": [
+      -50,
+      -30,
+      -10,
+      0,
+      10,
+      20
+    ],
+    "preflat_patterns": [
+      "flat",
+      "rising",
+      "falling",
+      "alternating"
+    ],
+    "preflat_intervals": [
+      [
+        0,
+        32
+      ],
+      [
+        2,
+        38
+      ]
+    ],
+    "tna_patterns": [
+      "zero",
+      "random",
+      "tone",
+      "two",
+      "near4",
+      "near8",
+      "near12",
+      "near16",
+      "impulse"
+    ],
+    "chirp_cases": 112,
+    "solver_cases": 18,
+    "live_output_bands": 594
+  },
+  "evidence_files": {
+    "scripts/check_aspx_hf_replay.py": "2f792b9e6edc6050d506f4a465d95a879eb6b50e6fd39e4d9faddab83bfbdb2e",
+    "scripts/test_check_aspx_hf_replay.py": "4751fb8d58cd1e22ecd378818921a4e4cd531cc3c9e4a40c1a881d23b4c76499",
+    "crates/macindecode-ac4-decode/src/aspx/tna/replay_tests.rs": "b02bcb8988d82d35eb146a286d3b0f80675d6c3728981db2f888002e4f7500bd",
+    "docs/experiments/asf_imdct_boundary_comparison.json": "95cfd5a1f6e51c10ff49aa11e5d85c8a94817342a263f65c5ec641718b6540a4",
+    "docs/experiments/qmf_width_comparison.json": "158f6d7e74a693709e84bde334aebbd0bb1799cc54e99668640eece6ea37ed37"
+  },
+  "local_artifact_digests": {
+    "manifest_sha256": "1752a3a07510a581105b915dd6d50b00258f144d026b58b01baaf51820e68658",
+    "comparison_sha256": "645c882fa74bb70dea46943e741644fa3b9701229336f670665f5de31be3f828",
+    "normalized_inputs": {
+      "files": 435,
+      "bytes": 3387354,
+      "sha256": "19043849e64c311483f7d0a562e64934fbe677fc6c373ed43f6b630ae3450990"
+    },
+    "reference_runs": [
+      {
+        "files": 1552,
+        "bytes": 6378734,
+        "sha256": "559cc4db96b3a3bd60e45958b96a589ed741eb3974d51c7fc18b4eeab828caec"
+      },
+      {
+        "files": 1552,
+        "bytes": 6378734,
+        "sha256": "559cc4db96b3a3bd60e45958b96a589ed741eb3974d51c7fc18b4eeab828caec"
+      },
+      {
+        "files": 1552,
+        "bytes": 6378734,
+        "sha256": "559cc4db96b3a3bd60e45958b96a589ed741eb3974d51c7fc18b4eeab828caec"
+      },
+      {
+        "files": 1552,
+        "bytes": 6378734,
+        "sha256": "559cc4db96b3a3bd60e45958b96a589ed741eb3974d51c7fc18b4eeab828caec"
+      }
+    ],
+    "production_replay": {
+      "files": 2323,
+      "bytes": 15415681,
+      "sha256": "d538d26891a2d9c9d8c3dc4809b5d5427e8e85916a2f25066acafeeeaac36937"
+    },
+    "tree_hash_algorithm": "SHA256 of sorted relative path + NUL + file SHA256 + newline"
+  },
+  "real_scopes": [
+    {
+      "scope": "tone",
+      "calls": 9,
+      "nonzero_calls": 2,
+      "hf": {
+        "scaled_off": {
+          "components": 14976,
+          "signal_energy": 5.167627427801543e-10,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0,
+          "max_ulp": 0,
+          "bit_differing_components": 0,
+          "per_call_snr_db_range": null
+        },
+        "scaled_preflat": {
+          "components": 14976,
+          "signal_energy": 5.167627427801543e-10,
+          "error_energy": 3.1894092679070745e-09,
+          "snr_db": -7.904190572447911,
+          "max_abs_error": 1.4864234344713623e-05,
+          "max_relative_error_nonzero_reference": 3.5446418723645943,
+          "max_ulp": 18786014,
+          "bit_differing_components": 3328,
+          "per_call_snr_db_range": [
+            -7.904675887139424,
+            54.94829753777108
+          ]
+        },
+        "scaled_reference_controls": {
+          "components": 14976,
+          "signal_energy": 5.167627427801543e-10,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0,
+          "max_ulp": 0,
+          "bit_differing_components": 0,
+          "per_call_snr_db_range": null
+        }
+      },
+      "covariance": {
+        "components": 1296,
+        "signal_energy": 47.184022751847245,
+        "error_energy": 1.8296705266561365e-13,
+        "snr_db": 144.114220723437,
+        "max_abs_error": 1.1920928955078125e-07,
+        "max_relative_error_nonzero_reference": 3.1595349905190805e-05,
+        "max_ulp": 273,
+        "bit_differing_components": 187
+      },
+      "coefficients": {
+        "components": 648,
+        "signal_energy": 9.22200532077982,
+        "error_energy": 2.5946783092857702e-11,
+        "snr_db": 115.50741847182292,
+        "max_abs_error": 2.384185791015625e-06,
+        "max_relative_error_nonzero_reference": 5.03192665081157e-05,
+        "max_ulp": 463,
+        "bit_differing_components": 134
+      },
+      "local_coefficients_with_native_cov": {
+        "components": 648,
+        "signal_energy": 9.22200532077982,
+        "error_energy": 2.0786979315580087e-11,
+        "snr_db": 116.47033984554896,
+        "max_abs_error": 2.0265579223632812e-06,
+        "max_relative_error_nonzero_reference": 1.6410819098759113e-05,
+        "max_ulp": 151,
+        "bit_differing_components": 109
+      },
+      "chirp": {
+        "components": 18,
+        "signal_energy": 0.0,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0,
+        "max_ulp": 0,
+        "bit_differing_components": 0
+      }
+    },
+    {
+      "scope": "music100",
+      "calls": 9,
+      "nonzero_calls": 9,
+      "hf": {
+        "scaled_off": {
+          "components": 12160,
+          "signal_energy": 0.0002730825589563365,
+          "error_energy": 1.4903852900316935e-18,
+          "snr_db": 142.6299540835075,
+          "max_abs_error": 2.3283064365386963e-10,
+          "max_relative_error_nonzero_reference": 0.00012913125052222197,
+          "max_ulp": 1088,
+          "bit_differing_components": 6943,
+          "per_call_snr_db_range": [
+            140.69684629914843,
+            144.5328810625222
+          ]
+        },
+        "scaled_preflat": {
+          "components": 12160,
+          "signal_energy": 0.0002730825589563365,
+          "error_energy": 2.327316511472417e-05,
+          "snr_db": 10.694385131266259,
+          "max_abs_error": 0.0007237759418785572,
+          "max_relative_error_nonzero_reference": 0.5897565091736552,
+          "max_ulp": 11394948,
+          "bit_differing_components": 12160,
+          "per_call_snr_db_range": [
+            8.911876448327893,
+            15.226155543608035
+          ]
+        },
+        "scaled_reference_controls": {
+          "components": 12160,
+          "signal_energy": 0.0002730825589563365,
+          "error_energy": 6.626845856742827e-19,
+          "snr_db": 146.14987094978792,
+          "max_abs_error": 1.1641532182693481e-10,
+          "max_relative_error_nonzero_reference": 0.0001139393386960782,
+          "max_ulp": 960,
+          "bit_differing_components": 4971,
+          "per_call_snr_db_range": [
+            145.6986643832041,
+            147.48100475828164
+          ]
+        }
+      },
+      "covariance": {
+        "components": 864,
+        "signal_energy": 134.03495305843185,
+        "error_energy": 6.038692164923019e-13,
+        "snr_db": 143.46275175486025,
+        "max_abs_error": 1.1920928955078125e-07,
+        "max_relative_error_nonzero_reference": 1.3606958622303723e-05,
+        "max_ulp": 115,
+        "bit_differing_components": 520
+      },
+      "coefficients": {
+        "components": 432,
+        "signal_energy": 21.724568387158243,
+        "error_energy": 8.021897905937194e-13,
+        "snr_db": 134.32674026412073,
+        "max_abs_error": 3.2782554626464844e-07,
+        "max_relative_error_nonzero_reference": 1.7321161459043132e-05,
+        "max_ulp": 212,
+        "bit_differing_components": 330
+      },
+      "local_coefficients_with_native_cov": {
+        "components": 432,
+        "signal_energy": 21.724568387158243,
+        "error_energy": 4.169261253107086e-13,
+        "snr_db": 137.16892047240336,
+        "max_abs_error": 2.980232238769531e-07,
+        "max_relative_error_nonzero_reference": 3.022037235168354e-06,
+        "max_ulp": 28,
+        "bit_differing_components": 268
+      },
+      "chirp": {
+        "components": 18,
+        "signal_energy": 10.125,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "bit_differing_components": 0
+      }
+    },
+    {
+      "scope": "music33",
+      "calls": 9,
+      "nonzero_calls": 9,
+      "hf": {
+        "scaled_off": {
+          "components": 9840,
+          "signal_energy": 0.0006100802948129159,
+          "error_energy": 3.0364318938242896e-18,
+          "snr_db": 143.03023453312053,
+          "max_abs_error": 2.9103830456733704e-10,
+          "max_relative_error_nonzero_reference": 0.0001966304653213071,
+          "max_ulp": 2537,
+          "bit_differing_components": 5540,
+          "per_call_snr_db_range": [
+            141.79014115274174,
+            145.08357224465595
+          ]
+        },
+        "scaled_preflat": {
+          "components": 9840,
+          "signal_energy": 0.0006100802948129159,
+          "error_energy": 0.00013951697655445756,
+          "snr_db": 6.407599416181337,
+          "max_abs_error": 0.001961492234840989,
+          "max_relative_error_nonzero_reference": 1.0612725552285136,
+          "max_ulp": 8886371,
+          "bit_differing_components": 9840,
+          "per_call_snr_db_range": [
+            1.0243169590669008,
+            21.67690810354634
+          ]
+        },
+        "scaled_reference_controls": {
+          "components": 9840,
+          "signal_energy": 0.0006100802948129159,
+          "error_energy": 1.5924269418044383e-18,
+          "snr_db": 145.83327481121287,
+          "max_abs_error": 2.3283064365386963e-10,
+          "max_relative_error_nonzero_reference": 5.3753006959615086e-05,
+          "max_ulp": 665,
+          "bit_differing_components": 3810,
+          "per_call_snr_db_range": [
+            144.9073811371966,
+            147.7101234872145
+          ]
+        }
+      },
+      "covariance": {
+        "components": 864,
+        "signal_energy": 120.58941532531854,
+        "error_energy": 4.2781669940085164e-13,
+        "snr_db": 144.50051456678403,
+        "max_abs_error": 1.1920928955078125e-07,
+        "max_relative_error_nonzero_reference": 0.0001111399720605756,
+        "max_ulp": 1317,
+        "bit_differing_components": 490
+      },
+      "coefficients": {
+        "components": 432,
+        "signal_energy": 30.48233164843239,
+        "error_energy": 1.100599857900412e-12,
+        "snr_db": 134.42418731502107,
+        "max_abs_error": 2.980232238769531e-07,
+        "max_relative_error_nonzero_reference": 6.283583663446516e-05,
+        "max_ulp": 954,
+        "bit_differing_components": 362
+      },
+      "local_coefficients_with_native_cov": {
+        "components": 432,
+        "signal_energy": 30.48233164843239,
+        "error_energy": 6.696955688365405e-13,
+        "snr_db": 136.58170758548383,
+        "max_abs_error": 2.980232238769531e-07,
+        "max_relative_error_nonzero_reference": 7.231367311688773e-06,
+        "max_ulp": 89,
+        "bit_differing_components": 284
+      },
+      "chirp": {
+        "components": 18,
+        "signal_energy": 7.712205473695377,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "bit_differing_components": 0
+      }
+    }
+  ],
+  "reference_preflat_switch": {
+    "components": 184336,
+    "signal_energy": 1.2890219389692251e+17,
+    "error_energy": 0.0,
+    "snr_db": null,
+    "max_abs_error": 0.0,
+    "max_relative_error_nonzero_reference": 0,
+    "max_ulp": 0,
+    "bit_differing_components": 0
+  },
+  "preflat_gain_independent_model": {
+    "raw": {
+      "components": 4644,
+      "signal_energy": 75153.91398868048,
+      "error_energy": 0.0,
+      "snr_db": null,
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 0
+    },
+    "scaled": {
+      "components": 4644,
+      "signal_energy": 145422.04954550532,
+      "error_energy": 0.0,
+      "snr_db": null,
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 0
+    }
+  },
+  "preflat_direction": {
+    "previously_recorded_on": "2026-10-01",
+    "new_evidence": "actual production pre_flatten plus hf_generate fixed-input replay",
+    "high_energy_slope_cases": 16,
+    "amplitude_exponents": [
+      -10,
+      0,
+      10,
+      20
+    ],
+    "production_slope_ratio": [
+      1.999993016751744,
+      2.00000000217156
+    ],
+    "native_slope_ratio": [
+      0.9999999999999991,
+      1.0000000000000002
+    ],
+    "multiply_control_max_abs_slope_db_per_band": 1.4018421514350913e-05,
+    "production_policy_changed": false
+  },
+  "live_without_preflat_band_snr_db_range": [
+    133.76864877698185,
+    152.89374089319605
+  ],
+  "tna_synthetic": [
+    {
+      "pattern": "zero",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "coefficient_max_abs_error": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "native_negative_determinants": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pattern": "random",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        11.730416297359639,
+        142.2618427937022,
+        142.2618427937022,
+        142.2618427937022,
+        142.2618427937022,
+        142.2618427937022
+      ],
+      "coefficient_max_abs_error": [
+        0.3501148521900177,
+        5.960464477539063e-08,
+        5.960464477539063e-08,
+        5.960464477539063e-08,
+        5.960464477539063e-08,
+        5.960464477539063e-08
+      ],
+      "native_negative_determinants": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pattern": "tone",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        1.1815818934403122,
+        4.4403148981469425,
+        4.4403148981469425,
+        4.4403148981469425,
+        4.4403148981469425,
+        4.4403148981469425
+      ],
+      "coefficient_max_abs_error": [
+        0.9130889177322388,
+        1.8653627038002014,
+        1.8653627038002014,
+        1.8653627038002014,
+        1.8653627038002014,
+        1.8653627038002014
+      ],
+      "native_negative_determinants": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ]
+    },
+    {
+      "pattern": "two",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        0.7167306244125106,
+        102.73204579293963,
+        102.73204579293963,
+        102.73204579293963,
+        102.73204579293963,
+        102.73204579293963
+      ],
+      "coefficient_max_abs_error": [
+        1.4037829637527466,
+        2.7418136596679688e-06,
+        2.7418136596679688e-06,
+        2.7418136596679688e-06,
+        2.7418136596679688e-06,
+        2.7418136596679688e-06
+      ],
+      "native_negative_determinants": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pattern": "near4",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        0.7657029470206107,
+        75.74998022335465,
+        75.74998022335465,
+        75.74998022335465,
+        75.74998022335465,
+        75.74998022335465
+      ],
+      "coefficient_max_abs_error": [
+        1.4036017656326294,
+        0.00024771690368652344,
+        0.00024771690368652344,
+        0.00024771690368652344,
+        0.00024771690368652344,
+        0.00024771690368652344
+      ],
+      "native_negative_determinants": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pattern": "near8",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        0.7921170567979591,
+        28.46876466059578,
+        28.46876466059578,
+        28.46876466059578,
+        28.46876466059578,
+        28.46876466059578
+      ],
+      "coefficient_max_abs_error": [
+        1.359524130821228,
+        0.060854434967041016,
+        0.060854434967041016,
+        0.060854434967041016,
+        0.060854434967041016,
+        0.060854434967041016
+      ],
+      "native_negative_determinants": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pattern": "near12",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        1.153423976333971,
+        9.082246730343947,
+        9.082246730343947,
+        9.082246730343947,
+        9.082246730343947,
+        9.082246730343947
+      ],
+      "coefficient_max_abs_error": [
+        0.90616774559021,
+        1.0193789638578892,
+        1.0193789638578892,
+        1.0193789638578892,
+        1.0193789638578892,
+        1.0193789638578892
+      ],
+      "native_negative_determinants": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "pattern": "near16",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        1.1814632793314237,
+        6.733339532771452,
+        6.733339532771452,
+        6.733339532771452,
+        6.733339532771452,
+        6.733339532771452
+      ],
+      "coefficient_max_abs_error": [
+        0.9130586981773376,
+        1.4310956286499277,
+        1.4310956286499277,
+        1.4310956286499277,
+        1.4310956286499277,
+        1.4310956286499277
+      ],
+      "native_negative_determinants": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6
+      ]
+    },
+    {
+      "pattern": "impulse",
+      "amplitude_exponents": [
+        -50,
+        -30,
+        -10,
+        0,
+        10,
+        20
+      ],
+      "without_preflat_snr_db": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "coefficient_max_abs_error": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "native_negative_determinants": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "chirp": {
+    "components": 112,
+    "signal_energy": 60.29506565807797,
+    "error_energy": 2.842170943040401e-14,
+    "snr_db": 153.266315772987,
+    "max_abs_error": 5.960464477539063e-08,
+    "max_relative_error_nonzero_reference": 6.83637512147384e-08,
+    "max_ulp": 1,
+    "bit_differing_components": 8,
+    "bit_exact_cases": 104,
+    "zero_decisions_identical": true
+  },
+  "solver_boundaries": [
+    {
+      "id": "srank0",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "srank1",
+      "max_abs_error": 9.834766387939453e-07,
+      "max_relative_error_nonzero_reference": 3.933908196530186e-06,
+      "max_ulp": 66,
+      "bit_differing_components": 4,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "srank2",
+      "max_abs_error": 0.0011732131242752075,
+      "max_relative_error_nonzero_reference": 0.004694486046405966,
+      "max_ulp": 78733,
+      "bit_differing_components": 4,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "srank3",
+      "max_abs_error": 0.0833330750465393,
+      "max_relative_error_nonzero_reference": 0.33333277702331543,
+      "max_ulp": 5592396,
+      "bit_differing_components": 4,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "srank4",
+      "max_abs_error": 0.11458332370966673,
+      "max_relative_error_nonzero_reference": 1.8333329161008696,
+      "max_ulp": 30758219,
+      "bit_differing_components": 4,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "srank5",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "sclamp0",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 1,
+      "signed_zero_only_differences": 1
+    },
+    {
+      "id": "sclamp1",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0,
+      "max_ulp": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "sclamp2",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0,
+      "max_ulp": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "sclamp3",
+      "max_abs_error": 3.200000047683716,
+      "max_relative_error_nonzero_reference": 1.0,
+      "max_ulp": 1078774989,
+      "bit_differing_components": 4,
+      "signed_zero_only_differences": 2
+    },
+    {
+      "id": "sclamp4",
+      "max_abs_error": 3.200000047683716,
+      "max_relative_error_nonzero_reference": 1.0,
+      "max_ulp": 1078774989,
+      "bit_differing_components": 2,
+      "signed_zero_only_differences": 0
+    },
+    {
+      "id": "sden0",
+      "max_abs_error": 0.5,
+      "max_relative_error_nonzero_reference": 0,
+      "max_ulp": 1056964608,
+      "bit_differing_components": 3,
+      "signed_zero_only_differences": 2
+    },
+    {
+      "id": "sden1",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 2,
+      "signed_zero_only_differences": 2
+    },
+    {
+      "id": "sden2",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 2,
+      "signed_zero_only_differences": 2
+    },
+    {
+      "id": "sdiag0",
+      "max_abs_error": 0.5,
+      "max_relative_error_nonzero_reference": 0,
+      "max_ulp": 1056964608,
+      "bit_differing_components": 2,
+      "signed_zero_only_differences": 1
+    },
+    {
+      "id": "sdiag1",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 2,
+      "signed_zero_only_differences": 2
+    },
+    {
+      "id": "sdiag2",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 2,
+      "signed_zero_only_differences": 2
+    },
+    {
+      "id": "szero",
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0,
+      "max_ulp": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    }
+  ],
+  "native_covariance_observation": {
+    "power_of_two_normalization": "max(0,min(60,-1-floor(log2(max(abs(covariance8)))))) for nonzero covariance",
+    "zero_exponent": 0,
+    "normalization_bit_differences": 0,
+    "normalization_control": "separate power-of-two input copy; scale chosen from input covariance; compare first 8 entries",
+    "regularizer_observed": false,
+    "absolute_solver_floor": 4.656612873077393e-10,
+    "coefficient_unstable_boundary": "float precision and strict threshold differences remain at norm=4; no production change"
+  },
+  "verification": {
+    "cargo_default_passed": 516,
+    "cargo_audio_passed": 1303,
+    "python_related_passed": 109,
+    "python_new_passed": 17,
+    "ignored_production_primitive_replay_passed": true,
+    "clippy_default": "passed -D warnings",
+    "clippy_audio": "passed -D warnings",
+    "rustfmt": "passed",
+    "layer_audit": "passed",
+    "diff_check": "passed"
+  },
+  "limits": [
+    "HF operator comparison uses fixed reference input/history and reference basis, not an end-to-end object PCM A/B.",
+    "Native preflatten bypass observation applies to this tested HF entry and configurations, not every Dolby decoding mode.",
+    "Envelope estimation/gain adjustment can compensate some HF amplitude differences; downstream effect is still open.",
+    "P85/P89 direction and reference behavior remain separate normative decisions.",
+    "TNA absolute-threshold behavior is observed, not adopted; production retains P87 relative regularization."
+  ]
+}

@@ -612,6 +612,9 @@ pub fn chirp_factors(
 }
 
 #[cfg(test)]
+mod replay_tests;
+
+#[cfg(test)]
 #[expect(
     clippy::float_cmp,
     reason = "判据取的都是在 f32/f64 上精确可表示的值，容差会让它们变松"
