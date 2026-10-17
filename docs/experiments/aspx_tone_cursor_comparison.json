@@ -1,0 +1,1124 @@
+{
+  "schema": "macinac4.aspx-tone-cursor-investigation",
+  "version": 1,
+  "status": "observation_only",
+  "cases": 1376,
+  "informative_cases": 1316,
+  "envelopes": 1472,
+  "reference_to_local_amplitude_scale": 8388608,
+  "cursor_conversion": "next=(last+1)%4",
+  "phase_or_index_fit": false,
+  "reference_model_differing_components": 0,
+  "reference_clock_mismatch_envelopes": 0,
+  "total": {
+    "production": {
+      "cases": 1376,
+      "clock_mismatch_cases": 532,
+      "complex_samples": 673230,
+      "differing_components": 322954,
+      "bit_differing_components": 550680,
+      "signed_zero_only_differences": 227726,
+      "max_abs_error": 2.0,
+      "max_ulp": 2130706433,
+      "max_relative_error_nonzero_reference": 2.0,
+      "nonzero_against_zero_reference": 126202
+    },
+    "qmf_origin": {
+      "cases": 1376,
+      "clock_mismatch_cases": 40,
+      "complex_samples": 673230,
+      "differing_components": 35388,
+      "bit_differing_components": 290620,
+      "signed_zero_only_differences": 255232,
+      "max_abs_error": 1.0,
+      "max_ulp": 1065353217,
+      "max_relative_error_nonzero_reference": 1.0,
+      "nonzero_against_zero_reference": 17694
+    },
+    "initial_zero": {
+      "cases": 1376,
+      "clock_mismatch_cases": 516,
+      "complex_samples": 673230,
+      "differing_components": 312676,
+      "bit_differing_components": 541698,
+      "signed_zero_only_differences": 229022,
+      "max_abs_error": 2.0,
+      "max_ulp": 2130706433,
+      "max_relative_error_nonzero_reference": 2.0,
+      "nonzero_against_zero_reference": 121148
+    },
+    "qmf_origin_initial_zero": {
+      "cases": 1376,
+      "clock_mismatch_cases": 0,
+      "complex_samples": 673230,
+      "differing_components": 0,
+      "bit_differing_components": 259768,
+      "signed_zero_only_differences": 259768,
+      "max_abs_error": 0.0,
+      "max_ulp": 0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "nonzero_against_zero_reference": 0
+    }
+  },
+  "by_kind": {
+    "control": {
+      "production": {
+        "cases": 480,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 183600,
+        "differing_components": 0,
+        "bit_differing_components": 77040,
+        "signed_zero_only_differences": 77040,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "qmf_origin": {
+        "cases": 480,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 183600,
+        "differing_components": 0,
+        "bit_differing_components": 77040,
+        "signed_zero_only_differences": 77040,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "initial_zero": {
+        "cases": 480,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 183600,
+        "differing_components": 0,
+        "bit_differing_components": 77040,
+        "signed_zero_only_differences": 77040,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "qmf_origin_initial_zero": {
+        "cases": 480,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 183600,
+        "differing_components": 0,
+        "bit_differing_components": 77040,
+        "signed_zero_only_differences": 77040,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      }
+    },
+    "nonzero_origin": {
+      "production": {
+        "cases": 416,
+        "clock_mismatch_cases": 416,
+        "complex_samples": 242080,
+        "differing_components": 219416,
+        "bit_differing_components": 313218,
+        "signed_zero_only_differences": 93802,
+        "max_abs_error": 2.0,
+        "max_ulp": 2130706433,
+        "max_relative_error_nonzero_reference": 2.0,
+        "nonzero_against_zero_reference": 90668
+      },
+      "qmf_origin": {
+        "cases": 416,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 242080,
+        "differing_components": 0,
+        "bit_differing_components": 116824,
+        "signed_zero_only_differences": 116824,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "initial_zero": {
+        "cases": 416,
+        "clock_mismatch_cases": 416,
+        "complex_samples": 242080,
+        "differing_components": 219416,
+        "bit_differing_components": 313218,
+        "signed_zero_only_differences": 93802,
+        "max_abs_error": 2.0,
+        "max_ulp": 2130706433,
+        "max_relative_error_nonzero_reference": 2.0,
+        "nonzero_against_zero_reference": 90668
+      },
+      "qmf_origin_initial_zero": {
+        "cases": 416,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 242080,
+        "differing_components": 0,
+        "bit_differing_components": 116824,
+        "signed_zero_only_differences": 116824,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      }
+    },
+    "initialization": {
+      "production": {
+        "cases": 36,
+        "clock_mismatch_cases": 32,
+        "complex_samples": 16134,
+        "differing_components": 25298,
+        "bit_differing_components": 26502,
+        "signed_zero_only_differences": 1204,
+        "max_abs_error": 2.0,
+        "max_ulp": 2130706433,
+        "max_relative_error_nonzero_reference": 2.0,
+        "nonzero_against_zero_reference": 11374
+      },
+      "qmf_origin": {
+        "cases": 36,
+        "clock_mismatch_cases": 36,
+        "complex_samples": 16134,
+        "differing_components": 32268,
+        "bit_differing_components": 32268,
+        "signed_zero_only_differences": 0,
+        "max_abs_error": 1.0,
+        "max_ulp": 1065353217,
+        "max_relative_error_nonzero_reference": 1.0,
+        "nonzero_against_zero_reference": 16134
+      },
+      "initial_zero": {
+        "cases": 36,
+        "clock_mismatch_cases": 12,
+        "complex_samples": 16134,
+        "differing_components": 11900,
+        "bit_differing_components": 14816,
+        "signed_zero_only_differences": 2916,
+        "max_abs_error": 2.0,
+        "max_ulp": 2130706433,
+        "max_relative_error_nonzero_reference": 2.0,
+        "nonzero_against_zero_reference": 4760
+      },
+      "qmf_origin_initial_zero": {
+        "cases": 36,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 16134,
+        "differing_components": 0,
+        "bit_differing_components": 4120,
+        "signed_zero_only_differences": 4120,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      }
+    },
+    "multi_envelope": {
+      "production": {
+        "cases": 48,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 29952,
+        "differing_components": 0,
+        "bit_differing_components": 9984,
+        "signed_zero_only_differences": 9984,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "qmf_origin": {
+        "cases": 48,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 29952,
+        "differing_components": 0,
+        "bit_differing_components": 9984,
+        "signed_zero_only_differences": 9984,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "initial_zero": {
+        "cases": 48,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 29952,
+        "differing_components": 0,
+        "bit_differing_components": 9984,
+        "signed_zero_only_differences": 9984,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      },
+      "qmf_origin_initial_zero": {
+        "cases": 48,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 29952,
+        "differing_components": 0,
+        "bit_differing_components": 9984,
+        "signed_zero_only_differences": 9984,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      }
+    },
+    "chain": {
+      "production": {
+        "cases": 396,
+        "clock_mismatch_cases": 84,
+        "complex_samples": 201464,
+        "differing_components": 78240,
+        "bit_differing_components": 123936,
+        "signed_zero_only_differences": 45696,
+        "max_abs_error": 2.0,
+        "max_ulp": 2130706433,
+        "max_relative_error_nonzero_reference": 2.0,
+        "nonzero_against_zero_reference": 24160
+      },
+      "qmf_origin": {
+        "cases": 396,
+        "clock_mismatch_cases": 4,
+        "complex_samples": 201464,
+        "differing_components": 3120,
+        "bit_differing_components": 54504,
+        "signed_zero_only_differences": 51384,
+        "max_abs_error": 1.0,
+        "max_ulp": 1065353217,
+        "max_relative_error_nonzero_reference": 1.0,
+        "nonzero_against_zero_reference": 1560
+      },
+      "initial_zero": {
+        "cases": 396,
+        "clock_mismatch_cases": 88,
+        "complex_samples": 201464,
+        "differing_components": 81360,
+        "bit_differing_components": 126640,
+        "signed_zero_only_differences": 45280,
+        "max_abs_error": 2.0,
+        "max_ulp": 2130706433,
+        "max_relative_error_nonzero_reference": 2.0,
+        "nonzero_against_zero_reference": 25720
+      },
+      "qmf_origin_initial_zero": {
+        "cases": 396,
+        "clock_mismatch_cases": 0,
+        "complex_samples": 201464,
+        "differing_components": 0,
+        "bit_differing_components": 51800,
+        "signed_zero_only_differences": 51800,
+        "max_abs_error": 0.0,
+        "max_ulp": 0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "nonzero_against_zero_reference": 0
+      }
+    }
+  },
+  "short_cases": 40,
+  "short_components": 480,
+  "short_numeric_mismatches": 0,
+  "short_clock_mismatches": 0,
+  "probe_repeats_bit_exact": true,
+  "continuous_groups": 128,
+  "continuous_configurations": 32,
+  "continuous_partitions": 4,
+  "continuous_repartition_bit_exact": true,
+  "captures": [
+    {
+      "name": "tone_r1_fixed",
+      "au": 8,
+      "frames": 143,
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "source_name": "high_tone.ac4",
+      "calls": 9,
+      "envelopes": 9,
+      "tone_envelopes": 0,
+      "independent_repeats": 2,
+      "repeated_qmf_bit_exact": true,
+      "assembly_bit_exact": true,
+      "active_bands": [],
+      "assembly": [
+        {
+          "call": 0,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 2,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 3,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 4,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 5,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 6,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 7,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 8,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        }
+      ]
+    },
+    {
+      "name": "odd8_verified_r1",
+      "au": 8,
+      "frames": 143,
+      "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+      "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+      "source_name": "tone_even_full.ac4",
+      "calls": 2,
+      "envelopes": 2,
+      "tone_envelopes": 2,
+      "independent_repeats": 2,
+      "repeated_qmf_bit_exact": true,
+      "assembly_bit_exact": true,
+      "active_bands": [
+        {
+          "call": 0,
+          "env": 0,
+          "bands": [
+            35,
+            37,
+            39
+          ]
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "bands": [
+            39,
+            41
+          ]
+        }
+      ],
+      "assembly": [
+        {
+          "call": 0,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 256,
+          "noise_after": 128,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 256,
+          "noise_after": 128,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        }
+      ]
+    },
+    {
+      "name": "even8_verified_r1",
+      "au": 8,
+      "frames": 143,
+      "input_sha256": "3046c9a7bf1e84de30d4429932ef7811c0e3444b458d9099ad48213f40d1991e",
+      "pcm_sha256": "ce9d95bd812ab2ed8698606014a16bce773501da2d5cac716425edd473766ceb",
+      "source_name": "tone_18187_full.ac4",
+      "calls": 9,
+      "envelopes": 9,
+      "tone_envelopes": 1,
+      "independent_repeats": 2,
+      "repeated_qmf_bit_exact": true,
+      "assembly_bit_exact": true,
+      "active_bands": [
+        {
+          "call": 2,
+          "env": 0,
+          "bands": [
+            39,
+            41
+          ]
+        }
+      ],
+      "assembly": [
+        {
+          "call": 0,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 2,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 3,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 4,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 5,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 6,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 7,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 8,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 32,
+          "subbands": 26,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 384,
+          "noise_after": 192,
+          "sine_before": 0,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        }
+      ]
+    },
+    {
+      "name": "odd2_verified_r1",
+      "au": 2,
+      "frames": 143,
+      "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+      "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+      "source_name": "tone_even_full.ac4",
+      "calls": 2,
+      "envelopes": 6,
+      "tone_envelopes": 2,
+      "independent_repeats": 2,
+      "repeated_qmf_bit_exact": true,
+      "assembly_bit_exact": true,
+      "active_bands": [
+        {
+          "call": 0,
+          "env": 2,
+          "bands": [
+            35,
+            37,
+            39
+          ]
+        },
+        {
+          "call": 1,
+          "env": 2,
+          "bands": [
+            39,
+            41
+          ]
+        }
+      ],
+      "assembly": [
+        {
+          "call": 0,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 18,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 0,
+          "noise_after": 504,
+          "sine_before": 0,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 0,
+          "env": 1,
+          "first_qmf": 18,
+          "last_qmf": 30,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 504,
+          "noise_after": 328,
+          "sine_before": 2,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 0,
+          "env": 2,
+          "first_qmf": 30,
+          "last_qmf": 34,
+          "subbands": 28,
+          "onset": 1,
+          "sine_present": 1,
+          "noise_before": 328,
+          "noise_after": 440,
+          "sine_before": 2,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "first_qmf": 0,
+          "last_qmf": 18,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 0,
+          "noise_after": 504,
+          "sine_before": 0,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 1,
+          "first_qmf": 18,
+          "last_qmf": 30,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 0,
+          "noise_before": 504,
+          "noise_after": 328,
+          "sine_before": 2,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 2,
+          "first_qmf": 30,
+          "last_qmf": 34,
+          "subbands": 28,
+          "onset": 1,
+          "sine_present": 1,
+          "noise_before": 328,
+          "noise_after": 440,
+          "sine_before": 2,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        }
+      ]
+    },
+    {
+      "name": "odd3_r1",
+      "au": 3,
+      "frames": 143,
+      "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+      "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+      "source_name": "tone_even_full.ac4",
+      "calls": 2,
+      "envelopes": 4,
+      "tone_envelopes": 4,
+      "independent_repeats": 2,
+      "repeated_qmf_bit_exact": true,
+      "assembly_bit_exact": true,
+      "active_bands": [
+        {
+          "call": 0,
+          "env": 0,
+          "bands": [
+            35,
+            37,
+            39
+          ]
+        },
+        {
+          "call": 0,
+          "env": 1,
+          "bands": [
+            35,
+            37,
+            39
+          ]
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "bands": [
+            39,
+            41
+          ]
+        },
+        {
+          "call": 1,
+          "env": 1,
+          "bands": [
+            39,
+            41
+          ]
+        }
+      ],
+      "assembly": [
+        {
+          "call": 0,
+          "env": 0,
+          "first_qmf": 2,
+          "last_qmf": 10,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 440,
+          "noise_after": 152,
+          "sine_before": 2,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 0,
+          "env": 1,
+          "first_qmf": 10,
+          "last_qmf": 32,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 152,
+          "noise_after": 256,
+          "sine_before": 2,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 0,
+          "first_qmf": 2,
+          "last_qmf": 10,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 440,
+          "noise_after": 152,
+          "sine_before": 2,
+          "sine_after": 2,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        },
+        {
+          "call": 1,
+          "env": 1,
+          "first_qmf": 10,
+          "last_qmf": 32,
+          "subbands": 28,
+          "onset": 0,
+          "sine_present": 1,
+          "noise_before": 152,
+          "noise_after": 256,
+          "sine_before": 2,
+          "sine_after": 0,
+          "qmf_mismatches": 0,
+          "cursor_mismatches": 0
+        }
+      ]
+    }
+  ],
+  "manifest_sha256": "02f1ec42d1bebed82c42d6e8430940b2ea5358598457ce636b7adf8dcde3e792",
+  "starting_commit": "e886cb8cdef1fcb88646c770639c7204df70c503",
+  "runtime_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+  "adapter_sha256": "0d372f6c202eda785639b6ebdaf9b1ccf3e7715800aa8e9c0c2f215bb727dfd8",
+  "date": "2026-10-16",
+  "scope": {
+    "production_dsp_changed": false,
+    "public_api_changed": false,
+    "pcm_baselines_updated": false,
+    "end_to_end_repair_ab_performed": false,
+    "normative_initial_phase_decision": "open",
+    "normative_origin_decision": "evidence_complete_not_applied",
+    "reference_runtime": "DRP 4.3.0.19350 arm64"
+  },
+  "numerical_representation": {
+    "reference_sine_cursor": "next table index",
+    "local_tone_cursor": "last table index",
+    "common_next": "(last + 1) % 4",
+    "initialization_local": 1,
+    "initialization_reference": 0,
+    "qmf_input": 0,
+    "signal_gain": 0,
+    "noise_level": 0,
+    "amplitude_scale": 8388608,
+    "phase_fitting": false
+  },
+  "coverage": {
+    "timeslot_factors": [
+      1,
+      2
+    ],
+    "left_ats": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "native_initial_phases": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "subbands": [
+      15,
+      20,
+      24,
+      26
+    ],
+    "absolute_first_subbands": [
+      36,
+      38,
+      47
+    ],
+    "levels": [
+      0,
+      0.125,
+      1,
+      1.1920928955078125e-07
+    ],
+    "envelope_counts": [
+      1,
+      2,
+      4
+    ],
+    "tone_masks": [
+      "all",
+      "even_absolute",
+      "odd_absolute",
+      "first",
+      "last",
+      "none"
+    ],
+    "envelope_profiles": [
+      "constant",
+      "muted_then_active",
+      "attenuating"
+    ],
+    "onset_values": [
+      false,
+      true
+    ],
+    "forced_present_with_zero_levels": true,
+    "configuration_change_without_reset": true,
+    "explicit_initialization_in_chain": true,
+    "real_even_tone_observed": false,
+    "real_observed_tone_bands": [
+      35,
+      37,
+      39,
+      41
+    ]
+  },
+  "real_nonzero_origin": {
+    "source": "128K tone",
+    "au": 3,
+    "calls": 2,
+    "left_ats": 1,
+    "factor": 2,
+    "qmf_interval": [
+      2,
+      32
+    ],
+    "captured_before_next": 2,
+    "captured_after_next": 0,
+    "same_state_literal_prediction": {
+      "first_index": 3,
+      "after_next": 1
+    },
+    "same_state_qmf_origin_prediction": {
+      "first_index": 2,
+      "after_next": 0
+    },
+    "not_a_full_local_pipeline_cursor_trace": true
+  },
+  "checks": {
+    "cargo_test_workspace": {
+      "passed": 516,
+      "ignored": 3
+    },
+    "cargo_test_workspace_audio_decode": {
+      "passed": 1298,
+      "ignored": 24
+    },
+    "python_unittests_passed": 37,
+    "clippy_default": true,
+    "clippy_audio_decode": true,
+    "rustfmt": true,
+    "layer_audit": true,
+    "pcm_baselines": {
+      "passed": 36,
+      "stages": {
+        "core": 12,
+        "aspx": 12,
+        "objects": 12
+      },
+      "bit_exact": true,
+      "updated": false,
+      "known_unsupported_paths_per_stage": 8
+    }
+  },
+  "limits": [
+    "初始化 0 是参考行为；规范 P105 明写 1，不能仅凭参考吻合裁决。",
+    "直接原语覆盖偶数子带；所选实际 AU 尚未捕获参考偶数音调。",
+    "符号零与数值误差分开统计，不声称本地和参考整块逐位相同。",
+    "onset 和配置变化由原语参数控制，不等于穷尽真实 reset 路径。",
+    "本轮没有新的端到端生产修复 A/B；既有联合实验不作为单项收益。"
+  ],
+  "public_tool_sha256": {
+    "scripts/generate_aspx_tone_cases.py": "c89e3d04635267f21d0251598dacd4469233a75735c4945e6ba8018a89509653",
+    "scripts/check_aspx_tone_replay.py": "7a876df1b6f009cab76985015ea739487dddebb361b9ac8582df4ccd9147f715",
+    "scripts/test_check_aspx_tone_replay.py": "232fbf7d10e3ffea38436b4c32d3bc910c616ba872073017df6d25444f2c123d",
+    "crates/macindecode-ac4-decode/src/aspx/tonegen/cursor_replay_tests.rs": "464934c9a5f54bef6130ebb2d91ec1fb51cecc2241c501433aa1cfe704228632"
+  },
+  "initial_release_sha256": "e9ef72ba287b3037a22293a5c5c8ab199b6a25517b8300779d09b733a93601d0",
+  "validated_release_sha256": "1a60dd4e4c335dcb4abb9fb1c67e68c08781fc166b1e4dc8d24006fc18bc38fa",
+  "invariance": {
+    "production_numeric_code_unchanged": true,
+    "user_gen_damf_unchanged": true,
+    "baselines_unchanged": true,
+    "initial_release_sha256": "e9ef72ba287b3037a22293a5c5c8ab199b6a25517b8300779d09b733a93601d0",
+    "current_release_sha256": "1a60dd4e4c335dcb4abb9fb1c67e68c08781fc166b1e4dc8d24006fc18bc38fa",
+    "changed_existing_crate_files": [
+      "crates/macindecode-ac4-decode/src/aspx/hfgain.rs",
+      "crates/macindecode-ac4-decode/src/aspx/tonegen.rs"
+    ]
+  },
+  "test_log_sha256": {
+    "fmt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "test_default": "63ba257c99d70ee44ca693730a7013af4747898ab2a3e1f30d973bc0bdc577ec",
+    "test_audio": "3cc61334f23d464ea7acd5e0625bdad22caa830cad09d0a1e9990fbd4c787fc6",
+    "clippy_default": "1f5852af1ed7025b5728e842e3c3c2f5d2f720d25557d84c38f1ffda99719c59",
+    "clippy_audio": "e0262ba138c52512ae8cb5897c6cf2edb923001c5f7625511df3e90f45ef86a9",
+    "layers": "79c6f6b9dc4fa1111815bb6c40e165e8ed46e27db91629d3a7315b82ce84f3af",
+    "python": "b7af8bb3669f5645a6a52e220e4c0330fd3e57bc72582316da449842b9248738",
+    "pcm_baselines": "2da202dfa450ac095756f03d79e9ff5ee702272771024be96eb9968b1cf1af65"
+  },
+  "storage": {
+    "local_only": "/Volumes/cache/MacinDecode-AC4-Core/tone-cursor-20261016",
+    "volume_identity_checked": true,
+    "fallback_to_internal_disk": false,
+    "target_reused": true
+  }
+}

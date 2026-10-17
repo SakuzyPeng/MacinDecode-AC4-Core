@@ -28,11 +28,13 @@
 //! 同相位」自洽。按矩阵读则每个子带各带一个基址，`pow(-1, sb+sbx)` 那套逐子带
 //! 符号就失去意义——相位已经各不相同，不需要再用符号区分。
 //!
-//! # `ts − atsg_sig[0]` 的单位不一致，按字面保留
+//! # 起点与 `ts` 统一使用 QMF 时隙
 //!
 //! 与 `Pseudocode 103` 完全相同的问题：`ts` 以 QMF 时隙计，减去的却是未乘
-//! `num_ts_in_ats` 的 `atsg_sig[0]`。`% 4` 使字面读法不越界，无旁证说它是笔误，
-//! 故按字面执行。已登记在规范可追踪性第 7 节。
+//! `num_ts_in_ats` 的 `atsg_sig[0]`。按 ADR-0020 先换算起点，使同一连续时间轴
+//! 不因帧间分界改变而跳过表项。分段连续性、同输入原语和真实音调检查点的证据见
+//! `docs/ASPX_TONE_CURSOR_INVESTIGATION.md`。这偏离 P105 的字面，属于有独立证据
+//! 的本地判读，不声明官方勘误；初始索引仍取规范的 1，参考的 0 另行裁决。
 //!
 //! # 表 196 就是 `i^k`
 //!
@@ -196,13 +198,14 @@ pub fn generate(
 
     let mut atsg = 0usize;
     let mut index = 0usize;
-    for (ts, slot) in (first * factor..).zip(out.iter_mut()) {
+    let origin_qmf = first * factor;
+    for (ts, slot) in (origin_qmf..).zip(out.iter_mut()) {
         if ts == border(atsg + 1) * factor {
             atsg += 1;
         }
-        // `ts − atsg_sig[0]` 按伪码字面：减未乘倍率的边界，见模块文档。
+        // P104 的 ts 与区间起点统一为 QMF 时隙，见 ADR-0020。
         // 下标与 `sb` 无关，整条时隙共用一项。
-        index = usize::try_from((base + (ts - first)).rem_euclid(4)).unwrap_or(0);
+        index = usize::try_from((base + (ts - origin_qmf)).rem_euclid(4)).unwrap_or(0);
         let (table_re, table_im) = SINE_TABLE[index];
         for sb in 0..num_sb_aspx {
             let level = gains.sine_level(sb, atsg).unwrap_or(0.0);
@@ -216,6 +219,9 @@ pub fn generate(
     cursor.previous = u8::try_from(index).unwrap_or(0);
     Ok(())
 }
+
+#[cfg(test)]
+mod cursor_replay_tests;
 
 #[cfg(test)]
 mod tests {
@@ -400,10 +406,7 @@ mod tests {
         let bands = bands();
         let sbx = usize::from(bands.sbx());
         let interval = fixfix(1);
-        // 首个时隙的区间内偏移是 `atsg_sig[0] · (num_ts_in_ats − 1)`，任一因子为零
-        // 它就归零，「末项接首项」才成立。倍率在下方调用处是字面 1，一眼可见；
-        // 起点由夹具推导、调用处看不见，钉在这里。换成非零起点且倍率为 2 的区间时
-        // 本判据会失败，失败的原因是前提不满足，不是「加一」这条判读错了。
+        // 此处固定零起点；非零起点和倍率 2 的连续性由分界不变性判据覆盖。
         assert_eq!(interval.sig_border(0), Some(0), "本判据要求零起点");
         let gains = gains_with_tones(&bands, &interval, 1, SinePlacement::from_params(-1));
         let sb = (0..usize::from(bands.num_sb_aspx()))
@@ -432,6 +435,75 @@ mod tests {
             (carried + 1) % 4,
             "跨区间应在末项基础上再加一"
         );
+    }
+
+    #[test]
+    fn continuous_tone_is_independent_of_cross_frame_interval_boundaries() {
+        // 恒定电平与同一全局时间轴，仅改变相邻帧的分界；同时比较波形和
+        // 游标，不复写 generate 的索引公式。非首帧从非零游标继续。
+        for xover in [0, 1] {
+            let bands = AspxBandTables::derive(false, 0, 0, 0, xover).expect("频带");
+            for factor in [1u8, 2] {
+                for first_frame in [false, true] {
+                    let mut baseline = None;
+                    for carry in 0..=3 {
+                        let mut cursor = ToneCursor { previous: 2 };
+                        let mut continuous = std::vec::Vec::new();
+                        for (frame, (left, right)) in [(0, 16 + carry), (carry, 16), (0, 16)]
+                            .into_iter()
+                            .enumerate()
+                        {
+                            let mut params = AspxIntervalParams::fixfix(1);
+                            if left != 0 {
+                                params.int_class = IntervalClass::VarFix;
+                                params.var_bord_left = Some(left);
+                            } else if right != 16 {
+                                params.int_class = IntervalClass::FixVar;
+                                params.var_bord_right = Some(right - 16);
+                            }
+                            let interval = AspxInterval::derive(&params, SLOTS, 1, true, 16)
+                                .expect("连续区间");
+                            let mut gains = gains_with_tones(
+                                &bands,
+                                &interval,
+                                factor,
+                                SinePlacement::from_params(-1),
+                            );
+                            for sb in 0..usize::from(bands.num_sb_aspx()) {
+                                assert!(gains.set_sine_level_for_test(sb, 0, 1.0));
+                            }
+                            let mut out =
+                                vec![QmfSlot::zero(); usize::from((right - left) * factor)];
+                            generate(
+                                &gains,
+                                &bands,
+                                &interval,
+                                factor,
+                                first_frame && frame == 0,
+                                &mut cursor,
+                                &mut out,
+                            )
+                            .expect("连续生成");
+                            assert_eq!(
+                                continuous.len(),
+                                frame * usize::from(SLOTS * factor) + usize::from(left * factor),
+                                "全局区间不能重叠或留下空洞"
+                            );
+                            continuous.extend(out);
+                        }
+                        let observed = (continuous, cursor.previous());
+                        if let Some(expected) = &baseline {
+                            assert!(
+                                &observed == expected,
+                                "倍率 {factor}、分界 {carry}、初始化 {first_frame}、xover {xover}"
+                            );
+                        } else {
+                            baseline = Some(observed);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -566,9 +638,8 @@ mod tests {
     }
 
     #[test]
-    fn the_start_border_enters_the_offset_without_the_timeslot_factor() {
-        // 与 `Pseudocode 103` 同款的量纲问题：倍率 2 且起点非零时，首个时隙的
-        // 偏移是 `atsg_sig[0]` 而不是 0。
+    fn the_start_border_uses_the_qmf_clock_without_changing_initial_phase() {
+        // 倍率 2、非零起点也从区间内偏移 0 开始；仍使用 P105 的初相 1。
         let bands = bands();
         let sbx = usize::from(bands.sbx());
         let mut params = AspxIntervalParams::fixfix(1);
@@ -587,11 +658,10 @@ mod tests {
         generate(&gains, &bands, &interval, 2, true, &mut cursor, &mut out).expect("应能生成音调");
         assert_eq!(
             recover_index(&out[0], sb, sbx, level),
-            // `first_frame` 的 1 加上未乘倍率的 `atsg_sig[0] = 2`；和小于 4，
-            // 取模是恒等的，故不写 `% 4`。
-            1 + 2,
-            "首项偏移应是 atsg_sig[0] 加上 first_frame 的 1"
+            1,
+            "换算起点不应改变 first_frame 的初相 1"
         );
+        assert_eq!(cursor.previous(), 0, "初相 1 生成 28 项，最后一项为 0");
     }
 
     #[test]
