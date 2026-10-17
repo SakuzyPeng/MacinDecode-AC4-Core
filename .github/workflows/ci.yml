@@ -99,7 +99,7 @@ jobs:
       - name: Test external object PCM comparison without proprietary media
         run: |
           python3 -m pip install -r scripts/requirements-pcm.txt
-          python3 -m unittest scripts/test_compare_object_pcm.py scripts/test_check_aspx_gain_replay.py scripts/test_check_aspx_noise_replay.py scripts/test_check_aspx_tone_replay.py scripts/test_check_aspx_basis_replay.py scripts/test_check_qmf_analysis_checkpoints.py scripts/test_check_asf_imdct_checkpoints.py scripts/test_check_qmf_width.py
+          python3 -m unittest scripts/test_compare_object_pcm.py scripts/test_check_aspx_gain_replay.py scripts/test_check_aspx_noise_replay.py scripts/test_check_aspx_tone_replay.py scripts/test_check_aspx_basis_replay.py scripts/test_check_qmf_analysis_checkpoints.py scripts/test_check_asf_imdct_checkpoints.py scripts/test_check_qmf_width.py scripts/test_check_aspx_hf_replay.py
           python3 scripts/check_aspx_math.py
 
       - name: Test A-JOC census checker
