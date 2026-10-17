@@ -1,0 +1,1353 @@
+{
+  "schema": "macinac4.aspx-limiter-off-independent-comparison",
+  "version": 1,
+  "recorded_on": "2026-10-16",
+  "base_commit": "9681930015dd21e71d979fdcab5ed7725d208ef6",
+  "runtime": "DRP 4.3.0.19350 arm64",
+  "runtime_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+  "production_dsp_changed": false,
+  "public_api_changed": false,
+  "cli_changed": false,
+  "default_changed": false,
+  "baseline_changed": false,
+  "binary_sha256": "4df9617449127575b621affc81cc07ca4db5f46bf8f8dd7311b93c3c3faac272",
+  "storage": "New private captures and PCM on the external cache volume, mount identity checked; no internal-disk fallback",
+  "capture_method": {
+    "post_gain_boundary": "Bounded copies at the validated function return, before workspace reuse; first eight also checked against the former observation point",
+    "per_envelope": "Prefix native replay checked against valid captured fields, with zero-mantissa exponent representation canonicalized",
+    "valid_qmf_shape": [
+      38,
+      64,
+      2
+    ],
+    "stored_qmf_shape": [
+      40,
+      64,
+      2
+    ],
+    "independent_replay_after_decoder_close": true,
+    "full_reference_pcm_unchanged": true,
+    "bitstream_limiter_bits_changed": {
+      "tone": 8,
+      "music": 18
+    },
+    "observation_call_number_is_object_identity": false
+  },
+  "captures": {
+    "tone1_r1": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "f373a35753bf8060708c46c09f1289e5d9defef7778a726abf031a5298597521",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "tone1_r2": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "f373a35753bf8060708c46c09f1289e5d9defef7778a726abf031a5298597521",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "tone0_r1": {
+      "input_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+      "pcm_sha256": "e8345b5e12e2f2df377af74cf2e0b01effff703de64488bdf88834e9b348a3d4",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "f373a35753bf8060708c46c09f1289e5d9defef7778a726abf031a5298597521",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "tone0_r2": {
+      "input_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+      "pcm_sha256": "e8345b5e12e2f2df377af74cf2e0b01effff703de64488bdf88834e9b348a3d4",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "f373a35753bf8060708c46c09f1289e5d9defef7778a726abf031a5298597521",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "music1_v2_r1": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "54331b4b374ea8ca4a1138a911adf1ea05737fae88f100c998014f7b7473e5ee",
+      "frames": 400,
+      "observed_au": 100,
+      "calls": 9,
+      "envelopes": 23,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "music1_v2_r2": {
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "54331b4b374ea8ca4a1138a911adf1ea05737fae88f100c998014f7b7473e5ee",
+      "frames": 400,
+      "observed_au": 100,
+      "calls": 9,
+      "envelopes": 23,
+      "accepted_attempt": 1,
+      "rejected_attempts": 1,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "music0_v2_r1": {
+      "input_sha256": "ab6edf45e30bf7976103ecb29b570216300910ef6eb506c67965e9ef43271a5a",
+      "pcm_sha256": "0c4c8542aff47514b284bdf77bc91de0ef92cb4665b735cde9d3da2d6c15c767",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "54331b4b374ea8ca4a1138a911adf1ea05737fae88f100c998014f7b7473e5ee",
+      "frames": 400,
+      "observed_au": 100,
+      "calls": 9,
+      "envelopes": 23,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "music0_v2_r2": {
+      "input_sha256": "ab6edf45e30bf7976103ecb29b570216300910ef6eb506c67965e9ef43271a5a",
+      "pcm_sha256": "0c4c8542aff47514b284bdf77bc91de0ef92cb4665b735cde9d3da2d6c15c767",
+      "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "adapter_sha256": "54331b4b374ea8ca4a1138a911adf1ea05737fae88f100c998014f7b7473e5ee",
+      "frames": 400,
+      "observed_au": 100,
+      "calls": 9,
+      "envelopes": 23,
+      "accepted_attempt": 2,
+      "rejected_attempts": 2,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "probes_r1": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "5d761c94a209bb636420feab540c5cd8daf6cc41a34c314c97e438dc63e7f691",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 1,
+      "rejected_attempts": 1,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "probes_r2": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "5d761c94a209bb636420feab540c5cd8daf6cc41a34c314c97e438dc63e7f691",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "threshold_r1": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "5d761c94a209bb636420feab540c5cd8daf6cc41a34c314c97e438dc63e7f691",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    },
+    "threshold_r2": {
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+      "adapter_sha256": "5d761c94a209bb636420feab540c5cd8daf6cc41a34c314c97e438dc63e7f691",
+      "frames": 143,
+      "observed_au": 8,
+      "calls": 9,
+      "envelopes": 9,
+      "accepted_attempt": 0,
+      "rejected_attempts": 0,
+      "gain_assembly_replay_bit_exact": true,
+      "prefix_valid_gain_replay_bit_exact": true
+    }
+  },
+  "repetitions": {
+    "tone1": {
+      "files": 45,
+      "bit_exact": true,
+      "checkpoint_digest": "41f42ebe552c46a54fb956ed71c986e70370fbd514462d00821fb83368ce3709"
+    },
+    "tone0": {
+      "files": 45,
+      "bit_exact": true,
+      "checkpoint_digest": "012b4d20283ad2132cfe99bcfb315da4091d5bd3675d9d4270e200f5b1ef5a91"
+    },
+    "music1_v2": {
+      "files": 87,
+      "bit_exact": true,
+      "checkpoint_digest": "c380e694fe60fa476fa12543a814c20ce4359327386b015da8bf60e4b96dafd6"
+    },
+    "music0_v2": {
+      "files": 87,
+      "bit_exact": true,
+      "checkpoint_digest": "685e881c0ea21e76914a0b77418b83a76a11fea9e3e8b4c00847a7060d851805"
+    },
+    "probes": {
+      "files": 483,
+      "bit_exact": true,
+      "checkpoint_digest": "99f4e153e1bcd996c531ef079016f978118de57e276103382d9c3acbba2b9582"
+    },
+    "threshold": {
+      "files": 141,
+      "bit_exact": true,
+      "checkpoint_digest": "10d629f7904eb291ec42e08f2b0e9392ee0fd9ee8e5b49b6c884b78e0a533616"
+    }
+  },
+  "old_first_eight_unchanged": {
+    "tone1_r1": true,
+    "tone0_r1": true,
+    "music1_v2_r1": true
+  },
+  "single_flag_counterfactual": {
+    "tone": {
+      "calls": 9,
+      "valid_gain_fields_and_qmf_bit_exact": true,
+      "unused_gain_suffix_excluded": true
+    },
+    "music": {
+      "calls": 9,
+      "valid_gain_fields_and_qmf_bit_exact": true,
+      "unused_gain_suffix_excluded": true
+    }
+  },
+  "local_replay": {
+    "entry": "cfg(test) child of hfadjust, calls production hfgain::adjust for Off/OffWithBoost/On",
+    "source_bands_patch_limiter_validation": true,
+    "real_envelopes": 64,
+    "real_subband_envelopes": 1388,
+    "constructed_recipes": 73,
+    "additional_threshold_holdout_recipes": 16,
+    "constructed_limiter_variants": 178,
+    "entire_real_checkpoint_sine_levels_zero": true,
+    "normalized_noise_representation": "Undo the native in-place assembly conversion; onset-inactive stored noise power is converted to amplitude for comparison only",
+    "real_stage_groups": [
+      {
+        "case": "music0_v2_r1",
+        "bitstream_limiter": 0,
+        "mode": "boost",
+        "fields": {
+          "signal_gain": {
+            "values": 460,
+            "max_abs_error": 3.9577484130859375e-05,
+            "max_relative_error_nonzero": 1.4063569854591084e-05,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 234,
+            "f32_equal_values": 73,
+            "sum_squared_error": 7.619233414329907e-09,
+            "relative_l2_error": 1.9060703398531557e-06
+          },
+          "noise_level": {
+            "values": 460,
+            "max_abs_error": 0.000518798828125,
+            "max_relative_error_nonzero": 1.4054535763067596e-05,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 162,
+            "f32_equal_values": 86,
+            "sum_squared_error": 3.894179921075001e-06,
+            "relative_l2_error": 2.256142542486384e-07
+          },
+          "sine_level": {
+            "values": 460,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 460,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 460,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "music0_v2_r1",
+        "bitstream_limiter": 0,
+        "mode": "off",
+        "fields": {
+          "signal_gain": {
+            "values": 460,
+            "max_abs_error": 0.0019881725311279297,
+            "max_relative_error_nonzero": 0.0007019957285492899,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 11707,
+            "f32_equal_values": 0,
+            "sum_squared_error": 2.9681224088213415e-05,
+            "relative_l2_error": 0.00011896636394253636
+          },
+          "noise_level": {
+            "values": 460,
+            "max_abs_error": 0.0259552001953125,
+            "max_relative_error_nonzero": 0.0007019401568161546,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 8090,
+            "f32_equal_values": 0,
+            "sum_squared_error": 0.016378367480582755,
+            "relative_l2_error": 1.4631667850208954e-05
+          },
+          "sine_level": {
+            "values": 460,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 460,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 460,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "music0_v2_r1",
+        "bitstream_limiter": 0,
+        "mode": "on",
+        "fields": {
+          "signal_gain": {
+            "values": 460,
+            "max_abs_error": 3.8841079473495483,
+            "max_relative_error_nonzero": 0.795622489677404,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 18664503,
+            "f32_equal_values": 23,
+            "sum_squared_error": 66.24387179734718,
+            "relative_l2_error": 0.17772811642587155
+          },
+          "noise_level": {
+            "values": 460,
+            "max_abs_error": 332.60919189453125,
+            "max_relative_error_nonzero": 0.7956224819562249,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 19277078,
+            "f32_equal_values": 20,
+            "sum_squared_error": 796773.386395757,
+            "relative_l2_error": 0.102053038060635
+          },
+          "sine_level": {
+            "values": 460,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 460,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 460,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "music1_v2_r1",
+        "bitstream_limiter": 1,
+        "mode": "boost",
+        "fields": {
+          "signal_gain": {
+            "values": 460,
+            "max_abs_error": 3.8841089010238647,
+            "max_relative_error_nonzero": 3.892907217495023,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 18664505,
+            "f32_equal_values": 23,
+            "sum_squared_error": 66.2442329982124,
+            "relative_l2_error": 0.18654776973914788
+          },
+          "noise_level": {
+            "values": 460,
+            "max_abs_error": 332.6092834472656,
+            "max_relative_error_nonzero": 3.892907148357748,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 19277081,
+            "f32_equal_values": 20,
+            "sum_squared_error": 796773.3645236008,
+            "relative_l2_error": 0.10214062405345682
+          },
+          "sine_level": {
+            "values": 460,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 460,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 460,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "music1_v2_r1",
+        "bitstream_limiter": 1,
+        "mode": "off",
+        "fields": {
+          "signal_gain": {
+            "values": 460,
+            "max_abs_error": 3.8840755224227905,
+            "max_relative_error_nonzero": 3.892873763284458,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 18664435,
+            "f32_equal_values": 0,
+            "sum_squared_error": 66.23548752459136,
+            "relative_l2_error": 0.18653545544117478
+          },
+          "noise_level": {
+            "values": 460,
+            "max_abs_error": 332.6064453125,
+            "max_relative_error_nonzero": 3.89287393041806,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 19276988,
+            "f32_equal_values": 0,
+            "sum_squared_error": 796765.6909283187,
+            "relative_l2_error": 0.10214013220236536
+          },
+          "sine_level": {
+            "values": 460,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 460,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 460,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "music1_v2_r1",
+        "bitstream_limiter": 1,
+        "mode": "on",
+        "fields": {
+          "signal_gain": {
+            "values": 460,
+            "max_abs_error": 5.1975250244140625e-05,
+            "max_relative_error_nonzero": 2.2498124028605434e-05,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 323,
+            "f32_equal_values": 53,
+            "sum_squared_error": 1.4681441284913888e-08,
+            "relative_l2_error": 2.7771565987625657e-06
+          },
+          "noise_level": {
+            "values": 460,
+            "max_abs_error": 0.00072479248046875,
+            "max_relative_error_nonzero": 2.2411004133296877e-05,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 374,
+            "f32_equal_values": 57,
+            "sum_squared_error": 8.332594209804497e-06,
+            "relative_l2_error": 3.3030961780712286e-07
+          },
+          "sine_level": {
+            "values": 460,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 460,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 460,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "tone0_r1",
+        "bitstream_limiter": 0,
+        "mode": "boost",
+        "fields": {
+          "signal_gain": {
+            "values": 234,
+            "max_abs_error": 83131.953125,
+            "max_relative_error_nonzero": 0.5659434967574788,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5320445,
+            "f32_equal_values": 13,
+            "sum_squared_error": 8427282331.805532,
+            "relative_l2_error": 0.4413249140056545
+          },
+          "noise_level": {
+            "values": 234,
+            "max_abs_error": 118.34609985351562,
+            "max_relative_error_nonzero": 0.5659434404622273,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5414360,
+            "f32_equal_values": 0,
+            "sum_squared_error": 18712.252539654135,
+            "relative_l2_error": 0.4105877416829121
+          },
+          "sine_level": {
+            "values": 234,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 234,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 234,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "tone0_r1",
+        "bitstream_limiter": 0,
+        "mode": "off",
+        "fields": {
+          "signal_gain": {
+            "values": 234,
+            "max_abs_error": 32935.625,
+            "max_relative_error_nonzero": 0.369042687677942,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 6152641,
+            "f32_equal_values": 0,
+            "sum_squared_error": 1103089314.3713832,
+            "relative_l2_error": 0.1596687818907015
+          },
+          "noise_level": {
+            "values": 234,
+            "max_abs_error": 46.886932373046875,
+            "max_relative_error_nonzero": 0.3690426991700614,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5926493,
+            "f32_equal_values": 0,
+            "sum_squared_error": 2238.4127845673047,
+            "relative_l2_error": 0.14200807256383857
+          },
+          "sine_level": {
+            "values": 234,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 234,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 234,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "tone0_r1",
+        "bitstream_limiter": 0,
+        "mode": "on",
+        "fields": {
+          "signal_gain": {
+            "values": 234,
+            "max_abs_error": 3505.140625,
+            "max_relative_error_nonzero": 0.3786648553948574,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5353206,
+            "f32_equal_values": 12,
+            "sum_squared_error": 24572033.278023686,
+            "relative_l2_error": 0.023830613370355906
+          },
+          "noise_level": {
+            "values": 234,
+            "max_abs_error": 6.1783294677734375,
+            "max_relative_error_nonzero": 0.3786648115362276,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5162300,
+            "f32_equal_values": 0,
+            "sum_squared_error": 63.070746754570216,
+            "relative_l2_error": 0.023837292775867252
+          },
+          "sine_level": {
+            "values": 234,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 234,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 234,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "tone1_r1",
+        "bitstream_limiter": 1,
+        "mode": "boost",
+        "fields": {
+          "signal_gain": {
+            "values": 234,
+            "max_abs_error": 86637.09375,
+            "max_relative_error_nonzero": 0.6094374970245257,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5544774,
+            "f32_equal_values": 8,
+            "sum_squared_error": 9307232671.933168,
+            "relative_l2_error": 0.47510039618471184
+          },
+          "noise_level": {
+            "values": 234,
+            "max_abs_error": 123.33599853515625,
+            "max_relative_error_nonzero": 0.6094373758044903,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5741378,
+            "f32_equal_values": 0,
+            "sum_squared_error": 20803.3424228988,
+            "relative_l2_error": 0.44348197042112625
+          },
+          "sine_level": {
+            "values": 234,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 234,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 234,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "tone1_r1",
+        "bitstream_limiter": 1,
+        "mode": "off",
+        "fields": {
+          "signal_gain": {
+            "values": 234,
+            "max_abs_error": 36440.765625,
+            "max_relative_error_nonzero": 0.369042687677942,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 6152641,
+            "f32_equal_values": 0,
+            "sum_squared_error": 1346946971.3222582,
+            "relative_l2_error": 0.18073836786532194
+          },
+          "noise_level": {
+            "values": 234,
+            "max_abs_error": 51.8768310546875,
+            "max_relative_error_nonzero": 0.3690426991700614,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 5926493,
+            "f32_equal_values": 0,
+            "sum_squared_error": 2733.357969265179,
+            "relative_l2_error": 0.16075247406059184
+          },
+          "sine_level": {
+            "values": 234,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 234,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 234,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      },
+      {
+        "case": "tone1_r1",
+        "bitstream_limiter": 1,
+        "mode": "on",
+        "fields": {
+          "signal_gain": {
+            "values": 234,
+            "max_abs_error": 3.814697265625e-06,
+            "max_relative_error_nonzero": 1.2010448850290776e-07,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 2,
+            "f32_equal_values": 20,
+            "sum_squared_error": 2.0127188804508478e-10,
+            "relative_l2_error": 6.986612673691684e-11
+          },
+          "noise_level": {
+            "values": 234,
+            "max_abs_error": 1.52587890625e-05,
+            "max_relative_error_nonzero": 1.1852826768803265e-07,
+            "zero_reference_values": 0,
+            "max_zero_reference_abs_error": 0,
+            "max_ulp": 1,
+            "f32_equal_values": 5,
+            "sum_squared_error": 2.3469593494118354e-10,
+            "relative_l2_error": 4.710447777921433e-08
+          },
+          "sine_level": {
+            "values": 234,
+            "max_abs_error": 0.0,
+            "max_relative_error_nonzero": 0,
+            "zero_reference_values": 234,
+            "max_zero_reference_abs_error": 0.0,
+            "max_ulp": 0,
+            "f32_equal_values": 234,
+            "sum_squared_error": 0.0,
+            "relative_l2_error": null
+          }
+        }
+      }
+    ]
+  },
+  "reference_behavior_model": {
+    "group_power_multiplier_on": 1.9952692985534668,
+    "group_power_multiplier_off": 65380.984375,
+    "max_signal_power_gain": 8589934592,
+    "max_boost_power_factor": 2.5118863582611084,
+    "boost_denominator_floor": 0.5,
+    "summation_epsilon": 9.094947017729282e-13,
+    "initial_estimate_epsilon": 1.0,
+    "source": "Fixed from captured tone and validated native operations before synthetic holdout execution; no error-minimizing fit; revision 2 adds the separately identified square-root conversion zero threshold; additional holdouts follow this freeze.",
+    "post_boost_noise_power_mantissa_zero_threshold": 3.0517578125e-05
+  },
+  "diagnostic_model_ablation_gain_domain_only": {
+    "tone0_r1": {
+      "initial": {
+        "signal_gain": {
+          "values": 234,
+          "max_abs": 32935.62502805272,
+          "max_relative_nonzero": 0.369042675014429,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 6152641,
+          "relative_l2": 0.15966878320219688
+        },
+        "noise_level": {
+          "values": 234,
+          "max_abs": 46.88693237313419,
+          "max_relative_nonzero": 0.3690426821019662,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 5926493,
+          "relative_l2": 0.1420080726673819
+        },
+        "sine_level": {
+          "values": 234,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "boost": {
+        "signal_gain": {
+          "values": 234,
+          "max_abs": 83131.94910815771,
+          "max_relative_nonzero": 0.5659434694117269,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 5320445,
+          "relative_l2": 0.44132486276681837
+        },
+        "noise_level": {
+          "values": 234,
+          "max_abs": 118.34609218510252,
+          "max_relative_nonzero": 0.565943403791073,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 5414360,
+          "relative_l2": 0.4105877102293333
+        },
+        "sine_level": {
+          "values": 234,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "hard_only": {
+        "signal_gain": {
+          "values": 234,
+          "max_abs": 0.0040201729570981115,
+          "max_relative_nonzero": 7.279197037522591e-08,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 1,
+          "relative_l2": 2.735929070970182e-08
+        },
+        "noise_level": {
+          "values": 234,
+          "max_abs": 1.6498759407568286e-05,
+          "max_relative_nonzero": 6.372215876967468e-08,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 1,
+          "relative_l2": 5.0376983994460686e-08
+        },
+        "sine_level": {
+          "values": 234,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "group_only": {
+        "signal_gain": {
+          "values": 234,
+          "max_abs": 83131.94910815771,
+          "max_relative_nonzero": 0.5659434694117269,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 5320445,
+          "relative_l2": 0.44132486276681837
+        },
+        "noise_level": {
+          "values": 234,
+          "max_abs": 118.34609218510252,
+          "max_relative_nonzero": 0.565943403791073,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 5414360,
+          "relative_l2": 0.4105877102293333
+        },
+        "sine_level": {
+          "values": 234,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "limits_without_floor": {
+        "signal_gain": {
+          "values": 234,
+          "max_abs": 0.0040201729570981115,
+          "max_relative_nonzero": 7.279197037522591e-08,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 1,
+          "relative_l2": 2.735929070970182e-08
+        },
+        "noise_level": {
+          "values": 234,
+          "max_abs": 1.6498759407568286e-05,
+          "max_relative_nonzero": 6.372215876967468e-08,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 1,
+          "relative_l2": 5.0376983994460686e-08
+        },
+        "sine_level": {
+          "values": 234,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "reference": {
+        "signal_gain": {
+          "values": 234,
+          "max_abs": 0.0040201729570981115,
+          "max_relative_nonzero": 7.279197037522591e-08,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 1,
+          "relative_l2": 2.735929070970182e-08
+        },
+        "noise_level": {
+          "values": 234,
+          "max_abs": 1.6498759407568286e-05,
+          "max_relative_nonzero": 6.372215876967468e-08,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 1,
+          "relative_l2": 5.0376983994460686e-08
+        },
+        "sine_level": {
+          "values": 234,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      }
+    },
+    "music0_v2_r1": {
+      "initial": {
+        "signal_gain": {
+          "values": 460,
+          "max_abs": 0.001988069150632654,
+          "max_relative_nonzero": 0.0007019925097632512,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 11707,
+          "relative_l2": 0.00011896406571622522
+        },
+        "noise_level": {
+          "values": 460,
+          "max_abs": 0.025954537000671962,
+          "max_relative_nonzero": 0.0007019222211829683,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 8090,
+          "relative_l2": 1.4635247388690826e-05
+        },
+        "sine_level": {
+          "values": 460,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "boost": {
+        "signal_gain": {
+          "values": 460,
+          "max_abs": 3.969289578664714e-05,
+          "max_relative_nonzero": 1.4032338038142219e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 234,
+          "relative_l2": 1.9060920511731235e-06
+        },
+        "noise_level": {
+          "values": 460,
+          "max_abs": 0.0005179667563695034,
+          "max_relative_nonzero": 1.403010528654527e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 162,
+          "relative_l2": 2.1851945440167385e-07
+        },
+        "sine_level": {
+          "values": 460,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "hard_only": {
+        "signal_gain": {
+          "values": 460,
+          "max_abs": 3.969289578664714e-05,
+          "max_relative_nonzero": 1.4032338038142219e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 234,
+          "relative_l2": 1.9060920511731235e-06
+        },
+        "noise_level": {
+          "values": 460,
+          "max_abs": 0.0005179667563695034,
+          "max_relative_nonzero": 1.403010528654527e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 162,
+          "relative_l2": 2.1851945440167385e-07
+        },
+        "sine_level": {
+          "values": 460,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "group_only": {
+        "signal_gain": {
+          "values": 460,
+          "max_abs": 3.969289578664714e-05,
+          "max_relative_nonzero": 1.4032338038142219e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 234,
+          "relative_l2": 1.9060920511731235e-06
+        },
+        "noise_level": {
+          "values": 460,
+          "max_abs": 0.0005179667563695034,
+          "max_relative_nonzero": 1.403010528654527e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 162,
+          "relative_l2": 2.1851945440167385e-07
+        },
+        "sine_level": {
+          "values": 460,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "limits_without_floor": {
+        "signal_gain": {
+          "values": 460,
+          "max_abs": 3.969289578664714e-05,
+          "max_relative_nonzero": 1.4032338038142219e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 234,
+          "relative_l2": 1.9060920511731235e-06
+        },
+        "noise_level": {
+          "values": 460,
+          "max_abs": 0.0005179667563695034,
+          "max_relative_nonzero": 1.403010528654527e-05,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 162,
+          "relative_l2": 2.1851945440167385e-07
+        },
+        "sine_level": {
+          "values": 460,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      },
+      "reference": {
+        "signal_gain": {
+          "values": 460,
+          "max_abs": 6.813901114455234e-07,
+          "max_relative_nonzero": 2.1783277346929346e-07,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 3,
+          "relative_l2": 6.56167335947336e-08
+        },
+        "noise_level": {
+          "values": 460,
+          "max_abs": 9.67146919492734e-05,
+          "max_relative_nonzero": 1.7550683104995658e-07,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 3,
+          "relative_l2": 5.874311371296666e-08
+        },
+        "sine_level": {
+          "values": 460,
+          "max_abs": 0.0,
+          "max_relative_nonzero": 0.0,
+          "max_zero_reference_abs": 0.0,
+          "max_ulp": 0,
+          "relative_l2": 0.0
+        }
+      }
+    }
+  },
+  "model_verification": {
+    "real_limiter_off": {
+      "values": 2082,
+      "max_abs": 0.0040201729570981115,
+      "max_relative_nonzero": 2.1783277346929346e-07,
+      "max_zero_reference_abs": 0.0,
+      "max_ulp": 3,
+      "relative_l2": 2.7446401528639633e-08
+    },
+    "real_limiter_on": {
+      "values": 2082,
+      "max_abs": 0.0006725906860083342,
+      "max_relative_nonzero": 2.732534538011429e-07,
+      "max_zero_reference_abs": 0.0,
+      "max_ulp": 3,
+      "relative_l2": 5.755140096383068e-09
+    },
+    "constructed_limiter_off": {
+      "values": 5694,
+      "max_abs": 0.03216138365678489,
+      "max_relative_nonzero": 4.859967879036485e-07,
+      "max_zero_reference_abs": 0.0,
+      "max_ulp": 8,
+      "relative_l2": 1.940866928655681e-08
+    },
+    "constructed_limiter_on": {
+      "values": 5694,
+      "max_abs": 0.03216138365678489,
+      "max_relative_nonzero": 4.859967879036485e-07,
+      "max_zero_reference_abs": 0.0,
+      "max_ulp": 8,
+      "relative_l2": 1.9806242347004424e-08
+    },
+    "additional_holdouts": {
+      "variant_cases": 32,
+      "zero_decisions_match": true,
+      "max_relative_nonzero": 2.01974308011055e-07,
+      "max_ulp": 2
+    },
+    "v1_unexplained_zero_noise_cases": 14,
+    "v2_fixed_before_additional_holdouts": true,
+    "no_parameter_fit": true,
+    "diagnostic_model_is_production": false
+  },
+  "pcm_comparison": {
+    "scale": 1.52587890625e-05,
+    "reference_lag_samples": 31,
+    "all_tracks": 21,
+    "gain_fit_applied": false,
+    "band_definition": "4096-sample Hann STFT; 12 kHz inclusive to 18 kHz exclusive",
+    "whole_interval_includes_stft_tail": true,
+    "positive_improvement_db_means_less_error": true,
+    "cases": {
+      "tone1": {
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "reference_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "whole_error_improvement_db": 0.0,
+        "band12_18_error_improvement_db": 0.0,
+        "variants": {
+          "false": {
+            "aspx_limiter_off_boost": false,
+            "wave_sha256": "b7d10afbafffae5f0e1a2016b4e2af7cf1b81b19feb087e24fb717ad20d215f9",
+            "samples_per_channel": 292833,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 0.009173618843220769,
+            "band_sum_track_mse": [
+              2.608650887080666e-12,
+              0.009150524161765079,
+              9.640751112441196e-11
+            ],
+            "whole_snr_db": -0.7869419020236855,
+            "local_peak": 0.40881213545799255,
+            "reference_peak": 0.6726681590080261
+          },
+          "true": {
+            "aspx_limiter_off_boost": true,
+            "wave_sha256": "b7d10afbafffae5f0e1a2016b4e2af7cf1b81b19feb087e24fb717ad20d215f9",
+            "samples_per_channel": 292833,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 0.009173618843220769,
+            "band_sum_track_mse": [
+              2.608650887080666e-12,
+              0.009150524161765079,
+              9.640751112441196e-11
+            ],
+            "whole_snr_db": -0.7869419020236855,
+            "local_peak": 0.40881213545799255,
+            "reference_peak": 0.6726681590080261
+          }
+        }
+      },
+      "tone0": {
+        "input_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+        "reference_sha256": "e8345b5e12e2f2df377af74cf2e0b01effff703de64488bdf88834e9b348a3d4",
+        "whole_error_improvement_db": -1.0941753272916979,
+        "band12_18_error_improvement_db": -1.107719810412279,
+        "variants": {
+          "false": {
+            "aspx_limiter_off_boost": false,
+            "wave_sha256": "1bfdcd43b4fe38bfc2e121d5f843832602996fc97cd28dccf215c0cd54369f26",
+            "samples_per_channel": 292833,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 0.007621345674964835,
+            "band_sum_track_mse": [
+              2.1923425459075948e-12,
+              0.007580744229971952,
+              2.1096734877301542e-10
+            ],
+            "whole_snr_db": 0.43667559421572755,
+            "local_peak": 0.9887554049491882,
+            "reference_peak": 0.983223021030426
+          },
+          "true": {
+            "aspx_limiter_off_boost": true,
+            "wave_sha256": "65c1d4a80804c00034840325233fbb1e0e6bae84c22535c382041db5664a46d9",
+            "samples_per_channel": 292833,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 0.009805036004001436,
+            "band_sum_track_mse": [
+              2.819777576121427e-12,
+              0.009783265171807505,
+              2.3633071913636084e-10
+            ],
+            "whole_snr_db": -0.6574997330759706,
+            "local_peak": 0.9918909072875977,
+            "reference_peak": 0.983223021030426
+          }
+        }
+      },
+      "music1": {
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "reference_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "whole_error_improvement_db": 0.0,
+        "band12_18_error_improvement_db": 0.0,
+        "variants": {
+          "false": {
+            "aspx_limiter_off_boost": false,
+            "wave_sha256": "51c94e0fdebe9bb2d28dfc286e59200762afa71c0118a998cf2c7a334347b8db",
+            "samples_per_channel": 819169,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 7.165904416253898e-06,
+            "band_sum_track_mse": [
+              4.4838394263550135e-07,
+              6.839975491025084e-06,
+              3.896008799101724e-07
+            ],
+            "whole_snr_db": 33.57331016974428,
+            "local_peak": 0.538800060749054,
+            "reference_peak": 0.5422669649124146
+          },
+          "true": {
+            "aspx_limiter_off_boost": true,
+            "wave_sha256": "51c94e0fdebe9bb2d28dfc286e59200762afa71c0118a998cf2c7a334347b8db",
+            "samples_per_channel": 819169,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 7.165904416253898e-06,
+            "band_sum_track_mse": [
+              4.4838394263550135e-07,
+              6.839975491025084e-06,
+              3.896008799101724e-07
+            ],
+            "whole_snr_db": 33.57331016974428,
+            "local_peak": 0.538800060749054,
+            "reference_peak": 0.5422669649124146
+          }
+        }
+      },
+      "music0": {
+        "input_sha256": "ab6edf45e30bf7976103ecb29b570216300910ef6eb506c67965e9ef43271a5a",
+        "reference_sha256": "0c4c8542aff47514b284bdf77bc91de0ef92cb4665b735cde9d3da2d6c15c767",
+        "whole_error_improvement_db": -0.0007157942377103346,
+        "band12_18_error_improvement_db": -0.0004288200426792619,
+        "variants": {
+          "false": {
+            "aspx_limiter_off_boost": false,
+            "wave_sha256": "4f7e0591f2635280db708490fbb03627b3256222d8ad374413354b9ed8a5a8f0",
+            "samples_per_channel": 819169,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 7.0270025525927974e-06,
+            "band_sum_track_mse": [
+              4.4838390242576155e-07,
+              6.8438504102148085e-06,
+              2.265573289210581e-07
+            ],
+            "whole_snr_db": 33.65833537072194,
+            "local_peak": 0.5391002893447876,
+            "reference_peak": 0.542229413986206
+          },
+          "true": {
+            "aspx_limiter_off_boost": true,
+            "wave_sha256": "9bb734bf6fed3b1ea8b0d738df263454c18ada372ef709f08493c6bab2c86712",
+            "samples_per_channel": 819169,
+            "reference_prefix_excluded": 31,
+            "local_suffix_excluded": 31,
+            "whole_sum_track_mse": 7.028160822539854e-06,
+            "band_sum_track_mse": [
+              4.4838390657271395e-07,
+              6.844526201697633e-06,
+              2.2674744358173302e-07
+            ],
+            "whole_snr_db": 33.65761957648423,
+            "local_peak": 0.5391002297401428,
+            "reference_peak": 0.542229413986206
+          }
+        }
+      }
+    }
+  },
+  "validation": {
+    "rust_tests": {
+      "tests_default": {
+        "passed": 516,
+        "failed": 0,
+        "ignored": 3
+      },
+      "tests_audio": {
+        "passed": 1293,
+        "failed": 0,
+        "ignored": 22
+      }
+    },
+    "python_tests": 21,
+    "clippy_default": true,
+    "clippy_audio": true,
+    "format": true,
+    "layers": true,
+    "diff_check": true,
+    "default_pcm_baselines_bit_exact": 36,
+    "release_binary_bit_exact_unchanged": true,
+    "protected_file_sha256": {
+      "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "vectors/aspx_baseline.json": "1f9982a36385e80a659cf803d6334f541466eb8fb413a3892b84c0344179e275",
+      "vectors/objects_baseline.json": "66643f10402f9f6e82ff3cc8259e541ce9e4f37c6ef4338db8f564e20b2b1d2c",
+      "scripts/gen_damf.py": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6"
+    },
+    "first_layer_audit_rejected_test_file_placement": true,
+    "repair": "Place the test module beneath hfadjust, using the existing layer owner; no audit exemption added"
+  },
+  "tools_sha256": {
+    "scripts/check_aspx_gain_replay.py": "ed0bf3b373e40a6ac20d969497a4c79b5a4dac7c16877f82488ce1880c513422",
+    "scripts/test_check_aspx_gain_replay.py": "a0afed6fb4250ce8a69e713872270ceb12bd3328dd834d0456d988092687103d",
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust/gain_replay_tests.rs": "4bbe86c6e0cbf8420cccaf2db3c4ef874de7381abf9558731c259be2161c57be"
+  },
+  "private_evidence_sha256": {
+    "verified_evidence.json": "f37e9b842909e2930e51257e5b6b46fe03c4257e6ebef28c95c88e8f0c65f09f",
+    "gain_inputs.json": "4beb18863320a4444a168778bc1f076058bb9feee30a78bc6dd20f1d4f1813b7",
+    "local_gains.txt": "859a6f7e9b7986dff3ce053ef6fa152c26e09d73afd9253c476f15e36ead6a55",
+    "gain_comparison.json": "d0d8aaaf7dffc06fd45171fad1bf2940418705f3a1a43932c51ee79e39e9d929",
+    "probe_gain_inputs.json": "c271815f15e67a6473c1eff303d677940f0001cd3d8d7a2d61fd01f05f4e3be3",
+    "local_probe_gains.txt": "b4286f80e2f7402471254ede7bedbed37b5c6c3a1d9a624615df1c03de843f04",
+    "threshold_gain_inputs.json": "813cd5a5f54abd00c6e7ecb780d3322ff3027a06a0b5050b6f7c286e77159d49",
+    "local_threshold_gains.txt": "94e1c2beb83b614d7506546e8a6124c9e23c4796e61f8060336177b8e51d7734",
+    "pcm_comparison.json": "8ccf33e3582e7a68fa91fc1fc3bc7ef1234ef02ebad7c58b13404ce842b5bb37",
+    "frozen_model.json": "83640d6e35c3769967754beda6b091e228d1fe7a2d9241c27cf4a94831acaa7b",
+    "frozen_model_v2.json": "d7387501383b1402c2f9a3e6ca59cbd5e70fe7417737c9a3e2dbdb035e0a1f14",
+    "gain_model_comparison_v1.json": "ee5c8fec8d0fcd98a3da45269dd2a300a46d30063ea8c17fa19c6fa362cada94",
+    "gain_model_comparison.json": "9a4691b290962965c2454b82a19884d406657bf3fc64bc37eecd1fd7ae2d4a42",
+    "threshold_model_comparison.json": "466e4b387426611f398be66290dfed16d680146dba0c3d9121a3d9ea812b3095",
+    "probe_recipes.json": "b9f0815ce740fc30013f5574ef62b5f1cc7fe0f3e5774e15231a9e9574b4de53",
+    "threshold_recipes.json": "ab7b3e12a122501be724df364a3ddae2d0e54969a9cda838bf3e9d4b8911de81"
+  },
+  "limits": [
+    "Limited to the specified runtime, selected tone/music AUs and constructed cases; not a codec-wide conformance claim",
+    "Native reference replays are bit exact; local Rust and diagnostic model comparisons report numeric residuals separately",
+    "The normalized gain-domain noise comparison on onset envelopes does not imply audible noise injection",
+    "Reference startup and incomplete-capture failures were excluded and retained locally; they are not evidence of unsupported bitstreams",
+    "Current option only adds boost; the reference group/hard limits, floor and mantissa-zeroing rule remain outside production",
+    "Whole PCM residuals from phase, preflattening, synthesis-generation clocks and other stages remain open; no >=18 kHz reference low-pass was adopted"
+  ]
+}

@@ -1072,7 +1072,17 @@ if (aspx_sig_delta_dir[atsg] == 0 && qscf_sig_sbg[0][atsg] == 0
 
 `Pseudocode 95`–`101`，落在 `crates/macindecode-ac4-decode/src/aspx/hfgain.rs`。把 5.32 的七张矩阵压成三张：`sig_gain_sb_adj` 缩放 HF 生成信号，`noise_lev_sb_adj` 交给 `5.7.6.4.3` 的噪声发生器，`sine_lev_sb_adj` 是要叠加的正弦幅度。ADR-0005 六个 `sqrt` 里的后四个都在这里。
 
-**`aspx_limiter` 决定是否进入 `Pseudocode 96`–`101`。** 表 122 明确定义 `0` 为 limiter off、`1` 为 limiter on；此前因七段伪码没有再写一层条件而误判成「无条件执行」。正确边界是：`Pseudocode 95` 始终计算初始信号增益；关闭时它与 `Pseudocode 94` 的噪声/正弦电平直接成为输出，boost 记为乘法中性元 `1`；打开时才做下面的两级钳制。接口用 `LimiterMode::Off/On` 表达，关闭路径不要求一张永远不会读取的 limiter 表。
+**关闭分支的完整范围是待复核的本地判读。** 表 122 定义 `0` 为 limiter off、`1` 为 limiter on，但 P95–101 没有明确把整个 boost 链包在此条件下。当前 `LimiterMode::Off` 返回 P95 初始信号增益与 P94 噪声／正弦电平，boost 为 `1`；开启时才使用 limiter 表。2026-10-04 的[内部检查点与同输入重放](experiments/aspx_reference_checkpoints.json)证明，已测 DRP 关闭状态下仍有能量补偿与有限增益约束，而且只切换内部标志就能逐位预测变异流的增益／组装输出。此前称上述跳过 P96–101 的范围为“正确边界”，证据不足，现撤回该唯一性断言。生产行为暂不变；是否保留 P99–101 与硬上限分别裁决，不以参考运行时自动代替规范。
+
+**显式策略已可配置。** [ADR-0018](decisions/0018-opt-in-aspx-limiter-off-boost.md) 在不改变
+默认输出的前提下增加 `LimiterMode::OffWithBoost`：跳过 P96–98，使用同源 limiter 表执行
+P99–101，沿用约 4 dB 的补偿上限。Scene API 与五个真实音频出口均可显式启用。该选项不复制
+参考端硬上限，也不构成对关闭分支默认语义的最终裁决。
+
+2026-10-16 的[同输入增益对照](ASPX_LIMITER_OFF_INVESTIGATION.md)将参考关闭行为进一步分解为
+有限但放宽的分组约束、补偿前约 92,682 的信号增益硬上限及补偿能量分母的 0.5 地板；极端
+构造输入另触发原生尾数归零。9/9 次调用和逐包络重放均已验证，诊断模型在真实检查点最多
+相差 3 ULP。这些是特定运行时观察，尚未作为规范勘误或生产策略采用；OffWithBoost 的范围不变。
 
 **两级钳制。** 增益先被限幅器子带组的上限压住（`Pseudocode 96`–`98`），再按限幅损失的能量整组抬回来（`Pseudocode 99`–`101`）。两级各有硬上限：`MAX_SIG_GAIN = 1e5` 压住上限本身，`MAX_BOOST_FACT = 1,584893192` 压住抬升倍数。抬升按限幅器组统一施加，因此组内一个被压住的子带最终可以高过它自己未限幅时的增益。
 
