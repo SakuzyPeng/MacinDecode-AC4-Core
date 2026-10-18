@@ -565,6 +565,9 @@ pub fn estimate(
 mod gain_replay_tests;
 
 #[cfg(test)]
+mod estimate_replay_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::aspx::frames::AspxIntervalParams;
