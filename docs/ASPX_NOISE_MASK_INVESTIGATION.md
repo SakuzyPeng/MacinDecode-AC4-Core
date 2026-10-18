@@ -5,6 +5,10 @@
 生产 DSP、公开 API、CLI、默认策略和 PCM 基线不变。机器摘要见
 [`aspx_noise_mask_comparison.json`](experiments/aspx_noise_mask_comparison.json)。
 
+后续状态：本报告保留修复前的调查结果；生产已按
+[ADR-0021](decisions/0021-align-aspx-noise-injection-with-energy-budget.md)共用 P99 预算条件，
+单项 PCM A/B 与回归结果单独记录，不回写本报告的历史指标。
+
 ## 已经分离出的条件
 
 固定 HF、调整后增益、噪声表和两个游标后，已测参考的规则为：

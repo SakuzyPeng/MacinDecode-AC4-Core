@@ -188,72 +188,88 @@ fn replay_envelope_estimates() {
     assert!(!ids.is_empty());
 }
 
-#[test]
-#[ignore = "diagnostic export of current production onset behavior; not a normative assertion"]
-fn replay_assembly_onset_observation() {
+fn assembly_onset_observation(onset: bool) -> ([QmfSlot; 32], [QmfSlot; 32], u16) {
     use crate::aspx::hfassemble::{HfDelay, assemble};
     use crate::aspx::hfgain::{AdjustedGains, LimiterMode, adjust};
     use crate::aspx::noisegen::{NoiseCursor, generate};
 
+    let case = fixture(true);
+    let q = [QmfSlot::zero(); 32];
+    let mut sf = ScaleFactors::new();
+    sf.fill_for_test(
+        1,
+        usize::from(case.bands.num_sbg_sig_highres()),
+        usize::from(case.bands.num_sbg_noise()),
+        2.0,
+        1.0,
+    );
+    let mut sines = SineState::new();
+    sines.placement_at_end = onset;
+    let mut estimated = EnvelopeEstimate::new();
+    estimate(
+        &q,
+        &case.bands,
+        &case.interval,
+        &sf,
+        &[false; 64],
+        SinePlacement::from_params(-1),
+        true,
+        2,
+        &mut sines,
+        &mut estimated,
+    )
+    .unwrap();
+    assert_eq!(estimated.sine_onset(0), Some(onset));
+    let mut gains = AdjustedGains::new();
+    adjust(&estimated, &case.bands, LimiterMode::Off, &mut gains).unwrap();
+    let mut noise = [QmfSlot::zero(); 32];
+    let mut cursor = NoiseCursor::new();
+    generate(
+        &gains,
+        &case.bands,
+        &case.interval,
+        2,
+        true,
+        &mut cursor,
+        &mut noise,
+    )
+    .unwrap();
+    let mut out = [QmfSlot::zero(); 32];
+    assemble(
+        &gains,
+        &case.bands,
+        &case.interval,
+        2,
+        32,
+        &q,
+        &noise,
+        &q,
+        &mut HfDelay::new(),
+        &mut out,
+    )
+    .unwrap();
+    (out, noise, cursor.previous())
+}
+
+#[test]
+fn onset_budget_reaches_assembly_without_changing_generated_noise_or_clock() {
+    let (ordinary, ordinary_noise, ordinary_cursor) = assembly_onset_observation(false);
+    let (onset, onset_noise, onset_cursor) = assembly_onset_observation(true);
+    assert_eq!(ordinary, ordinary_noise);
+    assert_eq!(ordinary_noise, onset_noise);
+    assert!(ordinary_noise.iter().any(|slot| slot.re[36] != 0.0));
+    assert_eq!(onset, [QmfSlot::zero(); 32]);
+    assert_eq!((ordinary_cursor, onset_cursor), (128, 128));
+}
+
+#[test]
+#[ignore = "diagnostic export of current production onset behavior"]
+fn replay_assembly_onset_observation() {
     let directory = std::env::var("MACINAC4_ASSEMBLY_OBSERVATION_OUTPUT").unwrap();
     let directory = Path::new(&directory);
     std::fs::create_dir(directory).unwrap();
-    let case = fixture(true);
-    let q = [QmfSlot::zero(); 32];
     for onset in [false, true] {
-        let mut sf = ScaleFactors::new();
-        sf.fill_for_test(
-            1,
-            usize::from(case.bands.num_sbg_sig_highres()),
-            usize::from(case.bands.num_sbg_noise()),
-            2.0,
-            1.0,
-        );
-        let mut sines = SineState::new();
-        sines.placement_at_end = onset;
-        let mut estimated = EnvelopeEstimate::new();
-        estimate(
-            &q,
-            &case.bands,
-            &case.interval,
-            &sf,
-            &[false; 64],
-            SinePlacement::from_params(-1),
-            true,
-            2,
-            &mut sines,
-            &mut estimated,
-        )
-        .unwrap();
-        assert_eq!(estimated.sine_onset(0), Some(onset));
-        let mut gains = AdjustedGains::new();
-        adjust(&estimated, &case.bands, LimiterMode::Off, &mut gains).unwrap();
-        let mut noise = [QmfSlot::zero(); 32];
-        let mut cursor = NoiseCursor::new();
-        generate(
-            &gains,
-            &case.bands,
-            &case.interval,
-            2,
-            true,
-            &mut cursor,
-            &mut noise,
-        )
-        .unwrap();
-        let mut out = [QmfSlot::zero(); 32];
-        assemble(
-            &gains,
-            &case.bands,
-            &case.interval,
-            2,
-            32,
-            &q,
-            &noise,
-            &q,
-            &mut HfDelay::new(),
-            &mut out,
-        )
-        .unwrap();
+        let (out, _, _) = assembly_onset_observation(onset);
         let path = directory.join(format!("onset{}.f32", u8::from(onset)));
         let mut file = std::fs::File::create_new(path).unwrap();
         for slot in out {

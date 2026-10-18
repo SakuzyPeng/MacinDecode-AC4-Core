@@ -68,6 +68,9 @@ MSRV 为 Rust 1.98，禁止 unsafe Rust。完整设计、支持矩阵和规范�
 
 码流关闭 limiter 时采用 P95/P94 的初始结果，开启时执行 P96–101 的限幅与能量补偿。
 
+实际注噪遵循 P99 的预算条件，onset 包络及正弦所在子带按预算抑制噪声消费，
+生成器与游标按时间轴推进。详见 [ADR-0021](../../docs/decisions/0021-align-aspx-noise-injection-with-energy-budget.md)。
+
 ## License
 
 [MIT](LICENSE)
