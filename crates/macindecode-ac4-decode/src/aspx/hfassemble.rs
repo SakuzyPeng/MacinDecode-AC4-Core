@@ -348,6 +348,9 @@ pub fn assemble(
 }
 
 #[cfg(test)]
+mod mask_replay_tests;
+
+#[cfg(test)]
 #[expect(
     clippy::indexing_slicing,
     clippy::arithmetic_side_effects,
