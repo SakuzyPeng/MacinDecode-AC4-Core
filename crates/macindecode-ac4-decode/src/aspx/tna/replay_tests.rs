@@ -202,7 +202,7 @@ fn replay_fixed_hf_inputs() {
     // 缺标记的旧文件固定按旧式解释，不能随着生产变化重释历史实验。
     std::fs::write(
         output.join("replay_metadata.json"),
-        "{\"schema\":\"macinac4.hf-replay\",\"version\":1,\"preflatten_gain_convention\":\"slope_minus_mean\"}\n",
+        "{\"schema\":\"macinac4.hf-replay\",\"version\":1,\"preflatten_gain_convention\":\"slope_minus_mean\",\"prediction_solver\":\"orthogonal_residual\"}\n",
     ).unwrap();
     let manifest = std::fs::read_to_string(data.join("hf_cases.txt")).unwrap();
     let mut ids = BTreeSet::new();
@@ -246,7 +246,7 @@ fn replay_fixed_hf_inputs() {
         for sb in 0..usize::from(p.bands.sba()) {
             let c = &reference_cov[9 * sb..9 * sb + 9];
             let cov = from_values(c);
-            let (a0, a1) = solve(&cov);
+            let (a0, a1) = solve_covariance(&cov);
             let (a0, a1) = clamp_unstable(a0, a1);
             from_cov.alpha0[sb] = Coefficient::from_complex(a0);
             from_cov.alpha1[sb] = Coefficient::from_complex(a1);
@@ -372,7 +372,7 @@ fn replay_fixed_hf_inputs() {
     {
         assert!(id.bytes().all(|x| x.is_ascii_alphanumeric()) && ids.insert(id.to_string()));
         let values = floats(&data.join(format!("{id}.solver_cov.f32")), 9);
-        let (a0, a1) = solve(&from_values(&values));
+        let (a0, a1) = solve_covariance(&from_values(&values));
         let (a0, a1) = clamp_unstable(a0, a1);
         let (a0, a1) = (Coefficient::from_complex(a0), Coefficient::from_complex(a1));
         save(

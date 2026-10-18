@@ -1,0 +1,624 @@
+{
+  "schema": "macinac4.aspx-tna-stability-fix",
+  "version": 1,
+  "date": "2026-10-18",
+  "decision": "ADR-0023",
+  "head_before": "b9838f4efd5b5c8df2601e0c23bcc73d769586e1",
+  "status": "implemented_and_verified",
+  "production_algorithm": "orthogonal_residual",
+  "mathematical_objective_unchanged": true,
+  "regularizer": 9.5367431640625e-07,
+  "coefficient_limit": 4,
+  "clamp_before_f32_rounding": true,
+  "public_api_changed": false,
+  "cli_json_changed": false,
+  "pcm_baselines_updated": false,
+  "independent_evidence": {
+    "cases": 1850,
+    "previous_clamp_mismatches": 1,
+    "current_clamp_mismatches": 0,
+    "previous_max_weighted_error": 4.927999315275102e-10,
+    "current_max_weighted_error": 1.4083959783429754e-14,
+    "current_max_raw_alpha_absolute_error": 1.408393696111321e-14,
+    "real_source_cases": 378,
+    "real_stored_coefficients_bit_exact_to_previous": true,
+    "exact_scale_cases": 949,
+    "exact_scale_groups": 152,
+    "exact_scale_bit_invariance": true,
+    "hf_consumption_cases": 9250,
+    "boundary_case": "b217",
+    "boundary_red_test_returncode": 101,
+    "boundary_green_test_passed": true,
+    "reference_used_as_oracle": false
+  },
+  "determinism": {
+    "cases": 1850,
+    "files_per_run": 12952,
+    "arm64_debug_x86_64_debug_bit_exact": true,
+    "arm64_debug_release_bit_exact": true
+  },
+  "full_hf_replay": {
+    "cases": 129,
+    "chirp_cases": 112,
+    "covariance_only_probes": 18,
+    "covariance_probe_solver": "legacy_covariance",
+    "preflatten_convention": "slope_minus_mean",
+    "new_timing_solver": "orthogonal_residual"
+  },
+  "complete_pcm": {
+    "input_variants": 8,
+    "option_combinations": 14,
+    "local_scale": 1.52587890625e-05,
+    "reference_lag_samples": 31,
+    "phase_gain_or_delay_fitting": false,
+    "all_pcm_bit_exact_to_previous": true,
+    "cases": [
+      {
+        "case": "tone1",
+        "boost": false,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "5fb437375f91c97c74c2e5c148bab0b2f4ecbf2e6a30df3c3520b6365b8d8f9e",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone1",
+        "boost": true,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "5fb437375f91c97c74c2e5c148bab0b2f4ecbf2e6a30df3c3520b6365b8d8f9e",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone0",
+        "boost": false,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "690c96e2fe24272880320970a83e43d2ef2e31d4f1d91232eb7a9bb6034c6c5a",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone0",
+        "boost": true,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "ce694b4c5e75bc1d2e68827aec8e21ed7c83e783e686200f45bea522bfd69e1a",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "music1",
+        "boost": false,
+        "shape": [
+          819200,
+          21
+        ],
+        "sha256": "3ecea69938c643ecb901ea36f2053ed8f8c98ca5aa9025d3d54309a1360abf3e",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "music1",
+        "boost": true,
+        "shape": [
+          819200,
+          21
+        ],
+        "sha256": "3ecea69938c643ecb901ea36f2053ed8f8c98ca5aa9025d3d54309a1360abf3e",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "music0",
+        "boost": false,
+        "shape": [
+          819200,
+          21
+        ],
+        "sha256": "fbb8b71edf0b4292fab27f6511ce81f263f7e50308b237e95eebbce5933969a6",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "music0",
+        "boost": true,
+        "shape": [
+          819200,
+          21
+        ],
+        "sha256": "566b4c6c244ae67515b2558c7738801880cb1fe63020dacb0fba73e80d9f79d2",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone1281",
+        "boost": false,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "1cfcd364d273286aaa82e72f23e0ae8a01c416f12f87271268998c8ffe7d1090",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone1281",
+        "boost": true,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "1cfcd364d273286aaa82e72f23e0ae8a01c416f12f87271268998c8ffe7d1090",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone181871",
+        "boost": false,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "183da68735ca82a95614b40726af1ceb8e3549bf17cec2bb7ddcdc9cea6863c6",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone181871",
+        "boost": true,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "183da68735ca82a95614b40726af1ceb8e3549bf17cec2bb7ddcdc9cea6863c6",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "tone_preflat0",
+        "boost": false,
+        "shape": [
+          292864,
+          21
+        ],
+        "sha256": "a6dc0ff7dac6cc36fb4d69741690aeac969dc04c8c5efdebfa61516201a56ee9",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      },
+      {
+        "case": "music_preflat0",
+        "boost": false,
+        "shape": [
+          819200,
+          21
+        ],
+        "sha256": "a18cce99893b903c861f9b009c997952690aa57300b8d6ebe157f7e3e5b89e03",
+        "pcm_bit_exact": true,
+        "whole_error_energy_change_db": 0.0,
+        "band12_18_error_energy_change_db": 0.0,
+        "peak_change_db": 0.0
+      }
+    ]
+  },
+  "performance": {
+    "architecture": "aarch64-apple-darwin",
+    "representative_inputs": [
+      "probe_axes_single_object/master_ac4_1500K.m4a",
+      "probe_bed_only/master_ac4_448K.m4a",
+      "probe_ramp_control/master_ac4_768K.m4a"
+    ],
+    "modes": [
+      "core",
+      "full"
+    ],
+    "rounds": 3,
+    "order": [
+      [
+        "before",
+        "after"
+      ],
+      [
+        "after",
+        "before"
+      ],
+      [
+        "before",
+        "after"
+      ]
+    ],
+    "cold_runs": 3,
+    "steady_passes_per_case": 5,
+    "aggregate": {
+      "core": {
+        "before_total_ns": [
+          2348677508,
+          2344060659,
+          2345264205
+        ],
+        "after_total_ns": [
+          2325624950,
+          2329793123,
+          2353492431
+        ],
+        "median_change_percent": -0.6596733096005281,
+        "deadline_misses": 0
+      },
+      "full": {
+        "before_total_ns": [
+          5087403900,
+          5082195232,
+          5063492699
+        ],
+        "after_total_ns": [
+          5048126908,
+          5074374572,
+          5070429177
+        ],
+        "median_change_percent": -0.23151521070885472,
+        "deadline_misses": 0
+      }
+    },
+    "cases": [
+      {
+        "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+        "mode": "core",
+        "before": {
+          "total_ns": [
+            1591995341,
+            1588661868,
+            1587447419
+          ],
+          "p99_ns": [
+            2493375,
+            2475958,
+            2477291
+          ]
+        },
+        "after": {
+          "total_ns": [
+            1571870903,
+            1570376001,
+            1595766219
+          ],
+          "p99_ns": [
+            2488708,
+            2408250,
+            3662083
+          ]
+        },
+        "median_change_percent": -1.0569250347236214
+      },
+      {
+        "input": "probe_axes_single_object/master_ac4_1500K.m4a",
+        "mode": "full",
+        "before": {
+          "total_ns": [
+            3318530530,
+            3312358744,
+            3302549824
+          ],
+          "p99_ns": [
+            4976208,
+            4973208,
+            4987083
+          ]
+        },
+        "after": {
+          "total_ns": [
+            3289512991,
+            3294849029,
+            3302437742
+          ],
+          "p99_ns": [
+            4935833,
+            4937792,
+            4971917
+          ]
+        },
+        "median_change_percent": -0.5286177118259627
+      },
+      {
+        "input": "probe_bed_only/master_ac4_448K.m4a",
+        "mode": "core",
+        "before": {
+          "total_ns": [
+            364419718,
+            369777250,
+            366692787
+          ],
+          "p99_ns": [
+            1601916,
+            1683917,
+            1649708
+          ]
+        },
+        "after": {
+          "total_ns": [
+            372192052,
+            372121456,
+            372441460
+          ],
+          "p99_ns": [
+            1780792,
+            1712000,
+            1686750
+          ]
+        },
+        "median_change_percent": 1.4996927114358627
+      },
+      {
+        "input": "probe_bed_only/master_ac4_448K.m4a",
+        "mode": "full",
+        "before": {
+          "total_ns": [
+            903693790,
+            903533735,
+            898665210
+          ],
+          "p99_ns": [
+            4003208,
+            4057542,
+            3943375
+          ]
+        },
+        "after": {
+          "total_ns": [
+            898596039,
+            895497581,
+            908371679
+          ],
+          "p99_ns": [
+            4039208,
+            3965375,
+            4074625
+          ]
+        },
+        "median_change_percent": -0.5464871768180335
+      },
+      {
+        "input": "probe_ramp_control/master_ac4_768K.m4a",
+        "mode": "core",
+        "before": {
+          "total_ns": [
+            392262449,
+            385621541,
+            391123999
+          ],
+          "p99_ns": [
+            2321375,
+            1974959,
+            2235583
+          ]
+        },
+        "after": {
+          "total_ns": [
+            381561995,
+            387295666,
+            385284752
+          ],
+          "p99_ns": [
+            1967917,
+            2083042,
+            2174084
+          ]
+        },
+        "median_change_percent": -1.4929400944276972
+      },
+      {
+        "input": "probe_ramp_control/master_ac4_768K.m4a",
+        "mode": "full",
+        "before": {
+          "total_ns": [
+            865179580,
+            866302753,
+            862277665
+          ],
+          "p99_ns": [
+            4426667,
+            4482250,
+            4447166
+          ]
+        },
+        "after": {
+          "total_ns": [
+            860017878,
+            884027962,
+            859619756
+          ],
+          "p99_ns": [
+            4344041,
+            9136875,
+            4337333
+          ]
+        },
+        "median_change_percent": -0.5966046956401794
+      }
+    ],
+    "interpretation": "No material regression observed in this sample; sub-percent aggregate differences are not claimed as an optimization benefit.",
+    "before_binary_sha256": "357117024f5c8ea9f26e1b770fd4847a9da9a01df0a9edfd504dd2d69aab4c58",
+    "after_binary_sha256": "c1b62ef1609a327debce0274ebdf086f5a8c376ac85df2744429e32ef3011349"
+  },
+  "checks": {
+    "test_default": {
+      "passed": 516,
+      "failed": 0,
+      "ignored": 3
+    },
+    "test_audio": {
+      "passed": 1328,
+      "failed": 0,
+      "ignored": 34
+    },
+    "test_spec": {
+      "passed": 107,
+      "failed": 0,
+      "ignored": 1
+    },
+    "clippy_default": {
+      "passed": true,
+      "log_sha256": "fecede7c2157efe2f16c8c8b9dce94b0fb4dd384dca8207046c8bf7636eb0ffe"
+    },
+    "clippy_audio": {
+      "passed": true,
+      "log_sha256": "a9057eb941389ff56debd7ab93afc769d5308b0dd6bb8b9146c95860240c8e1e"
+    },
+    "fmt": {
+      "passed": true,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "layers": {
+      "passed": true,
+      "log_sha256": "d4e802690650198c33ff47fc36d0733ded42bb1ef1f882f9ab3cebc193b10d4e"
+    },
+    "no_std_default": {
+      "passed": true,
+      "log_sha256": "b94a2666b8232a03718ae195510d847cb3e69a646af351691ed1ded11d53b562"
+    },
+    "no_std_audio": {
+      "passed": true,
+      "log_sha256": "e9176e6521b494b2cf1df3f418688b581f7c54315374854b7a4d0cc7800f3c6a"
+    },
+    "python_checks": {
+      "passed": true,
+      "log_sha256": "71cdf08515b591363d24a75df09ca015826ccd24712390b3e987f1184f37bf8f",
+      "tests": 114
+    },
+    "math": {
+      "passed": true,
+      "log_sha256": "3ead48b0f91c887cfc48d86209880f6add32421a1d8cb677f6069fd4a6ef029c"
+    },
+    "transform": {
+      "passed": true,
+      "log_sha256": "1c2ee07e01d5c3fd5f1f982b3b2c6f7f5fd67db73a04b2ae994e2b3a1e4ce21b"
+    },
+    "pcm_baselines": {
+      "core": 12,
+      "aspx": 12,
+      "objects": 12,
+      "changed": {
+        "core": [],
+        "aspx": [],
+        "objects": []
+      },
+      "all_bit_exact": true,
+      "log_sha256": "23b6bf2bc03d96b06c9a92d7b488953a5cecabd939fc3c73a57a9f0d1cd61900"
+    }
+  },
+  "mutations": [
+    {
+      "name": "baseline",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "fc9fa59320c87577f3a5badbf00a547ab3d432215e0cc82e59e9ef393f7527f1"
+    },
+    {
+      "name": "legacy_solve",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "0f7f6ce29e940067c811c206b4b171258ca60649478a5431dc560ba242c02371"
+    },
+    {
+      "name": "no_conjugate",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "8928d0367c92fbff737c1cfb6a7919f08a2f41a5e29fe51138a95e7e49ffb713"
+    },
+    {
+      "name": "no_ridge",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "e169020985e8d765abbc566d49fd8dfccbeac481152be18e2d7dbc4020890ed5"
+    },
+    {
+      "name": "hide_nonfinite_zero_column",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "f9dd8fdd1afd88fb6cf4544cead398a66ebaed8088e648eb6dd982d5d689fa6a"
+    },
+    {
+      "name": "strict_limit",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "63cdc8ec0e14a431dca8f9d44fe9f7ac29683300b18fb4f5658d1c0fa4843422"
+    },
+    {
+      "name": "equivalent_ridge",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "13cbe95ae0733cc93ebd9d16be164b137fa8df536be2de72fdf3216a8167ea68"
+    },
+    {
+      "name": "equivalent_limit",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "f0059418f62de4d6155e7fcb149ca95fb0999a602538578b363863aa453c43c4"
+    },
+    {
+      "name": "restored",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "ec047f2371d2294b76cf073b87ee13fb1ac1d1c6126b1fcbbd66cb91df5e9b0e"
+    }
+  ],
+  "provenance": {
+    "starting_state_sha256": "ddafc6bfcdd324bc7718ccfe2934e6e847bd625d3094090deb1b26e0a563c19c",
+    "red_log_sha256": "d75d36d424f30a301384f670387864554c03fb8243a4006ae25d5d8fc7842b30",
+    "raw_comparison_sha256": "bd96dc5cef0ee4e07763ca84379f96354b070cbe5ae21f203555d655689a036d",
+    "hf_comparison_sha256": "403db8fc87124ad58624183ea1f3fbe8f3a790ff049cdb2a405dc507ea2fcb9f",
+    "pcm_before_sha256": "5c2f698f9508f8062bc10ad556563a80c6d3e8aee7c3d785f3a6ec59186923bb",
+    "pcm_after_sha256": "2babebc02b508b540315a015fcb6ae136800e7c16b48cd8eb9cbeb1ed7a40ccf",
+    "baseline_actual_sha256": "0c322c8cb66f1463f816aabba6357e6ccb6c33452fe8bbacd6036e20e62c0689",
+    "release_before_sha256": "f4e7d9430be0fb67c098f0a0884135ea9db5a0edcd19ec043ef3b8d95ca895e5",
+    "release_after_sha256": "87df70f75adea02a8a28229f79ab12d1e45bdaaac9100c5ecdf02a00fab29038",
+    "source_tna_sha256": "56bd0cf8d6aa49a3dcbf04a2bb4310c3f1faa08c126d5fcd61e003bd3a51a676",
+    "protected_files": {
+      "scripts/gen_damf.py": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+      "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "vectors/aspx_baseline.json": "4d8180eb1992be1c5c71c68b6a06e8cef68a1dfed6adeb2a7376d3b05b020e6c",
+      "vectors/objects_baseline.json": "8ea8b55d460bc2003d050e6b7a1a950ee10896b2df4bd1d3fe94571c41dc933c"
+    }
+  },
+  "limitations": [
+    "No measured change in the evaluated real-stream PCM; this is a numerical-boundary correction, not a demonstrated DRP or listening improvement.",
+    "Cross-target numerical equality measured on macOS ARM64 and x86_64, plus ARM64 debug/release; no universal target conformance claim.",
+    "Finite-precision evaluation still cannot promise exact threshold decisions for every possible input arbitrarily close to four.",
+    "The after-storage f32 magnitude observation remains governed by the original pre-storage clamp rule."
+  ]
+}

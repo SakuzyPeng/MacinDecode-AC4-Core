@@ -15,6 +15,10 @@
 //! 上界。推导、独立最小二乘证据及 PCM 基线变化见 ADR-0017；这是一项跨条款
 //! 解释，不是已发布的 ETSI 勘误。
 //!
+//! 求解按 ADR-0023 在原始样本上先消去第一延迟抽头的投影，再解第二抽头的
+//! 正则化残差。目标和模长 4 的清零条件不变，避免接近的大协方差乘积相减，
+//! 使很小的累加误差在硬阈值处放大成错误分支。只用固定顺序的 f64 四则运算。
+//!
 //! # 时间轴的衔接
 //!
 //! `Pseudocode 86` 先把 `Q_low` 向前延长 `ts_offset_hfadj = 4` 个时隙，取的是
@@ -156,11 +160,13 @@ impl Complex {
 /// 五个元素（`[0][1]`、`[0][2]`、`[1][1]`、`[1][2]`、`[2][2]`）都在 `i ∈ 0..3`
 /// 与 `j ∈ 1..3` 之内。`[2][1]` 算了但没人用，保留是为了照抄原文的双重循环。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg(test)]
 struct Covariance {
     /// `cov[i][j]`，第一维是 `i`，第二维是 `j − 1`。
     entries: [[Complex; 2]; 3],
 }
 
+#[cfg(test)]
 impl Covariance {
     const fn get(&self, i: usize, j: usize) -> Complex {
         self.entries[i][j - 1]
@@ -415,6 +421,7 @@ impl<'a> ExtendedLowBand<'a> {
 }
 
 /// `Pseudocode 86` 的协方差矩阵。
+#[cfg(test)]
 fn covariance(ext: ExtendedLowBand<'_>, sb: usize, num_ts_ext: usize) -> Covariance {
     let mut out = Covariance::default();
     for i in 0..3 {
@@ -433,7 +440,7 @@ fn covariance(ext: ExtendedLowBand<'_>, sb: usize, num_ts_ext: usize) -> Covaria
     out
 }
 
-/// `Pseudocode 87` 的解算。
+/// 历史协方差闭式，仅供离线输入不含原始时序的调查及旧记录复现。
 ///
 /// 规范原文把第二行写成 `abs(cov[1][2])`，漏了 `[sb]` 一维。同一段落里其余六处
 /// 都带 `[sb]`，且 `cov` 在 `Pseudocode 86` 中就是三维的，因此这是排印脱漏，按
@@ -442,7 +449,8 @@ fn covariance(ext: ExtendedLowBand<'_>, sb: usize, num_ts_ext: usize) -> Covaria
 /// `TS103190-1:v1.4.1:5.7.6.4.1.3` 的协方差与 `5.7.6.4.1.4` 的滤波器要求
 /// `c01 + alpha0*c11 + alpha1*conj(c12) = 0`。因此 alpha0 的交叉项取减号，
 /// 偏离 `Pseudocode 87` 的加号字面，见 ADR-0017。
-fn solve(cov: &Covariance) -> (Complex, Complex) {
+#[cfg(test)]
+fn solve_covariance(cov: &Covariance) -> (Complex, Complex) {
     let c11 = cov.get(1, 1);
     let c12 = cov.get(1, 2);
     let c22 = cov.get(2, 2);
@@ -469,6 +477,57 @@ fn solve(cov: &Covariance) -> (Complex, Complex) {
     };
 
     (alpha0, alpha1)
+}
+
+/// 与 P87/ADR-0017 相同的 ridge 最小二乘，直接正交化原始样本（ADR-0023）。
+///
+/// p1=<x1,y>/||x1||²，p2=<x1,x2>/||x1||²；将 y、x2 分别减去第一列投影，
+/// 再对剩余的一维问题求解。lambda=|<x1,x2>|²/||x1||²*epsilon/(1+epsilon)。
+/// 不形成近奇异行列式，不调用开方，不物化延长后的输入或分配工作区。
+fn solve_projected(
+    ext: ExtendedLowBand<'_>,
+    sb: usize,
+    num_ts_ext: usize,
+) -> Option<(Complex, Complex)> {
+    let mut c01 = Complex::ZERO;
+    let mut c12 = Complex::ZERO;
+    let mut c11 = 0.0;
+    for ts in (TS_OFFSET_HFADJ..num_ts_ext).step_by(2) {
+        let y = ext.complex(sb, ts);
+        let x1 = ext.complex(sb, ts - 2);
+        let x2 = ext.complex(sb, ts - 4);
+        c01 = c01.add(y.mul_conj(x1));
+        c12 = c12.add(x1.mul_conj(x2));
+        c11 += x1.norm_sqr();
+    }
+    // 零列不能掩盖被采样输入中的 NaN/Inf；失败仍由外层逐子带事务处理。
+    if !c01.is_finite() || !c12.is_finite() || !c11.is_finite() {
+        return None;
+    }
+    if c11 == 0.0 {
+        // 与 P87 的两处零分母分支一致；P86 的重叠时序此时也令 c02 为零。
+        return Some((Complex::ZERO, Complex::ZERO));
+    }
+    let p1 = c01.div_real(c11);
+    let p2 = c12.conj().div_real(c11);
+    let ridge = (c12.norm_sqr() / c11) * (EPSILON_INV / (1.0 + EPSILON_INV));
+    let mut cross = Complex::ZERO;
+    let mut energy = 0.0;
+    for ts in (TS_OFFSET_HFADJ..num_ts_ext).step_by(2) {
+        let x1 = ext.complex(sb, ts - 2);
+        let residual = ext.complex(sb, ts).sub(p1.mul(x1));
+        let orthogonal = ext.complex(sb, ts - 4).sub(p2.mul(x1));
+        cross = cross.add(residual.mul_conj(orthogonal));
+        energy += orthogonal.norm_sqr();
+    }
+    let denominator = energy + ridge;
+    let a1 = if denominator == 0.0 {
+        Complex::ZERO
+    } else {
+        Complex::ZERO.sub(cross).div_real(denominator)
+    };
+    let a0 = Complex::ZERO.sub(p1).sub(a1.mul(p2));
+    (a0.is_finite() && a1.is_finite()).then_some((a0, a1))
 }
 
 /// 「若 alpha0 与 alpha1 的模有任一达到 4，两者一起置零。」
@@ -523,11 +582,8 @@ pub fn prediction_filters(
     let mut alpha0 = [Coefficient::ZERO; SUBBANDS];
     let mut alpha1 = [Coefficient::ZERO; SUBBANDS];
     for sb in 0..sba {
-        let cov = covariance(ext, sb, num_ts_ext);
-        let (mut a0, mut a1) = solve(&cov);
-        if !a0.is_finite() || !a1.is_finite() {
-            return Err(TnaError::NonFiniteCoefficient { subband: sb });
-        }
+        let (mut a0, mut a1) = solve_projected(ext, sb, num_ts_ext)
+            .ok_or(TnaError::NonFiniteCoefficient { subband: sb })?;
         (a0, a1) = clamp_unstable(a0, a1);
         alpha0[sb] = Coefficient::from_complex(a0);
         alpha1[sb] = Coefficient::from_complex(a1);
@@ -613,6 +669,9 @@ pub fn chirp_factors(
 
 #[cfg(test)]
 mod replay_tests;
+
+#[cfg(test)]
+mod stability_tests;
 
 #[cfg(test)]
 #[expect(
@@ -777,7 +836,12 @@ mod tests {
         assert_eq!(cov.get(0, 1), Complex::new(-TERMS, 0.0));
         assert_eq!(cov.get(0, 2), Complex::new(TERMS, 0.0));
 
-        let (alpha0, alpha1) = solve(&cov);
+        let (alpha0, alpha1) = solve_projected(
+            ExtendedLowBand::new(&state, &q_low),
+            2,
+            N + HFGEN + TS_OFFSET_HFADJ,
+        )
+        .unwrap();
         assert_eq!(alpha1, Complex::ZERO, "单频的 alpha1 分子解析为零");
         assert_eq!(alpha0, Complex::new(1.0, 0.0));
     }
@@ -804,7 +868,7 @@ mod tests {
     }
 
     #[test]
-    fn the_regularisation_keeps_a_singular_matrix_invertible() {
+    fn legacy_covariance_regularisation_keeps_a_singular_matrix_invertible() {
         // 故意不引用实现的 EPSILON_INV，避免实现与期望同时漂移。
         const SPEC_EPSILON_INV: f64 = 1.0 / 1_048_576.0;
 
@@ -819,7 +883,7 @@ mod tests {
             Complex::new(2.0, 0.0),
             Complex::new(1.0, 0.0),
         );
-        let (_, alpha1) = solve(&cov);
+        let (_, alpha1) = solve_covariance(&cov);
         let expected = 2.0 * (1.0 + SPEC_EPSILON_INV) / (4.0 * SPEC_EPSILON_INV);
         assert!(
             (alpha1.re - expected).abs() <= expected * 1e-9,
@@ -835,7 +899,8 @@ mod tests {
         let samples = linear_ramp();
         let (state, q_low) = spread(&samples, 0);
         let cov = covariance(ExtendedLowBand::new(&state, &q_low), 0, samples.len());
-        let (alpha0, alpha1) = solve(&cov);
+        let (alpha0, alpha1) =
+            solve_projected(ExtendedLowBand::new(&state, &q_low), 0, samples.len()).unwrap();
         assert_ne!(alpha1, Complex::ZERO, "本用例需要非零的 alpha1");
         assert_ne!(cov.get(1, 2).im, 0.0, "本用例需要非实的 cov[1][2]");
 
@@ -936,12 +1001,13 @@ mod tests {
     #[test]
     fn silence_yields_zero_coefficients() {
         let (state, q_low) = spread(&constant((0.0, 0.0)), 0);
-        let cov = covariance(
+
+        let (alpha0, alpha1) = solve_projected(
             ExtendedLowBand::new(&state, &q_low),
             0,
             N + HFGEN + TS_OFFSET_HFADJ,
-        );
-        let (alpha0, alpha1) = solve(&cov);
+        )
+        .unwrap();
         assert_eq!(alpha0, Complex::ZERO);
         assert_eq!(alpha1, Complex::ZERO);
     }
@@ -962,12 +1028,13 @@ mod tests {
             slot.re[0] = value;
             value *= 8.0;
         }
-        let cov = covariance(
+
+        let (alpha0, alpha1) = solve_projected(
             ExtendedLowBand::new(&state, &q_low),
             0,
             N + HFGEN + TS_OFFSET_HFADJ,
-        );
-        let (alpha0, alpha1) = solve(&cov);
+        )
+        .unwrap();
         assert!(
             alpha0.norm_sqr().sqrt() >= SPEC_LIMIT || alpha1.norm_sqr().sqrt() >= SPEC_LIMIT,
             "本用例应当越界，否则它检验不到置零规则"
