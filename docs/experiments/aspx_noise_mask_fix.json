@@ -1,0 +1,1017 @@
+{
+  "schema": "macinac4.aspx-noise-mask-fix",
+  "version": 1,
+  "recorded_on": "2026-10-17",
+  "base_commit": "806d3dd0b528e3e438aec6160b35d7f3bbd9d803",
+  "decision": "ADR-0021",
+  "production_dsp_changed": true,
+  "public_api_changed": false,
+  "cli_changed": false,
+  "change": {
+    "production_functions": [
+      "aspx::hfgain::adjust",
+      "aspx::hfassemble::assemble"
+    ],
+    "predicate": "!sine_onset(env) && sine_level_before_boost[sb][env] == 0",
+    "shared_with_pseudocode_99": true,
+    "limiter_modes": [
+      "Off",
+      "OffWithBoost",
+      "On"
+    ],
+    "consumption_only": true,
+    "generators_cursors_initial_phase_and_gain_values_unchanged": true,
+    "preflatten_qmf_tna_and_limiter_policy_unchanged": true,
+    "noise_gate_not_inferred_from_boosted_level": true
+  },
+  "binary": {
+    "before_sha256": "2654fffc3aa893c9e1427f4f9b30382e4c9ff06d85f8635dfbf43a8934a31b0f",
+    "after_sha256": "f728909239853544d601aba1ebe0807bf740ef1a00e19be911c82cf2df3d6ef4"
+  },
+  "normative_basis": {
+    "clauses": [
+      "TS103190-1:v1.4.1:5.7.6.4.2.2",
+      "TS103190-1:v1.4.1:5.7.6.4.3",
+      "TS103190-1:v1.4.1:5.7.6.4.5"
+    ],
+    "reason": "实际消费与 P99 能量预算共用同一判定",
+    "deviation": "补充 P102/P107 无条件字面",
+    "official_erratum_claimed": false,
+    "reference_agreement_is_separate_evidence": true
+  },
+  "reference": {
+    "version": "4.3.0.19350 arm64",
+    "binary_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "new_process_captures": 0,
+    "reused_synthetic_reference_processes": 12,
+    "prior_record": "aspx_noise_mask_comparison.json"
+  },
+  "isolated_replay": {
+    "cases": 936,
+    "historical_modes_bit_exact": true,
+    "production_equals_prior_masked_bit_exact": true,
+    "both_cursors_bit_exact": true,
+    "gain_records": 3200,
+    "gain_modes": 3,
+    "gain_matrices_bit_exact": true,
+    "production_mode": "production",
+    "historical_modes": [
+      "literal",
+      "masked"
+    ],
+    "fixed_adjusted_gain_boundary": true,
+    "budget_production_chain_tested_separately": true,
+    "components": 786240,
+    "reference_comparison": {
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0,
+      "error_energy": 0.0
+    },
+    "prior_comparison_json_unchanged": true,
+    "noise_inputs_unfiltered_in_production_mode": true
+  },
+  "regressions": {
+    "mutations": [
+      {
+        "name": "old_unconditional_assembly",
+        "passed": false,
+        "expected_pass": false,
+        "failures": [
+          "aspx::hfadjust::estimate_replay_tests::onset_budget_reaches_assembly_without_changing_generated_noise_or_clock",
+          "aspx::hfassemble::mask_replay_tests::production_mask_keeps_carryover_and_both_clocks_continuous",
+          "aspx::hfassemble::mask_replay_tests::production_mask_selects_each_envelope_and_band_without_suppressing_signal_or_tone"
+        ]
+      },
+      {
+        "name": "missing_onset",
+        "passed": false,
+        "expected_pass": false,
+        "failures": [
+          "aspx::hfadjust::estimate_replay_tests::onset_budget_reaches_assembly_without_changing_generated_noise_or_clock",
+          "aspx::hfgain::tests::all_limiter_modes_share_the_preboost_noise_budget_condition",
+          "aspx::hfgain::tests::the_previous_intervals_end_pointer_makes_envelope_zero_the_onset",
+          "aspx::hfgain::tests::the_sine_onset_envelope_drops_the_noise_term_in_both_places"
+        ]
+      },
+      {
+        "name": "whole_harmonic_group",
+        "passed": false,
+        "expected_pass": false,
+        "failures": [
+          "aspx::hfadjust::gain_replay_tests::noise_budget_uses_preboost_sine_even_when_the_adjusted_level_underflows",
+          "aspx::hfgain::tests::all_limiter_modes_share_the_preboost_noise_budget_condition"
+        ]
+      },
+      {
+        "name": "postboost_sine",
+        "passed": false,
+        "expected_pass": false,
+        "failures": [
+          "aspx::hfadjust::gain_replay_tests::noise_budget_uses_preboost_sine_even_when_the_adjusted_level_underflows"
+        ]
+      },
+      {
+        "name": "equivalent_predicate_order",
+        "passed": true,
+        "expected_pass": true,
+        "failures": []
+      }
+    ],
+    "carry": {
+      "first_ats": [
+        0,
+        15,
+        17
+      ],
+      "next_ats": [
+        1,
+        16
+      ],
+      "factor": 2,
+      "suppressed_qmf": [
+        30,
+        34
+      ],
+      "carried_qmf": [
+        32,
+        34
+      ],
+      "noise_previous": 256,
+      "tone_previous": 0
+    },
+    "preboost_underflow_fixture": "受控内核压力输入，不声称对应合法反量化取值"
+  },
+  "pcm_comparison": {
+    "local_scale": 1.52587890625e-05,
+    "reference_lag_samples": 31,
+    "tracks": 21,
+    "identity": [
+      "lfe",
+      "object:0",
+      "object:1",
+      "object:2",
+      "object:3",
+      "object:4",
+      "object:5",
+      "object:6",
+      "object:7",
+      "object:8",
+      "object:9",
+      "object:10",
+      "object:11",
+      "object:12",
+      "object:13",
+      "object:14",
+      "object:15",
+      "object:16",
+      "object:17",
+      "object:18",
+      "object:19"
+    ],
+    "sample_rate": 48000,
+    "whole_aligned_interval_includes_tail": true,
+    "gain_phase_or_delay_fitting": false,
+    "positive_improvement_db_means_less_error": true,
+    "stft": "4096-sample Hann; 12 kHz inclusive to 18 kHz exclusive",
+    "band_order_hz": [
+      [
+        0,
+        12000
+      ],
+      [
+        12000,
+        18000
+      ],
+      [
+        18000,
+        24000
+      ]
+    ],
+    "cases": {
+      "tone1": {
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "reference_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "variants": {
+          "false": {
+            "before": {
+              "wave_sha256": "e3401176da6f1c334e75aa9146ffc3a625cc41eee517f295bfcb99036995a5ae",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.011376963932414266,
+              "band_sum_track_mse": [
+                3.2823605189244336e-12,
+                0.011169661189272404,
+                1.0077668735505259e-10
+              ],
+              "local_peak": 0.478234201669693,
+              "reference_peak": 0.6726681590080261
+            },
+            "after": {
+              "wave_sha256": "76a33b3b5a820f8c7696378893a29af53ca09c29f16a87db69c569bafa43f1fd",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.011376065891188584,
+              "band_sum_track_mse": [
+                3.282975045007532e-12,
+                0.011171774597518521,
+                9.851851261050598e-11
+              ],
+              "local_peak": 0.46817874908447266,
+              "reference_peak": 0.6726681590080261
+            },
+            "change": {
+              "whole_improvement_db": 0.00034282410040473746,
+              "band12_18_improvement_db": -0.0008216495580630439,
+              "changed_pcm_values": 56242,
+              "changed_pcm_bits": 56242,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.478234201669693,
+              "after_peak": 0.46817874908447266,
+              "lfe_bit_exact": true,
+              "peak_change_db": -0.1845787044465984
+            }
+          },
+          "true": {
+            "before": {
+              "wave_sha256": "e3401176da6f1c334e75aa9146ffc3a625cc41eee517f295bfcb99036995a5ae",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.011376963932414266,
+              "band_sum_track_mse": [
+                3.2823605189244336e-12,
+                0.011169661189272404,
+                1.0077668735505259e-10
+              ],
+              "local_peak": 0.478234201669693,
+              "reference_peak": 0.6726681590080261
+            },
+            "after": {
+              "wave_sha256": "76a33b3b5a820f8c7696378893a29af53ca09c29f16a87db69c569bafa43f1fd",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.011376065891188584,
+              "band_sum_track_mse": [
+                3.282975045007532e-12,
+                0.011171774597518521,
+                9.851851261050598e-11
+              ],
+              "local_peak": 0.46817874908447266,
+              "reference_peak": 0.6726681590080261
+            },
+            "change": {
+              "whole_improvement_db": 0.00034282410040473746,
+              "band12_18_improvement_db": -0.0008216495580630439,
+              "changed_pcm_values": 56242,
+              "changed_pcm_bits": 56242,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.478234201669693,
+              "after_peak": 0.46817874908447266,
+              "lfe_bit_exact": true,
+              "peak_change_db": -0.1845787044465984
+            }
+          }
+        }
+      },
+      "tone0": {
+        "input_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+        "reference_sha256": "e8345b5e12e2f2df377af74cf2e0b01effff703de64488bdf88834e9b348a3d4",
+        "variants": {
+          "false": {
+            "before": {
+              "wave_sha256": "3249175140d236d8abd56b85293624e6dd8a9416f13bba27297319b22ac4fcee",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.009174708320229073,
+              "band_sum_track_mse": [
+                2.677067906015132e-12,
+                0.008982029477777903,
+                2.0513871796249485e-10
+              ],
+              "local_peak": 0.995627760887146,
+              "reference_peak": 0.983223021030426
+            },
+            "after": {
+              "wave_sha256": "b2385f8d729c90d303a5b992dc399719003ad05daf07db28e61c823a6a3a9969",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.009169804784856055,
+              "band_sum_track_mse": [
+                2.677344376812504e-12,
+                0.008984057373905951,
+                2.1224255230960242e-10
+              ],
+              "local_peak": 0.9956299066543579,
+              "reference_peak": 0.983223021030426
+            },
+            "change": {
+              "whole_improvement_db": 0.0023217606189268433,
+              "band12_18_improvement_db": -0.0009804072631899976,
+              "changed_pcm_values": 56097,
+              "changed_pcm_bits": 56097,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.995627760887146,
+              "after_peak": 0.9956299066543579,
+              "lfe_bit_exact": true,
+              "peak_change_db": 1.8719724218607656e-05
+            }
+          },
+          "true": {
+            "before": {
+              "wave_sha256": "6950b32e67226fcbcc69c546255797849a04f962fa7e8b447e72061cce405985",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.012035349067241838,
+              "band_sum_track_mse": [
+                3.521581326179831e-12,
+                0.011805470202554126,
+                2.3216530507964895e-10
+              ],
+              "local_peak": 1.0015541315078735,
+              "reference_peak": 0.983223021030426
+            },
+            "after": {
+              "wave_sha256": "829f1fd39d4fe35e7ec8cf8a7d3dfa1180abcb4b510898441284bec058e11bcc",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.012029625391290566,
+              "band_sum_track_mse": [
+                3.5229942489823014e-12,
+                0.011808822473847224,
+                2.393697301103962e-10
+              ],
+              "local_peak": 1.0015571117401123,
+              "reference_peak": 0.983223021030426
+            },
+            "change": {
+              "whole_improvement_db": 0.002065874562215477,
+              "band12_18_improvement_db": -0.0012330438638713183,
+              "changed_pcm_values": 56115,
+              "changed_pcm_bits": 56115,
+              "total_pcm_values": 6150144,
+              "before_peak": 1.0015541315078735,
+              "after_peak": 1.0015571117401123,
+              "lfe_bit_exact": true,
+              "peak_change_db": 2.5845762096071885e-05
+            }
+          }
+        }
+      },
+      "music1": {
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "reference_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "variants": {
+          "false": {
+            "before": {
+              "wave_sha256": "5989b9984ba18f09fb625ff56c64227f182b7b05c291615315e771b5ade62b08",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3149366771760318e-05,
+              "band_sum_track_mse": [
+                4.4838394143062774e-07,
+                1.3314506309419529e-05,
+                3.9766692700049113e-07
+              ],
+              "local_peak": 0.5336052179336548,
+              "reference_peak": 0.5422669649124146
+            },
+            "after": {
+              "wave_sha256": "854527739c0386c845dedece383182c9a50b35731a994ccebe26d4d216cbbe68",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3084111974321324e-05,
+              "band_sum_track_mse": [
+                4.4838394090774207e-07,
+                1.3249972741235602e-05,
+                4.0231519235430054e-07
+              ],
+              "local_peak": 0.5336052179336548,
+              "reference_peak": 0.5422669649124146
+            },
+            "change": {
+              "whole_improvement_db": 0.021605870247362866,
+              "band12_18_improvement_db": 0.0211008299016913,
+              "changed_pcm_values": 1554464,
+              "changed_pcm_bits": 1554464,
+              "total_pcm_values": 17203200,
+              "before_peak": 0.5336052179336548,
+              "after_peak": 0.5336052179336548,
+              "lfe_bit_exact": true,
+              "peak_change_db": 0.0
+            }
+          },
+          "true": {
+            "before": {
+              "wave_sha256": "5989b9984ba18f09fb625ff56c64227f182b7b05c291615315e771b5ade62b08",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3149366771760318e-05,
+              "band_sum_track_mse": [
+                4.4838394143062774e-07,
+                1.3314506309419529e-05,
+                3.9766692700049113e-07
+              ],
+              "local_peak": 0.5336052179336548,
+              "reference_peak": 0.5422669649124146
+            },
+            "after": {
+              "wave_sha256": "854527739c0386c845dedece383182c9a50b35731a994ccebe26d4d216cbbe68",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3084111974321324e-05,
+              "band_sum_track_mse": [
+                4.4838394090774207e-07,
+                1.3249972741235602e-05,
+                4.0231519235430054e-07
+              ],
+              "local_peak": 0.5336052179336548,
+              "reference_peak": 0.5422669649124146
+            },
+            "change": {
+              "whole_improvement_db": 0.021605870247362866,
+              "band12_18_improvement_db": 0.0211008299016913,
+              "changed_pcm_values": 1554464,
+              "changed_pcm_bits": 1554464,
+              "total_pcm_values": 17203200,
+              "before_peak": 0.5336052179336548,
+              "after_peak": 0.5336052179336548,
+              "lfe_bit_exact": true,
+              "peak_change_db": 0.0
+            }
+          }
+        }
+      },
+      "music0": {
+        "input_sha256": "ab6edf45e30bf7976103ecb29b570216300910ef6eb506c67965e9ef43271a5a",
+        "reference_sha256": "0c4c8542aff47514b284bdf77bc91de0ef92cb4665b735cde9d3da2d6c15c767",
+        "variants": {
+          "false": {
+            "before": {
+              "wave_sha256": "4e563aa394e2f7f528029a34c555e62917fbc443f7a682541e3f82a141e98533",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3104538478828098e-05,
+              "band_sum_track_mse": [
+                4.4838391901292924e-07,
+                1.3445272681534325e-05,
+                2.2711291977028904e-07
+              ],
+              "local_peak": 0.5331102013587952,
+              "reference_peak": 0.542229413986206
+            },
+            "after": {
+              "wave_sha256": "c30cf2527a08cb96fe68f943ecaf8c8e5607b876db87887b12ab0464e197af0a",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3039050875782045e-05,
+              "band_sum_track_mse": [
+                4.4838392341621165e-07,
+                1.33818830176586e-05,
+                2.3081539948605489e-07
+              ],
+              "local_peak": 0.5331102013587952,
+              "reference_peak": 0.542229413986206
+            },
+            "change": {
+              "whole_improvement_db": 0.021757505242114686,
+              "band12_18_improvement_db": 0.02052385483952901,
+              "changed_pcm_values": 1548392,
+              "changed_pcm_bits": 1548392,
+              "total_pcm_values": 17203200,
+              "before_peak": 0.5331102013587952,
+              "after_peak": 0.5331102013587952,
+              "lfe_bit_exact": true,
+              "peak_change_db": 0.0
+            }
+          },
+          "true": {
+            "before": {
+              "wave_sha256": "626a1541e9464349db8891a872bcc1925c909df8cba87a38bbd7a6c26258ad64",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3109420761203404e-05,
+              "band_sum_track_mse": [
+                4.4838392203880484e-07,
+                1.345032280197956e-05,
+                2.273069005231714e-07
+              ],
+              "local_peak": 0.5331101417541504,
+              "reference_peak": 0.542229413986206
+            },
+            "after": {
+              "wave_sha256": "f34d6e5a8204291e3f36f2f0c5368cb6b5a233d990de37184ab498fe3cdd8564",
+              "samples_per_channel": 819169,
+              "shape": [
+                819200,
+                21
+              ],
+              "whole_sum_track_mse": 1.3043914188804425e-05,
+              "band_sum_track_mse": [
+                4.483839235870946e-07,
+                1.3386926095801427e-05,
+                2.3100068311822635e-07
+              ],
+              "local_peak": 0.5331101417541504,
+              "reference_peak": 0.542229413986206
+            },
+            "change": {
+              "whole_improvement_db": 0.021755697671869616,
+              "band12_18_improvement_db": 0.02051841526891465,
+              "changed_pcm_values": 1553828,
+              "changed_pcm_bits": 1553828,
+              "total_pcm_values": 17203200,
+              "before_peak": 0.5331101417541504,
+              "after_peak": 0.5331101417541504,
+              "lfe_bit_exact": true,
+              "peak_change_db": 0.0
+            }
+          }
+        }
+      },
+      "tone1281": {
+        "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "reference_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "variants": {
+          "false": {
+            "before": {
+              "wave_sha256": "0c07ca2b0d278b283474908e4672bf196b7ace6f318d309936ac6649b55a5b74",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.054437590503531835,
+              "band_sum_track_mse": [
+                2.307280143402608e-08,
+                0.054528993028806136,
+                8.99401941693188e-11
+              ],
+              "local_peak": 0.5719807147979736,
+              "reference_peak": 0.5699945092201233
+            },
+            "after": {
+              "wave_sha256": "b7b862ec55d65ddc43fb072f897f18064967c7ee2bc57c7b88a6f458bb9feeb8",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.054364353987012684,
+              "band_sum_track_mse": [
+                2.3072751163782715e-08,
+                0.05444082523296384,
+                8.693141351310595e-11
+              ],
+              "local_peak": 0.5696404576301575,
+              "reference_peak": 0.5699945092201233
+            },
+            "change": {
+              "whole_improvement_db": 0.005846627089373924,
+              "band12_18_improvement_db": 0.007027780018785918,
+              "changed_pcm_values": 180868,
+              "changed_pcm_bits": 180868,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.5719807147979736,
+              "after_peak": 0.5696404576301575,
+              "lfe_bit_exact": true,
+              "peak_change_db": -0.03561118950625065
+            }
+          },
+          "true": {
+            "before": {
+              "wave_sha256": "0c07ca2b0d278b283474908e4672bf196b7ace6f318d309936ac6649b55a5b74",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.054437590503531835,
+              "band_sum_track_mse": [
+                2.307280143402608e-08,
+                0.054528993028806136,
+                8.99401941693188e-11
+              ],
+              "local_peak": 0.5719807147979736,
+              "reference_peak": 0.5699945092201233
+            },
+            "after": {
+              "wave_sha256": "b7b862ec55d65ddc43fb072f897f18064967c7ee2bc57c7b88a6f458bb9feeb8",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.054364353987012684,
+              "band_sum_track_mse": [
+                2.3072751163782715e-08,
+                0.05444082523296384,
+                8.693141351310595e-11
+              ],
+              "local_peak": 0.5696404576301575,
+              "reference_peak": 0.5699945092201233
+            },
+            "change": {
+              "whole_improvement_db": 0.005846627089373924,
+              "band12_18_improvement_db": 0.007027780018785918,
+              "changed_pcm_values": 180868,
+              "changed_pcm_bits": 180868,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.5719807147979736,
+              "after_peak": 0.5696404576301575,
+              "lfe_bit_exact": true,
+              "peak_change_db": -0.03561118950625065
+            }
+          }
+        }
+      },
+      "tone181871": {
+        "input_sha256": "3046c9a7bf1e84de30d4429932ef7811c0e3444b458d9099ad48213f40d1991e",
+        "reference_sha256": "ce9d95bd812ab2ed8698606014a16bce773501da2d5cac716425edd473766ceb",
+        "variants": {
+          "false": {
+            "before": {
+              "wave_sha256": "d7e2878b758a65ea0d60e038fd86967001bb08870ea1021600339502ae2943a5",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.008709513765583118,
+              "band_sum_track_mse": [
+                2.3522796585864267e-08,
+                0.0004904813523159255,
+                0.007991542217387532
+              ],
+              "local_peak": 0.7053768634796143,
+              "reference_peak": 0.2784899175167084
+            },
+            "after": {
+              "wave_sha256": "39ec4ed365d3de7040bddfc62ac15c34a84c8d0c5801543cdacb865e614cded5",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.008692306842591839,
+              "band_sum_track_mse": [
+                2.3522788539132e-08,
+                0.0004896651748190402,
+                0.00797605464859709
+              ],
+              "local_peak": 0.7053745985031128,
+              "reference_peak": 0.2784899175167084
+            },
+            "change": {
+              "whole_improvement_db": 0.00858861185778556,
+              "band12_18_improvement_db": 0.007232826016647296,
+              "changed_pcm_values": 253568,
+              "changed_pcm_bits": 253568,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.7053768634796143,
+              "after_peak": 0.7053745985031128,
+              "lfe_bit_exact": true,
+              "peak_change_db": -2.7890576695818147e-05
+            }
+          },
+          "true": {
+            "before": {
+              "wave_sha256": "d7e2878b758a65ea0d60e038fd86967001bb08870ea1021600339502ae2943a5",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.008709513765583118,
+              "band_sum_track_mse": [
+                2.3522796585864267e-08,
+                0.0004904813523159255,
+                0.007991542217387532
+              ],
+              "local_peak": 0.7053768634796143,
+              "reference_peak": 0.2784899175167084
+            },
+            "after": {
+              "wave_sha256": "39ec4ed365d3de7040bddfc62ac15c34a84c8d0c5801543cdacb865e614cded5",
+              "samples_per_channel": 292833,
+              "shape": [
+                292864,
+                21
+              ],
+              "whole_sum_track_mse": 0.008692306842591839,
+              "band_sum_track_mse": [
+                2.3522788539132e-08,
+                0.0004896651748190402,
+                0.00797605464859709
+              ],
+              "local_peak": 0.7053745985031128,
+              "reference_peak": 0.2784899175167084
+            },
+            "change": {
+              "whole_improvement_db": 0.00858861185778556,
+              "band12_18_improvement_db": 0.007232826016647296,
+              "changed_pcm_values": 253568,
+              "changed_pcm_bits": 253568,
+              "total_pcm_values": 6150144,
+              "before_peak": 0.7053768634796143,
+              "after_peak": 0.7053745985031128,
+              "lfe_bit_exact": true,
+              "peak_change_db": -2.7890576695818147e-05
+            }
+          }
+        }
+      }
+    },
+    "limiter_one_boost_switch_bit_exact_unchanged": true,
+    "all_lfe_before_after_bit_exact": true
+  },
+  "baseline_updates": {
+    "core": {
+      "entries": 12,
+      "changed": 0,
+      "unchanged": 12,
+      "shape_tracks_and_other_fields_unchanged": true,
+      "before_file_sha256": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "after_file_sha256": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "changes": []
+    },
+    "aspx": {
+      "entries": 12,
+      "changed": 12,
+      "unchanged": 0,
+      "shape_tracks_and_other_fields_unchanged": true,
+      "before_file_sha256": "2af876b199e3bb61e833ef8bb2cf12f6263de76af8ceb4469e1185aa5f91c8a3",
+      "after_file_sha256": "577621a09b208daf1afaf5d1dd2075531994292db71cfb19b9a55bb23f3658fe",
+      "changes": [
+        {
+          "case": "probe_axes_single_object/master_ac4_1500K.m4a",
+          "before_sha256": "b44807559ff2682f0a14d827d5deffd8924df56e6bdf9eda02d883717e94d916",
+          "after_sha256": "88e4e3c7ed71f802d63a63ccfbe3254d590274e974427f2b95b9fbe27a9ef0df"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_sha256": "66e0c4e286f8433b5d2e11959dae49509674a4dd09cf2025221a6d3022fe66c6",
+          "after_sha256": "463c2f8b5f53d84fb4353aa3294a932a5a3e27e63ed1ddd5b5a90494266cb9ac"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_sha256": "8bffdc698332ecb5416db239b7b797667dae9081079f34c4aecb37a01c5c095a",
+          "after_sha256": "676e3af9be3aeb3a0c8575c8246e0ddda234b57ee6ffc875d21cbeb7c6a220d2"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+          "before_sha256": "ff8fecbbac60c839e47338744cf51b5f0d89ac7a3886dd08c4683d647212a544",
+          "after_sha256": "118b93eb2e8599b107b1815f0b8cfeb0029278465f695bfaf5a1e71e246dace4"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_sha256": "18585dddd03b7a183b2fc87f933994f8f581d3f61d911e51dfec791677b31567",
+          "after_sha256": "f44175a8d6a028ac9a7006c24cafcf15d7e75aa1b77109295d74567a7382d5bc"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_256K.m4a",
+          "before_sha256": "a40e7f0da516d472a9c894255ba7873b8033005b95b0cbbb19f35626094576e9",
+          "after_sha256": "71a41277a1f06fdfc73a603e7afc2a088e20f7adfb972c4e053f9b5dc76533c7"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_448K.m4a",
+          "before_sha256": "1d914895e95c351b99ae34359d37b1cf543e9eadff61f918f7817482e0142537",
+          "after_sha256": "2d86ab0ef8068910240addfcfc21547ece78a6d43fdaf68943d2be8f15ba9ea6"
+        },
+        {
+          "case": "probe_delayed_onset/master_ac4_768K.m4a",
+          "before_sha256": "a7d9fd75aee6e4fd933a8f607d894d6c2c39adb0144b8894f21e33fc081e2a3b",
+          "after_sha256": "9802e242405bd0092bcca80c612d54148b0d0f8e386b6d3e6551bd4e66cd6ced"
+        },
+        {
+          "case": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_sha256": "661c2d1f38a44cdcf49ab4c0b30b36eb7f3d8be6fd4663853aa699d9fae5eaaf",
+          "after_sha256": "c909308a304dd8c367cc8b79520705bcac30e17afc8f544d2ab1ff879cd03370"
+        },
+        {
+          "case": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_sha256": "661c2d1f38a44cdcf49ab4c0b30b36eb7f3d8be6fd4663853aa699d9fae5eaaf",
+          "after_sha256": "c909308a304dd8c367cc8b79520705bcac30e17afc8f544d2ab1ff879cd03370"
+        },
+        {
+          "case": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_sha256": "79cae9c7e1a49f11b9c46b09807c022bfe40d436b6566f267e8cbc8c4ce89a3c",
+          "after_sha256": "f3ace56db57ea4338474ed97da38a80089187d4a2a7579a1d8b2473c52f6b1c0"
+        },
+        {
+          "case": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_sha256": "f5c62c898068a042ae55c367b4fed6b7b9063c62db10d6c55c43a3a09bed794c",
+          "after_sha256": "d43d71aa7cdcd6d55184b5bbcbdd31a738eec9d6e1f254b3a9ce11e72e64c95b"
+        }
+      ]
+    },
+    "objects": {
+      "entries": 12,
+      "changed": 12,
+      "unchanged": 0,
+      "shape_tracks_and_other_fields_unchanged": true,
+      "before_file_sha256": "6b2edae4ad105ebcc6184682e62d25b7413624b14eeae64920132b01c3a28217",
+      "after_file_sha256": "cfaee46be7b5ee94510d8dd062269575aa0371cdd21eede72750c43e1caf4d65",
+      "changes": [
+        {
+          "case": "probe_axes_single_object/master_ac4_1500K.m4a",
+          "before_sha256": "d77746e48605cdf6dd3301148e6404ee2711521ad908b8160aca9c852b90883f",
+          "after_sha256": "e8e477032b69966c6d810714a0924b48e691b1bef9b12db10b34eb21882e044b"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_sha256": "da3a4b1f21f2cfb5652ff5d2be32e89cacbab1a9e4586d31bbb1d6a39eb949ce",
+          "after_sha256": "e0cc4379b6d8ab6b556701e4a77c4e83c809c5ab9b81833202453806f514ae56"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_sha256": "1cf7f4280160530ffb4b68559557e0f30e6d5941c3ececc746fd8c1a2c84998d",
+          "after_sha256": "6b8a76e348910ca195d0882587c26a978a9c5a252ed8f0f76d3774ef114b9aa9"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+          "before_sha256": "d18a604d4fb4ccaa780f67ddba3742e34e369afd80235ed7c2d0bd3ee8130e7e",
+          "after_sha256": "1597d0ce674c9e6119307acee109a71abe696b065b31d2980b666b7f4c0c01af"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_sha256": "c6fb62fcf376c7ce2d7c511c130b48361c74e3ffdc341fe566498390e86e4be2",
+          "after_sha256": "77041b9ae1532feb8bf6639ce963f44cd039e50201a22537080b6a0a9d28a351"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_256K.m4a",
+          "before_sha256": "de0f0e0615e98e0782febfdde64d8f34f1753d0512c3b0a4b66ed83b5c5f6171",
+          "after_sha256": "f3a37523345b7d7e80ae1920fdf434864cb338f81ab29d70a78997e9ab71730b"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_448K.m4a",
+          "before_sha256": "44900b29b8a29183987872012284a691379ffddee8c773e6a24d4ea15561528b",
+          "after_sha256": "c81e837eb4e7c8b9c73f28b755a9cda84d386ad11189133462145918f3bd4a22"
+        },
+        {
+          "case": "probe_delayed_onset/master_ac4_768K.m4a",
+          "before_sha256": "ab7d897e58409f2718e9953fa119492d06c5d210c70d0d5d962d8248b96c6a83",
+          "after_sha256": "f11c5ec22078aaf2590228265e8397d366fe8dc104019450126f772f884565da"
+        },
+        {
+          "case": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_sha256": "e7af94819baa67a79113e96ae5877ac9e9bbc6fb72dabb2df7377d9403d00989",
+          "after_sha256": "b1727ccd398df92df7240546530c3d542b1291b2e0b5325943b3f708efbe00d2"
+        },
+        {
+          "case": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_sha256": "e7af94819baa67a79113e96ae5877ac9e9bbc6fb72dabb2df7377d9403d00989",
+          "after_sha256": "b1727ccd398df92df7240546530c3d542b1291b2e0b5325943b3f708efbe00d2"
+        },
+        {
+          "case": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_sha256": "4a53b49fdab3f92b0194f738e1c25a97f0123bb832155a00640e0c0763c4f417",
+          "after_sha256": "b6ea1164c7d497dae59a00bc6eb2439ed24d1d130b073229f1b51f40f9a36622"
+        },
+        {
+          "case": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_sha256": "4ed53e2ca8b656502a23c1f7b7ca17a6b517605ee6f20e64e886562d70f03066",
+          "after_sha256": "95b6e23deeb11fd864a534561f33994a6c648e3277b163723f691e3e879d8d94"
+        }
+      ]
+    }
+  },
+  "validation": {
+    "rust_tests": {
+      "test_default": {
+        "passed": 516,
+        "failed": 0,
+        "ignored": 3
+      },
+      "test_audio": {
+        "passed": 1313,
+        "failed": 0,
+        "ignored": 29
+      }
+    },
+    "python_tests": 139,
+    "checks": [
+      {
+        "name": "fmt",
+        "exit_code": 0
+      },
+      {
+        "name": "test_default",
+        "exit_code": 0
+      },
+      {
+        "name": "test_audio",
+        "exit_code": 0
+      },
+      {
+        "name": "clippy_default",
+        "exit_code": 0
+      },
+      {
+        "name": "clippy_audio",
+        "exit_code": 0
+      },
+      {
+        "name": "layers",
+        "exit_code": 0
+      },
+      {
+        "name": "mask_replay",
+        "exit_code": 0
+      },
+      {
+        "name": "gain_replay",
+        "exit_code": 0
+      },
+      {
+        "name": "onset_replay",
+        "exit_code": 0
+      },
+      {
+        "name": "reference_comparison",
+        "exit_code": 0
+      },
+      {
+        "name": "build_release",
+        "exit_code": 0
+      }
+    ],
+    "default_pcm_baselines_after_update": 36,
+    "before_update_differences_only_24_pcm_hashes": true,
+    "gen_damf_unchanged_sha256": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6"
+  },
+  "source_sha256": {
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust/estimate_replay_tests.rs": "27e552a9e406f073848c4e151b6fcb31f5be1d0033e8b63fe220e5a414995bea",
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust/gain_replay_tests.rs": "a4424b3304644a6ecfe9dc78d7ec8ebfd8e4313217a32a8aedc2621850608ab8",
+    "crates/macindecode-ac4-decode/src/aspx/hfassemble.rs": "f5ff82e03346523969673db8590e6cad43e33b606047d80e188c94c5a715a173",
+    "crates/macindecode-ac4-decode/src/aspx/hfassemble/mask_replay_tests.rs": "0f2374909cfa06919598eb1707ac15a1a4ef82547d276b2c1ddb8d4c56284165",
+    "crates/macindecode-ac4-decode/src/aspx/hfgain.rs": "89ef929f65508be4037240af75a01bdbc7dd4d1be9d072288da3f29cd1884ad9"
+  },
+  "evidence_sha256": {
+    "starting_state.json": "e7607c66f463eda2b2384f7d087c10bdb91733fa90602ba33c629e486172e889",
+    "mutation_results.json": "20e886f9bd98d0a5d2ba6081ad6183f699ac2854916f203d467fa17831a6a525",
+    "replay_identity.json": "e97c3065ee1806c806f372e43ec21539cf7875b74f71c9e5ea6e1d712c24a527",
+    "comparison.json": "7041a886b29122af8a61ba62cf59fc9c58cb08b35bcdb024553dcbe71fe6f43c",
+    "local_gains.txt": "43f5e62ad6ade13aaf34d02c1169c47533c0d38d813336a013ecabc757430b9a",
+    "before_pcm.json": "0a15cb7500a3b400276ac745e3bd21db3d16f0cedb81314142aea298140e24d9",
+    "after_pcm.json": "c763179117de2500a28790af8a766c0ba6f0f507e213b09e0492f4d5b0293e28",
+    "pcm_change_summary.json": "556147d2a12655421af5e66ed416b0799070f9c897f113172262bc9f2940f07a",
+    "baseline_actual.json": "87aae38f5e27ed6688f51169d060ef358275b7cd2612508bc095a51fa3571ad9",
+    "baseline_changes.json": "cdb52a3e3ebc3dceb21fd86db4cc8d5c2948cef0acea2884b3fb9ac851cd5f98",
+    "baseline_before_update.log": "7f60874d3a6724b9e13bac69964a6611b689ff3a7abcbf6ca76de3f63dbb9458",
+    "baseline_after_update.log": "d14b4e3a86e72135aba60580f41d226b41cde71145a57f7af3430618fa02cc81",
+    "test_default.log": "0b611e50721266014cc7b09091682fa189db64b94ad8caf846574cb26e5328bd",
+    "test_audio.log": "3b702234ce4d7b3576867c424a443151b7e0bb77dce07eb088ef9c2a3a9e89b3",
+    "clippy_default.log": "22e0df986057b9ba5be07526ac5fb348862a3dedef42108383cc3e088acbb889",
+    "clippy_audio.log": "f9ea1a3a3773ab86f3542095806c9ecc22be7a439f1ec999a1e89db200961cff",
+    "fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "layers.log": "e2f87895910bdfc70f8220742734e221f7d3427b824d45c3b472599c2e5dfb49",
+    "python.log": "26ca3624bb01baa2e65fcfde3f902e0e57bf5ef797a59af25a5032b3f02281f2"
+  }
+}

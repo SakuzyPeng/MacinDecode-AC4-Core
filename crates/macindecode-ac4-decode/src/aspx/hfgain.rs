@@ -4,6 +4,10 @@
 //! `sig_gain_sb_adj` 缩放 HF 生成信号，`noise_lev_sb_adj` 交给 `5.7.6.4.3` 的
 //! 噪声发生器，`sine_lev_sb_adj` 是要叠加的正弦幅度。
 //!
+//! 同时保存 `Pseudocode 99` 的注噪预算条件：非 onset 且 boost 前正弦电平为零。
+//! 组装消费处共用该条件；生成器与游标仍推进。三种 limiter 模式均采用此判读，
+//! 不修改噪声电平矩阵。对 P102/P107 无条件字面的补充见 ADR-0021。
+//!
 //! # `aspx_limiter` 开关
 //!
 //! `Pseudocode 95` 的初始增益始终计算。`aspx_limiter == 0` 时不进入
@@ -131,6 +135,8 @@ pub struct AdjustedGains {
     noise_lev: [[f32; MAX_ATSG_SIG]; SUBBANDS],
     sine_lev: [[f32; MAX_ATSG_SIG]; SUBBANDS],
     boost_fact: [[f32; MAX_ATSG_SIG]; SUBBANDS],
+    /// P99 的 boost 前预算条件，同时约束组装时是否消费噪声。
+    noise_enabled: [[bool; MAX_ATSG_SIG]; SUBBANDS],
     /// 生成这些矩阵的完整频带布局。
     source_bands: AspxBandTables,
     /// 生成这些矩阵的完整时间布局。
@@ -150,6 +156,7 @@ impl AdjustedGains {
             noise_lev: [[0.0; MAX_ATSG_SIG]; SUBBANDS],
             sine_lev: [[0.0; MAX_ATSG_SIG]; SUBBANDS],
             boost_fact: [[0.0; MAX_ATSG_SIG]; SUBBANDS],
+            noise_enabled: [[false; MAX_ATSG_SIG]; SUBBANDS],
             source_bands: AspxBandTables::empty(),
             source_interval: AspxInterval::empty(),
             source_num_ts_in_ats: 0,
@@ -214,6 +221,27 @@ impl AdjustedGains {
     #[must_use]
     pub fn noise_level(&self, sb: usize, atsg: usize) -> Option<f32> {
         self.in_range(sb, atsg).then(|| self.noise_lev[sb][atsg])
+    }
+
+    /// 与 P99 共用的注噪条件，不能从 boost 后的电平重新推断。
+    pub(super) fn noise_enabled(&self, sb: usize, atsg: usize) -> Option<bool> {
+        self.in_range(sb, atsg)
+            .then(|| self.noise_enabled[sb][atsg])
+    }
+
+    /// 调整后矩阵边界的固定输入重放；不改变数值或来源。
+    #[cfg(test)]
+    pub(crate) fn set_noise_enabled_for_test(
+        &mut self,
+        sb: usize,
+        atsg: usize,
+        value: bool,
+    ) -> bool {
+        if !self.in_range(sb, atsg) {
+            return false;
+        }
+        self.noise_enabled[sb][atsg] = value;
+        true
     }
 
     /// `sine_lev_sb_adj[sb][atsg]`：要叠加的正弦幅度。
@@ -342,6 +370,7 @@ pub fn adjust(
     let mut noise_lev_adj = [[0.0f32; MAX_ATSG_SIG]; SUBBANDS];
     let mut sine_lev_adj = [[0.0f32; MAX_ATSG_SIG]; SUBBANDS];
     let mut boost_fact = [[0.0f32; MAX_ATSG_SIG]; SUBBANDS];
+    let mut noise_enabled = [[false; MAX_ATSG_SIG]; SUBBANDS];
 
     for atsg in 0..envelopes {
         // 前置检查已保证以下取值全部落在估计矩阵内，`unwrap_or` 不可达。
@@ -354,6 +383,9 @@ pub fn adjust(
         // 本包络不是正弦起点的情况下进分母。
         let mut sig_gain = [0.0f32; SUBBANDS];
         for sb in 0..num_sb_aspx {
+            // 保存 P99 的原始谓词，Off 分支和 P107 消费处也使用它。
+            // 不用 sine_area：同组中只有正弦所在子带排除噪声。
+            noise_enabled[sb][atsg] = !onset && estimate.sine_level(sb, atsg).unwrap_or(0.0) == 0.0;
             let mut denom = EPSILON + est(sb);
             let nom = if estimate.sine_area(sb, atsg).unwrap_or(false) {
                 denom *= 1.0 + scf_noise(sb);
@@ -445,7 +477,7 @@ pub fn adjust(
                 denom += est(sb) * gain * gain;
                 let sine = f64::from(estimate.sine_level(sb, atsg).unwrap_or(0.0));
                 denom += sine * sine;
-                if sine == 0.0 && !onset {
+                if noise_enabled[sb][atsg] {
                     let noise = f64::from(noise_lim[sb]);
                     denom += noise * noise;
                 }
@@ -475,6 +507,7 @@ pub fn adjust(
     out.noise_lev = noise_lev_adj;
     out.sine_lev = sine_lev_adj;
     out.boost_fact = boost_fact;
+    out.noise_enabled = noise_enabled;
     out.source_bands = *bands;
     out.source_interval = estimate.source_interval();
     out.source_num_ts_in_ats = estimate.source_num_ts_in_ats();
@@ -904,6 +937,8 @@ mod tests {
             close(out.signal_gain(sb, 1), FRAC_1_SQRT_2, "起点包络");
             close(out.noise_level(sb, 1), 0.866_025_4, "起点包络的噪声");
             close(out.boost_factor(sb, 1), 1.224_744_9, "起点包络的 boost");
+            assert_eq!(out.noise_enabled(sb, 0), Some(true));
+            assert_eq!(out.noise_enabled(sb, 1), Some(false));
         }
     }
 
@@ -941,7 +976,73 @@ mod tests {
                 "包络 0 继承上一区间的起点",
             );
             close(out.signal_gain(sb, 1), 0.447_213_6, "包络 1 不是起点");
+            assert_eq!(out.noise_enabled(sb, 0), Some(false));
+            assert_eq!(out.noise_enabled(sb, 1), Some(true));
         }
+    }
+
+    #[test]
+    fn all_limiter_modes_share_the_preboost_noise_budget_condition() {
+        for mode in [TestLimiter::Off, TestLimiter::On, TestLimiter::BoostOnly] {
+            let onset = run_with_limiter(
+                &[2.0; ASPX_SUBBANDS],
+                1.0,
+                1.0,
+                false,
+                SinePlacement::from_params(1),
+                2,
+                &mut SineState::new(),
+                mode,
+            );
+            for b in 0..ASPX_SUBBANDS {
+                assert_eq!(onset.noise_enabled(b, 0), Some(true));
+                assert_eq!(onset.noise_enabled(b, 1), Some(false));
+                assert!(onset.noise_level(b, 1).unwrap() > 0.0, "门控不能改电平矩阵");
+            }
+            let tonal = run_with_limiter(
+                &[2.0; ASPX_SUBBANDS],
+                1.0,
+                1.0,
+                true,
+                SinePlacement::from_params(-1),
+                1,
+                &mut SineState::new(),
+                mode,
+            );
+            // 全部高分辨率组都标记为 harmonic；rel 10 却不是组内正弦位置。
+            assert!(tonal.sine_level(0, 0).unwrap() > 0.0);
+            assert_eq!(tonal.sine_level(10, 0), Some(0.0));
+            assert_eq!(tonal.noise_enabled(0, 0), Some(false));
+            assert_eq!(tonal.noise_enabled(10, 0), Some(true));
+            assert!(tonal.noise_level(0, 0).unwrap() > 0.0);
+            assert_eq!(tonal.noise_enabled(ASPX_SUBBANDS, 0), None);
+            assert_eq!(tonal.noise_enabled(0, 1), None);
+        }
+    }
+
+    #[test]
+    fn reused_gains_replace_the_entire_noise_mask_transactionally() {
+        let mut out = run_with_limiter(
+            &[2.0; ASPX_SUBBANDS],
+            1.0,
+            1.0,
+            false,
+            SinePlacement::from_params(-1),
+            2,
+            &mut SineState::new(),
+            TestLimiter::Off,
+        );
+        assert!(out.noise_enabled[35][1]);
+        let bands = AspxBandTables::derive(true, 6, 1, 3, 0).unwrap();
+        assert_eq!(bands.num_sb_aspx(), 20);
+        let estimated = flat_estimate(&bands);
+        adjust(&estimated, &bands, LimiterMode::Off, &mut out).unwrap();
+        assert!(out.noise_enabled[19][0]);
+        assert!(!out.noise_enabled[20][0]);
+        assert!(!out.noise_enabled[35][1]);
+        let before = out.clone();
+        assert!(adjust(&EnvelopeEstimate::new(), &bands, LimiterMode::Off, &mut out).is_err());
+        assert_eq!(out, before);
     }
 
     #[test]

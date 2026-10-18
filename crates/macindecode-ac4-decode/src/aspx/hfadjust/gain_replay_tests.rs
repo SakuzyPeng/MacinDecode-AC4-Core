@@ -295,3 +295,53 @@ fn accepts_complete_record_and_rejects_trailing_or_duplicate_records() {
     assert!(parse(&format!("{text}extra")).is_err());
     assert!(parse(&format!("MACINAC4_GAIN_REPLAY 1 2\n{body}{body}")).is_err());
 }
+
+#[test]
+fn noise_budget_uses_preboost_sine_even_when_the_adjusted_level_underflows() {
+    // 受控增益边界压力输入，不声称反量化器会产生这些极值。
+    let bands = AspxBandTables::derive(false, 0, 0, 0, 0).unwrap();
+    let patches = PatchTable::derive(&bands, false, false).unwrap();
+    let limiter = LimiterTable::derive(&bands, &patches).unwrap();
+    assert_eq!((limiter.border(0), limiter.border(1)), (Some(10), Some(12)));
+    let mut estimated = EnvelopeEstimate::new();
+    estimated.source_bands = bands;
+    estimated.source_interval =
+        AspxInterval::derive(&AspxIntervalParams::fixfix(1), 16, 1, true, 16).unwrap();
+    estimated.source_num_ts_in_ats = 2;
+    estimated.subbands = bands.num_sb_aspx();
+    estimated.envelopes = 1;
+    for b in 0..usize::from(estimated.subbands) {
+        estimated.est_sig[b][0] = 2.0;
+        estimated.scf_sig[b][0] = 1.0;
+        estimated.scf_noise[b][0] = 1.0;
+        estimated.noise_lev[b][0] = 1.0;
+        estimated.sine_area[b][0] = true;
+    }
+    estimated.sine_lev[0][0] = 1e20;
+    estimated.sine_lev[1][0] = f32::from_bits(1);
+    estimated.sine_lev[2][0] = -0.0;
+    for mode in [
+        LimiterMode::Off,
+        LimiterMode::OffWithBoost {
+            table: &limiter,
+            patches: &patches,
+        },
+        LimiterMode::On {
+            table: &limiter,
+            patches: &patches,
+        },
+    ] {
+        let mut gains = AdjustedGains::new();
+        adjust(&estimated, &bands, mode, &mut gains).unwrap();
+        assert_eq!(gains.noise_enabled(0, 0), Some(false));
+        assert_eq!(gains.noise_enabled(1, 0), Some(false));
+        assert_eq!(gains.noise_enabled(2, 0), Some(true));
+        assert!(gains.noise_level(1, 0).unwrap() > 0.0);
+        if !matches!(mode, LimiterMode::Off) {
+            assert!(gains.boost_factor(1, 0).unwrap() < 0.5);
+            assert_eq!(gains.sine_level(1, 0), Some(0.0));
+        } else {
+            assert_eq!(gains.sine_level(1, 0), Some(f32::from_bits(1)));
+        }
+    }
+}

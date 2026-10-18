@@ -66,11 +66,15 @@ MSRV 为 Rust 1.98，禁止 unsafe Rust。完整设计、支持矩阵和规范�
 
 ## A-SPX limiter 关闭时的补偿选项
 
-`FullAjocDecoder::new()` 保持原输出。启用 `audio-decode` 后，可用
+`FullAjocDecoder::new()` 默认关闭 limiter-off boost。启用 `audio-decode` 后，可用
 `full_ajoc::FullAjocDecoder::with_aspx_limiter_off_boost(true)` 创建保留关闭分支能量补偿的
 decoder；reset 保留该策略。选项只增加 P99–101 的补偿，不启用 P96–98 限幅或修改码流标志。
 直接调用元素／A-SPX 通路时，分别通过 `ElementParams::aspx_limiter_off_boost`、
 `HfAdjustParams::limiter_off_boost` 传入；低层 struct literal 沿用原行为时填 `false`。
+
+三种 limiter 模式的实际注噪均与 P99 的 boost 前预算条件一致：onset 包络及正弦所在子带
+不叠加噪声，生成器和游标继续推进。此默认判读见
+[ADR-0021](../../docs/decisions/0021-align-aspx-noise-injection-with-energy-budget.md)，与补偿选项独立。
 
 ## License
 

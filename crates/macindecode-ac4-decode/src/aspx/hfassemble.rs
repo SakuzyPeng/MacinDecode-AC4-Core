@@ -6,6 +6,9 @@
 //! `5.7.6.5.3` 与延迟后的 `Q_in,ASPX` 合并成 `Q_out,ASPX`，再交给下游 QMF 域
 //! 工具。
 //!
+//! P107 的注噪共用 P99 在 boost 前确定的预算条件：onset 包络及正弦所在子带
+//! 不叠加噪声；信号、正弦和生成器时钟照常。该本地判读见 ADR-0021。
+//!
 //! # 变长边界要跨帧搬运已组装的结果
 //!
 //! `Pseudocode 106` 的第一个循环把 `Y_prev[sb][num_qmf_timeslots + ts]` 搬进
@@ -331,8 +334,10 @@ pub fn assemble(
             // ADR-0002 要求舍入次数与有无 FMA 的目标无关。
             let mut re = gain * source.re[sb];
             let mut im = gain * source.im[sb];
-            re += noise.re[sb];
-            im += noise.im[sb];
+            if gains.noise_enabled(relative, atsg).unwrap_or(false) {
+                re += noise.re[sb];
+                im += noise.im[sb];
+            }
             re += sine.re[sb];
             im += sine.im[sb];
             slot.re[sb] = re;
@@ -424,7 +429,9 @@ mod tests {
             bands,
             interval,
             &sf,
-            &[true; 32],
+            // 这些组装判据直接提供带标记的噪声／正弦矩阵；默认用普通无正弦预算，
+            // 让三项舍入和携带测试的噪声保持可观察。门控另由独立夹具覆盖。
+            &[false; 32],
             placement,
             true,
             num_ts_in_ats,

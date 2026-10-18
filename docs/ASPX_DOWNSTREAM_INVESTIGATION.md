@@ -173,4 +173,5 @@ OffWithBoost、On 三条已有路径。真实基准上，两份音乐的 On 增�
 承诺为任一种生产策略的整体收益。
 
 同日后续的[注噪门控调查](ASPX_NOISE_MASK_INVESTIGATION.md)已补齐正弦共存、交织出口及
-越帧携带对照，支持将门控作为独立修复；生产行为仍保持本报告的起点。
+越帧携带对照。随后已按 [ADR-0021](decisions/0021-align-aspx-noise-injection-with-energy-budget.md)
+应用门控；本报告的数值仍描述修复前的起点，单项修复结果见该决策记录。
