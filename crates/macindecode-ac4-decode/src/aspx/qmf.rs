@@ -53,6 +53,9 @@ mod generated_modulation {
 
 pub(crate) use generated::QMF_WINDOW;
 
+#[cfg(test)]
+mod phase_chain_tests;
+
 /// 一个 QMF 时隙的 64 个复数子带样本。
 ///
 /// 实部虚部分开存放而不是 `[(f32, f32); 64]`：A-SPX 的包络与噪声处理逐子带
