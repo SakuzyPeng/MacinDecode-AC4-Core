@@ -175,3 +175,11 @@ OffWithBoost、On 三条已有路径。真实基准上，两份音乐的 On 增�
 同日后续的[注噪门控调查](ASPX_NOISE_MASK_INVESTIGATION.md)已补齐正弦共存、交织出口及
 越帧携带对照。随后已按 [ADR-0021](decisions/0021-align-aspx-noise-injection-with-energy-budget.md)
 应用门控；本报告的数值仍描述修复前的起点，单项修复结果见该决策记录。
+
+随后完成的[预平坦化方向对照](ASPX_PREFLATTEN_DIRECTION_INVESTIGATION.md)进一步保留其它
+算法，仅比较两个方向修法与旁路的完整对象 PCM。单项结果没有沿用本报告的参考局部组装
+SNR，二者的统计边界继续分开。
+
+方向修正现已按 [ADR-0022](decisions/0022-correct-aspx-preflatten-gain-direction.md)进入生产；
+新增连续本地链验证让下一段消费实际本地结果并保留状态，覆盖三种 limiter 模式和插值
+开／关。本报告的参考模块对照仍为历史证据，不替代该生产接线回归。

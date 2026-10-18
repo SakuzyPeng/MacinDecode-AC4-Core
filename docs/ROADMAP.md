@@ -111,11 +111,18 @@ P95/P99 的能量条件与 P102/P107 的无条件生成／叠加冲突，未混�
 组装与 P99 共用 boost 前的注噪判定，生成器及游标不变。936 个构造重放逐位吻合，3,200
 份增益输入的三种模式数值不变；端到端影响与基线更新见该决策及其机器记录。
 
+最新[预平坦化方向对照](ASPX_PREFLATTEN_DIRECTION_INVESTIGATION.md)分别构建了原式、P89
+乘法、P85 差值反向和旁路。两种方向修正均消除高能量谱斜率，HF 最多相差 2 ULP；
+单项对象 PCM 影响因输入而异，旁路也不是普遍改善，该调查阶段保留了生产默认。
+随后按 [ADR-0022](decisions/0022-correct-aspx-preflatten-gain-direction.md)将生产反例先跑失败，
+再只反转 P85 差值，保留 P89 除法。独立投影、24 组配置／96 帧连续本地链、129 个固定
+输入重放及 14 组完整 PCM 对照通过；Core 基线不变，A-SPX／对象各 12 条预期摘要更新。
+
 下一阶段按以下顺序推进：
 
-1. 在注噪预算修复的基础上继续评价预平坦化方向／旁路策略。按
-   [相位比较契约](ASPX_PHASE_CONTRACT.md)
-   另行裁决生产基底和音调初相；QMF 宽度的几何解释不直接作为改生产的依据，弱源带残差和
+1. 按[相位比较契约](ASPX_PHASE_CONTRACT.md)继续以独立性质和接口一致性审查 QMF 基底、
+   跨子带算子和音调初相，不将贴近 DRP 作为修复目标。QMF 宽度的几何解释不直接作为改
+   生产的依据，弱源带残差和
    纯音清零捕获继续保留，TNA 的参考稳定化策略也不自动采纳。
 2. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
    [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →

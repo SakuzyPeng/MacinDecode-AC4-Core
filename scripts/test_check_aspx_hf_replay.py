@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+import tempfile
 import unittest
 import numpy as np
 from scripts import check_aspx_hf_replay as check
@@ -14,6 +17,47 @@ def case():
                 sbx=36,sbz=56,noise_borders=[36,44,56],targets=[36,44,56],sources=[28,24],
                 modes=pack(2),previous_modes=pack(1),previous_chirp=[.61,.61],
                 amplitude_exp=0,pattern='random')
+
+
+class GainConventionTests(unittest.TestCase):
+    def test_unmarked_history_is_literal_and_new_metadata_is_explicit(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            self.assertEqual(check.read_gain_convention(root), 'mean_minus_slope')
+            marker = root / 'replay_metadata.json'
+            for convention in check.GAIN_CONVENTIONS:
+                marker.write_text(json.dumps(dict(schema='macinac4.hf-replay', version=1,
+                                                 preflatten_gain_convention=convention)))
+                self.assertEqual(check.read_gain_convention(root), convention)
+
+    def test_invalid_metadata_does_not_silently_fall_back_to_history(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            valid = dict(schema='macinac4.hf-replay', version=1,
+                         preflatten_gain_convention='slope_minus_mean')
+            for content in [dict(valid, version=True), dict(valid, version=2),
+                            dict(valid, schema='other'), dict(valid, extra=0),
+                            dict(valid, preflatten_gain_convention='unknown'), {}]:
+                (root/'replay_metadata.json').write_text(json.dumps(content))
+                with self.assertRaises(ValueError):
+                    check.read_gain_convention(root)
+
+    def test_a_nonflat_gain_cannot_be_relabelled_as_the_other_convention(self):
+        r=case();r.update(kind='preflat_probe',pattern='rising')
+        q,_=check.synthetic(r)
+        old=check.gain_model(q,36,0,32,2**23)
+        new=check.gain_model(q,36,0,32,2**23,'slope_minus_mean')
+        check.checked_gain_metrics(old,old.copy())
+        check.checked_gain_metrics(new,new.copy())
+        np.testing.assert_allclose(old*new,np.ones(36),rtol=2e-7,atol=0)
+        with self.assertRaisesRegex(ValueError,'声明'):
+            check.checked_gain_metrics(old,new)
+
+    def test_flat_gains_remain_equivalent_under_either_convention(self):
+        q=np.ones((40,64,2),dtype='<f4')
+        a=check.gain_model(q,36,0,32,1)
+        b=check.gain_model(q,36,0,32,1,'slope_minus_mean')
+        check.checked_gain_metrics(a,b)
 
 
 class ParameterTests(unittest.TestCase):

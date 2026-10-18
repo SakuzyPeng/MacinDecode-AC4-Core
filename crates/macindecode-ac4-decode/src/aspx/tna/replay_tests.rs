@@ -199,6 +199,11 @@ fn replay_fixed_hf_inputs() {
     let output = std::env::var("MACINAC4_HF_REPLAY_OUTPUT").unwrap();
     let (data, native, output) = (Path::new(&data), Path::new(&native), Path::new(&output));
     std::fs::create_dir(output).unwrap();
+    // 缺标记的旧文件固定按旧式解释，不能随着生产变化重释历史实验。
+    std::fs::write(
+        output.join("replay_metadata.json"),
+        "{\"schema\":\"macinac4.hf-replay\",\"version\":1,\"preflatten_gain_convention\":\"slope_minus_mean\"}\n",
+    ).unwrap();
     let manifest = std::fs::read_to_string(data.join("hf_cases.txt")).unwrap();
     let mut ids = BTreeSet::new();
     for id in manifest.lines() {

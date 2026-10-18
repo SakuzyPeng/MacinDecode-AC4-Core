@@ -186,3 +186,12 @@ QMF 基底／音调初相；不把参考原语的稳定化习惯直接升级成�
 
 同日后续的[包络／增益／组装调查](ASPX_DOWNSTREAM_INVESTIGATION.md)已完成这一步的
 固定输入对照，并另行识别了 onset 噪声条件分歧；生产策略仍未调整。
+
+后续[方向专项对照](ASPX_PREFLATTEN_DIRECTION_INVESTIGATION.md)已在注噪修复后的生产起点
+分别实测 P89 乘法、P85 差值反向和旁路的完整对象 PCM。两种方向修正在数学上等价，
+但最多有 2 ULP 的 HF 舍入差；方向修正与复现参考旁路仍是不同决策，不能把本报告的
+141–145 dB 局部结果当作完整 PCM 收益。
+
+生产方向随后按 [ADR-0022](decisions/0022-correct-aspx-preflatten-gain-direction.md)单独修正。
+新重放显式标记 `slope_minus_mean`，无标记的历史文件固定按 `mean_minus_slope` 解释；
+本报告的旧式结果与参考观察保持原样。

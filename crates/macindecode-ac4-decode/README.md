@@ -76,6 +76,10 @@ decoder；reset 保留该策略。选项只增加 P99–101 的补偿，不启�
 不叠加噪声，生成器和游标继续推进。此默认判读见
 [ADR-0021](../../docs/decisions/0021-align-aspx-noise-injection-with-energy-budget.md)，与补偿选项独立。
 
+启用预平坦化时，P85 增益按 `slope − mean` 计算，P89 继续除以源子带增益，以移除粗谱形。
+这是 [ADR-0022](../../docs/decisions/0022-correct-aspx-preflatten-gain-direction.md)记录的本地判读修复；
+码流关闭 preflat 的输出不变，没有引入旁路兼容选项。
+
 ## License
 
 [MIT](LICENSE)

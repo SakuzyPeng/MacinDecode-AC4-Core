@@ -2073,6 +2073,8 @@ fn qmf_output(workspace: &AspxWorkspace, timeslots: usize) -> Result<&[QmfSlot],
 mod tests {
     extern crate std;
 
+    mod preflatten_chain_tests;
+
     use super::*;
     use crate::aspx::frames::{AspxInterval, AspxIntervalParams};
     use crate::aspx::hfassemble::HfDelay;

@@ -208,7 +208,7 @@ pub fn hf_generate(
                 let mut im = im0 + g0.re * im2 + g0.im * re2 + g1.re * im4 + g1.im * re4;
 
                 if let Some(gains) = gains {
-                    // `*= 1/gain_vec[p]`：增益向量描述低带斜率，取倒数把它抹平。
+                    // 保留正文及 P89 的除法；P85 的差值方向已按 ADR-0022 修正。
                     let gain = gains.gain(source).unwrap_or(1.0);
                     re /= gain;
                     im /= gain;
@@ -232,6 +232,9 @@ fn scale(value: Coefficient, factor: f32) -> Coefficient {
 
 #[cfg(test)]
 mod basis_replay_tests;
+
+#[cfg(test)]
+mod preflatten_direction_tests;
 
 #[cfg(test)]
 #[expect(
