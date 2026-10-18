@@ -224,6 +224,9 @@ pub fn generate(
 mod cursor_replay_tests;
 
 #[cfg(test)]
+mod phase_chain_tests;
+
+#[cfg(test)]
 mod tests {
     extern crate std;
 
