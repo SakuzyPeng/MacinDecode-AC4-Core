@@ -1,0 +1,986 @@
+{
+  "schema": "macinac4.qmf-phase-chain-evidence",
+  "version": 1,
+  "date": "2026-10-18",
+  "status": "independent_validation_no_production_fix",
+  "head": "5370688651041da92531f7a1da899d827615ff12",
+  "production_dsp_changed": false,
+  "public_api_changed": false,
+  "pcm_baselines_updated": false,
+  "reference_used_as_oracle": false,
+  "phase_gain_or_delay_fitting": false,
+  "model": {
+    "clauses": [
+      "TS103190-1:v1.4.1:5.7.3",
+      "TS103190-1:v1.4.1:5.7.4",
+      "TS103190-1:v1.4.1:5.7.6.3.1.4"
+    ],
+    "analysis_origin": 0.5,
+    "synthesis_origin": 127.5,
+    "hop": 64,
+    "taps": 640,
+    "delay_slots": [
+      0,
+      6
+    ],
+    "shared_locked_data": "f32 QWIN; this experiment does not independently audit the window data",
+    "qwin_sha256": "870d3c80e4fe7ee368b5da1f7db487dfa84be44c4cf8c82813b78fb06a8e94a2",
+    "error_bound": "4*f32_epsilon times input amplitude and operator absolute sums; see checker",
+    "metric_precision": "SNR/relative/ULP use f32-rounded model; forward errors and bounds use unrounded f64"
+  },
+  "provenance": {
+    "manifest_sha256": "b29a94db9c83fc0708af4826cebebc7053ab3a8b1d146a99e74fa26a987637de",
+    "detailed_comparison_sha256": "f68469dd1c44b4755ff192177ed846312388783fc3ec986f46a89eb7e59a3799",
+    "starting_state_sha256": "a5e04f3156efcb31298c5015596e45ab5c3aae40ad9deaf56dbec69c579fa527",
+    "input_cases_sha256": "ce79587cb2186835392cb45b6b89e39362bcbb35f2b92233e3252958762b085b",
+    "production_results_sha256": "65199cdd630bfc27b4e32689240d11278a6f142903bc426cbc2e3ee0b1a3f263",
+    "volume_uuid": "9622A0A8-E856-4F83-9B15-A0D650B862AC",
+    "protected_files": {
+      "scripts/gen_damf.py": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+      "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "vectors/aspx_baseline.json": "4d8180eb1992be1c5c71c68b6a06e8cef68a1dfed6adeb2a7376d3b05b020e6c",
+      "vectors/objects_baseline.json": "8ea8b55d460bc2003d050e6b7a1a950ee10896b2df4bd1d3fe94571c41dc933c"
+    },
+    "release_before_sha256": "63b80f2a5e8aa9996aea5755012ba254ac4ee4ce17db74de2c35b292aa5ec211",
+    "release_baseline_verification_sha256": "f4e7d9430be0fb67c098f0a0884135ea9db5a0edcd19ec043ef3b8d95ca895e5",
+    "binary_note": "decode_check uses cargo run --release and rebuilt the executable; binary bytes are not claimed identical. Production source differs only by cfg(test) module registration; all 36 PCM baselines are identical."
+  },
+  "coverage": {
+    "total_cases": 1025,
+    "pcm_samples": 6071936,
+    "kinds": {
+      "impulse": 512,
+      "control": 48,
+      "tone": 384,
+      "odd_control": 24,
+      "real": 57
+    },
+    "legal_patch_layouts": 3606,
+    "legal_subband_routes": 66930,
+    "all_legal_routes_preserve_parity": true,
+    "analysis_history_bit_exact": true,
+    "chunked_pcm_bit_exact": true,
+    "flushed_analysis_synthesis_zero": true,
+    "real_windows_reproduce_prior_qmf_bit_exact": 57,
+    "tone_real_zero_input_windows": 15,
+    "ordinary_rust_fir_cases": 24
+  },
+  "all_cases": {
+    "cases": 1025,
+    "zero_input_cases": 23,
+    "stages": {
+      "analysis": {
+        "components": 12143872,
+        "signal_energy": 450649097.2229051,
+        "error_energy": 4.5665154192870697e-07,
+        "aggregate_snr_db": 149.9425357696487,
+        "nonzero_case_snr_range_db": [
+          144.25849960665263,
+          154.04578377941985
+        ],
+        "max_abs_error_unrounded_model": 1.5870775897103686e-05,
+        "max_error_over_forward_bound": 0.0420885545085604,
+        "max_relative_error_nonzero_rounded_model": 284.6312675051047,
+        "max_ulp_against_rounded_model": 1745826803,
+        "bit_differing_components": 7394486,
+        "signed_zero_only_differences": 0
+      },
+      "synthesis": {
+        "components": 6071936,
+        "signal_energy": 3965313.377079404,
+        "error_energy": 6.637379959206298e-09,
+        "aggregate_snr_db": 147.76280835425862,
+        "nonzero_case_snr_range_db": [
+          121.5993563625563,
+          155.03991503106553
+        ],
+        "max_abs_error_unrounded_model": 2.3617089048855178e-06,
+        "max_error_over_forward_bound": 0.18415734708386128,
+        "max_relative_error_nonzero_rounded_model": 28116.234450647276,
+        "max_ulp_against_rounded_model": 1657539253,
+        "bit_differing_components": 2179865,
+        "signed_zero_only_differences": 0
+      },
+      "chain": {
+        "components": 6071936,
+        "signal_energy": 3965313.364255884,
+        "error_energy": 8.960710016596873e-09,
+        "aggregate_snr_db": 146.45935090655937,
+        "nonzero_case_snr_range_db": [
+          118.32213492391503,
+          152.0718606941399
+        ],
+        "max_abs_error_unrounded_model": 2.6197350209145043e-06,
+        "max_error_over_forward_bound": 0.0655445281477979,
+        "max_relative_error_nonzero_rounded_model": 66140850755.843605,
+        "max_ulp_against_rounded_model": 1681779235,
+        "bit_differing_components": 2498014,
+        "signed_zero_only_differences": 0
+      }
+    }
+  },
+  "by_kind": {
+    "control": {
+      "cases": 48,
+      "zero_input_cases": 8,
+      "stages": {
+        "analysis": {
+          "components": 393216,
+          "signal_energy": 343661024.8180132,
+          "error_energy": 4.037977649506984e-07,
+          "aggregate_snr_db": 149.29966370089852,
+          "nonzero_case_snr_range_db": [
+            149.29394530325297,
+            153.85205966206263
+          ],
+          "max_abs_error_unrounded_model": 1.5870775897103686e-05,
+          "max_error_over_forward_bound": 0.04057311348120406,
+          "max_relative_error_nonzero_rounded_model": 1.1819257998484196,
+          "max_ulp_against_rounded_model": 9680297,
+          "bit_differing_components": 123808,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 196608,
+          "signal_energy": 2514172.6315475865,
+          "error_energy": 4.270437570397028e-09,
+          "aggregate_snr_db": 147.6992271720307,
+          "nonzero_case_snr_range_db": [
+            144.62744815004663,
+            150.51238372193149
+          ],
+          "max_abs_error_unrounded_model": 2.3617089048855178e-06,
+          "max_error_over_forward_bound": 0.07299476799405226,
+          "max_relative_error_nonzero_rounded_model": 2619.9385185132123,
+          "max_ulp_against_rounded_model": 1458434349,
+          "bit_differing_components": 72616,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 196608,
+          "signal_energy": 2514172.6207986055,
+          "error_energy": 5.947722626747517e-09,
+          "aggregate_snr_db": 146.2604438572577,
+          "nonzero_case_snr_range_db": [
+            123.09379545296815,
+            147.58161727712124
+          ],
+          "max_abs_error_unrounded_model": 2.6197350209145043e-06,
+          "max_error_over_forward_bound": 0.002922185104749405,
+          "max_relative_error_nonzero_rounded_model": 210542543.0,
+          "max_ulp_against_rounded_model": 1655590513,
+          "bit_differing_components": 92576,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "impulse": {
+      "cases": 512,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 2621440,
+          "signal_energy": 32767.998309197083,
+          "error_energy": 5.0630775914540086e-11,
+          "aggregate_snr_db": 148.1103532956771,
+          "nonzero_case_snr_range_db": [
+            146.82885688897272,
+            150.93340124075834
+          ],
+          "max_abs_error_unrounded_model": 6.885789299691835e-08,
+          "max_error_over_forward_bound": 0.0013447684631612785,
+          "max_relative_error_nonzero_rounded_model": 1.1916209977919263e-07,
+          "max_ulp_against_rounded_model": 1,
+          "bit_differing_components": 150368,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 1310720,
+          "signal_energy": 248.2203997470983,
+          "error_energy": 2.645431406203795e-13,
+          "aggregate_snr_db": 149.72340965564328,
+          "nonzero_case_snr_range_db": [
+            141.89602556818562,
+            155.03991503106553
+          ],
+          "max_abs_error_unrounded_model": 4.648558826758631e-08,
+          "max_error_over_forward_bound": 0.11495523105195692,
+          "max_relative_error_nonzero_rounded_model": 28116.234450647276,
+          "max_ulp_against_rounded_model": 1657539253,
+          "bit_differing_components": 473936,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 1310720,
+          "signal_energy": 248.2203990787175,
+          "error_energy": 3.977392500975683e-13,
+          "aggregate_snr_db": 147.95239018942985,
+          "nonzero_case_snr_range_db": [
+            141.78032781041702,
+            152.0718606941399
+          ],
+          "max_abs_error_unrounded_model": 4.352710658572789e-08,
+          "max_error_over_forward_bound": 0.00081817382454388,
+          "max_relative_error_nonzero_rounded_model": 66140850755.843605,
+          "max_ulp_against_rounded_model": 1515898816,
+          "bit_differing_components": 516608,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "odd_control": {
+      "cases": 24,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 491520,
+          "signal_energy": 6291053.628625159,
+          "error_energy": 3.6959718540612734e-09,
+          "aggregate_snr_db": 152.30994732103878,
+          "nonzero_case_snr_range_db": [
+            144.25849960665263,
+            153.9553384756965
+          ],
+          "max_abs_error_unrounded_model": 1.992122535190206e-06,
+          "max_error_over_forward_bound": 0.03890546274559228,
+          "max_relative_error_nonzero_rounded_model": 1.0907043855598337,
+          "max_ulp_against_rounded_model": 38937926,
+          "bit_differing_components": 399660,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 245760,
+          "signal_energy": 2528.4327442493595,
+          "error_energy": 3.613195132675987e-11,
+          "aggregate_snr_db": 138.4495998946121,
+          "nonzero_case_snr_range_db": [
+            121.5993563625563,
+            141.77290387730542
+          ],
+          "max_abs_error_unrounded_model": 4.681963450270388e-08,
+          "max_error_over_forward_bound": 0.08228605141564961,
+          "max_relative_error_nonzero_rounded_model": 0.09626359546222091,
+          "max_ulp_against_rounded_model": 1105613,
+          "bit_differing_components": 172158,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 245760,
+          "signal_energy": 2528.4327403263296,
+          "error_energy": 7.020383710357697e-11,
+          "aggregate_snr_db": 135.5649055546979,
+          "nonzero_case_snr_range_db": [
+            118.32213492391503,
+            140.18032077061878
+          ],
+          "max_abs_error_unrounded_model": 7.191803946121622e-08,
+          "max_error_over_forward_bound": 0.03658002582067089,
+          "max_relative_error_nonzero_rounded_model": 0.1660759105180786,
+          "max_ulp_against_rounded_model": 2067107,
+          "bit_differing_components": 183928,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "real": {
+      "cases": 57,
+      "zero_input_cases": 15,
+      "stages": {
+        "analysis": {
+          "components": 773376,
+          "signal_energy": 4538.154108029529,
+          "error_energy": 2.668876971190553e-12,
+          "aggregate_snr_db": 152.30550685386754,
+          "nonzero_case_snr_range_db": [
+            149.5133846595893,
+            153.79110165243782
+          ],
+          "max_abs_error_unrounded_model": 2.272329866643543e-07,
+          "max_error_over_forward_bound": 0.03650096172505924,
+          "max_relative_error_nonzero_rounded_model": 214.58239487064685,
+          "max_ulp_against_rounded_model": 1643135381,
+          "bit_differing_components": 345478,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 386688,
+          "signal_energy": 35.988162752533704,
+          "error_energy": 6.41027012821995e-14,
+          "aggregate_snr_db": 147.49283344825193,
+          "nonzero_case_snr_range_db": [
+            145.7375400161156,
+            148.57268766940143
+          ],
+          "max_abs_error_unrounded_model": 1.1834816376898871e-08,
+          "max_error_over_forward_bound": 0.11100252817891458,
+          "max_relative_error_nonzero_rounded_model": 949.2694934313375,
+          "max_ulp_against_rounded_model": 1399151549,
+          "bit_differing_components": 123211,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 386688,
+          "signal_energy": 35.98816279526974,
+          "error_energy": 8.960998461852372e-14,
+          "aggregate_snr_db": 146.03803273599135,
+          "nonzero_case_snr_range_db": [
+            129.06804317373226,
+            147.30343394393796
+          ],
+          "max_abs_error_unrounded_model": 1.4000958670212782e-08,
+          "max_error_over_forward_bound": 0.002090550129209683,
+          "max_relative_error_nonzero_rounded_model": 2045926401.0,
+          "max_ulp_against_rounded_model": 1404729144,
+          "bit_differing_components": 158920,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "tone": {
+      "cases": 384,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 7864320,
+          "signal_energy": 100659712.62384951,
+          "error_energy": 4.910450547106158e-08,
+          "aggregate_snr_db": 153.11734344540403,
+          "nonzero_case_snr_range_db": [
+            144.27707681355497,
+            154.04578377941985
+          ],
+          "max_abs_error_unrounded_model": 2.1551101565957766e-06,
+          "max_error_over_forward_bound": 0.0420885545085604,
+          "max_relative_error_nonzero_rounded_model": 284.6312675051047,
+          "max_ulp_against_rounded_model": 1745826803,
+          "bit_differing_components": 6375172,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 3932160,
+          "signal_energy": 1448328.1042250684,
+          "error_energy": 2.3304817916406076e-09,
+          "aggregate_snr_db": 147.93421243989516,
+          "nonzero_case_snr_range_db": [
+            146.72532535825798,
+            149.41894709858244
+          ],
+          "max_abs_error_unrounded_model": 1.113851391121301e-07,
+          "max_error_over_forward_bound": 0.18415734708386128,
+          "max_relative_error_nonzero_rounded_model": 1.6377318851865807,
+          "max_ulp_against_rounded_model": 1638520164,
+          "bit_differing_components": 1337944,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 3932160,
+          "signal_energy": 1448328.1021550784,
+          "error_energy": 2.9422962035110637e-09,
+          "aggregate_snr_db": 146.92180566056436,
+          "nonzero_case_snr_range_db": [
+            145.11836525645745,
+            149.0752935511968
+          ],
+          "max_abs_error_unrounded_model": 1.3062848225331436e-07,
+          "max_error_over_forward_bound": 0.0655445281477979,
+          "max_relative_error_nonzero_rounded_model": 13.281401593932008,
+          "max_ulp_against_rounded_model": 1681779235,
+          "bit_differing_components": 1545982,
+          "signed_zero_only_differences": 0
+        }
+      }
+    }
+  },
+  "real_scopes": {
+    "tone_full": {
+      "cases": 10,
+      "zero_input_cases": 8,
+      "stages": {
+        "analysis": {
+          "components": 135680,
+          "signal_energy": 1.069455473782789e-05,
+          "error_energy": 1.1961791025388627e-20,
+          "aggregate_snr_db": 149.5136649672047,
+          "nonzero_case_snr_range_db": [
+            149.5133846595893,
+            150.12654241909502
+          ],
+          "max_abs_error_unrounded_model": 3.0735526285552645e-11,
+          "max_error_over_forward_bound": 0.006077059217186367,
+          "max_relative_error_nonzero_rounded_model": 70.29226060593561,
+          "max_ulp_against_rounded_model": 1418596349,
+          "bit_differing_components": 14040,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 67840,
+          "signal_energy": 1.670832017800126e-07,
+          "error_energy": 2.5434966965628e-22,
+          "aggregate_snr_db": 148.1750161105033,
+          "nonzero_case_snr_range_db": [
+            147.52769305043768,
+            148.1753584584629
+          ],
+          "max_abs_error_unrounded_model": 3.5379308938867857e-12,
+          "max_error_over_forward_bound": 0.07784497241814665,
+          "max_relative_error_nonzero_rounded_model": 669.8932974291187,
+          "max_ulp_against_rounded_model": 1097787268,
+          "bit_differing_components": 6705,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 67840,
+          "signal_energy": 1.670832018983133e-07,
+          "error_energy": 3.434767867067439e-22,
+          "aggregate_snr_db": 146.8703539793857,
+          "nonzero_case_snr_range_db": [
+            146.87015184259417,
+            147.30343394393796
+          ],
+          "max_abs_error_unrounded_model": 3.62027928794105e-12,
+          "max_error_over_forward_bound": 0.0005403079846899852,
+          "max_relative_error_nonzero_rounded_model": 1423410049.0,
+          "max_ulp_against_rounded_model": 961991221,
+          "bit_differing_components": 7381,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "tone_patch": {
+      "cases": 9,
+      "zero_input_cases": 7,
+      "stages": {
+        "analysis": {
+          "components": 122112,
+          "signal_energy": 1.069455473782789e-05,
+          "error_energy": 1.1961791025388627e-20,
+          "aggregate_snr_db": 149.5136649672047,
+          "nonzero_case_snr_range_db": [
+            149.5133846595893,
+            150.12654241909502
+          ],
+          "max_abs_error_unrounded_model": 3.0735526285552645e-11,
+          "max_error_over_forward_bound": 0.006077059217186367,
+          "max_relative_error_nonzero_rounded_model": 70.29226060593561,
+          "max_ulp_against_rounded_model": 1418596349,
+          "bit_differing_components": 14040,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 61056,
+          "signal_energy": 2.7637643978680297e-07,
+          "error_energy": 4.780485824508874e-22,
+          "aggregate_snr_db": 147.62028983330163,
+          "nonzero_case_snr_range_db": [
+            147.5066811119472,
+            147.62030354218894
+          ],
+          "max_abs_error_unrounded_model": 3.916285861143426e-12,
+          "max_error_over_forward_bound": 0.08455642727818158,
+          "max_relative_error_nonzero_rounded_model": 7.33634529989973e-05,
+          "max_ulp_against_rounded_model": 1137,
+          "bit_differing_components": 6059,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 61056,
+          "signal_energy": 2.7637643997669616e-07,
+          "error_energy": 5.711518763791329e-22,
+          "aggregate_snr_db": 146.84749410453298,
+          "nonzero_case_snr_range_db": [
+            146.13034070190122,
+            146.84758697224186
+          ],
+          "max_abs_error_unrounded_model": 4.025981357644835e-12,
+          "max_error_over_forward_bound": 0.0011040371580970866,
+          "max_relative_error_nonzero_rounded_model": 0.00020757458212371767,
+          "max_ulp_against_rounded_model": 2449,
+          "bit_differing_components": 7265,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "music100_full": {
+      "cases": 10,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 135680,
+          "signal_energy": 2121.3118139824605,
+          "error_energy": 1.2351691240885324e-12,
+          "aggregate_snr_db": 152.34878083706172,
+          "nonzero_case_snr_range_db": [
+            149.84092509450608,
+            153.49420722815174
+          ],
+          "max_abs_error_unrounded_model": 2.272329866643543e-07,
+          "max_error_over_forward_bound": 0.03650096172505924,
+          "max_relative_error_nonzero_rounded_model": 120.93121902724361,
+          "max_ulp_against_rounded_model": 1643135381,
+          "bit_differing_components": 91952,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 67840,
+          "signal_energy": 33.14324111564037,
+          "error_energy": 5.938849327466659e-14,
+          "aggregate_snr_db": 147.46692669237885,
+          "nonzero_case_snr_range_db": [
+            147.0771181363387,
+            147.5441866741907
+          ],
+          "max_abs_error_unrounded_model": 1.1834816376898871e-08,
+          "max_error_over_forward_bound": 0.11100252817891458,
+          "max_relative_error_nonzero_rounded_model": 899.8370878875359,
+          "max_ulp_against_rounded_model": 1330983578,
+          "bit_differing_components": 28192,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 67840,
+          "signal_energy": 33.14324113571104,
+          "error_energy": 7.936752127003104e-14,
+          "aggregate_snr_db": 146.20752159529044,
+          "nonzero_case_snr_range_db": [
+            145.8310757666675,
+            146.3829519755333
+          ],
+          "max_abs_error_unrounded_model": 1.4000958670212782e-08,
+          "max_error_over_forward_bound": 0.0011568920874074123,
+          "max_relative_error_nonzero_rounded_model": 1504491519.0,
+          "max_ulp_against_rounded_model": 1193943646,
+          "bit_differing_components": 31911,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "music100_patch": {
+      "cases": 9,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 122112,
+          "signal_energy": 2120.929011704296,
+          "error_energy": 1.2349556429966147e-12,
+          "aggregate_snr_db": 152.34874773825823,
+          "nonzero_case_snr_range_db": [
+            149.84092509450608,
+            153.49420722815174
+          ],
+          "max_abs_error_unrounded_model": 2.272329866643543e-07,
+          "max_error_over_forward_bound": 0.02784522219175793,
+          "max_relative_error_nonzero_rounded_model": 120.93121902724361,
+          "max_ulp_against_rounded_model": 1643135381,
+          "bit_differing_components": 81867,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 61056,
+          "signal_energy": 0.15737480669633164,
+          "error_energy": 2.9010582493159127e-16,
+          "aggregate_snr_db": 147.34378760737283,
+          "nonzero_case_snr_range_db": [
+            147.2476611359793,
+            147.87411762336077
+          ],
+          "max_abs_error_unrounded_model": 1.7261231263776544e-09,
+          "max_error_over_forward_bound": 0.08196377892336426,
+          "max_relative_error_nonzero_rounded_model": 0.004053764495580088,
+          "max_ulp_against_rounded_model": 60710,
+          "bit_differing_components": 26107,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 61056,
+          "signal_energy": 0.15737480856048316,
+          "error_energy": 4.353711925888401e-15,
+          "aggregate_snr_db": 135.5807552532835,
+          "nonzero_case_snr_range_db": [
+            129.06804317373226,
+            137.95114550169598
+          ],
+          "max_abs_error_unrounded_model": 3.3793448993985065e-09,
+          "max_error_over_forward_bound": 0.0007228827237039815,
+          "max_relative_error_nonzero_rounded_model": 0.06731633664471467,
+          "max_ulp_against_rounded_model": 1076524,
+          "bit_differing_components": 46583,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "music33_full": {
+      "cases": 10,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 135680,
+          "signal_energy": 147.95663073193361,
+          "error_energy": 9.937609019747434e-14,
+          "aggregate_snr_db": 151.72852526919334,
+          "nonzero_case_snr_range_db": [
+            150.01312435306,
+            153.79110165243782
+          ],
+          "max_abs_error_unrounded_model": 8.636933634925876e-08,
+          "max_error_over_forward_bound": 0.03570146566706505,
+          "max_relative_error_nonzero_rounded_model": 214.58239487064685,
+          "max_ulp_against_rounded_model": 1593737202,
+          "bit_differing_components": 76801,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 67840,
+          "signal_energy": 2.3118528580581303,
+          "error_energy": 3.799680941641676e-15,
+          "aggregate_snr_db": 147.8421305865448,
+          "nonzero_case_snr_range_db": [
+            145.7375400161156,
+            148.57268766940143
+          ],
+          "max_abs_error_unrounded_model": 8.714136523479965e-09,
+          "max_error_over_forward_bound": 0.10155575798696528,
+          "max_relative_error_nonzero_rounded_model": 949.2694934313375,
+          "max_ulp_against_rounded_model": 1399151549,
+          "bit_differing_components": 29775,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 67840,
+          "signal_energy": 2.31185288059366,
+          "error_energy": 4.893068340185965e-15,
+          "aggregate_snr_db": 146.74378911947284,
+          "nonzero_case_snr_range_db": [
+            145.57526804955063,
+            147.10352017568533
+          ],
+          "max_abs_error_unrounded_model": 9.191028438326754e-09,
+          "max_error_over_forward_bound": 0.0011028748837200245,
+          "max_relative_error_nonzero_rounded_model": 2045926401.0,
+          "max_ulp_against_rounded_model": 1404729144,
+          "bit_differing_components": 33554,
+          "signed_zero_only_differences": 0
+        }
+      }
+    },
+    "music33_patch": {
+      "cases": 9,
+      "zero_input_cases": 0,
+      "stages": {
+        "analysis": {
+          "components": 122112,
+          "signal_energy": 147.95663022172943,
+          "error_energy": 9.93760899843496e-14,
+          "aggregate_snr_db": 151.72852526353142,
+          "nonzero_case_snr_range_db": [
+            150.01312435306,
+            152.07332206008846
+          ],
+          "max_abs_error_unrounded_model": 8.636933634925876e-08,
+          "max_error_over_forward_bound": 0.019318007114013724,
+          "max_relative_error_nonzero_rounded_model": 214.58239487064685,
+          "max_ulp_against_rounded_model": 1593737202,
+          "bit_differing_components": 66778,
+          "signed_zero_only_differences": 0
+        },
+        "synthesis": {
+          "components": 61056,
+          "signal_energy": 0.37569352867923106,
+          "error_energy": 6.244205085613927e-16,
+          "aggregate_snr_db": 147.79356555747546,
+          "nonzero_case_snr_range_db": [
+            147.12703867470353,
+            148.2647246264281
+          ],
+          "max_abs_error_unrounded_model": 1.8680259283865297e-09,
+          "max_error_over_forward_bound": 0.06816181655913868,
+          "max_relative_error_nonzero_rounded_model": 0.0031314480103957856,
+          "max_ulp_against_rounded_model": 43699,
+          "bit_differing_components": 26373,
+          "signed_zero_only_differences": 0
+        },
+        "chain": {
+          "components": 61056,
+          "signal_energy": 0.3756935269449135,
+          "error_energy": 9.956821677896502e-16,
+          "aggregate_snr_db": 145.7671298321763,
+          "nonzero_case_snr_range_db": [
+            145.30003118826937,
+            147.2217341913853
+          ],
+          "max_abs_error_unrounded_model": 2.567168526368402e-09,
+          "max_error_over_forward_bound": 0.002090550129209683,
+          "max_relative_error_nonzero_rounded_model": 0.0035453306868180098,
+          "max_ulp_against_rounded_model": 38390,
+          "bit_differing_components": 32226,
+          "signed_zero_only_differences": 0
+        }
+      }
+    }
+  },
+  "carrier": {
+    "cases": 384,
+    "max_complex_amplitude_error": 3.870727213119571e-08,
+    "max_phase_error_rad": 2.4467678840163296e-08,
+    "min_expected_amplitude": 0.9434273352184914,
+    "fitted_parameters": 0
+  },
+  "continuous_basis": {
+    "configurations": 2,
+    "frames_per_case": 4,
+    "limiter": "on",
+    "interpolation": true,
+    "preflatten": true,
+    "basis_formulas": [
+      "0",
+      "(k*k+k/3+1)%4",
+      "(3*k+k/5+2)%4"
+    ],
+    "basis_integer_division": true,
+    "intact_control_count": 6,
+    "intact_pcm_samples": 49152,
+    "intact_bit_differences": 0,
+    "timeline": [
+      "FIXVAR with right overrun",
+      "VARFIX with carried head",
+      "two envelopes, harmonic off",
+      "two envelopes, harmonic on"
+    ],
+    "cases": [
+      {
+        "config": 0,
+        "basis": 0,
+        "defect": "None",
+        "samples": 8192,
+        "bit_differences": 0,
+        "max_abs_error": 0.0,
+        "error_energy": 0.0,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 0.0
+      },
+      {
+        "config": 0,
+        "basis": 1,
+        "defect": "None",
+        "samples": 8192,
+        "bit_differences": 0,
+        "max_abs_error": 0.0,
+        "error_energy": 0.0,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 0.0
+      },
+      {
+        "config": 0,
+        "basis": 2,
+        "defect": "None",
+        "samples": 8192,
+        "bit_differences": 0,
+        "max_abs_error": 0.0,
+        "error_energy": 0.0,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 0.0
+      },
+      {
+        "config": 1,
+        "basis": 0,
+        "defect": "None",
+        "samples": 8192,
+        "bit_differences": 0,
+        "max_abs_error": 0.0,
+        "error_energy": 0.0,
+        "signal_energy": 36260966843.76674,
+        "relative_error_rms": 0.0
+      },
+      {
+        "config": 1,
+        "basis": 1,
+        "defect": "None",
+        "samples": 8192,
+        "bit_differences": 0,
+        "max_abs_error": 0.0,
+        "error_energy": 0.0,
+        "signal_energy": 36260966843.76674,
+        "relative_error_rms": 0.0
+      },
+      {
+        "config": 1,
+        "basis": 2,
+        "defect": "None",
+        "samples": 8192,
+        "bit_differences": 0,
+        "max_abs_error": 0.0,
+        "error_energy": 0.0,
+        "signal_energy": 36260966843.76674,
+        "relative_error_rms": 0.0
+      },
+      {
+        "config": 0,
+        "basis": 1,
+        "defect": "Operator",
+        "samples": 8192,
+        "bit_differences": 7799,
+        "max_abs_error": 10.098267,
+        "error_energy": 18622.65431612941,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 0.0007166394426165783
+      },
+      {
+        "config": 0,
+        "basis": 1,
+        "defect": "Noise",
+        "samples": 8192,
+        "bit_differences": 7269,
+        "max_abs_error": 3.9958496,
+        "error_energy": 4326.700831797142,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 0.00034542864578931086
+      },
+      {
+        "config": 0,
+        "basis": 1,
+        "defect": "Tone",
+        "samples": 8192,
+        "bit_differences": 5450,
+        "max_abs_error": 0.9684906,
+        "error_energy": 243.40922549327308,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 8.193103359206671e-05
+      },
+      {
+        "config": 0,
+        "basis": 1,
+        "defect": "History",
+        "samples": 8192,
+        "bit_differences": 5976,
+        "max_abs_error": 1.3762207,
+        "error_energy": 83.13274932416749,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 4.788130606490591e-05
+      },
+      {
+        "config": 0,
+        "basis": 1,
+        "defect": "Carry",
+        "samples": 8192,
+        "bit_differences": 700,
+        "max_abs_error": 5.972351,
+        "error_energy": 567.6620112396524,
+        "signal_energy": 36261032585.01894,
+        "relative_error_rms": 0.00012511945161228861
+      }
+    ]
+  },
+  "mutation_tests": [
+    {
+      "name": "baseline",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "587fb2b4bbc67beb0982ec62ff83966e282355f65148474785c6ecc4bdc32ab1"
+    },
+    {
+      "name": "analysis_origin",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "165e353ba062ae2a6d6d12043db2b63edf32cb44b977c04be2c62419f21614d4"
+    },
+    {
+      "name": "synthesis_sign",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "1a5c16604355dd4755fc670730f59bb75b0ce9494f72a1327c89aa8a0c984adb"
+    },
+    {
+      "name": "patch_source",
+      "expected_pass": false,
+      "returncode": 101,
+      "log_sha256": "3b47f533bc1cdb779cd618a411da1b78b9cd4c12d0053d7c56b6cc5808e5cb86"
+    },
+    {
+      "name": "equivalent_analysis",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "94cee198e68447316b3ab0c81231ae99eb0ae4ea14636637c637ad81528f4d8f"
+    },
+    {
+      "name": "equivalent_synthesis",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "36ad079155c841531f34e764ca8ac773145adc2e956f1dd905133ea3e35499d2"
+    },
+    {
+      "name": "equivalent_source",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "ca04e2891512c87090e4f0b4178538dc9b9c9e3c010df5875f51f37864145881"
+    },
+    {
+      "name": "restored",
+      "expected_pass": true,
+      "returncode": 0,
+      "log_sha256": "dbcc4de5ac5480fa71d827655b10ec92e7b4d28bc6515eb4246036cdc60c320f"
+    }
+  ],
+  "checks": {
+    "test_default": {
+      "passed": 516,
+      "failed": 0,
+      "ignored": 3,
+      "log_sha256": "486bea20739e82de53f19f750a6d3d041cec0943d3d4fb82badc22868f9a1870"
+    },
+    "test_audio": {
+      "passed": 1322,
+      "failed": 0,
+      "ignored": 32,
+      "log_sha256": "c9830cb406dfe6592bc42d667ab7a51c177b1d3e0330cca20e50841483799562"
+    },
+    "clippy_default": {
+      "passed": true,
+      "log_sha256": "a178c7902ac24dda0e2c0cd4cf0e47a2a6976ef30481cb4015f2f71620380d8b"
+    },
+    "clippy_audio": {
+      "passed": true,
+      "log_sha256": "dbcfe21e36e150ebc634c812bd89fa839f7a7416d3d6a69652c58fc7ef7b1fcd"
+    },
+    "fmt": {
+      "passed": true,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "layers": {
+      "passed": true,
+      "log_sha256": "a78250f2527276d017b37349578d4ae71b3f5a5f17f5e33ff226cdb1a839e022"
+    },
+    "math": {
+      "passed": true,
+      "log_sha256": "3ead48b0f91c887cfc48d86209880f6add32421a1d8cb677f6069fd4a6ef029c"
+    },
+    "python_checks": {
+      "passed": true,
+      "log_sha256": "cf41c5dbecb571ef34bab2f6700fe206969df0ee649bc76bbdb450a52d4c8beb",
+      "tests": 193
+    },
+    "phase_basis": {
+      "passed": true,
+      "log_sha256": "94821c25f9bc89d38bd6e188164d96d039b541274722eb5af6cfaee8cf148ad0"
+    },
+    "pcm_baselines": {
+      "counts": {
+        "core": 12,
+        "aspx": 12,
+        "objects": 12
+      },
+      "passed": true,
+      "updated": false,
+      "log_sha256": "23b6bf2bc03d96b06c9a92d7b488953a5cecabd939fc3c73a57a9f0d1cd61900"
+    },
+    "final_manifest_test": {
+      "passed": true,
+      "log_sha256": "6c05fec6d5d7252f002b25451f5fb34d7516e83c7852cf9abac7a05c903f3cfb"
+    }
+  },
+  "limits": [
+    "Validates production 64-band definitions and their composition, not equivalence of 8/48/64-band filters.",
+    "Consistent basis changes do not uniquely decide absolute tone initial phase.",
+    "No new reference captures or end-to-end DRP improvement claim.",
+    "Near-zero relative and ULP errors are retained and are not conformance thresholds.",
+    "Continuous basis controls cover limiter on and interpolation on; not all option combinations."
+  ]
+}

@@ -2064,6 +2064,7 @@ fn qmf_output(workspace: &AspxWorkspace, timeslots: usize) -> Result<&[QmfSlot],
 mod tests {
     extern crate std;
 
+    mod phase_basis_tests;
     mod preflatten_chain_tests;
 
     use super::*;
