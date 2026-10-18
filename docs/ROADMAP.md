@@ -127,12 +127,17 @@ P95/P99 的能量条件与 P102/P107 的无条件生成／叠加冲突，未混�
 生成／组装／合成链。初相前移一项只在恒定包络稳态等价于 64 样本前移，起停时不同。
 四种初相均连续，P105 明确给出的 1 没有独立反例要求更改；生产与基线继续保持。
 
+随后 [TNA 稳定性调查](ASPX_TNA_STABILITY_INVESTIGATION.md)在 1,850 份输入中确认一个
+合成清零阈值反例：协方差舍入把数学上略大于 4 的系数算到 4 以下。378 份真实源带没有
+该误判。随后按 [ADR-0023](decisions/0023-stabilize-aspx-prediction-with-orthogonal-residuals.md)
+将同一正则目标的正交残差求解接入生产，1,850 份输入的分类分歧归零，已有完整流 PCM
+和三层基线逐位保持。
+
 下一阶段按以下顺序推进：
 
-1. 保持已验证的 QMF、跨子带连接和音调初相，优先独立审查 [TNA 稳定化边界](ASPX_HF_TNA_INVESTIGATION.md)：
-   单音、近奇异协方差与清零阈值是否存在真实数值问题。遵守[相位比较契约](ASPX_PHASE_CONTRACT.md)，
-   不将贴近 DRP 作为修复目标；QMF 宽度解释、弱源带残差和参考稳定化策略也不自动作为
-   改生产的依据。
+1. 保持已验证的 QMF／音调初相和已修复的 TNA 数值求解，继续独立核对 QMF 宽度、弱
+   源带及参考 limiter 约束等剩余差异；不把参考相似度当作修复目标，也不采用参考绝对
+   门槛替换有依据的正则化策略。
 2. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
    [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →
    scene 单向边界；后续重构不得混入数值变化。

@@ -24,11 +24,16 @@ class GainConventionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as work:
             root = Path(work)
             self.assertEqual(check.read_gain_convention(root), 'mean_minus_slope')
+            self.assertEqual(check.read_prediction_solver(root), 'legacy_covariance')
             marker = root / 'replay_metadata.json'
             for convention in check.GAIN_CONVENTIONS:
                 marker.write_text(json.dumps(dict(schema='macinac4.hf-replay', version=1,
                                                  preflatten_gain_convention=convention)))
                 self.assertEqual(check.read_gain_convention(root), convention)
+                self.assertEqual(check.read_prediction_solver(root), 'legacy_covariance')
+            marker.write_text(json.dumps(dict(schema='macinac4.hf-replay',version=1,
+                                             preflatten_gain_convention='slope_minus_mean',prediction_solver='orthogonal_residual')))
+            self.assertEqual(check.read_prediction_solver(root),'orthogonal_residual')
 
     def test_invalid_metadata_does_not_silently_fall_back_to_history(self):
         with tempfile.TemporaryDirectory() as work:
@@ -37,10 +42,20 @@ class GainConventionTests(unittest.TestCase):
                          preflatten_gain_convention='slope_minus_mean')
             for content in [dict(valid, version=True), dict(valid, version=2),
                             dict(valid, schema='other'), dict(valid, extra=0),
-                            dict(valid, preflatten_gain_convention='unknown'), {}]:
+                            dict(valid, preflatten_gain_convention='unknown'),dict(valid,prediction_solver='unknown'), {}]:
                 (root/'replay_metadata.json').write_text(json.dumps(content))
                 with self.assertRaises(ValueError):
                     check.read_gain_convention(root)
+
+    def test_projected_coefficients_are_checked_against_original_samples(self):
+        from scripts.check_tna_stability import qr_oracle
+        r=case();q,h=check.synthetic(r);v=np.concatenate((h,q[:38,:40]))[:,24]
+        expected=np.array([float(x) for pair in qr_oracle(v)['alpha'] for x in pair],dtype='<f4')
+        a=np.zeros((64,4),'<f4');a[24]=expected
+        check.check_projected_coefficients(q,h,[24],a)
+        check.check_projected_coefficients(q,h,slice(24,25),a)
+        a[24,0]+=.25
+        with self.assertRaises(ValueError):check.check_projected_coefficients(q,h,[24],a)
 
     def test_a_nonflat_gain_cannot_be_relabelled_as_the_other_convention(self):
         r=case();r.update(kind='preflat_probe',pattern='rising')

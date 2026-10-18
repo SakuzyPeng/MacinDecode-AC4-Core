@@ -167,6 +167,7 @@ def covariance(low, history):
 
 
 GAIN_CONVENTIONS = ('mean_minus_slope', 'slope_minus_mean')
+PREDICTION_SOLVERS = ('legacy_covariance', 'orthogonal_residual')
 
 
 def read_gain_convention(local):
@@ -175,12 +176,38 @@ def read_gain_convention(local):
         return 'mean_minus_slope'
     value = json.loads(path.read_text())
     if (not isinstance(value, dict)
-            or set(value) != {'schema', 'version', 'preflatten_gain_convention'}
+            or set(value) not in ({'schema', 'version', 'preflatten_gain_convention'},
+                                 {'schema', 'version', 'preflatten_gain_convention', 'prediction_solver'})
             or value['schema'] != 'macinac4.hf-replay'
             or type(value['version']) is not int or value['version'] != 1
-            or value['preflatten_gain_convention'] not in GAIN_CONVENTIONS):
+            or value['preflatten_gain_convention'] not in GAIN_CONVENTIONS
+            or value.get('prediction_solver','legacy_covariance') not in PREDICTION_SOLVERS):
         raise ValueError('无效 HF 重放增益约定')
     return value['preflatten_gain_convention']
+
+
+def read_prediction_solver(local):
+    read_gain_convention(local)  # 同样严格校验，不能因新增字段重释无标记旧记录。
+    path=local/'replay_metadata.json'
+    return json.loads(path.read_text()).get('prediction_solver','legacy_covariance') if path.exists() else 'legacy_covariance'
+
+
+def check_projected_coefficients(low,history,sources,actual):
+    if __package__:
+        from .check_tna_stability import qr_oracle,exact_solution,norm2,weighted_error,D
+    else:
+        from check_tna_stability import qr_oracle,exact_solution,norm2,weighted_error,D
+    values=np.concatenate((history,low[:38,:40]))
+    for source in np.unique(np.atleast_1d(np.arange(values.shape[1])[sources])):
+        signal=values[:,source];oracle=qr_oracle(signal);exact=exact_solution(signal)
+        if any(norm2(a)>=16 for a in exact):
+            if np.any(actual[source]!=0):raise ValueError('正交残差系数没有按精确阈值清零')
+        else:
+            # 对 f32 存储系数增加明确的收窄预算；原始 f64 解另由稳定性套件严格核对。
+            norms=list(map(float,oracle['norms']));ynorm=float(oracle['ynorm'])
+            beta=max(abs(complex(*map(float,a)))*n/ynorm for a,n in zip(oracle['alpha'],norms))
+            bound=D(oracle['weighted_error_bound'])+D.from_float(float(4*np.finfo(np.float32).eps*(1+beta)))
+            if weighted_error(actual[source],oracle)>bound:raise ValueError('系数偏离独立增广 QR')
 
 
 def gain_model(low, sbx, first, last, scale, convention='mean_minus_slope'):
@@ -233,6 +260,7 @@ def completed_rows(rows, ids):
 def compare(manifest, data, references, local):
     m=json.loads(manifest.read_text());validate_manifest(m)
     gain_convention = read_gain_convention(local)
+    prediction_solver = read_prediction_solver(local)
     dirs=[references/identifier(x) for x in m['reference_runs']]
     ids=[r['id'] for r in m['cases']]
     if (data/'hf_cases.txt').read_text().split() != ids:
@@ -308,9 +336,11 @@ def compare(manifest, data, references, local):
         a=floats(local/f'{name}.raw.alpha.f32',(64,4));scaled_a=floats(local/f'{name}.scaled.alpha.f32',(64,4))
         if not identical(a,scaled_a):
             raise ValueError('生产预测器不满足此次两次幂尺度控制')
-        expected=np.array([regularized_solver(v) for v in raw_cov[sources]],dtype='<f4')
-        if not np.array_equal(a[sources],expected):
-            raise ValueError('本地系数不符合声明的正则化规则')
+        if prediction_solver=='legacy_covariance':
+            expected=np.array([regularized_solver(v) for v in raw_cov[sources]],dtype='<f4')
+            if not np.array_equal(a[sources],expected):raise ValueError('本地系数不符合声明的正则化规则')
+        else:
+            check_projected_coefficients(q,h,sources,a)
         off=arrays['reference0'][first:last,lo:hi].copy()
         if r['kind']=='live':
             captured=floats(data/f'{name}.reference.f32',(40,64,2))[first:last,lo:hi].copy()
@@ -382,6 +412,7 @@ def compare(manifest, data, references, local):
         solvers.append(dict(id=name,covariance=c.tolist(),reference=a.tolist(),local=b.tolist(),metrics=metrics(a,b)))
     return dict(schema='macinac4.hf-tna-preflat-comparison',version=1,status='observation_only',
                 preflatten_gain_convention=gain_convention,
+                prediction_solver=prediction_solver,covariance_probe_solver='legacy_covariance',
                 output_gain_phase_or_delay_fitting=False,cases=result,live_bands=band_results,chirp_cases=chirps,solver_cases=solvers)
 
 
