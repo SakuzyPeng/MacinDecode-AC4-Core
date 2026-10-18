@@ -1,0 +1,1360 @@
+{
+  "schema": "macinac4.noise-mask-investigation",
+  "version": 1,
+  "date": "2026-10-17",
+  "status": "observation_only",
+  "production_head": "ded1f64cdd10a13736d82883037d453cdf65e6ce",
+  "production_dsp_changed": false,
+  "public_api_or_cli_changed": false,
+  "production_binary_sha256": "2654fffc3aa893c9e1427f4f9b30382e4c9ff06d85f8635dfbf43a8934a31b0f",
+  "production_binary_rebuilt": false,
+  "baseline_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "2af876b199e3bb61e833ef8bb2cf12f6263de76af8ceb4469e1185aa5f91c8a3",
+    "vectors/emdf_baseline.json": "049a5a1cab35c9b120f04fff377e2eeddb57f8a82481ee3b2f98adc93529ccb3",
+    "vectors/ajoc_syntax_baseline.json": "b4b1c3e2309466c6be959ee554f8ebfd63d40a5b45c437881f0d7e5d294e5ac4",
+    "vectors/objects_baseline.json": "6b2edae4ad105ebcc6184682e62d25b7413624b14eeae64920132b01c3a28217"
+  },
+  "baseline_reexported": false,
+  "user_file_unchanged": true,
+  "existing_rust_sources": 192,
+  "unchanged_existing_rust_source_hashes": 191,
+  "test_module_only_source": "aspx/hfassemble.rs",
+  "reference": {
+    "profile": "DRP 4.3.0.19350 arm64",
+    "runtime_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "captures": [
+      {
+        "name": "tone_r1",
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "frames": 143,
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 8,
+        "calls": 9,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "tone_r2",
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "frames": 143,
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 8,
+        "calls": 9,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "music100_r1",
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "frames": 400,
+        "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 100,
+        "calls": 9,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "music100_r2",
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "frames": 400,
+        "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 100,
+        "calls": 9,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "music33_r1",
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "frames": 400,
+        "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 33,
+        "calls": 9,
+        "accepted_attempt": 1,
+        "rejected_attempts": [
+          {
+            "attempt": 0,
+            "returncode": null,
+            "timed_out": true,
+            "calls": 0
+          }
+        ]
+      },
+      {
+        "name": "music33_r2",
+        "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+        "frames": 400,
+        "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 33,
+        "calls": 9,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "odd2_r1",
+        "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "frames": 143,
+        "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 2,
+        "calls": 2,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "odd2_r2",
+        "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "frames": 143,
+        "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 2,
+        "calls": 2,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "odd8_r1",
+        "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "frames": 143,
+        "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 8,
+        "calls": 2,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "odd8_r2",
+        "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "frames": 143,
+        "pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 8,
+        "calls": 2,
+        "accepted_attempt": 1,
+        "rejected_attempts": [
+          {
+            "attempt": 0,
+            "returncode": 0,
+            "timed_out": false,
+            "calls": 2
+          }
+        ]
+      },
+      {
+        "name": "even8_r1",
+        "input_sha256": "3046c9a7bf1e84de30d4429932ef7811c0e3444b458d9099ad48213f40d1991e",
+        "frames": 143,
+        "pcm_sha256": "ce9d95bd812ab2ed8698606014a16bce773501da2d5cac716425edd473766ceb",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 8,
+        "calls": 9,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "even8_r2",
+        "input_sha256": "3046c9a7bf1e84de30d4429932ef7811c0e3444b458d9099ad48213f40d1991e",
+        "frames": 143,
+        "pcm_sha256": "ce9d95bd812ab2ed8698606014a16bce773501da2d5cac716425edd473766ceb",
+        "adapter_sha256": "18bea6eb6b8d9468bd3818077e1739a6e1f57d42ce6aef5c1ecd4c44603353e1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 936,
+        "au": 8,
+        "calls": 9,
+        "accepted_attempt": 1,
+        "rejected_attempts": [
+          {
+            "attempt": 0,
+            "returncode": null,
+            "timed_out": true,
+            "calls": 0
+          }
+        ]
+      }
+    ],
+    "interleave_positive_controls": [
+      {
+        "name": "controls_r1",
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "frames": 143,
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "adapter_sha256": "5d6a9435994bc7910b7afffacec4f15fbb62bd17b7e9cf54cf033cdf6eec01b1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 4,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      },
+      {
+        "name": "controls_r2",
+        "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+        "frames": 143,
+        "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+        "adapter_sha256": "5d6a9435994bc7910b7afffacec4f15fbb62bd17b7e9cf54cf033cdf6eec01b1",
+        "parameters_sha256": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+        "probe_count": 4,
+        "accepted_attempt": 0,
+        "rejected_attempts": []
+      }
+    ],
+    "full_pcm_unchanged": true,
+    "prior_gain_endpoints_unchanged": true,
+    "old_hf_estimate_gain_prefix_replay_still_bit_exact": true,
+    "mask_outputs_and_states_identical_across_twelve_processes": true,
+    "full_aspx_return_boundary_captured": true,
+    "interleave_replay_bit_exact": true
+  },
+  "conventions": {
+    "observed_noise_gate": "not onset and adjusted_sine_level == 0",
+    "reference_qmf_to_comparison_scale": 8388608,
+    "synthetic_noise_seed": 0,
+    "synthetic_tone_next": 1,
+    "synthetic_signal_gain": 1.25,
+    "real_cursors": "captured state; no phase selection from output",
+    "model_precision": "sequential Float32 signal multiply, noise addition, sine addition",
+    "previous_downstream_model_precision": "Float64 expression followed by Float32 output; SNR values are not directly interchangeable",
+    "production_noise_and_tone_generators": "called unchanged; the diagnostic gate zeros only the noise copy passed to production assemble",
+    "output_fitting": false,
+    "initial_tone_policy_changed": false
+  },
+  "coverage": {
+    "constructed_cases": 936,
+    "grid_cases": 924,
+    "zero_level_or_zero_hf_controls": 12,
+    "informative_gate_cases": 892,
+    "equivalent_literal_cases": 44,
+    "factors": [
+      1,
+      2
+    ],
+    "envelopes": [
+      1,
+      2,
+      4
+    ],
+    "geometries": [
+      {
+        "sbx": 36,
+        "subbands": 20
+      },
+      {
+        "sbx": 47,
+        "subbands": 15
+      }
+    ],
+    "sine_levels": [
+      5.960464477539063e-08,
+      1,
+      4
+    ],
+    "noise_levels": [
+      0,
+      1
+    ],
+    "patterns": [
+      "none",
+      "all",
+      "absolute_even",
+      "absolute_odd",
+      "first_band",
+      "last_band",
+      "alternating_by_envelope"
+    ],
+    "synthetic_components": 786240,
+    "live_calls": 40,
+    "live_envelopes": 67,
+    "live_onset_envelopes": 6,
+    "live_nonzero_sine_envelopes": 5,
+    "live_onset_with_sine_envelopes": 2,
+    "live_sine_bands": [
+      35,
+      37,
+      39,
+      41
+    ],
+    "live_even_sine_coverage": false,
+    "pre_post_boost_sine_presence_checked_subband_envelopes": 1512
+  },
+  "hypothesis_comparison": {
+    "literal": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 256835.9965694301,
+      "snr_db": 5.9989044526460775,
+      "relative_l2": 0.5012504521344382,
+      "max_abs_error": 0.9999949932098389,
+      "max_relative_error_nonzero_reference": 16776696.0,
+      "max_ulp": 2113787173,
+      "differing_components": 513672,
+      "bit_differing_components": 513672,
+      "signed_zero_only_differences": 0,
+      "differing_cases": 892
+    },
+    "onset_only": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 79595.99872144194,
+      "snr_db": 11.086551006275904,
+      "relative_l2": 0.27904384639006735,
+      "max_abs_error": 0.9999949932098389,
+      "max_relative_error_nonzero_reference": 16776696.0,
+      "max_ulp": 2113787173,
+      "differing_components": 159192,
+      "bit_differing_components": 159192,
+      "signed_zero_only_differences": 0,
+      "differing_cases": 580
+    },
+    "sine_only": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 110915.99882724951,
+      "snr_db": 9.645521425051856,
+      "relative_l2": 0.3294002532641107,
+      "max_abs_error": 0.9999949932098389,
+      "max_relative_error_nonzero_reference": 12.799935913085937,
+      "max_ulp": 2113787173,
+      "differing_components": 221832,
+      "bit_differing_components": 221832,
+      "signed_zero_only_differences": 0,
+      "differing_cases": 580
+    },
+    "both": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 0.0,
+      "snr_db": null,
+      "relative_l2": 0.0,
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "differing_components": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0,
+      "differing_cases": 0
+    },
+    "whole_envelope": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 102683.99871070788,
+      "snr_db": 9.980435644135273,
+      "relative_l2": 0.3169408496154965,
+      "max_abs_error": 0.9999949932098389,
+      "max_relative_error_nonzero_reference": 3132.840524303659,
+      "max_ulp": 2113787173,
+      "differing_components": 205368,
+      "bit_differing_components": 205368,
+      "signed_zero_only_differences": 0,
+      "differing_cases": 484
+    }
+  },
+  "production_comparison": {
+    "literal": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 256835.9965694301,
+      "snr_db": 5.9989044526460775,
+      "relative_l2": 0.5012504521344382,
+      "max_abs_error": 0.9999949932098389,
+      "max_relative_error_nonzero_reference": 16776696.0,
+      "max_ulp": 2113787173,
+      "differing_components": 513672,
+      "bit_differing_components": 513672,
+      "signed_zero_only_differences": 0
+    },
+    "masked": {
+      "components": 786240,
+      "signal_energy": 1022224.6209147818,
+      "error_energy": 0.0,
+      "snr_db": null,
+      "relative_l2": 0.0,
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "differing_components": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    }
+  },
+  "live_groups": [
+    {
+      "scope": "tone",
+      "envelopes": 9,
+      "onset_envelopes": 0,
+      "nonzero_sine_envelopes": 0,
+      "sine_bands": [],
+      "literal": {
+        "components": 14976,
+        "signal_energy": 2228884161978.231,
+        "error_energy": 0.006594656066158265,
+        "snr_db": 145.28895347682953,
+        "relative_l2": 5.439416648192249e-08,
+        "max_abs_error": 0.03125,
+        "max_relative_error_nonzero_reference": 1.3700913622590066e-06,
+        "max_ulp": 13,
+        "differing_components": 610,
+        "bit_differing_components": 610,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 14976,
+        "signal_energy": 2228884161978.231,
+        "error_energy": 0.006594656066158265,
+        "snr_db": 145.28895347682953,
+        "relative_l2": 5.439416648192249e-08,
+        "max_abs_error": 0.03125,
+        "max_relative_error_nonzero_reference": 1.3700913622590066e-06,
+        "max_ulp": 13,
+        "differing_components": 610,
+        "bit_differing_components": 610,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "scope": "music100",
+      "envelopes": 23,
+      "onset_envelopes": 4,
+      "nonzero_sine_envelopes": 0,
+      "sine_bands": [],
+      "literal": {
+        "components": 12160,
+        "signal_energy": 2649451785.8902893,
+        "error_energy": 66462517.56640036,
+        "snr_db": 16.005792326232896,
+        "relative_l2": 0.15838366330884926,
+        "max_abs_error": 837.862060546875,
+        "max_relative_error_nonzero_reference": 43.83568796981169,
+        "max_ulp": 2275285491,
+        "differing_components": 4190,
+        "bit_differing_components": 4190,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 12160,
+        "signal_energy": 2649451785.8902893,
+        "error_energy": 4.0046211576437105e-06,
+        "snr_db": 148.20594583189785,
+        "relative_l2": 3.8877891947533275e-08,
+        "max_abs_error": 0.000244140625,
+        "max_relative_error_nonzero_reference": 6.157752210484191e-05,
+        "max_ulp": 786,
+        "differing_components": 3550,
+        "bit_differing_components": 3550,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "scope": "music33",
+      "envelopes": 18,
+      "onset_envelopes": 0,
+      "nonzero_sine_envelopes": 0,
+      "sine_bands": [],
+      "literal": {
+        "components": 9840,
+        "signal_energy": 6973936421.3047905,
+        "error_energy": 9.205629703192345e-06,
+        "snr_db": 148.79424482365184,
+        "relative_l2": 3.633187060723078e-08,
+        "max_abs_error": 0.00048828125,
+        "max_relative_error_nonzero_reference": 5.768380302904059e-05,
+        "max_ulp": 591,
+        "differing_components": 2990,
+        "bit_differing_components": 2990,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 9840,
+        "signal_energy": 6973936421.3047905,
+        "error_energy": 9.205629703192345e-06,
+        "snr_db": 148.79424482365184,
+        "relative_l2": 3.633187060723078e-08,
+        "max_abs_error": 0.00048828125,
+        "max_relative_error_nonzero_reference": 5.768380302904059e-05,
+        "max_ulp": 591,
+        "differing_components": 2990,
+        "bit_differing_components": 2990,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "scope": "odd2",
+      "envelopes": 6,
+      "onset_envelopes": 2,
+      "nonzero_sine_envelopes": 2,
+      "sine_bands": [
+        35,
+        37,
+        39,
+        41
+      ],
+      "literal": {
+        "components": 3808,
+        "signal_energy": 140607058265.3385,
+        "error_energy": 69188455.28162166,
+        "snr_db": 33.07973487621617,
+        "relative_l2": 0.022182641279600127,
+        "max_abs_error": 2046.8050537109375,
+        "max_relative_error_nonzero_reference": 652.6444777487899,
+        "max_ulp": 2294018188,
+        "differing_components": 554,
+        "bit_differing_components": 554,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 3808,
+        "signal_energy": 140607058265.3385,
+        "error_energy": 6.680905611719523e-12,
+        "snr_db": 223.23171786112894,
+        "relative_l2": 6.8930925081315755e-12,
+        "max_abs_error": 1.9073486328125e-06,
+        "max_relative_error_nonzero_reference": 3.4647141385629265e-07,
+        "max_ulp": 4,
+        "differing_components": 106,
+        "bit_differing_components": 106,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "scope": "odd8",
+      "envelopes": 2,
+      "onset_envelopes": 0,
+      "nonzero_sine_envelopes": 2,
+      "sine_bands": [
+        35,
+        37,
+        39,
+        41
+      ],
+      "literal": {
+        "components": 3584,
+        "signal_energy": 4399456662386.571,
+        "error_energy": 4195757.936016125,
+        "snr_db": 60.20588619276765,
+        "relative_l2": 0.0009765751980330534,
+        "max_abs_error": 362.03667068481445,
+        "max_relative_error_nonzero_reference": 72.26292203684854,
+        "max_ulp": 2253690198,
+        "differing_components": 750,
+        "bit_differing_components": 750,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 3584,
+        "signal_energy": 4399456662386.571,
+        "error_energy": 8.63289534738797e-09,
+        "snr_db": 207.07242567772738,
+        "relative_l2": 4.429744892925723e-11,
+        "max_abs_error": 3.0517578125e-05,
+        "max_relative_error_nonzero_reference": 6.787585122607819e-05,
+        "max_ulp": 901,
+        "differing_components": 430,
+        "bit_differing_components": 430,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "scope": "even8",
+      "envelopes": 9,
+      "onset_envelopes": 0,
+      "nonzero_sine_envelopes": 1,
+      "sine_bands": [
+        39,
+        41
+      ],
+      "literal": {
+        "components": 14976,
+        "signal_energy": 305485069536.8756,
+        "error_energy": 0.03959889577780493,
+        "snr_db": 128.8730691340845,
+        "relative_l2": 3.600365100522813e-07,
+        "max_abs_error": 0.024764060974121094,
+        "max_relative_error_nonzero_reference": 25.070647652414376,
+        "max_ulp": 2022516236,
+        "differing_components": 1164,
+        "bit_differing_components": 1164,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 14976,
+        "signal_energy": 305485069536.8756,
+        "error_energy": 0.00035077359699428156,
+        "snr_db": 149.39963092889028,
+        "relative_l2": 3.388585542320736e-08,
+        "max_abs_error": 0.00390625,
+        "max_relative_error_nonzero_reference": 3.0622750376200487e-06,
+        "max_ulp": 45,
+        "differing_components": 1036,
+        "bit_differing_components": 1036,
+        "signed_zero_only_differences": 0
+      }
+    }
+  ],
+  "informative_live_envelopes": [
+    {
+      "id": "music100c0e1",
+      "scope": "music100",
+      "call": 0,
+      "env": 1,
+      "first": 12,
+      "last": 16,
+      "onset": true,
+      "sine_bands": [],
+      "literal": {
+        "components": 160,
+        "signal_energy": 93061116.80745938,
+        "error_energy": 27560142.95956753,
+        "snr_db": 5.284867941005458,
+        "max_abs_error": 835.832763671875,
+        "max_relative_error_nonzero_reference": 43.83568796981169,
+        "max_ulp": 2275219757,
+        "differing_components": 160,
+        "bit_differing_components": 160,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 160,
+        "signal_energy": 93061116.80745938,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "music100c1e1",
+      "scope": "music100",
+      "call": 1,
+      "env": 1,
+      "first": 12,
+      "last": 16,
+      "onset": true,
+      "sine_bands": [],
+      "literal": {
+        "components": 160,
+        "signal_energy": 80478204.1719495,
+        "error_energy": 25043546.23518538,
+        "snr_db": 5.069824505822966,
+        "max_abs_error": 837.862060546875,
+        "max_relative_error_nonzero_reference": 36.38005531034837,
+        "max_ulp": 2275285491,
+        "differing_components": 160,
+        "bit_differing_components": 160,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 160,
+        "signal_energy": 80478204.1719495,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "music100c3e1",
+      "scope": "music100",
+      "call": 3,
+      "env": 1,
+      "first": 12,
+      "last": 16,
+      "onset": true,
+      "sine_bands": [],
+      "literal": {
+        "components": 160,
+        "signal_energy": 23461882.32694887,
+        "error_energy": 6929413.680077105,
+        "snr_db": 5.296663631388586,
+        "max_abs_error": 420.4979248046875,
+        "max_relative_error_nonzero_reference": 31.309065307814038,
+        "max_ulp": 2257728953,
+        "differing_components": 160,
+        "bit_differing_components": 160,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 160,
+        "signal_energy": 23461882.32694887,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "music100c4e1",
+      "scope": "music100",
+      "call": 4,
+      "env": 1,
+      "first": 12,
+      "last": 16,
+      "onset": true,
+      "sine_bands": [],
+      "literal": {
+        "components": 160,
+        "signal_energy": 23461882.404489852,
+        "error_energy": 6929414.691566342,
+        "snr_db": 5.296663011800604,
+        "max_abs_error": 420.15338134765625,
+        "max_relative_error_nonzero_reference": 40.97331265769945,
+        "max_ulp": 2257713925,
+        "differing_components": 160,
+        "bit_differing_components": 160,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 160,
+        "signal_energy": 23461882.404489852,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "odd2c0e2",
+      "scope": "odd2",
+      "call": 0,
+      "env": 2,
+      "first": 30,
+      "last": 34,
+      "onset": true,
+      "sine_bands": [
+        35,
+        37,
+        39
+      ],
+      "literal": {
+        "components": 224,
+        "signal_energy": 140607035223.89453,
+        "error_energy": 69187519.14131281,
+        "snr_db": 33.079792926260914,
+        "max_abs_error": 2046.8050537109375,
+        "max_relative_error_nonzero_reference": 26.267769262110736,
+        "max_ulp": 2294018188,
+        "differing_components": 224,
+        "bit_differing_components": 224,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 224,
+        "signal_energy": 140607035223.89453,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "odd2c1e2",
+      "scope": "odd2",
+      "call": 1,
+      "env": 2,
+      "first": 30,
+      "last": 34,
+      "onset": true,
+      "sine_bands": [
+        39,
+        41
+      ],
+      "literal": {
+        "components": 224,
+        "signal_energy": 6119.295039999601,
+        "error_energy": 936.14030885179,
+        "snr_db": 8.15360447341827,
+        "max_abs_error": 4.2250165939331055,
+        "max_relative_error_nonzero_reference": 652.6444777487899,
+        "max_ulp": 2144923907,
+        "differing_components": 224,
+        "bit_differing_components": 224,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 224,
+        "signal_energy": 6119.295039999601,
+        "error_energy": 0.0,
+        "snr_db": null,
+        "max_abs_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "max_ulp": 0,
+        "differing_components": 0,
+        "bit_differing_components": 0,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "odd8c0e0",
+      "scope": "odd8",
+      "call": 0,
+      "env": 0,
+      "first": 0,
+      "last": 32,
+      "onset": false,
+      "sine_bands": [
+        35,
+        37,
+        39
+      ],
+      "literal": {
+        "components": 1792,
+        "signal_energy": 4399456637562.718,
+        "error_energy": 4195757.921298116,
+        "snr_db": 60.20588618349698,
+        "max_abs_error": 362.03667068481445,
+        "max_relative_error_nonzero_reference": 72.26292203684854,
+        "max_ulp": 2253690198,
+        "differing_components": 565,
+        "bit_differing_components": 565,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 1792,
+        "signal_energy": 4399456637562.718,
+        "error_energy": 8.632683025358774e-09,
+        "snr_db": 207.07253246723542,
+        "max_abs_error": 3.0517578125e-05,
+        "max_relative_error_nonzero_reference": 6.787585122607819e-05,
+        "max_ulp": 901,
+        "differing_components": 373,
+        "bit_differing_components": 373,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "odd8c1e0",
+      "scope": "odd8",
+      "call": 1,
+      "env": 0,
+      "first": 0,
+      "last": 32,
+      "onset": false,
+      "sine_bands": [
+        39,
+        41
+      ],
+      "literal": {
+        "components": 1792,
+        "signal_energy": 24823.853082475118,
+        "error_energy": 0.01471800801646338,
+        "snr_db": 62.27020157117235,
+        "max_abs_error": 0.01750946044921875,
+        "max_relative_error_nonzero_reference": 43.10550121636809,
+        "max_ulp": 2006172697,
+        "differing_components": 185,
+        "bit_differing_components": 185,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 1792,
+        "signal_energy": 24823.853082475118,
+        "error_energy": 2.1232202919598716e-13,
+        "snr_db": 170.67874136091854,
+        "max_abs_error": 2.384185791015625e-07,
+        "max_relative_error_nonzero_reference": 2.4355925808927277e-07,
+        "max_ulp": 4,
+        "differing_components": 57,
+        "bit_differing_components": 57,
+        "signed_zero_only_differences": 0
+      }
+    },
+    {
+      "id": "even8c2e0",
+      "scope": "even8",
+      "call": 2,
+      "env": 0,
+      "first": 0,
+      "last": 32,
+      "onset": false,
+      "sine_bands": [
+        39,
+        41
+      ],
+      "literal": {
+        "components": 1664,
+        "signal_energy": 35061.36233484544,
+        "error_energy": 0.039248122181070356,
+        "snr_db": 59.510099040733955,
+        "max_abs_error": 0.024764060974121094,
+        "max_relative_error_nonzero_reference": 25.070647652414376,
+        "max_ulp": 2022516236,
+        "differing_components": 177,
+        "bit_differing_components": 177,
+        "signed_zero_only_differences": 0
+      },
+      "diagnostic_gate": {
+        "components": 1664,
+        "signal_energy": 35061.36233484544,
+        "error_energy": 2.597129099385815e-13,
+        "snr_db": 171.30335248622845,
+        "max_abs_error": 4.76837158203125e-07,
+        "max_relative_error_nonzero_reference": 5.416521147813793e-07,
+        "max_ulp": 9,
+        "differing_components": 49,
+        "bit_differing_components": 49,
+        "signed_zero_only_differences": 0
+      }
+    }
+  ],
+  "interleave": {
+    "traces": [
+      {
+        "scope": "tone",
+        "frames": 143,
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 143,
+          "parsed": 143,
+          "parsed_substreams": 143,
+          "substreams": 143
+        },
+        "active_interleaved_frames": 0,
+        "source_trace_sha256": "51144bfaf17745291697d9df55547fe9e46a4e13d31a325aa83dd053e5e34f14"
+      },
+      {
+        "scope": "music",
+        "frames": 400,
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 400,
+          "parsed": 400,
+          "parsed_substreams": 400,
+          "substreams": 400
+        },
+        "active_interleaved_frames": 0,
+        "source_trace_sha256": "f5d2d7aacb49c63529e66ed939f8f50e4b188a20e2cd152c03fa841e7490099e"
+      },
+      {
+        "scope": "odd",
+        "frames": 143,
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 143,
+          "parsed": 143,
+          "parsed_substreams": 143,
+          "substreams": 143
+        },
+        "active_interleaved_frames": 0,
+        "source_trace_sha256": "b928bd42271ef8268354f33a51a0eab2ea897a6f7113f09d237a4c6fa5fd3f13"
+      },
+      {
+        "scope": "even",
+        "frames": 143,
+        "coverage": {
+          "failures": 0,
+          "first_error": null,
+          "frames": 143,
+          "parsed": 143,
+          "parsed_substreams": 143,
+          "substreams": 143
+        },
+        "active_interleaved_frames": 0,
+        "source_trace_sha256": "168d4e56fca6d5d2b116347094d4528355dd6ca6a558d9f8f04561d0122b1484"
+      }
+    ],
+    "unique_inputs": 4,
+    "unique_aus": 829,
+    "actual_calls": 40,
+    "actual_valid_components": {
+      "components": 194560,
+      "signal_energy": 22834312207394.41,
+      "error_energy": 0.0,
+      "snr_db": null,
+      "relative_l2": 0.0,
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "differing_components": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    },
+    "auxiliary_harmonic_mask_nonzero_calls": 5,
+    "active_frequency_or_time_masks": false,
+    "perturbed_components": 1088,
+    "perturbation_preserved": {
+      "components": 194560,
+      "signal_energy": 22834312194025.992,
+      "error_energy": 0.0,
+      "snr_db": null,
+      "relative_l2": 0.0,
+      "max_abs_error": 0.0,
+      "max_relative_error_nonzero_reference": 0.0,
+      "max_ulp": 0,
+      "differing_components": 0,
+      "bit_differing_components": 0,
+      "signed_zero_only_differences": 0
+    },
+    "perturbation_recipe": "onset cells: +1 real, -0.5 imaginary in normalized units; all other cells fixed",
+    "positive_controls": [
+      {
+        "mode": 0,
+        "expected_output": {
+          "components": 5120,
+          "signal_energy": 31.8603515625,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        },
+        "changed_components": 0
+      },
+      {
+        "mode": 1,
+        "expected_output": {
+          "components": 5120,
+          "signal_energy": 5375.3603515625,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        },
+        "changed_components": 128
+      },
+      {
+        "mode": 2,
+        "expected_output": {
+          "components": 5120,
+          "signal_energy": 3229.984130859375,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        },
+        "changed_components": 80
+      },
+      {
+        "mode": 3,
+        "expected_output": {
+          "components": 5120,
+          "signal_energy": 8239.765380859375,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        },
+        "changed_components": 200
+      }
+    ],
+    "positive_control_captures": 2,
+    "production_interleaving_support_changed": false
+  },
+  "carryover": {
+    "source_au": 2,
+    "destination_au": 3,
+    "source_qmf_slots": [
+      32,
+      34
+    ],
+    "destination_qmf_slots": [
+      0,
+      2
+    ],
+    "subbands": [
+      34,
+      62
+    ],
+    "channels": 2,
+    "independent_repeats": 2,
+    "unique_components": 224,
+    "repeated_comparisons": [
+      {
+        "id": "carry0r1",
+        "metrics": {
+          "components": 112,
+          "signal_energy": 69494646064.29861,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        }
+      },
+      {
+        "id": "carry0r2",
+        "metrics": {
+          "components": 112,
+          "signal_energy": 69494646064.29861,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        }
+      },
+      {
+        "id": "carry1r1",
+        "metrics": {
+          "components": 112,
+          "signal_energy": 3579.2764387816524,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        }
+      },
+      {
+        "id": "carry1r2",
+        "metrics": {
+          "components": 112,
+          "signal_energy": 3579.2764387816524,
+          "error_energy": 0.0,
+          "snr_db": null,
+          "max_abs_error": 0.0,
+          "max_relative_error_nonzero_reference": 0.0,
+          "max_ulp": 0,
+          "differing_components": 0,
+          "bit_differing_components": 0,
+          "signed_zero_only_differences": 0
+        }
+      }
+    ],
+    "source_and_destination_cursors": {
+      "tone_next": 2,
+      "noise_last": 440
+    },
+    "destination_captures_reused": [
+      {
+        "run": 1,
+        "source_input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "source_pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "destination_capture_record_sha256": "bdd84cfec226f852c35819ad7edb4ff0a9d919bb409354543a2a935cbe15158e",
+        "tone_next": 2,
+        "noise_last": 440,
+        "destination_tone_next": 2,
+        "destination_noise_last": 440
+      },
+      {
+        "run": 2,
+        "source_input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "source_pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "destination_capture_record_sha256": "658581292ac44320718534a5d7c13ed65f7dee410d8beda90015c3ffe07db65a",
+        "tone_next": 2,
+        "noise_last": 440,
+        "destination_tone_next": 2,
+        "destination_noise_last": 440
+      },
+      {
+        "run": 1,
+        "source_input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "source_pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "destination_capture_record_sha256": "bdd84cfec226f852c35819ad7edb4ff0a9d919bb409354543a2a935cbe15158e",
+        "tone_next": 2,
+        "noise_last": 440,
+        "destination_tone_next": 2,
+        "destination_noise_last": 440
+      },
+      {
+        "run": 2,
+        "source_input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+        "source_pcm_sha256": "4b82016e57f7216b94ac5b4739422e019fb8bbcb7ee58f0957efea82111068d0",
+        "destination_capture_record_sha256": "658581292ac44320718534a5d7c13ed65f7dee410d8beda90015c3ffe07db65a",
+        "tone_next": 2,
+        "noise_last": 440,
+        "destination_tone_next": 2,
+        "destination_noise_last": 440
+      }
+    ],
+    "production_diagnostic_two_frame_clock": 256
+  },
+  "normative_interpretation": {
+    "status": "尚未改变生产判读",
+    "energy_accounting_clause": "TS103190-1:v1.4.1:5.7.6.4.2.2",
+    "unconditional_generation_clause": "TS103190-1:v1.4.1:5.7.6.4.3",
+    "unconditional_assembly_clause": "TS103190-1:v1.4.1:5.7.6.4.5",
+    "reason": "P99 excludes onset/nonzero-sine noise from its component-energy denominator; adding it unconditionally introduces a term outside that budget. The same budget predicate should govern injection.",
+    "pre_post_boost_note": "Real observed sine-presence predicates agree before and after boost; the proposed implementation decision should share the P99 budget predicate rather than add a separate amplitude threshold.",
+    "official_erratum_claimed": false
+  },
+  "verification": {
+    "cargo_default_passed": 516,
+    "cargo_audio_passed": 1308,
+    "python_related_passed": 139,
+    "python_new_passed": 15,
+    "clippy_default": true,
+    "clippy_audio": true,
+    "rustfmt": true,
+    "layer_audit": true,
+    "diff_check": true,
+    "ignored_replay_passed": true,
+    "final_replay_unchanged_files": 1873
+  },
+  "evidence_sha256": {
+    "crates/macindecode-ac4-decode/src/aspx/hfassemble/mask_replay_tests.rs": "6df358aa3b873fdce5042271930709f7f4c2665a9e09d269d3cf7e8322dc8058",
+    "scripts/check_aspx_noise_mask.py": "5e0c17ad2b1513068202de4a3f35f1e95188306075265a701dda3aca4d85241c",
+    "scripts/test_check_aspx_noise_mask.py": "da082ab6cec93ca0fbe6d9850748e74da9dfabc417301c97d511c7dc7677ae3c",
+    "docs/experiments/aspx_downstream_comparison.json": "c17c91e015fd38ed7aa8460d8d46da4645e1508411caf30e585b1d2ffad7b64f",
+    "docs/experiments/aspx_noise_cursor_comparison.json": "dfca76512c529a603297cce92de9ea6f8026c3486a8a6f549fb05c10f575d1a4",
+    "docs/experiments/aspx_tone_cursor_comparison.json": "260b8299110dad61b18eb20d3fc4ef37d9b7ad92a95ba05da41d2dc51e55dc7c"
+  },
+  "local_artifact_digests": {
+    "manifest_sha256": "8a9ddd604bd4a538f1a61ebb1b14cae054f113a22cd8a9b56ebb1fb59169eee1",
+    "comparison_sha256": "7041a886b29122af8a61ba62cf59fc9c58cb08b35bcdb024553dcbe71fe6f43c",
+    "parameter_sha256": "92c71c1b1e906ad84a8a58172701c77a5bb6d45c3c503f0f8ba9b817bca29bfd",
+    "native_normalized": [
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      },
+      {
+        "files": 937,
+        "bytes": 3818091,
+        "sha256": "6ae232129476ca3aed38598c5a82ea95a2650c7161838107906691e5477d9cee"
+      }
+    ],
+    "local_replay": {
+      "files": 1873,
+      "bytes": 23014368,
+      "sha256": "247d5042c75fe0f318fde2683137bff18bdf0537a63c5f3cf11afa66a0272ced"
+    },
+    "real": {
+      "files": 134,
+      "bytes": 474752,
+      "sha256": "6710adbb70bc63976be3122946568e53ed1bf03b8e4e53e2dcb9b5d003dc4ddf"
+    },
+    "iwc": {
+      "files": 224,
+      "bytes": 4331520,
+      "sha256": "c92b3559c7a1666f9a42b3d9ed7de98e081ea0b4a95d07fe4a3a2314fde3617e"
+    },
+    "carry": {
+      "files": 8,
+      "bytes": 3584,
+      "sha256": "976e7d75b2a944aef3d19c448533e1532d555bf3f5a1c932eed439767852039b"
+    },
+    "tree_algorithm": "SHA256 of sorted relative path + NUL + file SHA256 + newline"
+  },
+  "limits": [
+    "Only adjusted-gain primitive probes and captured real boundaries; no new end-to-end production object PCM A/B.",
+    "Synthetic tone distributions are controlled primitive inputs, not a claim that the encoder emits every pattern.",
+    "All real nonzero sine bands in these selected AUs are odd; even-band coverage is synthetic.",
+    "IWC active-mask probes validate the reference primitive and capture sensitivity; they do not implement production FIC/TIC support.",
+    "Recorded failures remain excluded and are not interpreted as codec rejection.",
+    "Proprietary adapters, native addresses, tables, raw matrices and media remain local."
+  ]
+}
