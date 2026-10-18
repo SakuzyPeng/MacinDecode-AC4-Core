@@ -166,13 +166,41 @@ def covariance(low, history):
     return np.stack((c01.real,c01.imag,c02.real,c02.imag,c11.real,c12.real,c12.imag,c22.real),axis=-1)
 
 
-def gain_model(low, sbx, first, last, scale):
+GAIN_CONVENTIONS = ('mean_minus_slope', 'slope_minus_mean')
+
+
+def read_gain_convention(local):
+    path = local / 'replay_metadata.json'
+    if not path.exists():
+        return 'mean_minus_slope'
+    value = json.loads(path.read_text())
+    if (not isinstance(value, dict)
+            or set(value) != {'schema', 'version', 'preflatten_gain_convention'}
+            or value['schema'] != 'macinac4.hf-replay'
+            or type(value['version']) is not int or value['version'] != 1
+            or value['preflatten_gain_convention'] not in GAIN_CONVENTIONS):
+        raise ValueError('无效 HF 重放增益约定')
+    return value['preflatten_gain_convention']
+
+
+def gain_model(low, sbx, first, last, scale, convention='mean_minus_slope'):
+    if convention not in GAIN_CONVENTIONS:
+        raise ValueError('未知预平坦化增益约定')
     power = np.mean(np.sum(low[first:last,:sbx].astype(float)**2,axis=-1),axis=0)*scale**2
     energy = 10*np.log10(power+1)
     x = np.linspace(-1,1,sbx)
     design = np.vander(x,4,increasing=True)
     fit = design @ np.linalg.lstsq(design,energy,rcond=None)[0]
-    return (10**((energy.mean()-fit)/20)).astype('<f4')
+    difference = energy.mean()-fit if convention == 'mean_minus_slope' else fit-energy.mean()
+    return (10**(difference/20)).astype('<f4')
+
+
+def checked_gain_metrics(actual, expected):
+    # 保留历史报告的指标方向；约定标签改变时也不能重释旧数据。
+    result = metrics(actual, expected)
+    if np.any(actual <= 0) or not np.allclose(actual, expected, rtol=2e-6, atol=0):
+        raise ValueError('生产增益与声明的约定不符')
+    return result
 
 
 def regularized_solver(values):
@@ -204,6 +232,7 @@ def completed_rows(rows, ids):
 
 def compare(manifest, data, references, local):
     m=json.loads(manifest.read_text());validate_manifest(m)
+    gain_convention = read_gain_convention(local)
     dirs=[references/identifier(x) for x in m['reference_runs']]
     ids=[r['id'] for r in m['cases']]
     if (data/'hf_cases.txt').read_text().split() != ids:
@@ -310,7 +339,7 @@ def compare(manifest, data, references, local):
                  native_coefficients_with_math_cov=metrics(arrays['alpha'][sources].copy(),arrays['alpha_math_cov'][sources].copy()),
                  local_coefficients_with_native_cov=metrics(arrays['alpha'][sources].copy(),floats(local/f'{name}.alpha_native_cov.f32',(64,4))[sources].copy()),
                  chirp=metrics(arrays['chirp'][:groups].copy(),local_chirp),
-                 gain_model={mode:metrics(gains[mode],gain_model(q,lo,first,last,scale)) for mode,scale in [('raw',1),('scaled',2**23)]},
+                 gain_model={mode:checked_gain_metrics(gains[mode],gain_model(q,lo,first,last,scale,gain_convention)) for mode,scale in [('raw',1),('scaled',2**23)]},
                  hf={mode:metrics(ref,v) for mode,v in outputs.items()},
                  native_negative_determinants=int(np.count_nonzero(arrays['cov'][sources,8]<0)))
         if r['kind']=='live':
@@ -352,6 +381,7 @@ def compare(manifest, data, references, local):
                 raise ValueError('解算器探针不重复')
         solvers.append(dict(id=name,covariance=c.tolist(),reference=a.tolist(),local=b.tolist(),metrics=metrics(a,b)))
     return dict(schema='macinac4.hf-tna-preflat-comparison',version=1,status='observation_only',
+                preflatten_gain_convention=gain_convention,
                 output_gain_phase_or_delay_fitting=False,cases=result,live_bands=band_results,chirp_cases=chirps,solver_cases=solvers)
 
 

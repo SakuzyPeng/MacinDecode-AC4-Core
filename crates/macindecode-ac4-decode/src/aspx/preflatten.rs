@@ -4,7 +4,9 @@
 //! 代表整体谱斜率，再把斜率翻成一个增益向量；HF 生成在搬移子带时乘上它的倒数。
 //!
 //! 三步：逐子带求区间内的平均功率并取 `10·log10(· + 1)`；对 `sbx` 个点做三阶
-//! 最小二乘拟合；`gain_vec[sb] = 10^((mean_energy − slope[sb])/20)`。
+//! 最小二乘拟合；`gain_vec[sb] = 10^((slope[sb] − mean_energy)/20)`。
+//! 按 ADR-0022 反转 P85 的差值方向，以保留正文及 P89 的取倒数方式并消除粗谱斜率。
+//! 这是跨条款的本地判读，不声明存在官方勘误。
 //!
 //! # 拟合在中心化坐标里做
 //!
@@ -120,7 +122,7 @@ impl Default for PreFlattenGains {
     }
 }
 
-/// 按 `Pseudocode 85` 算出预平坦化增益。
+/// 按 `Pseudocode 85` 与 ADR-0022 的方向判读算出预平坦化增益。
 ///
 /// `low` 是低带 QMF 时隙，`first`/`last` 是本 A-SPX 区间在其中的时隙范围
 /// （`atsg_sig[0]·num_ts_in_ats` 到 `atsg_sig[num_atsg_sig]·num_ts_in_ats`），
@@ -172,8 +174,8 @@ pub fn pre_flatten(
     let mut result = PreFlattenGains::new();
     result.subbands = u8::try_from(sbx).unwrap_or(u8::MAX);
     for sb in 0..sbx {
-        // gain_vec[sb] = 10^((mean_energy − slope[sb])/20)
-        let gain = exp2((mean_energy - slope[sb]) / 20.0 * LOG2_10);
+        // ADR-0022：增益描述相对平均电平的粗谱形，P89 除以它移除该分量。
+        let gain = exp2((slope[sb] - mean_energy) / 20.0 * LOG2_10);
         let narrowed = gain as f32;
         if !narrowed.is_finite() || narrowed <= 0.0 {
             return Err(PreFlattenError::NonFiniteGain { subband: sb });
@@ -276,7 +278,6 @@ fn solve_cholesky(
 #[cfg(test)]
 #[expect(
     clippy::indexing_slicing,
-    clippy::needless_range_loop,
     reason = "下标由同一用例构造的子带数派生，越界即是该用例要报告的失败"
 )]
 mod tests {
@@ -499,9 +500,9 @@ mod tests {
         }
     }
 
-    /// 增益随谱斜率反向：能量高的子带得到小增益。
+    /// P89 使用除法，故能量高的子带应得到较大的除数。
     #[test]
-    fn a_falling_spectrum_gives_a_rising_gain() {
+    fn a_falling_spectrum_gives_a_falling_divisor() {
         let sbx = 32usize;
         let shape: Vec<f64> = (0..sbx)
             .map(|sb| 10_000.0 * 0.75f64.powi(sb as i32))
@@ -511,14 +512,14 @@ mod tests {
         let first = out.gain(0).expect("增益");
         let last = out.gain(sbx - 1).expect("增益");
         assert!(
-            first < last,
-            "低子带能量高，增益 {first} 应小于高子带的 {last}"
+            first > last,
+            "低子带能量高，除数 {first} 应大于高子带的 {last}"
         );
-        // 增益是斜率的倒数，因此应当单调。
+        // 粗谱形递减，除数也应递减。
         for sb in 1..sbx {
             let previous = out.gain(sb - 1).expect("增益");
             let current = out.gain(sb).expect("增益");
-            assert!(current > previous, "第 {sb} 个子带的增益应继续上升");
+            assert!(current < previous, "第 {sb} 个子带的除数应继续下降");
         }
     }
 
@@ -605,13 +606,21 @@ mod tests {
         );
         assert_unchanged(&out);
 
-        let mut non_finite = low;
-        non_finite[0].re[0] = f32::NAN;
-        assert_eq!(
-            pre_flatten(&non_finite, sbx, 0, 6, &mut out),
-            Err(PreFlattenError::NonFiniteGain { subband: 0 })
-        );
-        assert_unchanged(&out);
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for imaginary in [false, true] {
+                let mut non_finite = low.clone();
+                if imaginary {
+                    non_finite[0].im[0] = value;
+                } else {
+                    non_finite[0].re[0] = value;
+                }
+                assert_eq!(
+                    pre_flatten(&non_finite, sbx, 0, 6, &mut out),
+                    Err(PreFlattenError::NonFiniteGain { subband: 0 })
+                );
+                assert_unchanged(&out);
+            }
+        }
     }
 
     /// 四个点恰好定出三阶多项式，是最小的合法输入。
@@ -622,19 +631,19 @@ mod tests {
         let low = slots(&power, 5);
         let mut out = PreFlattenGains::new();
         pre_flatten(&low, sbx, 0, 5, &mut out).expect("四个点应可拟合");
-        // 点数等于自由度，拟合必然过每一点，故残差为零、增益由 mean 决定。
-        let envelope: Vec<f64> = power
-            .iter()
-            .map(|value| 10.0 * log2(value + 1.0) / LOG2_10)
-            .collect();
-        let mean = envelope.iter().sum::<f64>() / sbx as f64;
+        // 精确拟合时，带地板的功率除以 gain² 应处处相等；除数的几何平均为 1。
+        // 用这两项独立性质定方向和归一化，不复写指数公式。
+        let mut adjusted = Vec::new();
+        let mut gain_product = 1.0;
         for sb in 0..sbx {
-            let expected = exp2((mean - envelope[sb]) / 20.0 * LOG2_10);
-            let actual = f64::from(out.gain(sb).expect("增益"));
-            assert!(
-                ((actual - expected) / expected).abs() < 1e-6,
-                "第 {sb} 个子带：{actual} 应为 {expected}"
-            );
+            let gain = f64::from(out.gain(sb).expect("增益"));
+            let actual_power = f64::from(low[0].re[sb]).powi(2) + f64::from(low[0].im[sb]).powi(2);
+            adjusted.push((actual_power + 1.0) / (gain * gain));
+            gain_product *= gain;
         }
+        for value in &adjusted {
+            assert!((value / adjusted[0] - 1.0).abs() < 2e-6);
+        }
+        assert!((gain_product - 1.0).abs() < 2e-6);
     }
 }
