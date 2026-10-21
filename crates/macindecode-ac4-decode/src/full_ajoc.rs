@@ -22,6 +22,8 @@ use core::fmt;
 
 mod asf;
 mod decoder;
+#[cfg(test)]
+pub(crate) mod input_probe;
 use crate::audio_syntax as syntax;
 
 pub use asf::{

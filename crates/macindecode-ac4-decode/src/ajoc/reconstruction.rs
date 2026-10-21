@@ -495,6 +495,9 @@ pub fn reconstruct_frame(
         output,
     )?;
 
+    #[cfg(test)]
+    crate::full_ajoc::input_probe::consume(ajoc, controls, raw, num_qmf_timeslots, input);
+
     #[cfg(feature = "ajoc-reconstruction-split-profile")]
     prepare_reconstruction_candidate(state, workspace, output);
     #[cfg(not(feature = "ajoc-reconstruction-split-profile"))]
