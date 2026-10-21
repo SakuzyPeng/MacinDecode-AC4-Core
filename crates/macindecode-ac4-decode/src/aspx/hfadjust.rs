@@ -568,6 +568,9 @@ mod gain_replay_tests;
 mod estimate_replay_tests;
 
 #[cfg(test)]
+mod width_chain_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::aspx::frames::AspxIntervalParams;

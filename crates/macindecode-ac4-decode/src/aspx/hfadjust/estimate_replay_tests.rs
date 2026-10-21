@@ -16,11 +16,11 @@ use std::path::Path;
 use std::string::{String, ToString};
 use std::vec::Vec;
 
-struct Case {
-    id: String,
-    bands: AspxBandTables,
-    interval: AspxInterval,
-    interpolation: bool,
+pub(super) struct Case {
+    pub(super) id: String,
+    pub(super) bands: AspxBandTables,
+    pub(super) interval: AspxInterval,
+    pub(super) interpolation: bool,
 }
 
 fn next<'a>(words: &mut impl Iterator<Item = &'a str>) -> Result<&'a str, String> {
@@ -36,7 +36,7 @@ fn flag<'a>(words: &mut impl Iterator<Item = &'a str>) -> Result<bool, String> {
         _ => Err("invalid flag".to_string()),
     }
 }
-fn parse(line: &str) -> Result<Case, String> {
+pub(super) fn parse(line: &str) -> Result<Case, String> {
     let mut w = line.split_whitespace();
     let id = next(&mut w)?.to_string();
     if id.len() > 63 || !id.bytes().all(|b| b.is_ascii_alphanumeric()) {
@@ -113,7 +113,7 @@ fn parse(line: &str) -> Result<Case, String> {
     })
 }
 
-fn run(case: &Case, q: &[QmfSlot]) -> EnvelopeEstimate {
+pub(super) fn run(case: &Case, q: &[QmfSlot]) -> EnvelopeEstimate {
     let mut sf = ScaleFactors::new();
     sf.fill_for_test(
         usize::from(case.interval.num_atsg_sig()),

@@ -3,6 +3,9 @@
 日期：2026-10-17；生产起点 `8074a1c`。本轮保持生产 DSP、API、CLI、二进制和 PCM 基线不变。
 机器记录见 [`qmf_width_comparison.json`](experiments/qmf_width_comparison.json)。
 
+2026-10-20 已将本报告的固定输入接入当前生产下游，见
+[宽度差异的传播调查](QMF_WIDTH_DOWNSTREAM_INVESTIGATION.md)。以下保留原始前端证据。
+
 ## 结论
 
 统一已经验证的相位和尺度表示后，不同宽度 QMF 的差异可以分成两部分：
