@@ -302,6 +302,9 @@ pub fn drive_element(
 
     let mut lfe = lfe;
 
+    #[cfg(test)]
+    crate::full_ajoc::input_probe::apply(element, aspx, config);
+
     let mut jobs = element.aspx_jobs().peekable();
     while let Some(job) = jobs.next() {
         match job {
@@ -317,6 +320,8 @@ pub fn drive_element(
                 if element.codec_mode_aspx {
                     // 判读：补上 `δ_ASPX`，与经 A-SPX 的各路对齐。
                     let produced = bypass_frame_qmf(input, &mut state.aspx, first_workspace)?;
+                    #[cfg(test)]
+                    crate::full_ajoc::input_probe::signal(source, produced);
                     copy_frame(produced, target);
                 } else {
                     // SIMPLE：一路都没有 `δ_ASPX`，不能凭空加。
@@ -423,6 +428,11 @@ pub fn drive_element(
                     let Some((first_target, second_target)) = pair_mut(out, targets) else {
                         return Err(DriveError::InvalidElementRoute);
                     };
+                    #[cfg(test)]
+                    {
+                        crate::full_ajoc::input_probe::signal(sources[0], produced[0]);
+                        crate::full_ajoc::input_probe::signal(sources[1], produced[1]);
+                    }
                     copy_frame(produced[0], first_target);
                     copy_frame(produced[1], second_target);
                     continue;
@@ -453,6 +463,8 @@ pub fn drive_element(
                     mid,
                 )?;
                 let target = target_for(source, &slot_of, out)?;
+                #[cfg(test)]
+                crate::full_ajoc::input_probe::signal(source, produced);
                 copy_frame(produced, target);
             }
             AspxJob::Balanced(pair) => {
@@ -494,6 +506,8 @@ pub fn drive_element(
                 )?;
                 for (source, frame) in sources.into_iter().zip(produced) {
                     let target = target_for(source, &slot_of, out)?;
+                    #[cfg(test)]
+                    crate::full_ajoc::input_probe::signal(source, frame);
                     copy_frame(frame, target);
                 }
             }
@@ -594,6 +608,8 @@ pub fn prime_control_delay_element(
                 };
                 if element.codec_mode_aspx {
                     let produced = bypass_frame_qmf(input, &mut state.aspx, first_workspace)?;
+                    #[cfg(test)]
+                    crate::full_ajoc::input_probe::signal(source, produced);
                     copy_frame(produced, target);
                 } else {
                     analyse_only(input, &mut state.aspx, first_workspace, target, timeslots)?;
@@ -622,6 +638,8 @@ pub fn prime_control_delay_element(
                 let produced =
                     prime_control_delay_qmf(input, &data.bands, &mut state.aspx, first_workspace)?;
                 let target = target_for(source, &slot_of, out)?;
+                #[cfg(test)]
+                crate::full_ajoc::input_probe::signal(source, produced);
                 copy_frame(produced, target);
             }
             AspxJob::Balanced([left, right]) => {
@@ -643,6 +661,8 @@ pub fn prime_control_delay_element(
                     first_workspace,
                 )?;
                 let target = target_for(sources[0], &slot_of, out)?;
+                #[cfg(test)]
+                crate::full_ajoc::input_probe::signal(sources[0], first);
                 copy_frame(first, target);
                 let second = prime_control_delay_qmf(
                     second_pcm,
@@ -651,6 +671,8 @@ pub fn prime_control_delay_element(
                     second_workspace,
                 )?;
                 let target = target_for(sources[1], &slot_of, out)?;
+                #[cfg(test)]
+                crate::full_ajoc::input_probe::signal(sources[1], second);
                 copy_frame(second, target);
             }
         }

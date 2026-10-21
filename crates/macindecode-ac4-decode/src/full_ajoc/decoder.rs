@@ -3336,6 +3336,9 @@ fn take_due_control<T>(queue: &mut VecDeque<T>, delay: usize) -> Result<Option<T
 }
 
 #[cfg(test)]
+mod input_boundary_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::testutil::BitBuf;

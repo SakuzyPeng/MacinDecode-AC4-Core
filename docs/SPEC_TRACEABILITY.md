@@ -1575,6 +1575,13 @@ pre 不是在某个共享参数带网格上近似。dry/wet 的参数带数按�
 
 ### 5.52 A-JOC full QMF 驱动与 LFE 插回（P1 `5.7.2` 表 188；P2 `5.7.2.1`、`5.7.2.3`）
 
+2026-10-20 的[输入交接调查](AJOC_INPUT_INVESTIGATION.md)将此边界连到真实消费者：
+三个完整流共 592 AU，同源 A-SPX／A-JOC 控制内容和实际消费的 5,109 路输入帧通过；
+12 个真实窗口的低带及 LFE 由完整 ASF PCM、独立表 188 延迟和 640 抽头 FIR 核对。
+参考三个窗口的 A-SPX 输出与完整下游工具阶段入口通过缓冲区身份及逐位复验，未按
+相关性配对；六类生产故障注入被捕获。没有改变 DSP 或基线，也没有关闭第 7 节的
+A-JOC 插值、pre 网格、ducker 判读：参考内部矩阵和控制尚未逐字段对照。
+
 P1 `5.7.2` 要求同一 raw frame 的所有 QMF tool control 在 `d_ctrl` 后才作用于同源 spectral frontend 信号，范围不止 A-SPX。实现因此把 5.44 的 FIFO 扩成单一所有权快照：element/A-SPX/config、采样率与物理拓扑、A-JOC control/矩阵、full 支持凭证及 `SubstreamInfoAjoc::lfe_reinsertion_position()` 一起排队、一起到期。`SupportedAjocFullFrame::check` 只接受同一份 `Ac4SubstreamAjoc` 与 `AjocSubstreamContext`，并把 A-SPX、A-JOC、采样率、物理 substream 数及 dialogue 对象数固化进不可构造的帧身份；原始 `u8` 数据点数不再是公共发证参数，内部防御检查同时拒绝保留值 3 和超出 2 位字段范围的值。入队与到期两处都把凭证身份同实际快照复核。到期后先由 `element_drive` 按 P2 `Pseudocode 14a` 产出 `Qin_AJOC`，再消费 full 凭证进入 5.51 的帧级矩阵事务；当前 raw frame 的矩阵绝不用于已经到期的旧信号。到期快照与当前 frame-alignment 的输入拓扑或对齐档不同会结构化失败并要求 reset。
 
 M5 的无 sink 入口又把 `AudioDataState`、ASF/A-SPX 元素、A-JOC control/矩阵及 core/full OAMD block 六组工作区并入同一个 `FullAjocDecoder`。`decode_syntax_frame` 只返回裁到本帧实际写入长度的借用视图，并固化解析后当前生效的 `AspxConfig`，使不传配置的非 I 帧仍能把继承值交给后续 QMF 入口；A-SPX 与 full 支持凭证也从同一解析摘要生成。截断或语法失败同时失效该物理 substream 的语法与既有 QMF 历史。相同配置连续两帧逐一锁定六组工作区地址不变，容量外 substream 下标在扩容前拒绝。
