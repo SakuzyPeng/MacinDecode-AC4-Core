@@ -191,6 +191,23 @@ impl AjocDataPoints {
         }
     }
 
+    #[cfg(all(test, feature = "audio-decode"))]
+    pub(crate) fn with_points_for_test(points: &[(u8, u8)]) -> Self {
+        assert!(points.len() <= 2);
+        let mut out = Self::with_count_for_test(points.len() as u8);
+        for ((start_slot, ramp_slot), &(start, length)) in out
+            .start_pos
+            .iter_mut()
+            .zip(out.ramp_len_minus1.iter_mut())
+            .zip(points)
+        {
+            assert!(start < 32 && (1..=64).contains(&length));
+            *start_slot = start;
+            *ramp_slot = length.checked_sub(1).unwrap();
+        }
+        out
+    }
+
     /// 解析 `ajoc_data_point_info()`。
     fn parse(reader: &mut BitReader<'_>) -> Result<Self, AjocError> {
         let mut out = Self {

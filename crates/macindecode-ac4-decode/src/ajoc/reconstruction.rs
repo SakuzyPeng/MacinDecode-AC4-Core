@@ -9,9 +9,10 @@
 //!
 //! `Pseudocode 18` 把 `mtx_pre_param` 写成单一 `[pb]` 维度，但 dry/wet 参数的
 //! 频带数明确定义成 `ajoc_num_bands[o]`。共享一个对象的 `pb` 去累加另一个对象
-//! 因而没有定义。这里按 `5.7.3.6.2` 的 QMF 子带公式直接计算
-//! `D(ts,sb) = |Csub2(ts,sb)^T| * Csub1(ts,sb)`：每个对象先用自己的
-//! [`AjocBandMap`] 把当前 `sb` 映回参数带，再加入同一个 pre target。
+//! 因而没有定义。这里在每个数据点按 `5.7.3.6.2` 的 QMF 子带矩阵公式计算
+//! pre target：每个对象先用自己的 [`AjocBandMap`] 把当前 `sb` 映回参数带，
+//! 再求 `|wet^T| * dry`。之后按 `Pseudocode 18` 单独插值 pre；中间时隙的
+//! pre 一般不等于对已插值的 dry/wet 再相乘，见 `AJOC_MATRIX_INVESTIGATION.md`。
 //!
 //! # 事务边界
 //!
@@ -61,6 +62,9 @@ const DRY_TARGET_LEN: usize =
 const WET_TARGET_LEN: usize =
     MAX_DATA_POINTS * MAX_RECONSTRUCTED_OBJECTS * MAX_DECORRELATORS * MAX_AJOC_BANDS;
 const PRE_TARGET_LEN: usize = MAX_DATA_POINTS * PRE_ROLLING_LEN;
+
+#[cfg(test)]
+pub(crate) mod matrix_probe;
 
 /// 会改变跨帧 rolling 与 decorrelator 状态布局的 A-JOC 拓扑。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -497,6 +501,8 @@ pub fn reconstruct_frame(
 
     #[cfg(test)]
     crate::full_ajoc::input_probe::consume(ajoc, controls, raw, num_qmf_timeslots, input);
+    #[cfg(test)]
+    matrix_probe::start(ajoc, controls, raw, dimensions, input, state);
 
     #[cfg(feature = "ajoc-reconstruction-split-profile")]
     prepare_reconstruction_candidate(state, workspace, output);
@@ -518,9 +524,13 @@ pub fn reconstruct_frame(
     )?;
 
     let maps = prepare_targets(controls, dimensions, workspace)?;
+    #[cfg(test)]
+    matrix_probe::targets(controls, dimensions, &maps, workspace);
     process_timeslots(
         controls, dimensions, &schedule, &maps, input, workspace, output,
     )?;
+    #[cfg(test)]
+    matrix_probe::finish(dimensions, &workspace.candidate);
 
     #[cfg(feature = "ajoc-reconstruction-split-profile")]
     commit_reconstruction_candidate(dimensions, state, workspace);
@@ -881,6 +891,17 @@ fn process_timeslots(
             output_pair,
             output,
         )?;
+        #[cfg(test)]
+        matrix_probe::slot(
+            timeslot,
+            dimensions,
+            rolling.dry(),
+            rolling.wet(),
+            rolling.pre(),
+            u,
+            y,
+            output,
+        );
     }
     Ok(())
 }
