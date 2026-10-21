@@ -122,6 +122,10 @@ fn capture() {
     assert!(!selected.is_empty() && !selected.contains(&0));
     let destination = Path::new(&destination);
     std::fs::create_dir(destination).unwrap();
+    let matrix_capture = std::env::var_os("MACINAC4_AJOC_MATRIX").is_some();
+    if matrix_capture {
+        std::fs::create_dir(destination.join("matrix")).unwrap();
+    }
     let data = std::fs::read(input).unwrap();
     let mut decoder = FullAjocDecoder::new();
     let mut group_oamd = OamdState::new();
@@ -221,6 +225,13 @@ fn capture() {
             "连续帧入口必须保留上一帧的完整 A-SPX 历史"
         );
         input_probe::begin();
+        if matrix_capture {
+            crate::ajoc::reconstruction::matrix_probe::select(
+                destination.join("matrix"),
+                index + 1,
+                selected.contains(&(index + 1)),
+            );
+        }
         let decoded = decoder
             .decode_complete_audio_frame(FullAjocAudioFrameInput {
                 syntax: FullAjocSyntaxFrameInput {

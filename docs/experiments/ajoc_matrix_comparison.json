@@ -1,0 +1,1743 @@
+{
+  "schema": "macinac4.ajoc-matrix-investigation",
+  "version": 1,
+  "date": "2026-10-20",
+  "head_before": "6881889151056d76cc88bf13c036a65830aa4f69",
+  "production_dsp_changed": false,
+  "public_api_changed": false,
+  "baseline_changed": false,
+  "private_artifacts_directory": "/Volumes/cache/MacinDecode-AC4-Core/ajoc-matrix-20261020",
+  "manifest_sha256": "787cbaa3b7ba635fa5ccd98a98fca188f3eebcb6dade7cfb7bc882b02c400b81",
+  "pdf_sha256": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1",
+  "comparison": {
+    "schema": "macinac4.ajoc-matrix-comparison",
+    "version": 1,
+    "production_changed": false,
+    "fit_parameters": false,
+    "cases": [
+      {
+        "id": "tone",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 142,
+          "points": 142,
+          "dt_rows": 125,
+          "df_rows": 92,
+          "sparse_omitted_rows": 971,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 7,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 8,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 9,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "music",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 32,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 33,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 34,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "bed256",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 48,
+          "points": 48,
+          "dt_rows": 1644,
+          "df_rows": 176,
+          "sparse_omitted_rows": 1636,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 358400,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 358400,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 358400,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case00",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 8,
+          "df_rows": 10,
+          "sparse_omitted_rows": 10,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 9216,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 9216,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 9216,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 9216,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 9216,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case01",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case02",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case03",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case04",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case05",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case06",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case07",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case08",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 8,
+          "df_rows": 10,
+          "sparse_omitted_rows": 10,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 12288,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 12288,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 12288,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 12288,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 12288,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case09",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case10",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case11",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case12",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case13",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case14",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case15",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case16",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 8,
+          "df_rows": 10,
+          "sparse_omitted_rows": 10,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 11520,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 11520,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 11520,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 11520,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 11520,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case17",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case18",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 24576,
+            "qmf_output_components": 9216,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case19",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 49920,
+            "qmf_output_components": 15360,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case20",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 32768,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case21",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 24,
+            "coefficients": 39936,
+            "qmf_output_components": 12288,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case22",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 16,
+          "df_rows": 21,
+          "sparse_omitted_rows": 19,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 30,
+            "coefficients": 30720,
+            "qmf_output_components": 11520,
+            "bit_exact": true
+          }
+        ]
+      },
+      {
+        "id": "case23",
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 5,
+          "points": 5,
+          "dt_rows": 40,
+          "df_rows": 55,
+          "sparse_omitted_rows": 0,
+          "mixed_active_grids": 5
+        },
+        "selected": [
+          {
+            "au": 1,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 2,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 3,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 4,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          },
+          {
+            "au": 5,
+            "slots": 32,
+            "coefficients": 53248,
+            "qmf_output_components": 16384,
+            "bit_exact": true
+          }
+        ]
+      }
+    ],
+    "references": [
+      {
+        "case_id": "music",
+        "au": 100,
+        "status": "observation_only",
+        "targets_bit_exact": true,
+        "consumer_verified": true,
+        "immediate_ramp_bit_exact": true,
+        "dry_wet_next_tick_bit_exact": true,
+        "valid_output_subbands": 48,
+        "changing_dry_wet_coefficients": 4997,
+        "same_tick_dry_wet_max_abs_difference": 0.131378173828125,
+        "pointwise_pre_max_abs_difference": 0.2755373567342758,
+        "pre_next_tick_max_abs_error": 8.344650268554688e-07,
+        "output_max_abs_error": 3.725290298461914e-09,
+        "output_max_error_over_bound": 0.07126388800581863
+      },
+      {
+        "case_id": "music",
+        "au": 33,
+        "status": "observation_only",
+        "targets_bit_exact": true,
+        "consumer_verified": true,
+        "immediate_ramp_bit_exact": true,
+        "dry_wet_next_tick_bit_exact": true,
+        "valid_output_subbands": 48,
+        "changing_dry_wet_coefficients": 4307,
+        "same_tick_dry_wet_max_abs_difference": 0.156402587890625,
+        "pointwise_pre_max_abs_difference": 0.08015632629394531,
+        "pre_next_tick_max_abs_error": 7.450580596923828e-07,
+        "output_max_abs_error": 4.656612873077393e-10,
+        "output_max_error_over_bound": 0.07387362475128888
+      },
+      {
+        "case_id": "tone",
+        "au": 8,
+        "status": "observation_only",
+        "targets_bit_exact": true,
+        "consumer_verified": true,
+        "immediate_ramp_bit_exact": true,
+        "dry_wet_next_tick_bit_exact": true,
+        "valid_output_subbands": 48,
+        "changing_dry_wet_coefficients": 0,
+        "same_tick_dry_wet_max_abs_difference": 0.0,
+        "pointwise_pre_max_abs_difference": 0.0,
+        "pre_next_tick_max_abs_error": 0.0,
+        "output_max_abs_error": 0.0,
+        "output_max_error_over_bound": 0.0
+      }
+    ],
+    "mixed_pre": {
+      "cases": 16,
+      "bit_exact": true,
+      "all_eight_parameter_grids": true
+    }
+  },
+  "native_captures": [
+    {
+      "scope": "music100",
+      "captures": [
+        {
+          "name": "consumer_music100_r1",
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "38945a287bad10d48860e6aeb543d5b9fccff369dddcde823fbfb2bea6d9db7d",
+          "accepted_attempt": 0,
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728"
+        },
+        {
+          "name": "consumer_music100_r2",
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "38945a287bad10d48860e6aeb543d5b9fccff369dddcde823fbfb2bea6d9db7d",
+          "accepted_attempt": 0,
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728"
+        }
+      ]
+    },
+    {
+      "scope": "music33",
+      "captures": [
+        {
+          "name": "consumer_music33_r1",
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "38945a287bad10d48860e6aeb543d5b9fccff369dddcde823fbfb2bea6d9db7d",
+          "accepted_attempt": 0,
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728"
+        },
+        {
+          "name": "consumer_music33_r2",
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "frames": 400,
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "adapter_sha256": "38945a287bad10d48860e6aeb543d5b9fccff369dddcde823fbfb2bea6d9db7d",
+          "accepted_attempt": 1,
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728"
+        }
+      ]
+    },
+    {
+      "scope": "tone",
+      "captures": [
+        {
+          "name": "consumer_tone_r1",
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "frames": 143,
+          "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+          "adapter_sha256": "38945a287bad10d48860e6aeb543d5b9fccff369dddcde823fbfb2bea6d9db7d",
+          "accepted_attempt": 0,
+          "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c"
+        },
+        {
+          "name": "consumer_tone_r2",
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "frames": 143,
+          "pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+          "adapter_sha256": "38945a287bad10d48860e6aeb543d5b9fccff369dddcde823fbfb2bea6d9db7d",
+          "accepted_attempt": 0,
+          "scene_sha256": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c"
+        }
+      ]
+    }
+  ],
+  "mutations": [
+    {
+      "name": "shared_pre_grid",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "反量化／逐对象网格／pre 目标 不逐位一致，最大绝对差 1.643204689025879"
+    },
+    {
+      "name": "signed_pre_wet",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "反量化／逐对象网格／pre 目标 不逐位一致，最大绝对差 1.9237518310546875"
+    },
+    {
+      "name": "advance_at_start",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "逐时隙插值系数 不逐位一致，最大绝对差 0.80078125"
+    },
+    {
+      "name": "extra_ramp_step",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "逐时隙插值系数 不逐位一致，最大绝对差 0.80078125"
+    },
+    {
+      "name": "no_endpoint_snap",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "逐时隙插值系数 不逐位一致，最大绝对差 2.9802322387695312e-08"
+    },
+    {
+      "name": "ungated_wet",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "dry/wet 输出乘法 不逐位一致，最大绝对差 0.12745373416692019"
+    },
+    {
+      "name": "missing_pre_input",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "pre 输入乘法 不逐位一致，最大绝对差 0.07256522914394736"
+    },
+    {
+      "name": "equivalent_product_order",
+      "expected_pass": true,
+      "passed": true,
+      "rust_returncode": 0,
+      "checker_error": null
+    },
+    {
+      "name": "restored_baseline",
+      "expected_pass": true,
+      "passed": true,
+      "rust_returncode": 0,
+      "checker_error": null
+    }
+  ],
+  "pcm_preservation": [
+    {
+      "case": "tone",
+      "samples": 6150144,
+      "pcm_sha256": "d3457be9dfbbf108c28d1c7119323cb28c1a941a56c773ded92d8fe8828b3ed3",
+      "bit_exact_to_committed_input_investigation": true
+    },
+    {
+      "case": "music",
+      "samples": 17203200,
+      "pcm_sha256": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a",
+      "bit_exact_to_committed_input_investigation": true
+    },
+    {
+      "case": "bed256",
+      "samples": 2107392,
+      "pcm_sha256": "aded3d57768cf65c0f2c2f1b38f770a4ae2a18439aeabf5c3d5da294ee9ab54e",
+      "bit_exact_to_committed_input_investigation": true
+    }
+  ],
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "target/release/macinac4": "5dc0e1917eac05429e33c3f0e900f08eb6848bbc66a4b67e10fca0ee017e45e6"
+  },
+  "validation": {
+    "commands": [
+      {
+        "name": "tests_default",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace"
+        ],
+        "returncode": 0,
+        "seconds": 3.2189614159287885
+      },
+      {
+        "name": "tests_audio",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--features",
+          "audio-decode"
+        ],
+        "returncode": 0,
+        "seconds": 15.061247332952917
+      },
+      {
+        "name": "tests_spec",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "macindecode-ac4-decode",
+          "--features",
+          "spec-tables"
+        ],
+        "returncode": 0,
+        "seconds": 3.0835974999936298
+      },
+      {
+        "name": "clippy_default",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.27212045795749873
+      },
+      {
+        "name": "clippy_audio",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--features",
+          "audio-decode",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 4.991071125026792
+      },
+      {
+        "name": "clippy_spec",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "macindecode-ac4-decode",
+          "--all-targets",
+          "--features",
+          "spec-tables",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.11254966701380908
+      },
+      {
+        "name": "nostd_default",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "macindecode-ac4-scene",
+          "--lib",
+          "--target",
+          "thumbv7em-none-eabi",
+          "--no-default-features"
+        ],
+        "returncode": 0,
+        "seconds": 0.17427645809948444
+      },
+      {
+        "name": "nostd_audio",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "macindecode-ac4-scene",
+          "--lib",
+          "--target",
+          "thumbv7em-none-eabi",
+          "--no-default-features",
+          "--features",
+          "audio-decode"
+        ],
+        "returncode": 0,
+        "seconds": 2.1751175828976557
+      },
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 0.8744711249601096
+      },
+      {
+        "name": "layers",
+        "command": [
+          "python3",
+          "scripts/check_layers.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.14604883291758597
+      },
+      {
+        "name": "python",
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "scripts/test_check_ajoc_input.py",
+          "scripts/test_check_ajoc_matrix.py",
+          "scripts/test_check_aspx_merge.py",
+          "scripts/test_check_qmf_width_downstream.py",
+          "scripts/test_check_qmf_phase_chain.py",
+          "scripts/test_check_layers.py",
+          "scripts/test_ci_support.py",
+          "scripts/test_decode_check.py",
+          "scripts/test_compare_object_pcm.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.9739887499017641
+      },
+      {
+        "name": "tables",
+        "command": [
+          "python3",
+          "scripts/check_ajoc_tables.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.6342748750466853
+      },
+      {
+        "name": "diff",
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 0.02665791695471853
+      }
+    ],
+    "passed_tests": {
+      "tests_default": 516,
+      "tests_audio": 1331,
+      "tests_spec": 107,
+      "python": 136
+    }
+  },
+  "source_sha256": {
+    "crates/macindecode-ac4-decode/src/ajoc/reconstruction/matrix_probe.rs": "537e7453e09a0c722b94b3b21b236f0a22955975bd361718d6179e1b0c194836",
+    "crates/macindecode-ac4-decode/src/ajoc/reconstruction.rs": "80b7cef8a073636202b12396fffcd0f7839c51ea5781517d1e9379fd60e10ea2",
+    "crates/macindecode-ac4-decode/src/ajoc/syntax.rs": "35169de77e84d9e817e4cd0c562e751ad2984c1b0ca382997138ce26c9e52277",
+    "scripts/check_ajoc_matrix.py": "8529bf5cfe4eca20844de925a3638dd3076055683a43ee464f9022fdb70040a4",
+    "scripts/test_check_ajoc_matrix.py": "0ec904cf9ffa3900bbb7fd3590ba78e76c4c1d7becb1cee1746ce84bb4074668"
+  },
+  "limits": [
+    "Real comparison covers 12 selected matrix windows, with independent models advanced through all 589 real control frames.",
+    "Reference timing observation uses start_pos=0 and ramp_len=32; the constant tone is not timing excitation.",
+    "Native output has 48 valid interleaved complex subbands; bytes after that are workspace, not a 64-band scalar output oracle.",
+    "Wet output Y is fixed when checking reconstruction multiplication; decorrelator/ducker correctness is not established.",
+    "The native immediate-ramp observation does not establish an independent normative counterexample for the default local scheduling.",
+    "Mixed-grid reference probes cover all eight band counts, not all possible grid pairings.",
+    "The raw reference adapter, addresses, tables, media and captures remain local."
+  ],
+  "excluded_capture_notes": [
+    "Earlier scratch-pointer initial-state and unused target-tail captures were excluded; formal captures use active call ownership and declared row widths.",
+    "An exploratory output comparison incorrectly treated the native workspace above subband 47 as final interleaved complex values; output checks now use the reported native width.",
+    "Incomplete and PCM-mismatched attempts remain in private capture records; only complete matching pairs enter this report."
+  ]
+}
