@@ -209,9 +209,15 @@ impl RotatedRun {
         .unwrap();
         self.state.envelope = next_history;
         self.state.sine = next_sines;
-        let mut output = combine_to_qmf(&mut self.state, &mut self.workspace, slots, offset)
-            .unwrap()
-            .to_vec();
+        let mut output = combine_hf_to_qmf(
+            &mut self.state,
+            &mut self.workspace,
+            slots,
+            offset,
+            bands.sbx(),
+        )
+        .unwrap()
+        .to_vec();
         rotate(&mut output, self.basis, true);
         let mut pcm = vec![0.0; slots * 64];
         synthesise_ac4_pcm(&output, &mut self.state.synthesis, &mut pcm).unwrap();

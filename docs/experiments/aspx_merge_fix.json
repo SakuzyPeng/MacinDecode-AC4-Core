@@ -1,0 +1,497 @@
+{
+  "schema": "macinac4.aspx-merge-fix",
+  "version": 1,
+  "date": "2026-10-20",
+  "decision": "ADR-0024",
+  "head_before": "5b711aae3bef34162835599948e0fcecbd8dbfb4",
+  "production_rule": "complete non-interleaved A-SPX: delayed low band, assembled SEC at and above sbx; raw full-band history retained",
+  "public_api_changed": false,
+  "cli_changed": false,
+  "new_switch": false,
+  "scope": {
+    "entries": [
+      "mono full",
+      "independent channel pair full",
+      "balanced channel pair full"
+    ],
+    "unchanged": [
+      "general combine primitive",
+      "diagnostic dry entries",
+      "LFE delay",
+      "SIMPLE analysis",
+      "QMF basis",
+      "TNA",
+      "preflatten",
+      "limiter policies",
+      "noise/tone clocks"
+    ],
+    "interleaving_support_expanded": false
+  },
+  "evidence": {
+    "independent_rule": "TS103190-1:v1.4.1:5.7.6.1 and 5.7.6.5.1–5.7.6.5.3; local conditional interpretation, not official erratum",
+    "before_counterexample": {
+      "crossover": 11,
+      "input_hz": 4078.1249999999995,
+      "frames": 3,
+      "low_energy": 3287503.8939376883,
+      "sec_energy": 55924.56633693323,
+      "max_extra": 168.20998,
+      "sec_only_holds": false
+    },
+    "after_counterexample": {
+      "crossover": 11,
+      "input_hz": 4078.1249999999995,
+      "frames": 3,
+      "low_energy": 3287503.8939376883,
+      "sec_energy": 55924.56633693323,
+      "max_extra": 0,
+      "sec_only_holds": true
+    },
+    "ordinary_regression_failed_before": true,
+    "ordinary_regression_passed_after": true,
+    "frozen_cases": 2311,
+    "frozen_qmf_components": 28397568,
+    "frozen_pcm_samples": 14198784,
+    "frozen_candidate_qmf_pcm_bit_exact": true,
+    "original_candidate_manifest_sha256": "e847513e19d400f78675391da4435a669afccc2a4ee318ad43e21a20e52431a6",
+    "original_candidate_tree": {
+      "files": 9245,
+      "tree_sha256": "6b996897b0fa7d3b766fd71b447a37b97f309298e2fcebfda6eec93ec2b5dd95",
+      "bit_exact": true
+    },
+    "source_sha256": {
+      "crates/macindecode-ac4-decode/src/aspx/pipeline.rs": "db70712efc5fb63b19161899f876c4b81abf1d7dbb83b952e46a24010722a28b",
+      "crates/macindecode-ac4-decode/src/aspx/pipeline/tests/merge_rule_tests.rs": "2246fec3cbe5913d9a6751f0cd95c7d57bbcbfff896402107d33010293e6f681",
+      "crates/macindecode-ac4-decode/src/aspx/pipeline/tests/phase_basis_tests.rs": "e0bcbfee89c9450151c8a44e0ebe44be56cd7e66fd58492c5ae27bd093c5b18b",
+      "crates/macindecode-ac4-decode/src/aspx/pipeline/tests/preflatten_chain_tests.rs": "175ce9d175424751f8dab54aa3775dc3b92a3129b853eea8bd295c5701c2907f"
+    }
+  },
+  "full_pcm": {
+    "input_streams": 8,
+    "option_combinations": 14,
+    "local_scale": 1.52587890625e-05,
+    "reference_lag_samples": 31,
+    "output_fitting": false,
+    "identity_and_shape_unchanged": true,
+    "all_finite": true,
+    "lfe_bit_exact_all_14": true,
+    "changes": [
+      {
+        "case": "tone1",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 4.754283200478136e-06,
+        "band_12_18khz_improvement_db": 5.850459129827001e-06,
+        "before_peak": 0.968707263469696,
+        "after_peak": 0.9687222242355347,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone1",
+        "boost": "true",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 4.754283200478136e-06,
+        "band_12_18khz_improvement_db": 5.850459129827001e-06,
+        "before_peak": 0.968707263469696,
+        "after_peak": 0.9687222242355347,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone0",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": -6.3666459395121306e-06,
+        "band_12_18khz_improvement_db": -2.9633677495875115e-06,
+        "before_peak": 0.9579639434814453,
+        "after_peak": 0.9579789638519287,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone0",
+        "boost": "true",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": -4.797574779932374e-06,
+        "band_12_18khz_improvement_db": -2.0791010103293664e-06,
+        "before_peak": 0.9867326617240906,
+        "after_peak": 0.986729621887207,
+        "pcm_changed": true
+      },
+      {
+        "case": "music1",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 0.0108451753670328,
+        "band_12_18khz_improvement_db": 0.007889208391003037,
+        "before_peak": 0.5335323810577393,
+        "after_peak": 0.5336236953735352,
+        "pcm_changed": true
+      },
+      {
+        "case": "music1",
+        "boost": "true",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 0.0108451753670328,
+        "band_12_18khz_improvement_db": 0.007889208391003037,
+        "before_peak": 0.5335323810577393,
+        "after_peak": 0.5336236953735352,
+        "pcm_changed": true
+      },
+      {
+        "case": "music0",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 0.01053497461548462,
+        "band_12_18khz_improvement_db": 0.007610390305413505,
+        "before_peak": 0.5331099629402161,
+        "after_peak": 0.533201277256012,
+        "pcm_changed": true
+      },
+      {
+        "case": "music0",
+        "boost": "true",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 0.0105341049943538,
+        "band_12_18khz_improvement_db": 0.007609950713772174,
+        "before_peak": 0.5331099629402161,
+        "after_peak": 0.533201277256012,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone1281",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 1.731198948306402e-08,
+        "band_12_18khz_improvement_db": 1.0793365340193469e-08,
+        "before_peak": 0.5697039365768433,
+        "after_peak": 0.5697178840637207,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone1281",
+        "boost": "true",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 1.731198948306402e-08,
+        "band_12_18khz_improvement_db": 1.0793365340193469e-08,
+        "before_peak": 0.5697039365768433,
+        "after_peak": 0.5697178840637207,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone181871",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 1.941681631587336e-06,
+        "band_12_18khz_improvement_db": -5.349074903561325e-06,
+        "before_peak": 0.8982012271881104,
+        "after_peak": 0.898209273815155,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone181871",
+        "boost": "true",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 1.941681631587336e-06,
+        "band_12_18khz_improvement_db": -5.349074903561325e-06,
+        "before_peak": 0.8982012271881104,
+        "after_peak": 0.898209273815155,
+        "pcm_changed": true
+      },
+      {
+        "case": "tone_preflat0",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": -2.252272078553893e-06,
+        "band_12_18khz_improvement_db": -9.656438355760813e-07,
+        "before_peak": 0.6645050644874573,
+        "after_peak": 0.6645024418830872,
+        "pcm_changed": true
+      },
+      {
+        "case": "music_preflat0",
+        "boost": "false",
+        "lfe_bit_exact": true,
+        "whole_error_improvement_db": 0.010887362977839876,
+        "band_12_18khz_improvement_db": 0.008001505845484787,
+        "before_peak": 0.533525824546814,
+        "after_peak": 0.5336171388626099,
+        "pcm_changed": true
+      }
+    ],
+    "controls": [
+      {
+        "case": "tone1",
+        "limiter_one_boost_bit_exact": true
+      },
+      {
+        "case": "music1",
+        "limiter_one_boost_bit_exact": true
+      },
+      {
+        "case": "tone1281",
+        "limiter_one_boost_bit_exact": true
+      },
+      {
+        "case": "tone181871",
+        "limiter_one_boost_bit_exact": true
+      }
+    ],
+    "before_binary_sha256": "87df70f75adea02a8a28229f79ab12d1e45bdaaac9100c5ecdf02a00fab29038",
+    "after_binary_sha256": "5dc0e1917eac05429e33c3f0e900f08eb6848bbc66a4b67e10fca0ee017e45e6",
+    "before_reuse_provenance": {
+      "sha256": "2babebc02b508b540315a015fcb6ae136800e7c16b48cd8eb9cbeb1ed7a40ccf",
+      "original_phase": "after",
+      "reason": "same binary SHA; all 14 output files rehashed"
+    }
+  },
+  "baselines": {
+    "core_unchanged": 12,
+    "aspx_updated": 12,
+    "objects_updated": 12,
+    "verified_total": 36,
+    "shape_and_identity_unchanged": true,
+    "changes": {
+      "core": [],
+      "aspx": [
+        {
+          "case": "probe_axes_single_object/master_ac4_1500K.m4a",
+          "before_sha256": "9cad182d047fa7037f241005507ca88085a88f1ffeb752cde685fe06242c7893",
+          "after_sha256": "7f265f248b794abb6acee90d85c54924788c0b7ad52a4fc816d4d95d723bbec2"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_sha256": "82b8c268ea8d00468a9492cca1b6841bf936d81fd657c3093a2c70f6edbdddb0",
+          "after_sha256": "324adfa578b4914d1960853730c8fe3e9ed0dfe7601182983e67853c767e7bea"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_sha256": "730262c298487706c1329238e1d66ab9713c78f2a0f399fa7e3a06c5eaf94fe1",
+          "after_sha256": "9c22b5dc7845e4eb750f15ffff2eadd350fbf2d25607560327b035e350f022ec"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+          "before_sha256": "8018b5466aa6851385bdb381c18da34b56c8849e4d8d2322979c34d664223ab9",
+          "after_sha256": "f7f00aeb5014bbf2f6769d887f2de9a6579428e53eca2214e89fb3f53da50a1b"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_sha256": "87393f092de29bf3454272e8a967db1a90bf0fe90a637359f81a7787d263fc31",
+          "after_sha256": "021d1d445e4ebe2ea37bd436d0a1d05f118dc67fbb9681d907dfc4695b883ac7"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_256K.m4a",
+          "before_sha256": "fcf5d12697d9e786b03555b989903e833de096f42eec55308a8a82eb4679cc42",
+          "after_sha256": "c14431b56c0ab91dd736a9116d34265adb3845284ddfdf7d6796109e25f455cc"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_448K.m4a",
+          "before_sha256": "09242701eeb3b77e85c4cd409779cb6ef0ba088818609d540f90ba381c4876c3",
+          "after_sha256": "dca3c3b3657e1e3fc40e39df39ef96df3e373f9137c665a2d557a8d2adbd3116"
+        },
+        {
+          "case": "probe_delayed_onset/master_ac4_768K.m4a",
+          "before_sha256": "d4fe20e99eb662fbe21ad678b827e417ea56f3eafb15fa7c655dfe0fe3d51695",
+          "after_sha256": "3c564600e887703a61419f242ea7cd2e277f80f52321eb8f5238abb7e4c3a8fa"
+        },
+        {
+          "case": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_sha256": "7a99985e0f252ce2b7bc0fd63b3ee5407bd14d5891a805f4da50661e66bd1c55",
+          "after_sha256": "9ccd47c1290264db302e2f792f2a8c8c8eba82b786e2293ff8b7313b87685940"
+        },
+        {
+          "case": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_sha256": "7a99985e0f252ce2b7bc0fd63b3ee5407bd14d5891a805f4da50661e66bd1c55",
+          "after_sha256": "9ccd47c1290264db302e2f792f2a8c8c8eba82b786e2293ff8b7313b87685940"
+        },
+        {
+          "case": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_sha256": "f7dc293fbc0fd031e5b496c589533ce5053cefc195d587a8bce7660fe60df944",
+          "after_sha256": "2fa337aa5fe1e4798d038b30f8bd4df81ca3e3e83ef9a3ee2f044de61f078c3d"
+        },
+        {
+          "case": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_sha256": "b4dfcc8ffdb84ed9b859575a67f2a6b28122b56a7c86c9bcda4a6518d138e3fa",
+          "after_sha256": "927cc529442b60114ef69781ece6653667fd8fc54a82a526b5e9b9375e3c61c8"
+        }
+      ],
+      "objects": [
+        {
+          "case": "probe_axes_single_object/master_ac4_1500K.m4a",
+          "before_sha256": "e9a704862a28c0db21cb777b0e2650b0deb4def9a1f3c2b2d46e78fb8804037f",
+          "after_sha256": "c8f90657cbc33fd5d3d2da9d5620452639570b05965a51b3c539e4d895e6b928"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_768K.m4a",
+          "before_sha256": "af9c11c66972df1789b0143b24669ee53d4e795b3b0b648f7171ef55bc43c6ae",
+          "after_sha256": "83b464ae89432020f5a401d29546b3754e8b4bb125b65ca91151b9456cb3fee3"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l3_768K.m4a",
+          "before_sha256": "af0774a3b1cd0fc9b90d859d71ba082d9f266b583e9c9174191c123bc33b94e3",
+          "after_sha256": "e91e1f7df00d6411d670ecd1b6c6348a6494631eeaa31d11f06e79ef5da7e497"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_1500K.m4a",
+          "before_sha256": "3f47b4b2affcc8339dd7a13c4cb85b727588e18d9c4a9d4a01e033c541e6a39a",
+          "after_sha256": "0beacbb1540e5491c5fdd6b89df343df78b4a0dfd8ccc38278a63f973f667f88"
+        },
+        {
+          "case": "probe_axes_single_object/master_ac4_dme_l4_768K_3dof.m4a",
+          "before_sha256": "e9ce1477229b7bfbb4c91134baf06372e3f969206d1633f3c014f09a190166f3",
+          "after_sha256": "ed9d47e585d24c5b2af79f8a12966ab878dd771aebacfaaa3b0879c636cc5cb8"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_256K.m4a",
+          "before_sha256": "32d4be07a861d14e6e4d61467e01056cb95c3c3956396b598f0014d73746982c",
+          "after_sha256": "cbfe6cf7fa8e4c5fbcaa26cabf1f413efbea4051468c48c9652422168e5431ea"
+        },
+        {
+          "case": "probe_bed_only/master_ac4_448K.m4a",
+          "before_sha256": "9a7e3e18f85140981654f437a76a5d1d3a6f1c1a013d1993fe859845b7398367",
+          "after_sha256": "0f3cb5ccc28de56b4115fe94482560b0a8a71165d701b0dba4cb50efdf83ee94"
+        },
+        {
+          "case": "probe_delayed_onset/master_ac4_768K.m4a",
+          "before_sha256": "0ddc41b8f0dd790e0475deb3e076b9550cc56555f7025a3829158bf7064e5081",
+          "after_sha256": "f3d05c85dc182b626d878ba49d93989822641203a18c99cf0c25969ffa123800"
+        },
+        {
+          "case": "probe_ramp_control/master_ac4_768K.m4a",
+          "before_sha256": "2afea751175a988cc57682c731f58193e3e8f8bd09a193f395621d0e3a9504e9",
+          "after_sha256": "97b5c6f381cdfa66919c9b2bb588e999f1723f4c1faa8f5850ca9178c3fd9e78"
+        },
+        {
+          "case": "probe_ramp_lengths/master_ac4_768K.m4a",
+          "before_sha256": "2afea751175a988cc57682c731f58193e3e8f8bd09a193f395621d0e3a9504e9",
+          "after_sha256": "97b5c6f381cdfa66919c9b2bb588e999f1723f4c1faa8f5850ca9178c3fd9e78"
+        },
+        {
+          "case": "probe_subframe_control/master_ac4_768K.m4a",
+          "before_sha256": "b0a2ab1bc30e69080469563a5d35f76d6c04230781d79d9e3d4d7264c1c76699",
+          "after_sha256": "333a62c6cc19971c1445ddf48d0d9ddc48139ff0a306dac95e1a7e2b81e7975e"
+        },
+        {
+          "case": "probe_subframe_updates/master_ac4_768K.m4a",
+          "before_sha256": "54fd76be74d1856eb9187254f327527d29025270bb9dadd87b84b9263f78cae9",
+          "after_sha256": "50225b814325ed651775e1f1c2239e27ce2b6cc917656832a5545a6ce840dcd2"
+        }
+      ]
+    },
+    "hashes": {
+      "decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+      "aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+      "objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f"
+    },
+    "synthetic_platform_core_unchanged": 3,
+    "synthetic_platform_changes": [
+      {
+        "case": "odd_dry",
+        "stage": 1,
+        "before": "06f0499d25443e93a569c4eb4f55e9f6a96d6bd061bf5f44ae27227c28857c0b",
+        "after": "acab3a784d7922ec2ff2fb4822260bc181f6c22d691f112b1ee4aefa7a039c8e"
+      },
+      {
+        "case": "odd_dry",
+        "stage": 2,
+        "before": "73b99241984ad9cb946c353956558f9642b4ac08322bd0fd758c7a347305910e",
+        "after": "685e8a50b6df343588f9d03093d173b0427bccf3a9a3eaac6351345a6a31f9b4"
+      },
+      {
+        "case": "odd_wet",
+        "stage": 1,
+        "before": "06f0499d25443e93a569c4eb4f55e9f6a96d6bd061bf5f44ae27227c28857c0b",
+        "after": "acab3a784d7922ec2ff2fb4822260bc181f6c22d691f112b1ee4aefa7a039c8e"
+      },
+      {
+        "case": "odd_wet",
+        "stage": 2,
+        "before": "3263e14911ef745cfec18b8243603f90aa5875947d133d14372c3668fc660f16",
+        "after": "b5052007ed743c17df92ee9d93f6503e9b5701c7255663f7bd72070b38dcfa11"
+      },
+      {
+        "case": "even_wet_lfe",
+        "stage": 1,
+        "before": "4b0ab3d24590a6d3491123ef199ab65301ebd546e5dd608b5e2dffe85f57d065",
+        "after": "73a811c9321d5f45c71b6d99d7818e164947ec6765f9e42c8a254cfc34c71948"
+      },
+      {
+        "case": "even_wet_lfe",
+        "stage": 2,
+        "before": "c650cbb0cd35c09c83674c085a6eff8cb002269e2c9e12b2c9f14421607f70cb",
+        "after": "ab88dcb4cc1e284bd11c21e8b533f649ae5dfcaca91bf6628dc934dfb33f0bbf"
+      }
+    ],
+    "synthetic_platform_arm64_passed": true,
+    "synthetic_platform_x86_64_passed": true
+  },
+  "validation": {
+    "tests_default": 516,
+    "tests_audio": 1330,
+    "tests_spec": 107,
+    "python_tests": 134,
+    "default_audio_spec_clippy": true,
+    "default_audio_nostd_thumbv7em": true,
+    "format": true,
+    "layers": true,
+    "transform_math": true,
+    "aspx_math": true,
+    "mutations": [
+      {
+        "name": "baseline",
+        "expected_pass": true,
+        "returncode": 0
+      },
+      {
+        "name": "restore_addition",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "miss_crossover",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "drop_last_low_band",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "mask_original_history",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "omit_imaginary_selection",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "omit_second_independent_channel",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "omit_balanced_first_channel",
+        "expected_pass": false,
+        "returncode": 101
+      },
+      {
+        "name": "equivalent_index_conversion",
+        "expected_pass": true,
+        "returncode": 0
+      },
+      {
+        "name": "restored",
+        "expected_pass": true,
+        "returncode": 0
+      }
+    ]
+  },
+  "preserved_user_file_sha256": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+  "limitations": [
+    "Formal default rule is a local specification interpretation; DRP agreement is auxiliary",
+    "Complete-program reference error improvement is small and not uniform across tone controls",
+    "No new FIC/TIC, IMS, SIMPLE Full-engine support or public C ABI",
+    "Synthetic history-switch controls are not newly encoded media coverage"
+  ]
+}

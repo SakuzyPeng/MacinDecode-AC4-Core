@@ -27,14 +27,14 @@
 //! | [`bypass_frame_qmf`] | [`bypass_frame`] | 分析、`5.7.6.5.3` | 延迟后的输入 |
 //! | [`frame_with_low_band_qmf`] | [`frame_with_low_band`] | `5.7.6.3.2` | 与参照逐位相同 |
 //! | [`frame_with_hf_generation_qmf`] | [`frame_with_hf_generation`] | `5.7.6.4.1.2`–`5.7.6.4.1.4` | 与参照逐位相同 |
-//! | [`frame_with_scale_factors_qmf`] | [`frame_with_scale_factors`] | `5.7.6.3.4`–`5.7.6.3.5`、`5.7.6.4.2`–`5.7.6.4.5` | 延迟后的输入**加 `Y`** |
-//! | [`frame_with_balanced_scale_factors_qmf`] | [`frame_with_balanced_scale_factors`] | 上一行的平衡式双声道变体 | 两路各自加上自己的 `Y` |
+//! | [`frame_with_scale_factors_qmf`] | [`frame_with_scale_factors`] | `5.7.6.3.4`–`5.7.6.3.5`、`5.7.6.4.2`–`5.7.6.4.5` | 延迟低带，高带取 `Y` |
+//! | [`frame_with_balanced_scale_factors_qmf`] | [`frame_with_balanced_scale_factors`] | 上一行的平衡式双声道变体 | 两路分别选择自己的低带和 `Y` |
 //!
 //! 中间两条的输出仍等于旁路：`Q_low` 与 `Q_high` 都只喂下游，不进输出。在
 //! `5.7.6.4.5` 接上之前整条通路都是这样，而 `Y` 恒零时「没改输出」对全错的接线
 //! 同样成立。因此每加一段都必须自带**不看输出也能生效**的判据（延迟线互校、时
 //! 隙对齐、跨帧状态逐个隔离观察、逐包络的组数与量化档）。最后一段落地后这条阶
-//! 梯才收口：`Q_out` 减去旁路的输出必须逐位等于本帧的 `Y`。
+//! 梯才收口：完整无交织输出的低带与旁路相同，高带逐位等于本帧的 `Y`（ADR-0024）。
 //!
 //! # `5.7.6` 已经接全
 //!
@@ -44,7 +44,7 @@
 //!
 //! `Y` 非零之后，
 //! [`AspxWorkspace::prepare_frame`] 清 `y` 这件事也第一次可观察——`5.7.6.4.5` 只
-//! 写 `[sbx, sbx + num_sb_aspx)`，而 `5.7.6.5.3` 的相加遍历全部 64 个子带。
+//! 写 `[sbx, sbx + num_sb_aspx)`，出口选择仍覆盖到子带 63，范围外不能残留旧 `Y`。
 //!
 //! 语法到参数这一层由 [`ChannelInputs::from_parsed`] 接上：它从 `aspx_config()`
 //! 与 `aspx_data_*()` 取出三组逐帧输入。只有三个值取不到——`base_samp_freq_48`
@@ -1317,8 +1317,8 @@ fn adjust_high_band(
 /// 延迟后的 Q_in ─────────────────────────────────┴→ 合并 → Q_out → 合成
 /// ```
 ///
-/// 输出是 [`bypass_frame`] 的延迟输入加上 `5.7.6.4.5` 组装出的 `Y`；三段诊断结果
-/// 另通过 [`AspxIntermediates`] 递出。
+/// 无交织输出的低带等于 [`bypass_frame`] 的延迟低带，高带取 `5.7.6.4.5` 的 `Y`
+/// （ADR-0024）；三段诊断结果另通过 [`AspxIntermediates`] 递出。
 /// `aspx_balance = 1` 必须改用 [`frame_with_balanced_scale_factors`]，因为
 /// `Pseudocode 84` 要把两声道的 `qscf` 放在一起反量化。
 ///
@@ -1538,7 +1538,13 @@ pub fn frame_with_scale_factors_pair_qmf<'a>(
         first_intermediates.scale_factors = next_first_factors;
         first_intermediates.estimate = first_estimate;
         first_intermediates.gains = first_gains;
-        combine_to_qmf(first_state, first_workspace, first_timeslots, first_offset)?
+        combine_hf_to_qmf(
+            first_state,
+            first_workspace,
+            first_timeslots,
+            first_offset,
+            first_bands.sbx(),
+        )?
     };
 
     // 第一声道的大型包络矩阵已经移入诊断输出；再处理第二声道，让两路临时矩阵
@@ -1591,11 +1597,12 @@ pub fn frame_with_scale_factors_pair_qmf<'a>(
     second_intermediates.scale_factors = next_second_factors;
     second_intermediates.estimate = second_estimate;
     second_intermediates.gains = second_gains;
-    let second_qmf = combine_to_qmf(
+    let second_qmf = combine_hf_to_qmf(
         second_state,
         second_workspace,
         second_timeslots,
         second_offset,
+        second_bands.sbx(),
     )?;
     Ok([first_qmf, second_qmf])
 }
@@ -1671,7 +1678,7 @@ fn frame_with_scale_factors_impl<'a>(
     intermediates.estimate = estimated;
     intermediates.gains = gains;
 
-    combine_to_qmf(state, workspace, timeslots, ts_offset)
+    combine_hf_to_qmf(state, workspace, timeslots, ts_offset, bands.sbx())
 }
 
 /// `aspx_balance = 1` 的双声道包络解码与联合反量化通路。
@@ -1923,12 +1930,19 @@ fn frame_with_balanced_scale_factors_impl<'a>(
     first_intermediates.gains = first_gains;
     second_intermediates.gains = second_gains;
 
-    let first_qmf = combine_to_qmf(first_state, first_workspace, first_timeslots, first_offset)?;
-    let second_qmf = combine_to_qmf(
+    let first_qmf = combine_hf_to_qmf(
+        first_state,
+        first_workspace,
+        first_timeslots,
+        first_offset,
+        bands.sbx(),
+    )?;
+    let second_qmf = combine_hf_to_qmf(
         second_state,
         second_workspace,
         second_timeslots,
         second_offset,
+        bands.sbx(),
     )?;
     Ok([first_qmf, second_qmf])
 }
@@ -2032,7 +2046,30 @@ fn filter_low_band_after_analysis(
     Ok(extended)
 }
 
-/// `5.7.6.5.3` 的公共尾段，停在可直接交给下游工具的 `Q_out,ASPX`。
+/// 完整、无交织 A-SPX 的尾段。ADR-0024 / `TS103190-1:v1.4.1:5.7.6.5.1–5.7.6.5.3`：
+/// 高带选择已组装 SEC，不加入未选择的分析泄漏；低带保持原时间轴。
+/// `sbx` 来自本调用已经验证的频带表。先推进原始全带历史，选择只作用于出口。
+/// 诊断干通路和 LFE 不调用此函数；活动交织仍由路由层拒绝。
+fn combine_hf_to_qmf<'a>(
+    state: &mut AspxChannelState,
+    workspace: &'a mut AspxWorkspace,
+    timeslots: usize,
+    ts_offset: u8,
+    sbx: u8,
+) -> Result<&'a [QmfSlot], PipelineError> {
+    combine_to_qmf(state, workspace, timeslots, ts_offset)?;
+    for (out, sec) in workspace.q_out.iter_mut().zip(&workspace.y).take(timeslots) {
+        for (value, source) in out.re.iter_mut().zip(&sec.re).skip(usize::from(sbx)) {
+            *value = *source;
+        }
+        for (value, source) in out.im.iter_mut().zip(&sec.im).skip(usize::from(sbx)) {
+            *value = *source;
+        }
+    }
+    qmf_output(workspace, timeslots)
+}
+
+/// 诊断／通用相加尾段，停在可直接交给下游工具的 `Q_out,ASPX`。
 fn combine_to_qmf<'a>(
     state: &mut AspxChannelState,
     workspace: &'a mut AspxWorkspace,
@@ -2073,6 +2110,7 @@ fn qmf_output(workspace: &AspxWorkspace, timeslots: usize) -> Result<&[QmfSlot],
 mod tests {
     extern crate std;
 
+    mod merge_rule_tests;
     mod phase_basis_tests;
     mod preflatten_chain_tests;
 
@@ -3041,13 +3079,9 @@ mod tests {
     }
 
     #[test]
-    fn the_output_is_the_delayed_input_plus_y() {
-        // `5.7.6.5.3` 的 `Q_out(m,i) = Q_in(m, i−δ) + Y(m,i)`。旁路把 `Y` 取零，
-        // 因此它的 `Q_out` 恰是被延迟的 `Q_in`；整条通路的 `Q_out` 减去它，剩下
-        // 的必须逐位等于本帧写进工作区的 `Y`。
-        //
-        // 这条是整条阶梯的收口：在此之前每一段都只能证明「没改输出」，`Y` 恒零
-        // 时那句话对全错的接线同样成立。
+    fn the_full_output_selects_delayed_low_band_and_assembled_high_band() {
+        // ADR-0024：低带与干通路相同，高带直接等于 SEC。
+        // 同时观察输入泄漏和非零 Y，避免恢复旧相加规则时判据失去鉴别力。
         let bands = hf_bands();
         let modes = chirp_modes(&bands);
         let (params, interval) = split_interval(SLOTS as u8);
@@ -3059,6 +3093,7 @@ mod tests {
         let mut full = (AspxChannelState::new(), AspxWorkspace::new());
         prime_carryover(&mut full.0, &interval, 1);
         let mut moved = false;
+        let mut leak_seen = false;
         for chunk in long.chunks(FRAME) {
             let mut a = vec![0.0f32; chunk.len()];
             bypass_frame(chunk, &mut plain.0, &mut plain.1, &mut a).expect("旁路");
@@ -3083,9 +3118,18 @@ mod tests {
 
             for ts in 0..SLOTS {
                 for sb in 0..SUBBANDS {
-                    let expected = plain.1.q_out[ts].re[sb] + full.1.y[ts].re[sb];
+                    let expected = if sb < usize::from(bands.sbx()) {
+                        plain.1.q_out[ts].re[sb]
+                    } else {
+                        leak_seen |= plain.1.q_out[ts].re[sb] != 0.0;
+                        full.1.y[ts].re[sb]
+                    };
                     assert_eq!(full.1.q_out[ts].re[sb], expected, "实部 ts={ts} sb={sb}");
-                    let expected = plain.1.q_out[ts].im[sb] + full.1.y[ts].im[sb];
+                    let expected = if sb < usize::from(bands.sbx()) {
+                        plain.1.q_out[ts].im[sb]
+                    } else {
+                        full.1.y[ts].im[sb]
+                    };
                     assert_eq!(full.1.q_out[ts].im[sb], expected, "虚部 ts={ts} sb={sb}");
                     moved |= full.1.y[ts].re[sb] != 0.0 || full.1.y[ts].im[sb] != 0.0;
                 }
@@ -3093,6 +3137,7 @@ mod tests {
         }
         // 前提：`Y` 真的非零，否则上面的等式对「Y 从未接上」也成立。
         assert!(moved, "夹具前提：Y 必须有非零样本");
+        assert!(leak_seen, "夹具前提：原分析高带泄漏必须非零");
     }
 
     #[test]
@@ -4090,10 +4135,13 @@ mod tests {
     fn independent_channel_pair_matches_two_scalar_calls_bit_for_bit() {
         let bands = hf_bands();
         let modes = chirp_modes(&bands);
+        let other_bands = AspxBandTables::derive(false, 0, 0, 0, 3).unwrap();
+        assert_ne!(bands.sbx(), other_bands.sbx());
+        let other_modes = chirp_modes(&other_bands);
         let (params, interval) = split_interval(SLOTS as u8);
         let framing = framing(params, interval, false, false);
         let first_data = envelope_data(&bands, 0);
-        let second_data = envelope_data(&bands, 3);
+        let second_data = envelope_data(&other_bands, 3);
         let first_pcm = ramp(FRAME * 2);
         let second_pcm: Vec<f32> = ramp(FRAME * 2)
             .into_iter()
@@ -4129,13 +4177,13 @@ mod tests {
             .to_vec();
             let scalar_second = frame_with_scale_factors_qmf(
                 inputs[1],
-                &bands,
-                hf_params(&modes),
+                &other_bands,
+                hf_params(&other_modes),
                 EnvelopeInput {
                     framing: &framing,
                     data: &second_data,
                 },
-                adjust_params(&bands),
+                adjust_params(&other_bands),
                 &mut scalar_states[1],
                 &mut scalar_workspaces[1],
                 &mut scalar_intermediates[1],
@@ -4149,8 +4197,8 @@ mod tests {
                 let [first_intermediates, second_intermediates] = &mut paired_intermediates;
                 let [first, second] = frame_with_scale_factors_pair_qmf(
                     inputs,
-                    [&bands, &bands],
-                    [hf_params(&modes), hf_params(&modes)],
+                    [&bands, &other_bands],
+                    [hf_params(&modes), hf_params(&other_modes)],
                     [
                         EnvelopeInput {
                             framing: &framing,
@@ -4161,7 +4209,7 @@ mod tests {
                             data: &second_data,
                         },
                     ],
-                    [adjust_params(&bands), adjust_params(&bands)],
+                    [adjust_params(&bands), adjust_params(&other_bands)],
                     [first_state, second_state],
                     [first_workspace, second_workspace],
                     [first_intermediates, second_intermediates],
@@ -4347,7 +4395,7 @@ mod tests {
     }
 
     #[test]
-    fn the_balanced_path_matches_the_bypass_on_both_channels() {
+    fn the_balanced_path_selects_each_channels_own_low_band_and_sec() {
         // 两路各给一段**不同**的信号：相同信号会让两路串线完全不可观察。
         let bands = hf_bands();
         let modes = chirp_modes(&bands);
@@ -4384,8 +4432,7 @@ mod tests {
             .expect("平衡式双声道路径")
         };
 
-        // 两路各自等于「自己那段被延迟的输入」加上自己的 `Y`。串线会让某一路
-        // 的差值对不上自己的 `Q_in`——两路信号不同，这一点才有鉴别力。
+        // 两路各自选择自己的延迟低带和 SEC；独立合成核对 PCM 接线。
         for (index, pcm) in [&first_pcm, &second_pcm].into_iter().enumerate() {
             let mut state = AspxChannelState::new();
             let mut ws = AspxWorkspace::new();
@@ -4397,13 +4444,13 @@ mod tests {
             let mut expected = vec![0.0f32; pcm.len()];
             let mut summed = ws.q_out[..SLOTS].to_vec();
             for (slot, y) in summed.iter_mut().zip(workspaces[index].y.iter()) {
-                for sb in 0..SUBBANDS {
-                    slot.re[sb] += y.re[sb];
-                    slot.im[sb] += y.im[sb];
+                for sb in usize::from(bands.sbx())..SUBBANDS {
+                    slot.re[sb] = y.re[sb];
+                    slot.im[sb] = y.im[sb];
                 }
             }
             synthesise_ac4_pcm(&summed, &mut synthesis, &mut expected).expect("合成");
-            assert_eq!(out[index], expected, "第 {index} 路应是延迟输入加自己的 Y");
+            assert_eq!(out[index], expected, "第 {index} 路应选择自己的低带和 Y");
         }
     }
     #[test]

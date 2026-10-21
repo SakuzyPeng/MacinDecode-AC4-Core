@@ -278,11 +278,21 @@ fn run_sequence(
             for b in 0..64 {
                 assert_eq!(
                     ws.q_out[t].re[b].to_bits(),
-                    (input.re[b] + ws.y[t].re[b]).to_bits()
+                    if b < usize::from(bands.sbx()) {
+                        input.re[b]
+                    } else {
+                        ws.y[t].re[b]
+                    }
+                    .to_bits()
                 );
                 assert_eq!(
                     ws.q_out[t].im[b].to_bits(),
-                    (input.im[b] + ws.y[t].im[b]).to_bits()
+                    if b < usize::from(bands.sbx()) {
+                        input.im[b]
+                    } else {
+                        ws.y[t].im[b]
+                    }
+                    .to_bits()
                 );
             }
         }
