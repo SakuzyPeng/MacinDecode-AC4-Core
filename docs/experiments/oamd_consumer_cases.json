@@ -1,0 +1,832 @@
+{
+  "schema": "macinac4.oamd-consumer-cases",
+  "version": 1,
+  "cases": [
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_ajoc_s00_r32",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {},
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "patches": []
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_ajoc_s01_r01",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 1,
+          "ajoc_ramp_len_minus1": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "58eb9aaaf44aa81047f4b74a54c8606d6b3f64b6885b0b7a745131226818fb49",
+      "patches": [
+        {
+          "au": 99,
+          "field": "ajoc_start_pos",
+          "point": 0,
+          "bit": 3323450,
+          "width": 5,
+          "value": 0,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 0,
+          "new": 1
+        },
+        {
+          "au": 99,
+          "field": "ajoc_ramp_len_minus1",
+          "point": 0,
+          "bit": 3323455,
+          "width": 6,
+          "value": 31,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 31,
+          "new": 0
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_s01_r01",
+        "factor": 2,
+        "duration": 64,
+        "changes": {
+          "block_offset_factor": 2,
+          "ramp_duration_table_index": 1
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "9e6f85a8d831c1e310acc0625951b1ae533a0147fbeb4f6642518d7ed0392bb3",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 2
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 1
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_both_s01_r01",
+        "factor": 2,
+        "duration": 64,
+        "changes": {
+          "ajoc_start_pos": 1,
+          "ajoc_ramp_len_minus1": 0,
+          "block_offset_factor": 2,
+          "ramp_duration_table_index": 1
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "9737f29fd0accf8a9d728b77dd60bfd1a0e95260ff57cda8e0b486fe5fbcafe3",
+      "patches": [
+        {
+          "au": 99,
+          "field": "ajoc_start_pos",
+          "point": 0,
+          "bit": 3323450,
+          "width": 5,
+          "value": 0,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 0,
+          "new": 1
+        },
+        {
+          "au": 99,
+          "field": "ajoc_ramp_len_minus1",
+          "point": 0,
+          "bit": 3323455,
+          "width": 6,
+          "value": 31,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 31,
+          "new": 0
+        },
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 2
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 1
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_ajoc_s15_r02",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 15,
+          "ajoc_ramp_len_minus1": 1
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "c818dd622338566b9954610f5af35424bd19ee1bf3b5e9c4100cf0edce9d72f3",
+      "patches": [
+        {
+          "au": 99,
+          "field": "ajoc_start_pos",
+          "point": 0,
+          "bit": 3323450,
+          "width": 5,
+          "value": 0,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 0,
+          "new": 15
+        },
+        {
+          "au": 99,
+          "field": "ajoc_ramp_len_minus1",
+          "point": 0,
+          "bit": 3323455,
+          "width": 6,
+          "value": 31,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 31,
+          "new": 1
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_s15_r02",
+        "factor": 30,
+        "duration": 128,
+        "changes": {
+          "block_offset_factor": 30,
+          "ramp_duration_table_index": 2
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "bc0d60f62675378f42dd793b5862cc49dc8a57ae25125b95d3a06477366c43ae",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 30
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 2
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_both_s15_r02",
+        "factor": 30,
+        "duration": 128,
+        "changes": {
+          "ajoc_start_pos": 15,
+          "ajoc_ramp_len_minus1": 1,
+          "block_offset_factor": 30,
+          "ramp_duration_table_index": 2
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "f837b23e8a57f01041a0fe31df8fab52180400cca13a2d2fea45c4d0bb0cc31f",
+      "patches": [
+        {
+          "au": 99,
+          "field": "ajoc_start_pos",
+          "point": 0,
+          "bit": 3323450,
+          "width": 5,
+          "value": 0,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 0,
+          "new": 15
+        },
+        {
+          "au": 99,
+          "field": "ajoc_ramp_len_minus1",
+          "point": 0,
+          "bit": 3323455,
+          "width": 6,
+          "value": 31,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 31,
+          "new": 1
+        },
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 30
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 2
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_ajoc_s31_r32",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 31,
+          "ajoc_ramp_len_minus1": 31
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "ebfc8c93da898467cf8a7ea694152502d7ad0e8e7aa888cf7a39e5c088452b6a",
+      "patches": [
+        {
+          "au": 99,
+          "field": "ajoc_start_pos",
+          "point": 0,
+          "bit": 3323450,
+          "width": 5,
+          "value": 0,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 0,
+          "new": 31
+        },
+        {
+          "au": 99,
+          "field": "ajoc_ramp_len_minus1",
+          "point": 0,
+          "bit": 3323455,
+          "width": 6,
+          "value": 31,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 31,
+          "new": 31
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_s31_r32",
+        "factor": 62,
+        "duration": 2048,
+        "changes": {
+          "block_offset_factor": 62,
+          "ramp_duration_table_index": 15
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "31b5cd63c3cddd663d764de4dc6da53809a4b5fc8c5f7907ea77636777d9bdf7",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 62
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 15
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_both_s31_r32",
+        "factor": 62,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 31,
+          "ajoc_ramp_len_minus1": 31,
+          "block_offset_factor": 62,
+          "ramp_duration_table_index": 15
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "ff6ae8a7e6de531cb94cecd5778fa86745751fd0ba40113c1ee62c1de98fb718",
+      "patches": [
+        {
+          "au": 99,
+          "field": "ajoc_start_pos",
+          "point": 0,
+          "bit": 3323450,
+          "width": 5,
+          "value": 0,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 0,
+          "new": 31
+        },
+        {
+          "au": 99,
+          "field": "ajoc_ramp_len_minus1",
+          "point": 0,
+          "bit": 3323455,
+          "width": 6,
+          "value": 31,
+          "region": [
+            3297624,
+            3329928
+          ],
+          "old": 31,
+          "new": 31
+        },
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 62
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 15
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_f01_d0032",
+        "factor": 1,
+        "duration": 32,
+        "changes": {
+          "block_offset_factor": 1,
+          "ramp_duration_table_index": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "8bf3bac46b46485e2ff45de4a301fd1757ff5f09e534110ec7fb24115cf6f70f",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 1
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 0
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_f01_d1001",
+        "factor": 1,
+        "duration": 1001,
+        "changes": {
+          "block_offset_factor": 1,
+          "ramp_duration_table_index": 7
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "63212e6685fdaa3afdb790595b833b67c67b097f2f22105a565be45556edf72e",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 1
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 7
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_f31_d0032",
+        "factor": 31,
+        "duration": 32,
+        "changes": {
+          "block_offset_factor": 31,
+          "ramp_duration_table_index": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "772c5c7a370aeb7c98f9790003540649090e61859431d88fe293ba520449b358",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 31
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 0
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_f31_d1001",
+        "factor": 31,
+        "duration": 1001,
+        "changes": {
+          "block_offset_factor": 31,
+          "ramp_duration_table_index": 7
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "4e7e6c64d88f31c2e32608721b44d78e8a69deaa4d5c04a0f8de835ec48a4bcf",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 31
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 7
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_f63_d0032",
+        "factor": 63,
+        "duration": 32,
+        "changes": {
+          "block_offset_factor": 63,
+          "ramp_duration_table_index": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "8763a29914db05268252cbeac45d68b8ac48b6575b858c5a3f50d196f0f55aa2",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 63
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 0
+        }
+      ]
+    },
+    {
+      "schema": "macinac4.oamd-consumer-patch",
+      "version": 1,
+      "configuration": {
+        "id": "music_99_oamd_f63_d1001",
+        "factor": 63,
+        "duration": 1001,
+        "changes": {
+          "block_offset_factor": 63,
+          "ramp_duration_table_index": 7
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "source_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "variant_sha256": "45e76cd0179e13ac312b0c0178289b8129fc403ae762c11d3e50fc7b53f7c6e8",
+      "patches": [
+        {
+          "au": 99,
+          "field": "block_offset_factor",
+          "point": 0,
+          "bit": 3297590,
+          "width": 6,
+          "value": 0,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 0,
+          "new": 63
+        },
+        {
+          "au": 99,
+          "field": "ramp_duration_table_index",
+          "point": 0,
+          "bit": 3297599,
+          "width": 4,
+          "value": 15,
+          "region": [
+            3297584,
+            3297608
+          ],
+          "old": 15,
+          "new": 7
+        }
+      ]
+    }
+  ]
+}

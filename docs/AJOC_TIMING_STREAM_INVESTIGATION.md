@@ -143,3 +143,7 @@ python3 -m unittest scripts/test_check_ajoc_timing_stream.py
 
 公共生成器已逐字节复现全部 38 份变体及改写凭证。参考扩展使用独立的连续事件检查入口，
 原 `start=0、ramp=32` 历史实验协议保持可复验，不通过放宽旧协议来冒充新覆盖。
+
+2026-10-23 后续 [OAMD 消费边界验证](OAMD_CONSUMER_TIMING_INVESTIGATION.md)已确认
+原生 getter 保留 factor，OAR 实际乘 32；旧 scene 桥接漏乘的失败复现单独保留。
+本报告记录的当时单位缺口由此补齐，A-JOC 绝对同步与端点解释仍保持开放。
