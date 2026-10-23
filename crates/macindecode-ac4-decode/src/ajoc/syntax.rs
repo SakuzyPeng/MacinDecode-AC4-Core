@@ -215,8 +215,12 @@ impl AjocDataPoints {
             ..Self::default()
         };
         for dp in 0..usize::from(out.count) {
+            #[cfg(all(test, feature = "audio-decode"))]
+            let position = reader.bit_position();
             let start = read_u8(reader, 5)?;
             let ramp = read_u8(reader, 6)?;
+            #[cfg(all(test, feature = "audio-decode"))]
+            super::timing_fields::ajoc(position, dp, start, ramp);
             if let Some(slot) = out.start_pos.get_mut(dp) {
                 *slot = start;
             }

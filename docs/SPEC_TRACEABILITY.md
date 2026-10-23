@@ -1543,6 +1543,12 @@ DRP 还表现出独立的输出带宽限制：约 18.0 kHz 开始陡降，18.0�
 
 ### 5.49 A-JOC 参数跨帧时间插值（`5.7.3.4`）
 
+2026-10-23 的[受控码流调查](AJOC_TIMING_STREAM_INVESTIGATION.md)在完整解码中核对
+38 个固定配置及 114 个参考窗口，覆盖非零 start、非 32 ramp、跨帧延续和中断。
+参考实际消费者在命中时隙执行第一步，delta 使用收窄后的倒数乘法，N 次后停止而不钉住。
+本地仍符合下述 P17/P18 判读；该参考行为不单独裁决规范冲突。每帧仍只有一个数据点，
+64 槽的无中断终点及其它帧长没有因此获得真实参考覆盖。
+
 `Pseudocode 17` 的逐系数 `prev_value`/`delta_inc` 与 `Pseudocode 18` 末尾的 `curr_ramp_len`/`target_ramp_len` 属于两个层级：前者分别保存在每个 dry、wet、pre 系数的 rolling 状态中，后者是整个 A-JOC substream 共享的一份时隙游标。实现因此不保存规范注释所写的 `[num_qmf_timeslots][num_qmf_subbands][…]` 展开历史；每个系数只保留 `current`、`target`、`delta`，唯一的时隙入口统一推进三组系数后才把共享游标增加一次。
 
 每个时隙先执行进入该时隙时已有的增量；若 `ts == ajoc_start_pos[dp]`，当前时隙的输出仍是旧 ramp 的结果，随后才以这个 current 计算 `(target - current) / ajoc_ramp_len[dp]`，供下一时隙使用。`Pseudocode 18` 在同一位置把游标重置为零，故一个长度为 `N` 的 ramp 应执行恰好 `N` 次增量；实现以 `completed < ramp_len` 判定，并在第 `N` 次后钉到 target，避免伪码 `<=` 字面产生第 `N + 1` 次增量，也消除重复浮点加法留下的终点尾差。语法将 `ajoc_ramp_len_minus1` 加一，但内部日程构造仍显式拒绝零和大于 64 的长度。
@@ -2035,6 +2041,12 @@ FIFO、ASF PCM 支持区间与 OAMD 整数事件。命中时隙与下一时隙�
 [去相关调查](AJOC_DECORRELATOR_INVESTIGATION.md)则已独立验证本地递推，并在三个
 参考窗口中逐位核对逐时隙 ducker 状态；这支持当前状态更新粒度，但不等于参考与本地
 的滤波表、能量上限、EPSILON 或所有合法分支相同。
+
+随后[受控码流调查](AJOC_TIMING_STREAM_INVESTIGATION.md)固定音频载荷，增加了非零
+起点和不同 ramp 的实际参考消费证据。A-JOC／OAMD 配对显示：OAMD timing 单改不重调
+矩阵插值，组合修改的矩阵与 PCM 等于相同 A-JOC 单改组。原生 OAMDI getter 的偏移字段
+及旧 scene 桥接坐标却未建立非零偏移的采样单位凭证；这项新缺口必须先于绝对时间裁决
+补齐，不能直接把桥接数值或人为乘 32 后的数值当作独立时间 oracle。
 
 与第 6 节不同：这里的每一条都**已经做出选择并写进实现**，只是依据不足以自证。规范在这些地方要么自相矛盾、要么字面与其他条款冲突、要么根本没说。差分参考解码器接上后应逐条核对；在此之前它们是实现里风险最集中的位置。
 

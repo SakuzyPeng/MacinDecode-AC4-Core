@@ -103,6 +103,8 @@ DECODE_LAYERS: dict[str, str] = {
     "ajoc::bands": SYNTAX,
     "ajoc::de": SYNTAX,
     "ajoc::syntax": SYNTAX,
+    # 测试专用的有界字段位置观察，不依赖数值重建。
+    "ajoc::timing_fields": SYNTAX,
     "ajoc::decorrelator": DSP,
     "ajoc::dequant": DSP,
     "ajoc::diff": DSP,

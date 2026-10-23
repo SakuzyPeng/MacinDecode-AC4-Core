@@ -95,3 +95,7 @@ python3 -m unittest scripts/test_check_ajoc_timing.py
 输入摘要、完整输出、检查命令和失败尝试留在核验身份后的 cache 卷。后续若继续裁决时序，
 应增加具有明确 OAMD 事件、非零起点和非 32 ramp 的同源编码材料，保持音频坐标固定；
 去相关／ducker 的本轮独立结果见 [专项报告](AJOC_DECORRELATOR_INVESTIGATION.md)。
+
+2026-10-23 后续已完成[38 组受控码流验证](AJOC_TIMING_STREAM_INVESTIGATION.md)，补充
+非零起点、非整帧 ramp 及 OAMD 配对的实际参考消费证据。插值行为已进一步分离，
+但旧元数据桥接的非零偏移单位尚未验证，绝对时间解释仍保持开放。

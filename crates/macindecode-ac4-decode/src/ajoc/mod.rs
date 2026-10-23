@@ -47,6 +47,8 @@ pub mod interp;
 pub mod reconstruction;
 #[cfg(feature = "metadata-decode")]
 pub mod syntax;
+#[cfg(all(test, feature = "audio-decode"))]
+pub(crate) mod timing_fields;
 
 /// `ajoc_num_dpoints` 的上界。该字段占 2 位，故数据点不超过 3 个。
 pub const MAX_DATA_POINTS: usize = 3;

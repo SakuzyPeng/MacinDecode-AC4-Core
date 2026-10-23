@@ -366,6 +366,8 @@ pub fn parse_substream_ajoc(
     } = workspace;
 
     // 读取器只覆盖音频区段：任何多读都会撞到区段边界，而不会啃进 metadata。
+    #[cfg(all(test, feature = "audio-decode"))]
+    crate::ajoc::timing_fields::audio_region(audio_region);
     let mut reader = BitReader::new(audio_region);
     let audio = parse_audio_data_ajoc(
         &mut reader,
