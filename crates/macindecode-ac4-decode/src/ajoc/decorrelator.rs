@@ -34,6 +34,9 @@ use crate::spec_tables::ajoc::{
 };
 use core::fmt;
 
+#[cfg(test)]
+pub(crate) mod probe;
+
 /// 每个子带的 canonical all-pass 复数状态数。
 pub const ALL_PASS_STATE_LEN: usize = 14;
 
@@ -293,10 +296,14 @@ pub fn process_timeslot(
     let energy = input_energy(input, &map)?;
     let (next_ducker, gains) = update_ducker(&state.ducker, &energy)?;
     let mut candidate = QmfSlot::zero();
+    #[cfg(test)]
+    let mut observation = probe::Observation::new(state);
 
     for sb in 0..SUBBANDS {
         let sample = Complex64::new(f64::from(input.re[sb]), f64::from(input.im[sb]));
         let filtered = filter_sample(kind, sb, sample, &mut state.filters[sb]);
+        #[cfg(test)]
+        observation.filtered(sb, filtered);
         let parameter_band = usize::from(map.column()[sb]);
         let ducked = filtered.scale(f64::from(gains[parameter_band]));
         let re = ducked.re as f32;
@@ -310,6 +317,8 @@ pub fn process_timeslot(
 
     state.ducker = next_ducker;
     *output = candidate;
+    #[cfg(test)]
+    observation.finish(kind, input, &energy, &gains, state, output);
     Ok(())
 }
 

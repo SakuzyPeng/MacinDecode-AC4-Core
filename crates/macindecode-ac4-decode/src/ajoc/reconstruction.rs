@@ -65,6 +65,8 @@ const PRE_TARGET_LEN: usize = MAX_DATA_POINTS * PRE_ROLLING_LEN;
 
 #[cfg(test)]
 pub(crate) mod matrix_probe;
+#[cfg(test)]
+mod timing_probe;
 
 /// 会改变跨帧 rolling 与 decorrelator 状态布局的 A-JOC 拓扑。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -503,6 +505,11 @@ pub fn reconstruct_frame(
     crate::full_ajoc::input_probe::consume(ajoc, controls, raw, num_qmf_timeslots, input);
     #[cfg(test)]
     matrix_probe::start(ajoc, controls, raw, dimensions, input, state);
+    #[cfg(test)]
+    super::decorrelator::probe::frame(
+        dimensions.timeslots,
+        &dimensions.decorr_enabled[..dimensions.num_decorr],
+    );
 
     #[cfg(feature = "ajoc-reconstruction-split-profile")]
     prepare_reconstruction_candidate(state, workspace, output);
@@ -869,6 +876,8 @@ fn process_timeslots(
                     num_decorr: dimensions.shape.num_decorr,
                 },
             )?;
+            #[cfg(test)]
+            super::decorrelator::probe::instance(timeslot, decorrelator);
             super::decorrelator::process_timeslot(
                 kind,
                 &u[decorrelator],

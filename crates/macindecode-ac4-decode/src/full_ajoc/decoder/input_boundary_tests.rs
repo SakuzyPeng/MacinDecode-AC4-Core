@@ -61,6 +61,31 @@ fn equal_qmf(a: &[crate::aspx::qmf::QmfSlot], b: &[crate::aspx::qmf::QmfSlot]) {
     }
 }
 
+fn timing_json(timing: Option<OamdTimingData>) -> String {
+    let Some(t) = timing else {
+        return String::from("null");
+    };
+    let blocks: Vec<_> = t
+        .blocks()
+        .iter()
+        .map(|b| {
+            format!(
+                "{{\"factor\":{},\"ramp\":{},\"code\":{},\"encoding\":\"{:?}\"}}",
+                b.block_offset_factor,
+                b.ramp_duration,
+                b.ramp_duration_code,
+                b.ramp_duration_encoding,
+            )
+        })
+        .collect();
+    format!(
+        "{{\"sample_offset\":{},\"offset_source\":\"{:?}\",\"blocks\":[{}]}}",
+        t.sample_offset,
+        t.offset_source,
+        blocks.join(",")
+    )
+}
+
 // P2 5.7.2.1 / P14a 的独立下标公式，不调用 ajoc_input_order、aspx_jobs 或 ajoc_slots。
 fn expected_sources(fullband: usize, lfe: bool) -> Vec<usize> {
     let offset = if fullband > 3 { 2 + fullband % 2 } else { 0 };
@@ -126,6 +151,12 @@ fn capture() {
     if matrix_capture {
         std::fs::create_dir(destination.join("matrix")).unwrap();
     }
+    let decorr_capture = std::env::var_os("MACINAC4_AJOC_DECORR").is_some();
+    if decorr_capture {
+        std::fs::create_dir(destination.join("decorrelator")).unwrap();
+    }
+    let mut timeline =
+        BufWriter::new(File::create_new(destination.join("timeline.jsonl")).unwrap());
     let data = std::fs::read(input).unwrap();
     let mut decoder = FullAjocDecoder::new();
     let mut group_oamd = OamdState::new();
@@ -232,6 +263,13 @@ fn capture() {
                 selected.contains(&(index + 1)),
             );
         }
+        if decorr_capture {
+            crate::ajoc::decorrelator::probe::select(
+                destination.join("decorrelator"),
+                index + 1,
+                selected.contains(&(index + 1)),
+            );
+        }
         let decoded = decoder
             .decode_complete_audio_frame(FullAjocAudioFrameInput {
                 syntax: FullAjocSyntaxFrameInput {
@@ -258,6 +296,30 @@ fn capture() {
             .unwrap();
         let syntax = decoded.frontend().syntax().observation();
         let parsed = syntax.parsed();
+        let side = decoded.output().aligned_side_information();
+        let origin = side.and_then(|s| s.provenance().source_sample_start());
+        let starts: Vec<_> = (0..usize::from(parsed.audio.ajoc.data_points.count))
+            .map(|i| parsed.audio.ajoc.data_points.start_pos(i).unwrap())
+            .collect();
+        let ramps: Vec<_> = (0..usize::from(parsed.audio.ajoc.data_points.count))
+            .map(|i| parsed.audio.ajoc.data_points.ramp_len_minus1(i).unwrap() + 1)
+            .collect();
+        let effective = side.and_then(|s| s.umx_effective_oamd_timing().effective());
+        let events: Vec<_> = effective.map_or_else(Vec::new, |t| {
+            t.blocks()
+                .iter()
+                .map(|b| {
+                    origin.unwrap() + i64::from(t.sample_offset) + i64::from(b.offset_samples())
+                })
+                .collect()
+        });
+        writeln!(timeline, "{{\"au\":{},\"input_sample_start\":{sample_start},\"samples\":{length},\"consumer_qmf_base\":{},\"source_sample_start\":{},\"pcm_delay\":{delay},\"aspx_delay\":6,\"raw_starts\":{starts:?},\"raw_ramps\":{ramps:?},\"group_timing\":{},\"raw_dmx\":{},\"raw_umx\":{},\"derive\":{},\"applied_dmx\":{},\"applied_umx\":{},\"oamd_events\":{events:?}}}",
+            index + 1, sample_start / 64,
+            origin.map_or_else(|| String::from("null"), |n| format!("{n}")),
+            timing_json(timing), timing_json(parsed.audio.dmx_timing), timing_json(parsed.audio.umx_timing),
+            parsed.audio.derive_timing_from_dmx.map_or_else(|| String::from("null"), |v| format!("{v}")),
+            timing_json(side.and_then(|s| s.dmx_effective_oamd_timing().effective())),
+            timing_json(effective)).unwrap();
         let element = parsed.audio.var_element;
         let fullband = usize::from(element.n_dmx_signals);
         let channels = fullband + usize::from(element.b_has_lfe);
@@ -405,12 +467,16 @@ fn capture() {
         previous_pcm = core;
         sample_start += length as i64;
         count += 1;
+        if decorr_capture {
+            crate::ajoc::decorrelator::probe::finish_frame();
+        }
     }
     assert_eq!(selected, observed);
     assert!(count > 1);
     core_file.flush().unwrap();
     object_file.flush().unwrap();
     rows.flush().unwrap();
+    timeline.flush().unwrap();
     std::println!(
         "A-JOC input boundary: {count} complete AUs, {} selected",
         selected.len()
