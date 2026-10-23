@@ -1,0 +1,835 @@
+{
+  "schema": "macinac4.oamd-bridge-fix",
+  "version": 1,
+  "scope": "private reference scene bridge only",
+  "coordinate": "oar_input_pcm",
+  "fixed_expression": "sample += (int64_t)block_offset * 32",
+  "old_source_sha256": "ce0c4cb4051e0237750893251fbb6f92ca7f2103fbe21c5fd23dfe75b059b949",
+  "fixed_source_sha256": "9cbbddb864a1c1c6879df2995a51bdafc940c1322a446e1f19a3b7f8f853401b",
+  "old_adapter_sha256": "6a0b5f7a97ee0bcc33ae03bfca10b83a7c18002c3bea6d5990c68dbbcb87fe93",
+  "fixed_adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+  "consumer_evidence_sha256": "a6dc3cc80718a13483f48ca43f7ae94cc1245fb12277695c5c39817b05c2d628",
+  "source_sha256": {
+    "scripts/check_oamd_consumer_timing.py": "9fba12179dadbdc92831fba383e88fbad849f537734eac62caf9a9aafa67c246",
+    "scripts/test_check_oamd_consumer_timing.py": "878716e94c1fd33379517ee977069d0820351abb1b0b7c226b0957531da3b204"
+  },
+  "private_verifier_sha256": "6bd62f41a5c671443ab58088c2210c107af75527998f3aeccc1b1e4aff157549",
+  "cases": [
+    {
+      "id": "music_99_ajoc_s00_r32",
+      "factor": 0,
+      "duration": 2048,
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "legacy_still_fails": false,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s01_r01",
+      "factor": 0,
+      "duration": 2048,
+      "input_sha256": "58eb9aaaf44aa81047f4b74a54c8606d6b3f64b6885b0b7a745131226818fb49",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "legacy_still_fails": false,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_s01_r01",
+      "factor": 2,
+      "duration": 64,
+      "input_sha256": "9e6f85a8d831c1e310acc0625951b1ae533a0147fbeb4f6642518d7ed0392bb3",
+      "legacy_scene_sha256": "749cd406ba463da374514237e83ac9e098b90fca0a7c4f492436d2ca11366e2a",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+          "scene_sha256": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203106,
+              "after": 203168,
+              "delta": 62
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+          "scene_sha256": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203106,
+              "after": 203168,
+              "delta": 62
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_both_s01_r01",
+      "factor": 2,
+      "duration": 64,
+      "input_sha256": "9737f29fd0accf8a9d728b77dd60bfd1a0e95260ff57cda8e0b486fe5fbcafe3",
+      "legacy_scene_sha256": "749cd406ba463da374514237e83ac9e098b90fca0a7c4f492436d2ca11366e2a",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+          "oamd_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+          "scene_sha256": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203106,
+              "after": 203168,
+              "delta": 62
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+          "oamd_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+          "scene_sha256": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203106,
+              "after": 203168,
+              "delta": 62
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s15_r02",
+      "factor": 0,
+      "duration": 2048,
+      "input_sha256": "c818dd622338566b9954610f5af35424bd19ee1bf3b5e9c4100cf0edce9d72f3",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "legacy_still_fails": false,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_s15_r02",
+      "factor": 30,
+      "duration": 128,
+      "input_sha256": "bc0d60f62675378f42dd793b5862cc49dc8a57ae25125b95d3a06477366c43ae",
+      "legacy_scene_sha256": "b1b62021dbd18c738f1e775d82ef4bc34d2006f41e4a20fb0a5ed784b6a7bbe6",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+          "scene_sha256": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203134,
+              "after": 204064,
+              "delta": 930
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+          "scene_sha256": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203134,
+              "after": 204064,
+              "delta": 930
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_both_s15_r02",
+      "factor": 30,
+      "duration": 128,
+      "input_sha256": "f837b23e8a57f01041a0fe31df8fab52180400cca13a2d2fea45c4d0bb0cc31f",
+      "legacy_scene_sha256": "b1b62021dbd18c738f1e775d82ef4bc34d2006f41e4a20fb0a5ed784b6a7bbe6",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+          "oamd_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+          "scene_sha256": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203134,
+              "after": 204064,
+              "delta": 930
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+          "oamd_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+          "scene_sha256": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203134,
+              "after": 204064,
+              "delta": 930
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s31_r32",
+      "factor": 0,
+      "duration": 2048,
+      "input_sha256": "ebfc8c93da898467cf8a7ea694152502d7ad0e8e7aa888cf7a39e5c088452b6a",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "legacy_still_fails": false,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+          "oamd_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+          "scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_s31_r32",
+      "factor": 62,
+      "duration": 2048,
+      "input_sha256": "31b5cd63c3cddd663d764de4dc6da53809a4b5fc8c5f7907ea77636777d9bdf7",
+      "legacy_scene_sha256": "12e1d6872a43cae67d434a21c8d7b3922222d173f8adcde48418f9b0e51443de",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+          "scene_sha256": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203166,
+              "after": 205088,
+              "delta": 1922
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+          "scene_sha256": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203166,
+              "after": 205088,
+              "delta": 1922
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_both_s31_r32",
+      "factor": 62,
+      "duration": 2048,
+      "input_sha256": "ff6ae8a7e6de531cb94cecd5778fa86745751fd0ba40113c1ee62c1de98fb718",
+      "legacy_scene_sha256": "12e1d6872a43cae67d434a21c8d7b3922222d173f8adcde48418f9b0e51443de",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+          "oamd_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+          "scene_sha256": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203166,
+              "after": 205088,
+              "delta": 1922
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+          "oamd_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+          "scene_sha256": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203166,
+              "after": 205088,
+              "delta": 1922
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f01_d0032",
+      "factor": 1,
+      "duration": 32,
+      "input_sha256": "8bf3bac46b46485e2ff45de4a301fd1757ff5f09e534110ec7fb24115cf6f70f",
+      "legacy_scene_sha256": "470c926958495ecb1c0345be961b9fd5dd7da534e784d4dc6d9267c7bc187aab",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7",
+          "scene_sha256": "4e23af7f24656d529b993cb82ed2f124681822c63c222475e06ef47425f71f4c",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203105,
+              "after": 203136,
+              "delta": 31
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7",
+          "scene_sha256": "4e23af7f24656d529b993cb82ed2f124681822c63c222475e06ef47425f71f4c",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203105,
+              "after": 203136,
+              "delta": 31
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "factor": 1,
+      "duration": 1001,
+      "input_sha256": "63212e6685fdaa3afdb790595b833b67c67b097f2f22105a565be45556edf72e",
+      "legacy_scene_sha256": "02ed44c66be203024021016f378647750354218a3622e967680f866dd78141a9",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4",
+          "scene_sha256": "993bc8ce2c17e23c97b4a7d8c6d05069f612ce148d7fba95567b9cc546990044",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203105,
+              "after": 203136,
+              "delta": 31
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4",
+          "scene_sha256": "993bc8ce2c17e23c97b4a7d8c6d05069f612ce148d7fba95567b9cc546990044",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203105,
+              "after": 203136,
+              "delta": 31
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "factor": 31,
+      "duration": 32,
+      "input_sha256": "772c5c7a370aeb7c98f9790003540649090e61859431d88fe293ba520449b358",
+      "legacy_scene_sha256": "8e657ca8985633e0ab867e7778c6a81f243a0fc58706b60cecf057c9b0dca907",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d",
+          "scene_sha256": "a2b301c87da99524d12ff71ca94957f4f91495989f29ca08f41988a70e7523bc",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203135,
+              "after": 204096,
+              "delta": 961
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d",
+          "scene_sha256": "a2b301c87da99524d12ff71ca94957f4f91495989f29ca08f41988a70e7523bc",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203135,
+              "after": 204096,
+              "delta": 961
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f31_d1001",
+      "factor": 31,
+      "duration": 1001,
+      "input_sha256": "4e7e6c64d88f31c2e32608721b44d78e8a69deaa4d5c04a0f8de835ec48a4bcf",
+      "legacy_scene_sha256": "b2b0533a8869234679c3248806cd66e7ae3234ceb448e76511e1512f3d7e9f96",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab",
+          "scene_sha256": "0a8e7f7f755fd63cf1fa861f22276a5dd8afc98d8835408bdaaf046049704194",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203135,
+              "after": 204096,
+              "delta": 961
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab",
+          "scene_sha256": "0a8e7f7f755fd63cf1fa861f22276a5dd8afc98d8835408bdaaf046049704194",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203135,
+              "after": 204096,
+              "delta": 961
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "factor": 63,
+      "duration": 32,
+      "input_sha256": "8763a29914db05268252cbeac45d68b8ac48b6575b858c5a3f50d196f0f55aa2",
+      "legacy_scene_sha256": "2c2be7a7cd2e051bd9ca7be7b7ab9412915ae849b81ba9be6214be6359f36f06",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c",
+          "scene_sha256": "00e2814e181ed97f55cb151ef24c994991fde7cd48a7a79e014d0b16cad0e154",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203167,
+              "after": 205120,
+              "delta": 1953
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c",
+          "scene_sha256": "00e2814e181ed97f55cb151ef24c994991fde7cd48a7a79e014d0b16cad0e154",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203167,
+              "after": 205120,
+              "delta": 1953
+            }
+          ],
+          "finite": true
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f63_d1001",
+      "factor": 63,
+      "duration": 1001,
+      "input_sha256": "45e76cd0179e13ac312b0c0178289b8129fc403ae762c11d3e50fc7b53f7c6e8",
+      "legacy_scene_sha256": "84ec32852ea685622b93e52edff6009222dfabb280202cab666ca9a02dcc5cc7",
+      "legacy_still_fails": true,
+      "objects_and_nontiming_bytes_unchanged": true,
+      "runs": [
+        {
+          "mode": "baseline",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a",
+          "scene_sha256": "a873d005c70899a98d35b6c6ff7b09aaf29e2ef337bd20893df9cf5a9fd13083",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203167,
+              "after": 205120,
+              "delta": 1953
+            }
+          ],
+          "finite": true
+        },
+        {
+          "mode": "baseline_confirm",
+          "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+          "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+          "oamd_sha256": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a",
+          "scene_sha256": "a873d005c70899a98d35b6c6ff7b09aaf29e2ef337bd20893df9cf5a9fd13083",
+          "returncode": 0,
+          "aus": 400,
+          "changes": [
+            {
+              "event": 100,
+              "before": 203167,
+              "after": 205120,
+              "delta": 1953
+            }
+          ],
+          "finite": true
+        }
+      ]
+    }
+  ],
+  "excluded_attempts": [
+    {
+      "id": "music_99_oamd_s01_r01",
+      "mode": "baseline",
+      "attempt": 0,
+      "returncode": -999,
+      "calls": 400
+    },
+    {
+      "id": "music_99_both_s01_r01",
+      "mode": "baseline",
+      "attempt": 0,
+      "returncode": -11,
+      "calls": 0
+    },
+    {
+      "id": "music_99_oamd_s15_r02",
+      "mode": "baseline",
+      "attempt": 0,
+      "returncode": -5,
+      "calls": 400
+    },
+    {
+      "id": "music_99_both_s15_r02",
+      "mode": "baseline_confirm",
+      "attempt": 0,
+      "returncode": -5,
+      "calls": 400
+    },
+    {
+      "id": "music_99_both_s31_r32",
+      "mode": "baseline",
+      "attempt": 0,
+      "returncode": -5,
+      "calls": 400
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "mode": "baseline_confirm",
+      "attempt": 0,
+      "returncode": -5,
+      "calls": 400
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "mode": "baseline_confirm",
+      "attempt": 1,
+      "returncode": 0,
+      "calls": 400
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "mode": "baseline_confirm",
+      "attempt": 0,
+      "returncode": -5,
+      "calls": 400
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "mode": "baseline_confirm",
+      "attempt": 1,
+      "returncode": -5,
+      "calls": 0
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "mode": "baseline_confirm",
+      "attempt": 2,
+      "returncode": -999,
+      "calls": 400
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "mode": "baseline_confirm",
+      "attempt": 0,
+      "returncode": -11,
+      "calls": 400
+    }
+  ],
+  "coverage": {
+    "configurations": 16,
+    "complete_independent_runs": 32,
+    "aus_per_run": 400,
+    "changed_cases": 12,
+    "unchanged_cases": 4,
+    "legacy_failures_preserved": 12
+  },
+  "production_unchanged": true,
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "target/release/macinac4": "5dc0e1917eac05429e33c3f0e900f08eb6848bbc66a4b67e10fca0ee017e45e6",
+    "spec/ts_10319001v010401p.pdf": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f",
+    "spec/ts_10319002v010301p.pdf": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/MacOS/drp": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/PlugIns/gst-plugins-libs/libdlb_metalib.dylib": "85514ded626be2020b6497963f5fcc122790d31672515028b605ea2e20ccda64",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/PlugIns/gst-plugins-libs/libdlb_oarlib.dylib": "89a42253b55dd2b285fc8f12b50e661a03c23c8d543c83fe869701c0857ca218"
+  },
+  "resources": {
+    "volume_uuid": "9622A0A8-E856-4F83-9B15-A0D650B862AC",
+    "duplicate_pcm_removed_bytes": 1101004800
+  },
+  "tests": {
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "scripts/test_check_oamd_consumer_timing.py",
+      "scripts/test_check_ajoc_timing_stream.py"
+    ],
+    "passed": 36
+  },
+  "installation": {
+    "active": true,
+    "revision": "oamd-offset32-v1",
+    "profile_sha256": "8e718c12d55937b7f460b74e75d88a7aeede975c93f288d3ad273b2a28ad4270",
+    "current_index_sha256": "ada974160a76fa06224f61d34bcd6cd91fcc5c31f1b0a1b215f2d1fbdfe1e10d",
+    "legacy_snapshots_preserved": true
+  }
+}

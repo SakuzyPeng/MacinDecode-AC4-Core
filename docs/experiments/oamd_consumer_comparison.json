@@ -1,0 +1,2118 @@
+{
+  "schema": "macinac4.oamd-consumer-evidence",
+  "version": 1,
+  "base_commit": "6b55ce7104c3dc978a5efbf0cc1cab7b032f47a6",
+  "cases_sha256": "8b17a9ddb9364262fa714380118d6c79dac5d39ed547547aa57b5806eea409d9",
+  "source_sha256": {
+    "scripts/check_oamd_consumer_timing.py": "9fba12179dadbdc92831fba383e88fbad849f537734eac62caf9a9aafa67c246",
+    "scripts/test_check_oamd_consumer_timing.py": "878716e94c1fd33379517ee977069d0820351abb1b0b7c226b0957531da3b204",
+    "crates/macindecode-ac4-scene/src/oamd_timing_tests.rs": "99c377962ddaff9fda41b27809f73aa2c2eb879f2ae3e6239b1d6c20bfb096b8",
+    "crates/macindecode-ac4-scene/src/lib.rs": "ccd1ceaa8653d1e6d0eb4ccdc5071052d9278ede15f2e66f13a96a844c07c0f2",
+    ".github/workflows/ci.yml": "9825e51c715e019b4728cee2d245fbb138c53a0d04c170b744457753c50ae6c9"
+  },
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "target/release/macinac4": "5dc0e1917eac05429e33c3f0e900f08eb6848bbc66a4b67e10fca0ee017e45e6",
+    "spec/ts_10319001v010401p.pdf": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f",
+    "spec/ts_10319002v010301p.pdf": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/MacOS/drp": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/PlugIns/gst-plugins-libs/libdlb_metalib.dylib": "85514ded626be2020b6497963f5fcc122790d31672515028b605ea2e20ccda64",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/PlugIns/gst-plugins-libs/libdlb_oarlib.dylib": "89a42253b55dd2b285fc8f12b50e661a03c23c8d543c83fe869701c0857ca218"
+  },
+  "spec": {
+    "timing_clause": "TS103190-2:v1.3.1:5.9.2",
+    "timing_page": 98,
+    "ramp_table": 95,
+    "ramp_page": 186,
+    "ramp_values": [
+      32,
+      64,
+      128,
+      256,
+      320,
+      480,
+      1000,
+      1001,
+      1024,
+      1600,
+      1601,
+      1602,
+      1920,
+      2000,
+      2002,
+      2048
+    ],
+    "visual_review": true,
+    "independent_text_table_check": true
+  },
+  "coverage": {
+    "configurations": 16,
+    "new_odd_factor_cases": 6,
+    "oar_runs": 64,
+    "blocks_per_run": 400,
+    "observed_processes_per_case": 2,
+    "queries_per_capture": 4474,
+    "valid_consumer_centres_per_case": 256,
+    "scene_events": 134064,
+    "native_offset_source": "implicit",
+    "native_blocks": 1,
+    "native_frame_samples": 2048,
+    "full_original_object_samples": 25460736,
+    "render_gain_curves_verified": false,
+    "ajoc_absolute_synchronization_adjudicated": false
+  },
+  "observer": {
+    "method": "fixed hardware instruction sites with exact integer instruction semantics",
+    "original_library_files_unchanged": true,
+    "full_unobserved_pcm_match": true,
+    "trace_byte_repeat": true,
+    "private_source_sha256": {
+      "oar_replay.c": "8364233b7911d15ba8475c605d1e3f1660590e3c2ff684c4217035d3dd28a203",
+      "oar_observe.h": "e5e089cd8252b0ea7fa9379bf5be980cd24a4297acac7c7c9c8b206bac98214e",
+      "oar_replay": "88c8b45530be5559aec0f0298d0211853231ab7e6e9425e2372164ee83e20bf8",
+      "run_oar.py": "d5e25bb8c758c3e0421501bb0809dae6e8d61b11e84c1c2396ef4bcb40da5d57"
+    },
+    "no_status_return_from_oar_process": true,
+    "private_instruction_evidence_sha256": {
+      "payload_acceptance.disassembly.txt": "60b849f0f356fb554cc7108be54071f26d78f9885f01d5eb06cbdc03268d7c27",
+      "block_timing.disassembly.txt": "ea5eadba20936150524478184d1b1b9f60155f34da9382ed4c17c943881bd671",
+      "queue_coordinate.disassembly.txt": "3da068bc455cae64f4240e1d2c3e83c01ecd34fb07ac01251692d5c80628be61",
+      "query_clock.disassembly.txt": "97750057e5db8215a3b9f677be3994476e2df7658db16331a5804b0adc9f61c9",
+      "latency.disassembly.txt": "20b13de3abab6b9cc412d9a2d2fb814ccbcd81a5cb219a4b948de08b1a500d2f"
+    }
+  },
+  "comparison": [
+    {
+      "configuration": {
+        "id": "music_99_ajoc_s00_r32",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {},
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200704,
+          "scene_sample": 202752,
+          "ramp": 2048
+        }
+      },
+      "reference_pcm_sha256": "c430c994f0d8c8b39d5028c8f84d334bc9c0d0d40f80eda928fafb108c4e5276",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37"
+    },
+    {
+      "configuration": {
+        "id": "music_99_ajoc_s01_r01",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 1,
+          "ajoc_ramp_len_minus1": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200704,
+          "scene_sample": 202752,
+          "ramp": 2048
+        }
+      },
+      "reference_pcm_sha256": "6b54b928fef0df1886d6770327f8914cf4576aea4840ddfc99743a45ddd10e1d",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "input_pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+      "input_payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_s01_r01",
+        "factor": 2,
+        "duration": 64,
+        "changes": {
+          "block_offset_factor": 2,
+          "ramp_duration_table_index": 1
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 258,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203184,
+          "relative_query": 80,
+          "active": true,
+          "remaining": 48,
+          "scheduled_sample": 203168
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203168
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200768,
+          "scene_sample": 202816,
+          "ramp": 64
+        }
+      },
+      "reference_pcm_sha256": "7a0677906e15bc9b96f72ff323ad3938aaa4b20d06815dd3164ccc91eaaf19d5",
+      "trace_sha256": "f44f0ed6cd8d98c6c1ac097f64fb86bb8486ced67bc94db7fa84faa23fa0cdec",
+      "scene_sha256": "48f2993c152275971a51747946eee8d564163863ded60bf61509592a0ee04bb3",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a"
+    },
+    {
+      "configuration": {
+        "id": "music_99_both_s01_r01",
+        "factor": 2,
+        "duration": 64,
+        "changes": {
+          "ajoc_start_pos": 1,
+          "ajoc_ramp_len_minus1": 0,
+          "block_offset_factor": 2,
+          "ramp_duration_table_index": 1
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 258,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203184,
+          "relative_query": 80,
+          "active": true,
+          "remaining": 48,
+          "scheduled_sample": 203168
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203168
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200768,
+          "scene_sample": 202816,
+          "ramp": 64
+        }
+      },
+      "reference_pcm_sha256": "b076f3494fbe00574339db44cb9e61edbdecede75046e43ddee21c3c08a49f2f",
+      "trace_sha256": "f44f0ed6cd8d98c6c1ac097f64fb86bb8486ced67bc94db7fa84faa23fa0cdec",
+      "scene_sha256": "48f2993c152275971a51747946eee8d564163863ded60bf61509592a0ee04bb3",
+      "input_pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+      "input_payload_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a"
+    },
+    {
+      "configuration": {
+        "id": "music_99_ajoc_s15_r02",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 15,
+          "ajoc_ramp_len_minus1": 1
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200704,
+          "scene_sample": 202752,
+          "ramp": 2048
+        }
+      },
+      "reference_pcm_sha256": "96ec897babe96d35ff3399c9fb37212f0c40925a4a43ccdf8d2d534459f0e76a",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "input_pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+      "input_payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_s15_r02",
+        "factor": 30,
+        "duration": 128,
+        "changes": {
+          "block_offset_factor": 30,
+          "ramp_duration_table_index": 2
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 286,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204080,
+          "relative_query": 976,
+          "active": true,
+          "remaining": 112,
+          "scheduled_sample": 204064
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204064
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 201664,
+          "scene_sample": 203712,
+          "ramp": 128
+        }
+      },
+      "reference_pcm_sha256": "fb3d7cc836e9ba7e05346cb54e7cb23a182de90eef59fea98409321fa7b9f506",
+      "trace_sha256": "06239a325d7583b8d600b2b8f821b80798875404fd575c3b9034ae33c75119f2",
+      "scene_sha256": "d64cee9e5d1325e1dcbe5381a413dc781d53f74e548b3a3c774222c196602567",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c"
+    },
+    {
+      "configuration": {
+        "id": "music_99_both_s15_r02",
+        "factor": 30,
+        "duration": 128,
+        "changes": {
+          "ajoc_start_pos": 15,
+          "ajoc_ramp_len_minus1": 1,
+          "block_offset_factor": 30,
+          "ramp_duration_table_index": 2
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 286,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204080,
+          "relative_query": 976,
+          "active": true,
+          "remaining": 112,
+          "scheduled_sample": 204064
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204064
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 201664,
+          "scene_sample": 203712,
+          "ramp": 128
+        }
+      },
+      "reference_pcm_sha256": "6745566a711a15054cb0c220b62e81936f5437bb7b38af0f459c4c2b96ba4bfe",
+      "trace_sha256": "06239a325d7583b8d600b2b8f821b80798875404fd575c3b9034ae33c75119f2",
+      "scene_sha256": "d64cee9e5d1325e1dcbe5381a413dc781d53f74e548b3a3c774222c196602567",
+      "input_pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+      "input_payload_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c"
+    },
+    {
+      "configuration": {
+        "id": "music_99_ajoc_s31_r32",
+        "factor": 0,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 31,
+          "ajoc_ramp_len_minus1": 31
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200704,
+          "scene_sample": 202752,
+          "ramp": 2048
+        }
+      },
+      "reference_pcm_sha256": "9ee92982b143d3c0cab76baa91ed5523af5a48d97c110d707f9630a761511d0e",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "input_pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+      "input_payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_s31_r32",
+        "factor": 62,
+        "duration": 2048,
+        "changes": {
+          "block_offset_factor": 62,
+          "ramp_duration_table_index": 15
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 318,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205104,
+          "relative_query": 2000,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 205088
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 2000,
+          "scheduled_sample": 205088
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 202688,
+          "scene_sample": 204736,
+          "ramp": 2048
+        }
+      },
+      "reference_pcm_sha256": "c66e3fd63dee494d6fba5e3d659053b929f6832c14e64d2a201c708b06c562da",
+      "trace_sha256": "b9470b70d11a5bcff2098555192f45c2c0989402276893980e24d5b9bcfb9cf1",
+      "scene_sha256": "7900c1f08423693131029f8098c1f7e852b72e78c180b305f4dd85cbcf72842f",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a"
+    },
+    {
+      "configuration": {
+        "id": "music_99_both_s31_r32",
+        "factor": 62,
+        "duration": 2048,
+        "changes": {
+          "ajoc_start_pos": 31,
+          "ajoc_ramp_len_minus1": 31,
+          "block_offset_factor": 62,
+          "ramp_duration_table_index": 15
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": true
+      },
+      "native": {
+        "calls": 400,
+        "queries": 318,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205104,
+          "relative_query": 2000,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 205088
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 2000,
+          "scheduled_sample": 205088
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 202688,
+          "scene_sample": 204736,
+          "ramp": 2048
+        }
+      },
+      "reference_pcm_sha256": "fda085591c2dcaa52a5deb59778a7573f2d246cfbaa40d06fc7e3efb4c1a5fd6",
+      "trace_sha256": "b9470b70d11a5bcff2098555192f45c2c0989402276893980e24d5b9bcfb9cf1",
+      "scene_sha256": "7900c1f08423693131029f8098c1f7e852b72e78c180b305f4dd85cbcf72842f",
+      "input_pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+      "input_payload_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_f01_d0032",
+        "factor": 1,
+        "duration": 32,
+        "changes": {
+          "block_offset_factor": 1,
+          "ramp_duration_table_index": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "native": {
+        "calls": 400,
+        "queries": 257,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203152,
+          "relative_query": 48,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203136
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203136
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200736,
+          "scene_sample": 202784,
+          "ramp": 32
+        }
+      },
+      "reference_pcm_sha256": "3c40db10840cf6c3a1a67b68fff9248f37c12bb1f8453837332bb7db57b96934",
+      "trace_sha256": "c483647e647ec8e394c887f31512e2c934fc26b5359d2f23c53d430b6a344ddb",
+      "scene_sha256": "363e356e44e1f94df2d88a3eaaa9e71b3a7626332119e1875cf3d044a229d9e8",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_f01_d1001",
+        "factor": 1,
+        "duration": 1001,
+        "changes": {
+          "block_offset_factor": 1,
+          "ramp_duration_table_index": 7
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "native": {
+        "calls": 400,
+        "queries": 257,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203152,
+          "relative_query": 48,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 203136
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203136
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 200736,
+          "scene_sample": 202784,
+          "ramp": 1001
+        }
+      },
+      "reference_pcm_sha256": "f557c42bd4a139db0c3b55d3e1988db19430bdf603100884d27b430fa9d2e1d3",
+      "trace_sha256": "af3614c24061945573539345c32a0a7205dbd4ce9307cf8efe8f33e98214ed1f",
+      "scene_sha256": "1812037289ad929456f1cb553f22a529b144b1954633543440c2d80f17a9fa19",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_f31_d0032",
+        "factor": 31,
+        "duration": 32,
+        "changes": {
+          "block_offset_factor": 31,
+          "ramp_duration_table_index": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "native": {
+        "calls": 400,
+        "queries": 287,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204112,
+          "relative_query": 1008,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 204096
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204096
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 201696,
+          "scene_sample": 203744,
+          "ramp": 32
+        }
+      },
+      "reference_pcm_sha256": "d7587a1ec788e41fcb0ce174a35553c5468fbab29e890705fdf31590a5168035",
+      "trace_sha256": "e0553602dbefcd298aba3baf87efa88c9deb9cff4ddb9e1f95f1551df4ae3484",
+      "scene_sha256": "9c4741f1a313bca51c41bfa4221279ddb87053e2aa6e28d14b4f75172a64a2ce",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_f31_d1001",
+        "factor": 31,
+        "duration": 1001,
+        "changes": {
+          "block_offset_factor": 31,
+          "ramp_duration_table_index": 7
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "native": {
+        "calls": 400,
+        "queries": 287,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204112,
+          "relative_query": 1008,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 204096
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204096
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 201696,
+          "scene_sample": 203744,
+          "ramp": 1001
+        }
+      },
+      "reference_pcm_sha256": "167567c53500158776d6c95290cbef3aa06f82f62454ce2e55063425ee23fd49",
+      "trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "scene_sha256": "1e13133bba36688297248ef34f74cf30ef881e93a5a6f844bbd98995e08a10fd",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_f63_d0032",
+        "factor": 63,
+        "duration": 32,
+        "changes": {
+          "block_offset_factor": 63,
+          "ramp_duration_table_index": 0
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "native": {
+        "calls": 400,
+        "queries": 319,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 205120
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 205120
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 202720,
+          "scene_sample": 204768,
+          "ramp": 32
+        }
+      },
+      "reference_pcm_sha256": "5717dc779caf42a04efaaee4bb5c7641adc63902bbf36b5d27db5e08098e6b5c",
+      "trace_sha256": "ad2bc047a0887bea3e8f5802561b46c0c8500723d4f587056f674e378e78b4b4",
+      "scene_sha256": "5e002712b7beeb7e008db9a7cd660b02fd56e330aa220db499013e5ad3b85b9f",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c"
+    },
+    {
+      "configuration": {
+        "id": "music_99_oamd_f63_d1001",
+        "factor": 63,
+        "duration": 1001,
+        "changes": {
+          "block_offset_factor": 63,
+          "ramp_duration_table_index": 7
+        },
+        "raw_au": 99,
+        "consumer_au": 100,
+        "reused": false
+      },
+      "native": {
+        "calls": 400,
+        "queries": 319,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 205120
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 205120
+        },
+        "target_query_count": 64
+      },
+      "scene": {
+        "aus": 400,
+        "events": 8379,
+        "target_object_count": 21,
+        "target_timing": {
+          "source_sample": 202720,
+          "scene_sample": 204768,
+          "ramp": 1001
+        }
+      },
+      "reference_pcm_sha256": "14ce48e368624cadaaacff8dbc58aef13a9784613168646872c5b7d9148c5032",
+      "trace_sha256": "7984968e3abfe7a234a5efc513398e4011bc1852866c5e32339a8333e53de31f",
+      "scene_sha256": "ef464d14fc6f05c75d2f16f086c31f4d4867d788c562fdef0683fdd48c30551d",
+      "input_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "input_payload_sha256": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a"
+    }
+  ],
+  "fixed_input": [
+    {
+      "id": "music_99_ajoc_s00_r32",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37"
+    },
+    {
+      "id": "music_99_oamd_s01_r01",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a"
+    },
+    {
+      "id": "music_99_oamd_s15_r02",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c"
+    },
+    {
+      "id": "music_99_oamd_s31_r32",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a"
+    },
+    {
+      "id": "music_99_oamd_f01_d0032",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7"
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4"
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d"
+    },
+    {
+      "id": "music_99_oamd_f31_d1001",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab"
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c"
+    },
+    {
+      "id": "music_99_oamd_f63_d1001",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "metadata_sha256": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a"
+    }
+  ],
+  "paired_controls": [
+    {
+      "payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+      "ids": [
+        "music_99_ajoc_s00_r32",
+        "music_99_ajoc_s01_r01",
+        "music_99_ajoc_s15_r02",
+        "music_99_ajoc_s31_r32"
+      ],
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+      "ids": [
+        "music_99_oamd_s01_r01",
+        "music_99_both_s01_r01"
+      ],
+      "trace_sha256": "f44f0ed6cd8d98c6c1ac097f64fb86bb8486ced67bc94db7fa84faa23fa0cdec",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+      "ids": [
+        "music_99_oamd_s15_r02",
+        "music_99_both_s15_r02"
+      ],
+      "trace_sha256": "06239a325d7583b8d600b2b8f821b80798875404fd575c3b9034ae33c75119f2",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+      "ids": [
+        "music_99_oamd_s31_r32",
+        "music_99_both_s31_r32"
+      ],
+      "trace_sha256": "b9470b70d11a5bcff2098555192f45c2c0989402276893980e24d5b9bcfb9cf1",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7",
+      "ids": [
+        "music_99_oamd_f01_d0032"
+      ],
+      "trace_sha256": "c483647e647ec8e394c887f31512e2c934fc26b5359d2f23c53d430b6a344ddb",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4",
+      "ids": [
+        "music_99_oamd_f01_d1001"
+      ],
+      "trace_sha256": "af3614c24061945573539345c32a0a7205dbd4ce9307cf8efe8f33e98214ed1f",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d",
+      "ids": [
+        "music_99_oamd_f31_d0032"
+      ],
+      "trace_sha256": "e0553602dbefcd298aba3baf87efa88c9deb9cff4ddb9e1f95f1551df4ae3484",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab",
+      "ids": [
+        "music_99_oamd_f31_d1001"
+      ],
+      "trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c",
+      "ids": [
+        "music_99_oamd_f63_d0032"
+      ],
+      "trace_sha256": "ad2bc047a0887bea3e8f5802561b46c0c8500723d4f587056f674e378e78b4b4",
+      "same_timing_despite_ajoc_audio_change": true
+    },
+    {
+      "payload_sha256": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a",
+      "ids": [
+        "music_99_oamd_f63_d1001"
+      ],
+      "trace_sha256": "7984968e3abfe7a234a5efc513398e4011bc1852866c5e32339a8333e53de31f",
+      "same_timing_despite_ajoc_audio_change": true
+    }
+  ],
+  "bridge_counterexamples": [
+    {
+      "id": "music_99_ajoc_s00_r32",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "counterexample": null,
+      "coordinate_error": 0,
+      "canonical_sha256": "ca2f197cc255d50e3f06aeedf8c8c10675915319e0068a39edc80371b120f8f3"
+    },
+    {
+      "id": "music_99_ajoc_s01_r01",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "counterexample": null,
+      "coordinate_error": 0,
+      "canonical_sha256": "ca2f197cc255d50e3f06aeedf8c8c10675915319e0068a39edc80371b120f8f3"
+    },
+    {
+      "id": "music_99_oamd_s01_r01",
+      "legacy_scene_sha256": "749cd406ba463da374514237e83ac9e098b90fca0a7c4f492436d2ca11366e2a",
+      "counterexample": "桥接反例 call=100: coordinate=203106, consumer_sample=203168",
+      "coordinate_error": -62,
+      "canonical_sha256": "b0665101018f417104bc3360ca52f8f44bf0784372f7c581b74ce51c1f398638"
+    },
+    {
+      "id": "music_99_both_s01_r01",
+      "legacy_scene_sha256": "749cd406ba463da374514237e83ac9e098b90fca0a7c4f492436d2ca11366e2a",
+      "counterexample": "桥接反例 call=100: coordinate=203106, consumer_sample=203168",
+      "coordinate_error": -62,
+      "canonical_sha256": "b0665101018f417104bc3360ca52f8f44bf0784372f7c581b74ce51c1f398638"
+    },
+    {
+      "id": "music_99_ajoc_s15_r02",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "counterexample": null,
+      "coordinate_error": 0,
+      "canonical_sha256": "ca2f197cc255d50e3f06aeedf8c8c10675915319e0068a39edc80371b120f8f3"
+    },
+    {
+      "id": "music_99_oamd_s15_r02",
+      "legacy_scene_sha256": "b1b62021dbd18c738f1e775d82ef4bc34d2006f41e4a20fb0a5ed784b6a7bbe6",
+      "counterexample": "桥接反例 call=100: coordinate=203134, consumer_sample=204064",
+      "coordinate_error": -930,
+      "canonical_sha256": "9818294aa5faa844558f2686563559db2651911fd6e83b5801af93df5dc93576"
+    },
+    {
+      "id": "music_99_both_s15_r02",
+      "legacy_scene_sha256": "b1b62021dbd18c738f1e775d82ef4bc34d2006f41e4a20fb0a5ed784b6a7bbe6",
+      "counterexample": "桥接反例 call=100: coordinate=203134, consumer_sample=204064",
+      "coordinate_error": -930,
+      "canonical_sha256": "9818294aa5faa844558f2686563559db2651911fd6e83b5801af93df5dc93576"
+    },
+    {
+      "id": "music_99_ajoc_s31_r32",
+      "legacy_scene_sha256": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+      "counterexample": null,
+      "coordinate_error": 0,
+      "canonical_sha256": "ca2f197cc255d50e3f06aeedf8c8c10675915319e0068a39edc80371b120f8f3"
+    },
+    {
+      "id": "music_99_oamd_s31_r32",
+      "legacy_scene_sha256": "12e1d6872a43cae67d434a21c8d7b3922222d173f8adcde48418f9b0e51443de",
+      "counterexample": "桥接反例 call=100: coordinate=203166, consumer_sample=205088",
+      "coordinate_error": -1922,
+      "canonical_sha256": "88b304e247f83b73b1cba6d6eb528ab5fbedbaea91b76d04e2fd32f5901dcd4a"
+    },
+    {
+      "id": "music_99_both_s31_r32",
+      "legacy_scene_sha256": "12e1d6872a43cae67d434a21c8d7b3922222d173f8adcde48418f9b0e51443de",
+      "counterexample": "桥接反例 call=100: coordinate=203166, consumer_sample=205088",
+      "coordinate_error": -1922,
+      "canonical_sha256": "88b304e247f83b73b1cba6d6eb528ab5fbedbaea91b76d04e2fd32f5901dcd4a"
+    },
+    {
+      "id": "music_99_oamd_f01_d0032",
+      "legacy_scene_sha256": "470c926958495ecb1c0345be961b9fd5dd7da534e784d4dc6d9267c7bc187aab",
+      "counterexample": "桥接反例 call=100: coordinate=203105, consumer_sample=203136",
+      "coordinate_error": -31,
+      "canonical_sha256": "2ab9210dc3e985dc3e0590b2506cc2d3d4737101b947b742c7bf1b6c5bdc164c"
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "legacy_scene_sha256": "02ed44c66be203024021016f378647750354218a3622e967680f866dd78141a9",
+      "counterexample": "桥接反例 call=100: coordinate=203105, consumer_sample=203136",
+      "coordinate_error": -31,
+      "canonical_sha256": "3dbdfcd74a95081228eb3bc1a26b558899e03f7708a27a0f2e211acb23ffdadc"
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "legacy_scene_sha256": "8e657ca8985633e0ab867e7778c6a81f243a0fc58706b60cecf057c9b0dca907",
+      "counterexample": "桥接反例 call=100: coordinate=203135, consumer_sample=204096",
+      "coordinate_error": -961,
+      "canonical_sha256": "39e0de8a91517398091988288aac2bb96aba0a5691ea6295fddae7118b2fdda6"
+    },
+    {
+      "id": "music_99_oamd_f31_d1001",
+      "legacy_scene_sha256": "b2b0533a8869234679c3248806cd66e7ae3234ceb448e76511e1512f3d7e9f96",
+      "counterexample": "桥接反例 call=100: coordinate=203135, consumer_sample=204096",
+      "coordinate_error": -961,
+      "canonical_sha256": "397764219c7eaffda8f5a8c6cba2490d68b2e5d7b7b15435ef17db593ec24785"
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "legacy_scene_sha256": "2c2be7a7cd2e051bd9ca7be7b7ab9412915ae849b81ba9be6214be6359f36f06",
+      "counterexample": "桥接反例 call=100: coordinate=203167, consumer_sample=205120",
+      "coordinate_error": -1953,
+      "canonical_sha256": "6e596cc2d0e9218d0820414de660cda440f5c8f8039952af277d52510213bc4a"
+    },
+    {
+      "id": "music_99_oamd_f63_d1001",
+      "legacy_scene_sha256": "84ec32852ea685622b93e52edff6009222dfabb280202cab666ca9a02dcc5cc7",
+      "counterexample": "桥接反例 call=100: coordinate=203167, consumer_sample=205120",
+      "coordinate_error": -1953,
+      "canonical_sha256": "36c65159fca27b0fa1817e33ea3cd15c97cd6112ae1b977c26024575f7ffa9e1"
+    }
+  ],
+  "mutations": [
+    {
+      "name": "missing_scale",
+      "returncode": 0,
+      "caught": true,
+      "expected_caught": true,
+      "detail": "Scene 时间、对象或控制来源错误"
+    },
+    {
+      "name": "double_scale",
+      "returncode": 101,
+      "caught": true,
+      "expected_caught": true,
+      "detail": "Scene 未完整到达 EOF"
+    },
+    {
+      "name": "round_to_64",
+      "returncode": 0,
+      "caught": true,
+      "expected_caught": true,
+      "detail": "Scene 时间、对象或控制来源错误"
+    },
+    {
+      "name": "wrong_source",
+      "returncode": 0,
+      "caught": true,
+      "expected_caught": true,
+      "detail": "Scene 时间、对象或控制来源错误"
+    },
+    {
+      "name": "drop_future_queue",
+      "returncode": 101,
+      "caught": true,
+      "expected_caught": true,
+      "detail": "existing owned cross-frame queue test"
+    },
+    {
+      "name": "equivalent_scale",
+      "returncode": 0,
+      "caught": false,
+      "expected_caught": false,
+      "detail": "checker passed"
+    },
+    {
+      "name": "restored",
+      "caught": false,
+      "passed": true
+    }
+  ],
+  "checker_mutations": [
+    {
+      "name": "omit_api_offset",
+      "caught": true,
+      "error": "实际消费游标或 API 偏移错误",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "double_api_offset",
+      "caught": true,
+      "error": "实际消费游标或 API 偏移错误",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "bind_previous_source",
+      "caught": true,
+      "error": "查询绑定了错误的元数据来源",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "clear_cross_block_history",
+      "caught": true,
+      "error": "实际消费窗口遗漏、重复或错一时隙",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "accept_failed_parser",
+      "caught": true,
+      "error": "解析或入队错源",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "drop_query",
+      "caught": true,
+      "error": "实际消费窗口遗漏、重复或错一时隙",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "repeat_query",
+      "caught": true,
+      "error": "实际消费窗口遗漏、重复或错一时隙",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "wrong_ramp",
+      "caught": true,
+      "error": "ramp 剩余时长或终点错误",
+      "source_trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "query_index": 461,
+      "original_query": {
+        "kind": "query",
+        "function": 2,
+        "au": 101,
+        "source_call": 100,
+        "query": 1712,
+        "rc": 21,
+        "parent_query": 16,
+        "internal_offset": 0,
+        "blocks": [
+          [
+            31,
+            1001
+          ]
+        ],
+        "value": 281,
+        "duration": 1001
+      }
+    },
+    {
+      "name": "equivalent_record_key_order",
+      "caught": false,
+      "passed": true
+    }
+  ],
+  "frontend": [
+    {
+      "id": "music_99_oamd_f01_d0032",
+      "hashes": {
+        "core.f32": "7f6e6ab65f37ffb432a3d2fe352cefada6788455cae9a610f6b42799180218c1",
+        "sources.f32": "22d98f64ce14bab6fa040cb781157708eb44e7b327243bb6e5fd824f4f3541f9",
+        "objects.f32": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a"
+      },
+      "matrix": {
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "hashes": {
+        "core.f32": "7f6e6ab65f37ffb432a3d2fe352cefada6788455cae9a610f6b42799180218c1",
+        "sources.f32": "22d98f64ce14bab6fa040cb781157708eb44e7b327243bb6e5fd824f4f3541f9",
+        "objects.f32": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a"
+      },
+      "matrix": {
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "hashes": {
+        "core.f32": "7f6e6ab65f37ffb432a3d2fe352cefada6788455cae9a610f6b42799180218c1",
+        "sources.f32": "22d98f64ce14bab6fa040cb781157708eb44e7b327243bb6e5fd824f4f3541f9",
+        "objects.f32": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a"
+      },
+      "matrix": {
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "music_99_oamd_f31_d1001",
+      "hashes": {
+        "core.f32": "7f6e6ab65f37ffb432a3d2fe352cefada6788455cae9a610f6b42799180218c1",
+        "sources.f32": "22d98f64ce14bab6fa040cb781157708eb44e7b327243bb6e5fd824f4f3541f9",
+        "objects.f32": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a"
+      },
+      "matrix": {
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "hashes": {
+        "core.f32": "7f6e6ab65f37ffb432a3d2fe352cefada6788455cae9a610f6b42799180218c1",
+        "sources.f32": "22d98f64ce14bab6fa040cb781157708eb44e7b327243bb6e5fd824f4f3541f9",
+        "objects.f32": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a"
+      },
+      "matrix": {
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "music_99_oamd_f63_d1001",
+      "hashes": {
+        "core.f32": "7f6e6ab65f37ffb432a3d2fe352cefada6788455cae9a610f6b42799180218c1",
+        "sources.f32": "22d98f64ce14bab6fa040cb781157708eb44e7b327243bb6e5fd824f4f3541f9",
+        "objects.f32": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a"
+      },
+      "matrix": {
+        "status": "independent_local_model_pass",
+        "counts": {
+          "frames": 399,
+          "points": 399,
+          "dt_rows": 46918,
+          "df_rows": 22422,
+          "sparse_omitted_rows": 23480,
+          "mixed_active_grids": 0
+        },
+        "selected": [
+          {
+            "au": 99,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 100,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          },
+          {
+            "au": 101,
+            "slots": 32,
+            "coefficients": 546816,
+            "qmf_output_components": 81920,
+            "bit_exact": true
+          }
+        ]
+      }
+    }
+  ],
+  "aspx_pcm": {
+    "baseline": {
+      "tone": {
+        "id": "seed_tone",
+        "sha256": "70e3db8d399e6f47d1e3cf397e0fb074c64a404b4b72a08a874fe66efb95c9e4",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 292864,
+          "format": "wave_extensible_ieee_float32"
+        }
+      },
+      "music": {
+        "id": "seed_music",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        }
+      }
+    },
+    "cases": [
+      {
+        "id": "music_99_oamd_f01_d0032",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        },
+        "bit_exact_to_parent": true
+      },
+      {
+        "id": "music_99_oamd_f01_d1001",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        },
+        "bit_exact_to_parent": true
+      },
+      {
+        "id": "music_99_oamd_f31_d0032",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        },
+        "bit_exact_to_parent": true
+      },
+      {
+        "id": "music_99_oamd_f31_d1001",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        },
+        "bit_exact_to_parent": true
+      },
+      {
+        "id": "music_99_oamd_f63_d0032",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        },
+        "bit_exact_to_parent": true
+      },
+      {
+        "id": "music_99_oamd_f63_d1001",
+        "sha256": "b5f1bb8c7b962e38ccb9154ba333a40148408455298d24778076c1442d0fe0d3",
+        "audio": {
+          "sample_rate_hz": 48000,
+          "bit_depth": 32,
+          "channels": 10,
+          "frames": 819200,
+          "format": "wave_extensible_ieee_float32"
+        },
+        "bit_exact_to_parent": true
+      }
+    ]
+  },
+  "baselines": {
+    "candidate_binary_sha256": "04ae70ca8e39b3a2ac87d3abf53a47bfb7dec18ec35bba552d29edaa0f7aee2b",
+    "stages": [
+      {
+        "stage": "core",
+        "passed": true,
+        "entries": 12
+      },
+      {
+        "stage": "aspx",
+        "passed": true,
+        "entries": 12
+      },
+      {
+        "stage": "objects",
+        "passed": true,
+        "entries": 12
+      }
+    ]
+  },
+  "pcm_preservation": [
+    {
+      "case": "tone",
+      "samples": 6150144,
+      "pcm_sha256": "d3457be9dfbbf108c28d1c7119323cb28c1a941a56c773ded92d8fe8828b3ed3",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    },
+    {
+      "case": "music",
+      "samples": 17203200,
+      "pcm_sha256": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    },
+    {
+      "case": "bed256",
+      "samples": 2107392,
+      "pcm_sha256": "aded3d57768cf65c0f2c2f1b38f770a4ae2a18439aeabf5c3d5da294ee9ab54e",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    }
+  ],
+  "validation": [
+    {
+      "name": "tests_default",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "returncode": 0,
+      "seconds": 6.060347916092724
+    },
+    {
+      "name": "tests_audio",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--features",
+        "audio-decode"
+      ],
+      "returncode": 0,
+      "seconds": 12.750781250186265
+    },
+    {
+      "name": "tests_spec",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "macindecode-ac4-decode",
+        "--features",
+        "spec-tables"
+      ],
+      "returncode": 0,
+      "seconds": 3.5912186671048403
+    },
+    {
+      "name": "clippy_default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 4.046826167032123
+    },
+    {
+      "name": "clippy_audio",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--features",
+        "audio-decode",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 4.5011541249696165
+    },
+    {
+      "name": "clippy_spec",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "macindecode-ac4-decode",
+        "--all-targets",
+        "--features",
+        "spec-tables",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 0.884525999892503
+    },
+    {
+      "name": "nostd_default",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "macindecode-ac4-scene",
+        "--lib",
+        "--target",
+        "thumbv7em-none-eabi",
+        "--no-default-features"
+      ],
+      "returncode": 0,
+      "seconds": 1.014410125091672
+    },
+    {
+      "name": "nostd_audio",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "macindecode-ac4-scene",
+        "--lib",
+        "--target",
+        "thumbv7em-none-eabi",
+        "--no-default-features",
+        "--features",
+        "audio-decode"
+      ],
+      "returncode": 0,
+      "seconds": 1.2025692081078887
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 0.7346769159194082
+    },
+    {
+      "name": "layers",
+      "command": [
+        "python3",
+        "scripts/check_layers.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.1442342500668019
+    },
+    {
+      "name": "python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts/test_check_ajoc_input.py",
+        "scripts/test_check_ajoc_matrix.py",
+        "scripts/test_check_ajoc_timing.py",
+        "scripts/test_check_ajoc_decorrelator.py",
+        "scripts/test_check_ajoc_timing_stream.py",
+        "scripts/test_check_oamd_consumer_timing.py",
+        "scripts/test_check_aspx_merge.py",
+        "scripts/test_check_qmf_width_downstream.py",
+        "scripts/test_check_qmf_phase_chain.py",
+        "scripts/test_check_layers.py",
+        "scripts/test_ci_support.py",
+        "scripts/test_decode_check.py",
+        "scripts/test_compare_object_pcm.py"
+      ],
+      "returncode": 0,
+      "seconds": 1.2763879590202123
+    },
+    {
+      "name": "tables",
+      "command": [
+        "python3",
+        "scripts/check_ajoc_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.61297129211016
+    },
+    {
+      "name": "spec_sources",
+      "command": [
+        "python3",
+        "scripts/fetch_specs.py",
+        "--verify"
+      ],
+      "returncode": 0,
+      "seconds": 0.05996258300729096
+    },
+    {
+      "name": "math",
+      "command": [
+        "python3",
+        "scripts/check_math.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.03316216706298292
+    },
+    {
+      "name": "transform",
+      "command": [
+        "python3",
+        "scripts/check_transform_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 1.3809166250284761
+    },
+    {
+      "name": "workflow",
+      "command": [
+        "actionlint"
+      ],
+      "returncode": 0,
+      "seconds": 0.1555173338856548
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 0.014740750193595886
+    },
+    {
+      "name": "spec_distribution",
+      "command": [
+        "python3",
+        "scripts/check_spec_distribution.py",
+        "--generated"
+      ],
+      "returncode": 0,
+      "seconds": 0.45876558404415846
+    },
+    {
+      "name": "sfb_tables",
+      "command": [
+        "python3",
+        "scripts/check_sfb_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.5519907919224352
+    },
+    {
+      "name": "aspx_tables",
+      "command": [
+        "python3",
+        "scripts/check_aspx_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.36064058309420943
+    },
+    {
+      "name": "python_final",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts/test_check_oamd_consumer_timing.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.4230626670178026
+    },
+    {
+      "name": "consumer_full",
+      "command": [
+        "python3",
+        "scripts/check_oamd_consumer_timing.py",
+        "/Volumes/cache/MacinDecode-AC4-Core/oamd-consumer-20261023/variants/manifest.json",
+        "--captures",
+        "/Volumes/cache/MacinDecode-AC4-Core/oamd-consumer-20261023/oar",
+        "--scene",
+        "/Volumes/cache/MacinDecode-AC4-Core/oamd-consumer-20261023/scene",
+        "--output",
+        "/Volumes/cache/MacinDecode-AC4-Core/oamd-consumer-20261023/checked.json"
+      ],
+      "returncode": 0,
+      "seconds": 2.6688720418605953
+    }
+  ],
+  "test_counts": {
+    "tests_default": 516,
+    "tests_audio": 1331,
+    "tests_spec": 107,
+    "python_related": 193,
+    "new_python": 20
+  },
+  "excluded_decoder_attempts": [
+    {
+      "case": "music_99_oamd_f63_d0032",
+      "mode": "baseline",
+      "attempt": 0,
+      "returncode": -999,
+      "calls": 0,
+      "pcm_sha256": null
+    },
+    {
+      "case": "music_99_oamd_f63_d1001",
+      "mode": "baseline_confirm",
+      "attempt": 0,
+      "returncode": -999,
+      "calls": 400,
+      "pcm_sha256": null
+    },
+    {
+      "case": "music_99_oamd_f63_d1001",
+      "mode": "baseline_confirm",
+      "attempt": 1,
+      "returncode": -5,
+      "calls": 1,
+      "pcm_sha256": null
+    }
+  ],
+  "excluded_observer_attempts": {
+    "dynamic_breakpoint_attempts": 8,
+    "frida_attach_timeout": true,
+    "initial_invalid_status_signature": true,
+    "retained_locally": true
+  },
+  "resources": {
+    "volume_uuid": "9622A0A8-E856-4F83-9B15-A0D650B862AC",
+    "extra_dedup_bytes": 2124674304,
+    "oar_repeat_pcm_removed_bytes": 2516582400,
+    "shared_cargo_cache": true
+  },
+  "limitations": [
+    "single implicit-offset block and 2048-sample real frames only",
+    "nonzero internal sample_offset, multiple metadata blocks and other topologies/versions lack new native coverage",
+    "OAR per-sample spatial gain curves and whole-program absolute audio synchronization remain outside this validation"
+  ]
+}

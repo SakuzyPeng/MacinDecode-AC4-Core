@@ -40,6 +40,8 @@ mod full_engine;
 mod group_oamd;
 mod headphone;
 mod model;
+#[cfg(all(test, feature = "audio-decode"))]
+mod oamd_timing_tests;
 mod session;
 
 pub use error::{
