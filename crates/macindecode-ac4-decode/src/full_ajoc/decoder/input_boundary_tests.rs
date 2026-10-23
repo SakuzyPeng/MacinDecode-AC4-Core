@@ -152,6 +152,9 @@ fn capture() {
         std::fs::create_dir(destination.join("matrix")).unwrap();
     }
     let decorr_capture = std::env::var_os("MACINAC4_AJOC_DECORR").is_some();
+    let fields_capture = std::env::var_os("MACINAC4_AJOC_FIELDS").is_some();
+    let mut all_sources = fields_capture
+        .then(|| BufWriter::new(File::create_new(destination.join("sources.f32")).unwrap()));
     if decorr_capture {
         std::fs::create_dir(destination.join("decorrelator")).unwrap();
     }
@@ -178,6 +181,9 @@ fn capture() {
     );
     for (index, result) in SyncFrameIter::new(&data).enumerate() {
         let frame = result.unwrap();
+        if fields_capture {
+            crate::ajoc::timing_fields::select(destination, index + 1, &data);
+        }
         assert_ne!(frame.verify_crc(&data), Some(false));
         let topology = Ac4Topology::parse(frame.raw_frame).unwrap();
         assert_eq!(topology.presentations().len(), 1);
@@ -209,6 +215,14 @@ fn capture() {
             )
             .unwrap();
             timing_updated = metadata.timing.is_some();
+            if fields_capture {
+                crate::ajoc::timing_fields::group(
+                    topology
+                        .substream_payload(frame.raw_frame, reference.substream_index.unwrap())
+                        .unwrap(),
+                    metadata.timing,
+                );
+            }
             common_updated = metadata.common.is_some();
             if let Some(common) = metadata.common {
                 group_common = Some(common);
@@ -378,6 +392,15 @@ fn capture() {
         assert_eq!(record.signals.len(), channels);
         let mut signals = record.signals;
         signals.sort_by_key(|s| s.0);
+        if let Some(file) = all_sources.as_mut() {
+            append_floats(
+                file,
+                signals.iter().flat_map(|(_, q)| {
+                    q.iter()
+                        .flat_map(|s| (0..64).flat_map(move |b| [s.re[b], s.im[b]]))
+                }),
+            );
+        }
         assert_eq!(
             signals.iter().map(|s| s.0).collect::<Vec<_>>(),
             (0..channels).collect::<Vec<_>>()
@@ -467,6 +490,9 @@ fn capture() {
         previous_pcm = core;
         sample_start += length as i64;
         count += 1;
+        if fields_capture {
+            crate::ajoc::timing_fields::finish();
+        }
         if decorr_capture {
             crate::ajoc::decorrelator::probe::finish_frame();
         }
@@ -477,6 +503,9 @@ fn capture() {
     object_file.flush().unwrap();
     rows.flush().unwrap();
     timeline.flush().unwrap();
+    if let Some(file) = all_sources.as_mut() {
+        file.flush().unwrap();
+    }
     std::println!(
         "A-JOC input boundary: {count} complete AUs, {} selected",
         selected.len()
