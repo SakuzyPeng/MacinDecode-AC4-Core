@@ -30,6 +30,9 @@ pub(crate) fn select(directory: PathBuf, au: usize, selected: bool) {
         })
     });
 }
+pub(super) fn clear() {
+    LOCATION.with(|cell| *cell.borrow_mut() = None);
+}
 fn file(location: &Location, tag: &str) -> PathBuf {
     location
         .directory

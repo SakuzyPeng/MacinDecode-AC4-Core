@@ -1,0 +1,1888 @@
+{
+  "schema": "macinac4.ajoc-timing-comparison",
+  "version": 1,
+  "production_dsp_changed": false,
+  "synthetic": [
+    {
+      "id": "s24p0r1impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 2.071104754364228e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 27,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r1step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 27,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r2impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 2.071104754364228e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 28,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r2step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 28,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r31impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 2.071104754364228e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 57,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r31step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 57,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r32impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 1.088807937144054e-07,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 58,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r32step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 58,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r33impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 1.2408900396110312e-07,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 59,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r33step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 59,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r64impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.79202078018659e-08,
+      "pcm_bound": 5.63000607880073e-05,
+      "schedule_different_slots": 74,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p0r64step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.740459431078591e-08,
+      "pcm_bound": 0.0014351295582804722,
+      "schedule_different_slots": 74,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r1impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.407135922868122e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 27,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r1step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 27,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r2impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.048994394269869e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 28,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r2step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 28,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r31impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 7.662068890468277e-08,
+      "pcm_bound": 6.392786424151804e-05,
+      "schedule_different_slots": 57,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r31step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.69675503436784e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 57,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r32impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 3.626067024420365e-08,
+      "pcm_bound": 6.340859482301571e-05,
+      "schedule_different_slots": 58,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r32step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.6007335436092376e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 58,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r33impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.360359350310318e-08,
+      "pcm_bound": 6.340859482301571e-05,
+      "schedule_different_slots": 59,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r33step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.2607653627513287e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 59,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r64impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.84075080020574e-08,
+      "pcm_bound": 4.95440525168024e-05,
+      "schedule_different_slots": 62,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p12r64step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.596386793924822e-08,
+      "pcm_bound": 0.001281365649132021,
+      "schedule_different_slots": 62,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r1impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 2.7219233089681438e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 27,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r1step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 27,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r2impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 2.7219233089681438e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 28,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r2step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 28,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r31impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 1.0571840647344288e-07,
+      "pcm_bound": 5.647191961577188e-05,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r31step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.15145591792232e-08,
+      "pcm_bound": 0.0014814252195314555,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r32impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.399575231379572e-08,
+      "pcm_bound": 5.556867039192915e-05,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r32step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.629888739586917e-08,
+      "pcm_bound": 0.001460756892749281,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r33impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.339733715776674e-08,
+      "pcm_bound": 5.472013154539966e-05,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r33step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.6434893824210945e-08,
+      "pcm_bound": 0.0014413410142610525,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r64impulse",
+      "slots": 120,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 2.7913775957344455e-08,
+      "pcm_bound": 4.33510459522021e-05,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s24p23r64step",
+      "slots": 120,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.4636844004065637e-08,
+      "pcm_bound": 0.001140415407217974,
+      "schedule_different_slots": 51,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r1impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 33,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r1step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 33,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r2impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 34,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r2step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 34,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r31impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r31step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r32impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.276387320980348e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 64,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r32step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 64,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r33impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.402295433221127e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r33step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r64impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 9.25701635345888e-08,
+      "pcm_bound": 6.136706699141098e-05,
+      "schedule_different_slots": 92,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p0r64step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.2345796813503256e-08,
+      "pcm_bound": 0.0015888934674289233,
+      "schedule_different_slots": 92,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r1impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 33,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r1step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 33,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r2impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.048994394269869e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 34,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r2step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 34,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r31impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 8.359141445701823e-08,
+      "pcm_bound": 7.090181673028055e-05,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r31step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r32impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 6.98120773304171e-05,
+      "schedule_different_slots": 64,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r32step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 64,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r33impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.360359350310318e-08,
+      "pcm_bound": 6.878837737852328e-05,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r33step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r64impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.788421469394734e-08,
+      "pcm_bound": 5.2922056652404846e-05,
+      "schedule_different_slots": 77,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p15r64step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.596386793924822e-08,
+      "pcm_bound": 0.0013966885565772588,
+      "schedule_different_slots": 77,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r1impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 33,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r1step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 33,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r2impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 34,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r2step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 34,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r31impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.23031871146884e-08,
+      "pcm_bound": 5.7205580709201414e-05,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r31step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.0447529936482596e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r32impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.276387320980348e-08,
+      "pcm_bound": 5.615020697086574e-05,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r32step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.8694142001638454e-08,
+      "pcm_bound": 0.00161452070423333,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r33impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 5.402295433221127e-08,
+      "pcm_bound": 5.5158754583776766e-05,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r33step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.074293857847522e-08,
+      "pcm_bound": 0.001590445159451242,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r64impulse",
+      "slots": 150,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 3.001824433468414e-08,
+      "pcm_bound": 4.504004802000333e-05,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s30p29r64step",
+      "slots": 150,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.531936210166009e-08,
+      "pcm_bound": 0.0012172974106244008,
+      "schedule_different_slots": 63,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r1impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 35,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r1step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 35,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r2impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 36,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r2step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 36,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r31impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r31step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r32impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.670050578527764e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 66,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r32step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 66,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r33impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 7.091655840341105e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r33step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r64impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 9.338402140457447e-08,
+      "pcm_bound": 6.30560690592122e-05,
+      "schedule_different_slots": 98,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p0r64step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.820892535699727e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 98,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r1impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 35,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r1step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 35,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r2impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.048994394269869e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 36,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r2step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 36,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r31impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.082891790271105e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r31step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r32impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 66,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r32step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 66,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r33impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.360359350310318e-08,
+      "pcm_bound": 7.097212899584688e-05,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r33step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r64impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.331094559719475e-08,
+      "pcm_bound": 5.4048060065614044e-05,
+      "schedule_different_slots": 82,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p16r64step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.740459431078591e-08,
+      "pcm_bound": 0.0014351295582804722,
+      "schedule_different_slots": 82,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r1impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 35,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r1step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 35,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r2impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 7.206407805281034e-05,
+      "schedule_different_slots": 36,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r2step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 5.989538609529887e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 36,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r31impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 4.6958258836937716e-08,
+      "pcm_bound": 5.5791577181924076e-05,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r31step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.28573548316713e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 65,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r32impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 6.670050578527764e-08,
+      "pcm_bound": 5.51740573747981e-05,
+      "schedule_different_slots": 66,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r32step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.006928383537556e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 66,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r33impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 7.091655840341105e-08,
+      "pcm_bound": 5.5137909337929985e-05,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r33step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 4.420471227950529e-08,
+      "pcm_bound": 0.001640148038702139,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r64impulse",
+      "slots": 160,
+      "qmf_max_error": 2.4530788942404855e-08,
+      "qmf_bound": 2.5602137053038626e-05,
+      "pcm_max_error": 3.402371917538005e-08,
+      "pcm_bound": 4.560304972660792e-05,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    },
+    {
+      "id": "s32p31r64step",
+      "slots": 160,
+      "qmf_max_error": 1.9784090391475413e-07,
+      "qmf_bound": 6.4005342632596565e-06,
+      "pcm_max_error": 3.664132153247124e-08,
+      "pcm_bound": 0.0012429246474288075,
+      "schedule_different_slots": 67,
+      "first_different_slot": 0
+    }
+  ],
+  "real": {
+    "tone": {
+      "frames": 143,
+      "reconstructed_frames": 142,
+      "selected": [
+        {
+          "au": 7,
+          "source_au": 6,
+          "source_sample_start": 10240,
+          "consumer_qmf_base": 192,
+          "oamd_source_sample_events": [
+            10240
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            10240
+          ],
+          "immediate_target_source_samples": [
+            12224
+          ],
+          "deferred_target_source_samples": [
+            12288
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            10976,
+            11615
+          ],
+          "immediate_first_global_slots": [
+            192
+          ],
+          "deferred_first_global_slots": [
+            193
+          ]
+        },
+        {
+          "au": 8,
+          "source_au": 7,
+          "source_sample_start": 12288,
+          "consumer_qmf_base": 224,
+          "oamd_source_sample_events": [
+            12288
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            12288
+          ],
+          "immediate_target_source_samples": [
+            14272
+          ],
+          "deferred_target_source_samples": [
+            14336
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            13024,
+            13663
+          ],
+          "immediate_first_global_slots": [
+            224
+          ],
+          "deferred_first_global_slots": [
+            225
+          ]
+        },
+        {
+          "au": 9,
+          "source_au": 8,
+          "source_sample_start": 14336,
+          "consumer_qmf_base": 256,
+          "oamd_source_sample_events": [
+            14336
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            14336
+          ],
+          "immediate_target_source_samples": [
+            16320
+          ],
+          "deferred_target_source_samples": [
+            16384
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            15072,
+            15711
+          ],
+          "immediate_first_global_slots": [
+            256
+          ],
+          "deferred_first_global_slots": [
+            257
+          ]
+        }
+      ],
+      "integer_timeline": true,
+      "independent_normative_schedule_decision": false
+    },
+    "music": {
+      "frames": 400,
+      "reconstructed_frames": 399,
+      "selected": [
+        {
+          "au": 32,
+          "source_au": 31,
+          "source_sample_start": 61440,
+          "consumer_qmf_base": 992,
+          "oamd_source_sample_events": [
+            61440
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            61440
+          ],
+          "immediate_target_source_samples": [
+            63424
+          ],
+          "deferred_target_source_samples": [
+            63488
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            62176,
+            62815
+          ],
+          "immediate_first_global_slots": [
+            992
+          ],
+          "deferred_first_global_slots": [
+            993
+          ]
+        },
+        {
+          "au": 33,
+          "source_au": 32,
+          "source_sample_start": 63488,
+          "consumer_qmf_base": 1024,
+          "oamd_source_sample_events": [
+            63488
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            63488
+          ],
+          "immediate_target_source_samples": [
+            65472
+          ],
+          "deferred_target_source_samples": [
+            65536
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            64224,
+            64863
+          ],
+          "immediate_first_global_slots": [
+            1024
+          ],
+          "deferred_first_global_slots": [
+            1025
+          ]
+        },
+        {
+          "au": 34,
+          "source_au": 33,
+          "source_sample_start": 65536,
+          "consumer_qmf_base": 1056,
+          "oamd_source_sample_events": [
+            65536
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            65536
+          ],
+          "immediate_target_source_samples": [
+            67520
+          ],
+          "deferred_target_source_samples": [
+            67584
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            66272,
+            66911
+          ],
+          "immediate_first_global_slots": [
+            1056
+          ],
+          "deferred_first_global_slots": [
+            1057
+          ]
+        },
+        {
+          "au": 99,
+          "source_au": 98,
+          "source_sample_start": 198656,
+          "consumer_qmf_base": 3136,
+          "oamd_source_sample_events": [
+            198656
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            198656
+          ],
+          "immediate_target_source_samples": [
+            200640
+          ],
+          "deferred_target_source_samples": [
+            200704
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            199392,
+            200031
+          ],
+          "immediate_first_global_slots": [
+            3136
+          ],
+          "deferred_first_global_slots": [
+            3137
+          ]
+        },
+        {
+          "au": 100,
+          "source_au": 99,
+          "source_sample_start": 200704,
+          "consumer_qmf_base": 3168,
+          "oamd_source_sample_events": [
+            200704
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            200704
+          ],
+          "immediate_target_source_samples": [
+            202688
+          ],
+          "deferred_target_source_samples": [
+            202752
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            201440,
+            202079
+          ],
+          "immediate_first_global_slots": [
+            3168
+          ],
+          "deferred_first_global_slots": [
+            3169
+          ]
+        },
+        {
+          "au": 101,
+          "source_au": 100,
+          "source_sample_start": 202752,
+          "consumer_qmf_base": 3200,
+          "oamd_source_sample_events": [
+            202752
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            202752
+          ],
+          "immediate_target_source_samples": [
+            204736
+          ],
+          "deferred_target_source_samples": [
+            204800
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            203488,
+            204127
+          ],
+          "immediate_first_global_slots": [
+            3200
+          ],
+          "deferred_first_global_slots": [
+            3201
+          ]
+        }
+      ],
+      "integer_timeline": true,
+      "independent_normative_schedule_decision": false
+    },
+    "bed256": {
+      "frames": 49,
+      "reconstructed_frames": 48,
+      "selected": [
+        {
+          "au": 2,
+          "source_au": 1,
+          "source_sample_start": 0,
+          "consumer_qmf_base": 32,
+          "oamd_source_sample_events": [
+            0
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            0
+          ],
+          "immediate_target_source_samples": [
+            1984
+          ],
+          "deferred_target_source_samples": [
+            2048
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            736,
+            1375
+          ],
+          "immediate_first_global_slots": [
+            32
+          ],
+          "deferred_first_global_slots": [
+            33
+          ]
+        },
+        {
+          "au": 3,
+          "source_au": 2,
+          "source_sample_start": 2048,
+          "consumer_qmf_base": 64,
+          "oamd_source_sample_events": [
+            2048
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            2048
+          ],
+          "immediate_target_source_samples": [
+            4032
+          ],
+          "deferred_target_source_samples": [
+            4096
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            2784,
+            3423
+          ],
+          "immediate_first_global_slots": [
+            64
+          ],
+          "deferred_first_global_slots": [
+            65
+          ]
+        },
+        {
+          "au": 4,
+          "source_au": 3,
+          "source_sample_start": 4096,
+          "consumer_qmf_base": 96,
+          "oamd_source_sample_events": [
+            4096
+          ],
+          "oamd_ramp_samples": [
+            2048
+          ],
+          "matrix_start_source_samples": [
+            4096
+          ],
+          "immediate_target_source_samples": [
+            6080
+          ],
+          "deferred_target_source_samples": [
+            6144
+          ],
+          "starts": [
+            0
+          ],
+          "ramps": [
+            32
+          ],
+          "first_slot_fir_source_support": [
+            4832,
+            5471
+          ],
+          "immediate_first_global_slots": [
+            96
+          ],
+          "deferred_first_global_slots": [
+            97
+          ]
+        }
+      ],
+      "integer_timeline": true,
+      "independent_normative_schedule_decision": false
+    }
+  },
+  "date": "2026-10-23",
+  "started": "2026-10-22",
+  "head_before": "c67d54045161839f5e5beff5cb625c6c2c75cde5",
+  "public_api_changed": false,
+  "cli_changed": false,
+  "baseline_changed": false,
+  "private_artifacts_directory": "/Volumes/cache/MacinDecode-AC4-Core/ajoc-timing-decorrelator-20261022",
+  "volume_uuid": "9622A0A8-E856-4F83-9B15-A0D650B862AC",
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "target/release/macinac4": "5dc0e1917eac05429e33c3f0e900f08eb6848bbc66a4b67e10fca0ee017e45e6",
+    "spec/ts_10319001v010401p.pdf": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f",
+    "spec/ts_10319002v010301p.pdf": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1"
+  },
+  "validation": {
+    "commands": [
+      {
+        "name": "tests_default",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace"
+        ],
+        "returncode": 0,
+        "seconds": 2.2191269579343498
+      },
+      {
+        "name": "tests_spec",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "macindecode-ac4-decode",
+          "--features",
+          "spec-tables"
+        ],
+        "returncode": 0,
+        "seconds": 2.9815791251603514
+      },
+      {
+        "name": "clippy_default",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.4387895839754492
+      },
+      {
+        "name": "tests_audio",
+        "command": [
+          "cargo",
+          "test",
+          "--workspace",
+          "--features",
+          "audio-decode"
+        ],
+        "returncode": 0,
+        "seconds": 12.197664333041757
+      },
+      {
+        "name": "clippy_audio",
+        "command": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--features",
+          "audio-decode",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 4.163089209003374
+      },
+      {
+        "name": "clippy_spec",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "macindecode-ac4-decode",
+          "--all-targets",
+          "--features",
+          "spec-tables",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.11710450006648898
+      },
+      {
+        "name": "nostd_default",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "macindecode-ac4-scene",
+          "--lib",
+          "--target",
+          "thumbv7em-none-eabi",
+          "--no-default-features"
+        ],
+        "returncode": 0,
+        "seconds": 0.17213629186153412
+      },
+      {
+        "name": "nostd_audio",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "macindecode-ac4-scene",
+          "--lib",
+          "--target",
+          "thumbv7em-none-eabi",
+          "--no-default-features",
+          "--features",
+          "audio-decode"
+        ],
+        "returncode": 0,
+        "seconds": 2.1142687499523163
+      },
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 1.5067531249951571
+      },
+      {
+        "name": "layers",
+        "command": [
+          "python3",
+          "scripts/check_layers.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.13817983400076628
+      },
+      {
+        "name": "python",
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "scripts/test_check_ajoc_input.py",
+          "scripts/test_check_ajoc_matrix.py",
+          "scripts/test_check_ajoc_timing.py",
+          "scripts/test_check_ajoc_decorrelator.py",
+          "scripts/test_check_aspx_merge.py",
+          "scripts/test_check_qmf_width_downstream.py",
+          "scripts/test_check_qmf_phase_chain.py",
+          "scripts/test_check_layers.py",
+          "scripts/test_ci_support.py",
+          "scripts/test_decode_check.py",
+          "scripts/test_compare_object_pcm.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.98004020890221
+      },
+      {
+        "name": "tables",
+        "command": [
+          "python3",
+          "scripts/check_ajoc_tables.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.6698145000264049
+      },
+      {
+        "name": "spec_sources",
+        "command": [
+          "python3",
+          "scripts/fetch_specs.py",
+          "--verify"
+        ],
+        "returncode": 0,
+        "seconds": 0.0707230418920517
+      },
+      {
+        "name": "math",
+        "command": [
+          "python3",
+          "scripts/check_math.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.05775433289818466
+      },
+      {
+        "name": "transform",
+        "command": [
+          "python3",
+          "scripts/check_transform_tables.py"
+        ],
+        "returncode": 0,
+        "seconds": 1.5482689160853624
+      },
+      {
+        "name": "workflow",
+        "command": [
+          "actionlint"
+        ],
+        "returncode": 0,
+        "seconds": 0.19443729193881154
+      },
+      {
+        "name": "diff",
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 0.016668332973495126
+      },
+      {
+        "name": "final_checker_tests",
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "scripts/test_check_ajoc_timing.py",
+          "scripts/test_check_ajoc_decorrelator.py"
+        ],
+        "returncode": 0,
+        "seconds": 0.3825889590661973
+      }
+    ],
+    "passed_tests": {
+      "tests_default": 516,
+      "tests_audio": 1331,
+      "tests_spec": 107,
+      "python": 157
+    }
+  },
+  "pcm_preservation": [
+    {
+      "case": "tone",
+      "samples": 6150144,
+      "pcm_sha256": "d3457be9dfbbf108c28d1c7119323cb28c1a941a56c773ded92d8fe8828b3ed3",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    },
+    {
+      "case": "music",
+      "samples": 17203200,
+      "pcm_sha256": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    },
+    {
+      "case": "bed256",
+      "samples": 2107392,
+      "pcm_sha256": "aded3d57768cf65c0f2c2f1b38f770a4ae2a18439aeabf5c3d5da294ee9ab54e",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    }
+  ],
+  "baselines": {
+    "candidate_binary_sha256": "04ae70ca8e39b3a2ac87d3abf53a47bfb7dec18ec35bba552d29edaa0f7aee2b",
+    "stages": [
+      {
+        "stage": "core",
+        "passed": true,
+        "entries": 12
+      },
+      {
+        "stage": "aspx",
+        "passed": true,
+        "entries": 12
+      },
+      {
+        "stage": "objects",
+        "passed": true,
+        "entries": 12
+      }
+    ]
+  },
+  "source_sha256": {
+    "crates/macindecode-ac4-decode/src/ajoc/decorrelator.rs": "3976749b7432f2f85a883377e02a4299d37d4d4f76f2b5d9fc5e7440abd78ab3",
+    "crates/macindecode-ac4-decode/src/ajoc/decorrelator/probe.rs": "35fb96f7bb7bf82b14a67d9285ae17a87c12a317eb006c1ad80ca4e6b3fddca3",
+    "crates/macindecode-ac4-decode/src/ajoc/reconstruction.rs": "9b3cbc6b9d911898b5e126dc5355479f2dc61a0e776c0a3925990195b6b6102c",
+    "crates/macindecode-ac4-decode/src/ajoc/reconstruction/matrix_probe.rs": "83135cd4c4170989fb7591f02b8c51459b5cc96af4224f08229148d8a23e4c1f",
+    "crates/macindecode-ac4-decode/src/ajoc/reconstruction/timing_probe.rs": "b2a8bedac4511756a02c08299bfa7d1e3be349f0b2234a8658396e2b5d84811a",
+    "crates/macindecode-ac4-decode/src/full_ajoc/decoder/input_boundary_tests.rs": "79780673c879981561ec3332ddf32b1381105c07c5a9209bd44f2eeb33e01c33",
+    "scripts/check_ajoc_timing.py": "45339db282ba203b5a1703a86410fb313160df309d4d423e3c5bf643b548461a",
+    "scripts/check_ajoc_decorrelator.py": "b91fa145a1d51293dbc979fdf395eecc803834e89ea0be3abc29266a7e46d371",
+    "scripts/test_check_ajoc_timing.py": "4667f054410c4add20ec65ca0cdf20cbc0571240c66a70bd6ceb5e64b99e0f5e",
+    "scripts/test_check_ajoc_decorrelator.py": "e2f28a1f9be1aa7d4c2e57bf4b4fba9aa7f3609ee227ba85bd03644c4e78b186",
+    ".github/workflows/ci.yml": "5f86d869735d3bcd736466ca6f35ff4119f2c171618afde759874004503cd66b"
+  },
+  "mutations": [
+    {
+      "name": "advance_at_start",
+      "expected_pass": false,
+      "passed": false,
+      "rust_returncode": 0,
+      "checker_error": "当前实际消费系数的时隙 不逐位一致，最大绝对差 1.0009765625"
+    },
+    {
+      "name": "restored_timing",
+      "expected_pass": true,
+      "passed": true,
+      "rust_returncode": 0,
+      "checker_error": null
+    }
+  ],
+  "evidence_sha256": {
+    "timing_comparison.json": "569b3a92e17e6da32b467d996b795832e2f6ee92cc4758347b67fab2ae568369",
+    "upstream_checks.json": "0447333ba2a910655ff50ae9d37ce5c13a9d1a61c95291be89eb638b6655f3b1"
+  },
+  "limits": [
+    "ASF PCM output coordinates are not automatically the original programme waveform sampling centres.",
+    "All real streams use 2048 samples, start_pos=0 and ramp_len=32; nonzero reference timing coverage did not increase.",
+    "The controlled immediate candidate shares local endpoint snapping solely to isolate first-step scheduling; it does not reproduce all native rounding semantics.",
+    "The audio and OAMD anchors do not uniquely resolve the P17/P18 versus field-semantics endpoint interpretation."
+  ]
+}

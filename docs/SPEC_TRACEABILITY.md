@@ -1553,6 +1553,13 @@ DRP 还表现出独立的输出带宽限制：约 18.0 kHz 开始陡降，18.0�
 
 ### 5.50 A-JOC 去相关器与瞬态抑制（P2 `5.7.3.5`；P1 `5.7.7.4`）
 
+2026-10-22–23 的[独立调查](AJOC_DECORRELATOR_INVESTIGATION.md)以完整连续 u 核对
+实际 all-pass、能量、ducker 状态及 Y：三份真实流的 589 个重建帧和八条七路构造链共
+8,470,528 个输出分量逐位符合独立数值重放；P111 直接递推及 80 位算术另行核对，避免
+用同一 canonical 布局自证。参考三个窗口恢复全部有效历史后逐位重放，通过两个进程重复。
+实际 ducker 状态支持逐 QMF 时隙更新；其能量上限、无 EPSILON 比值及量化系数另列为
+已测运行时行为，不能由此改写下述规范实现。参考有效宽度只到子带 47。
+
 表 198 的三个子带区域分别为 `0–6: delay 7/order 7`、`7–22: 10/4`、`23–63: 12/2`，三者都恰好需要 14 个历史复数。实现使用规范等价的 canonical direct-form II：每个 `(decorrelator, subband)` 只保存这 14 个状态，不同时保存 `Pseudocode 111` 的输入与输出历史。QMF 接口保持 `f32`，递归状态和每一步滤波累加使用 `f64`，再在输出边界收窄；测试另有不调用 production helper 的 `Pseudocode 111` 直写递推，在 D0/D1/D2、三个区域的首尾边界和 192 个连续样本上逐项要求 `f32::to_bits()` 相同。
 
 表 198–201 的区域、48 个系数和 A-JOC 七路循环均写入用户本地生成文件。`scripts/check_ajoc_tables.py` 直接从两份 PDF 重新抽取并与生成结果逐项比较；单元测试只负责区域覆盖、14 状态约束和循环边界，不能代替这份外部审核。
@@ -1580,7 +1587,9 @@ pre 不是在某个共享参数带网格上近似。dry/wet 的参数带数按�
 12 个真实窗口的低带及 LFE 由完整 ASF PCM、独立表 188 延迟和 640 抽头 FIR 核对。
 参考三个窗口的 A-SPX 输出与完整下游工具阶段入口通过缓冲区身份及逐位复验，未按
 相关性配对；六类生产故障注入被捕获。没有改变 DSP 或基线，也没有关闭第 7 节的
-A-JOC 插值、pre 网格、ducker 判读：参考内部矩阵和控制尚未逐字段对照。
+A-JOC 的全部判读。随后矩阵控制与实际消费者已完成专项核对；本轮
+[时间锚点](AJOC_TIMING_INVESTIGATION.md)与[去相关](AJOC_DECORRELATOR_INVESTIGATION.md)
+进一步隔离了消费时隙及完整递归历史，插值端点解释仍保留。
 
 P1 `5.7.2` 要求同一 raw frame 的所有 QMF tool control 在 `d_ctrl` 后才作用于同源 spectral frontend 信号，范围不止 A-SPX。实现因此把 5.44 的 FIFO 扩成单一所有权快照：element/A-SPX/config、采样率与物理拓扑、A-JOC control/矩阵、full 支持凭证及 `SubstreamInfoAjoc::lfe_reinsertion_position()` 一起排队、一起到期。`SupportedAjocFullFrame::check` 只接受同一份 `Ac4SubstreamAjoc` 与 `AjocSubstreamContext`，并把 A-SPX、A-JOC、采样率、物理 substream 数及 dialogue 对象数固化进不可构造的帧身份；原始 `u8` 数据点数不再是公共发证参数，内部防御检查同时拒绝保留值 3 和超出 2 位字段范围的值。入队与到期两处都把凭证身份同实际快照复核。到期后先由 `element_drive` 按 P2 `Pseudocode 14a` 产出 `Qin_AJOC`，再消费 full 凭证进入 5.51 的帧级矩阵事务；当前 raw frame 的矩阵绝不用于已经到期的旧信号。到期快照与当前 frame-alignment 的输入拓扑或对齐档不同会结构化失败并要求 reset。
 
@@ -2018,7 +2027,14 @@ alternative/direct-object 向量仍待后续。Channel-based 没有对象 metada
 同源矩阵目标相同，两个音乐窗口在 start_pos 当时隙执行第一增量，与本地 P17/P18
 顺序不同；这项差异尚待独立时间锚点裁决。逐对象参数网格得到 16 个自有参考探针
 支持，pre 目标单独插值也符合已测参考；它不能同时满足正文逐时隙乘积的普遍读法。
-这些结果不关闭下表的全部判读，也不等于已验证去相关／ducker。
+这些结果不关闭下表的全部判读。
+
+2026-10-22–23 的[时间锚点调查](AJOC_TIMING_INVESTIGATION.md)已经核对 raw AU、控制
+FIFO、ASF PCM 支持区间与 OAMD 整数事件。命中时隙与下一时隙的候选可以独立区分，
+但现有真实素材仍不足以唯一确定 metadata 端点与 QMF 值的采样关系。
+[去相关调查](AJOC_DECORRELATOR_INVESTIGATION.md)则已独立验证本地递推，并在三个
+参考窗口中逐位核对逐时隙 ducker 状态；这支持当前状态更新粒度，但不等于参考与本地
+的滤波表、能量上限、EPSILON 或所有合法分支相同。
 
 与第 6 节不同：这里的每一条都**已经做出选择并写进实现**，只是依据不足以自证。规范在这些地方要么自相矛盾、要么字面与其他条款冲突、要么根本没说。差分参考解码器接上后应逐条核对；在此之前它们是实现里风险最集中的位置。
 
