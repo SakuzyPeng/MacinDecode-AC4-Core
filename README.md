@@ -199,6 +199,15 @@ MP4 / raw AC-4
 | [规范可追踪性](docs/SPEC_TRACEABILITY.md) | 条款↔实现↔测试追踪矩阵 |
 | [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 12 份 |
 
+## 相关项目
+
+本项目止于渲染前场景。把它解出的对象与 OAMD 实际渲染出来、放给人听的，是下游播放器：
+
+| 项目 | 关系 |
+|---|---|
+| [MacinDecode Spatial Player](https://github.com/SakuzyPeng/MacinDecode-Spatial-Player) | 下游桌面播放器：经本仓库 Scene API 解码 AC-4，交给 MacinRender ADM Core 做扬声器／双耳渲染，并实时显示 3D 对象 |
+| [MacinRender ADM Core](https://github.com/SakuzyPeng/MacinRender-ADM-Core) | ADM 空间音频渲染核心（扬声器、HOA、HRTF 双耳），是上述播放器的渲染层 |
+
 ## License
 
 [MIT](LICENSE)

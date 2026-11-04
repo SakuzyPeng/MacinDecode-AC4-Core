@@ -200,6 +200,15 @@ For detailed progress, known limitations, and the audio reconstruction support m
 | [Spec Traceability](docs/SPEC_TRACEABILITY.md) | Clause ↔ implementation ↔ test traceability matrix |
 | [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (12 records) |
 
+## Related Projects
+
+This project stops at the pre-render scene. Actually rendering its objects and OAMD for listening is left to a downstream player:
+
+| Project | Relationship |
+|---|---|
+| [MacinDecode Spatial Player](https://github.com/SakuzyPeng/MacinDecode-Spatial-Player) | Downstream desktop player: decodes AC-4 through this repository's Scene API, hands the result to MacinRender ADM Core for loudspeaker / binaural rendering, and shows the objects live in 3D |
+| [MacinRender ADM Core](https://github.com/SakuzyPeng/MacinRender-ADM-Core) | ADM spatial-audio rendering core (loudspeakers, HOA, HRTF binaural); the rendering layer of the player above |
+
 ## License
 
 [MIT](LICENSE)
