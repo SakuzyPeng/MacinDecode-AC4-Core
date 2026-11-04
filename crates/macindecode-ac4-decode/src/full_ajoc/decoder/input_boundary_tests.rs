@@ -175,6 +175,12 @@ fn capture() {
     let mut sample_start = 0i64;
     let mut observed = BTreeSet::new();
     let mut previous_state = String::new();
+    let sync_capture = std::env::var_os("MACINAC4_AJOC_SYNC").is_some();
+    let mut terminal_rows = sync_capture
+        .then(|| BufWriter::new(File::create_new(destination.join("terminal.jsonl")).unwrap()));
+    let mut terminal_history: Vec<Vec<crate::aspx::qmf::QmfSlot>> = Vec::new();
+    let mut imdct_rows = sync_capture
+        .then(|| BufWriter::new(File::create_new(destination.join("imdct.jsonl")).unwrap()));
     write_floats(
         &destination.join("window.f32"),
         crate::aspx::qmf::QMF_WINDOW,
@@ -270,6 +276,9 @@ fn capture() {
             "连续帧入口必须保留上一帧的完整 A-SPX 历史"
         );
         input_probe::begin();
+        if sync_capture {
+            crate::asf::imdct::frame::sync_begin();
+        }
         if matrix_capture {
             crate::ajoc::reconstruction::matrix_probe::select(
                 destination.join("matrix"),
@@ -358,7 +367,67 @@ fn capture() {
         identities.push_back((index, raw_aspx, raw_ajoc, raw_bands));
         let core: Vec<Vec<f32>> = decoded.frontend().asf().pcm().to_vec();
         assert_eq!(core.len(), channels);
+        if let Some(rows) = imdct_rows.as_mut() {
+            let observations = crate::asf::imdct::frame::sync_take();
+            assert_eq!(observations.len(), channels);
+            for (channel, returned) in decoded.frontend().asf().pcm().iter().enumerate() {
+                let observation = observations
+                    .iter()
+                    .find(|o| o.pointer == returned.as_ptr() as usize)
+                    .unwrap();
+                assert_eq!(observation.samples, length);
+                for (block, &(offset, count, previous)) in observation.blocks.iter().enumerate() {
+                    writeln!(rows, "{{\"au\":{},\"channel\":{channel},\"block\":{block},\"frame_samples\":{length},\"offset\":{offset},\"length\":{count},\"previous\":{previous},\"read_tick\":{},\"output_identity\":true}}", index+1, (sample_start+offset as i64)*6).unwrap();
+                }
+            }
+        }
         append_floats(&mut core_file, core.iter().flatten().copied());
+        let record = input_probe::take();
+        if let Some(rows) = terminal_rows.as_mut() {
+            let terminal = record.terminal.as_ref().unwrap();
+            assert_eq!(
+                terminal.pcm.len(),
+                decoded.output().reconstructed_channels()
+            );
+            terminal_history.resize_with(terminal.pcm.len(), Vec::new);
+            for (channel, history) in terminal_history.iter_mut().enumerate() {
+                let returned = decoded.output().reconstructed_channel(channel).unwrap();
+                assert_eq!(
+                    terminal.pcm_pointers[channel],
+                    returned.samples().as_ptr() as usize
+                );
+                assert_eq!(
+                    terminal.pcm[channel]
+                        .iter()
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<_>>(),
+                    returned
+                        .samples()
+                        .iter()
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<_>>()
+                );
+                let object = match terminal.sources[channel] {
+                    FullAjocPcmSource::AjocObject(index) => index as i64,
+                    FullAjocPcmSource::Lfe => -1,
+                    FullAjocPcmSource::AjocInput => panic!("invalid terminal identity"),
+                };
+                writeln!(rows, "{{\"au\":{},\"channel\":{channel},\"object\":{object},\"samples\":{length},\"sample_start\":{sample_start},\"tick_start\":{},\"slots\":{},\"source_au\":{},\"history_slots\":{},\"producer_return_identity\":true,\"export_start_sample\":{sample_start},\"selected\":{}}}", index+1, sample_start*6, length/64, origin.map_or_else(|| String::from("null"), |_| format!("{index}")), history.len(), selected.contains(&(index+1))).unwrap();
+                if selected.contains(&(index + 1)) {
+                    let mut input = history.clone();
+                    input.extend_from_slice(&terminal.qmf[channel]);
+                    save_qmf(
+                        &destination.join(format!("au{:04}.terminal{channel}.qmf.f32", index + 1)),
+                        &input,
+                    );
+                    write_floats(
+                        &destination.join(format!("au{:04}.terminal{channel}.pcm.f32", index + 1)),
+                        terminal.pcm[channel].iter().copied(),
+                    );
+                }
+                *history = terminal.qmf[channel][terminal.qmf[channel].len() - 10..].to_vec();
+            }
+        }
         for sample in 0..length {
             for channel in 0..decoded.output().reconstructed_channels() {
                 let pcm = decoded.output().reconstructed_channel(channel).unwrap();
@@ -371,7 +440,6 @@ fn capture() {
             .map(|s| s.provenance().access_unit_index());
         let reconstructed = decoded.output().observation().reconstructed;
         let wet = decoded.output().observation().wet;
-        let record = input_probe::take();
         let scratch = &decoder.workspace;
         for channel in 0..channels {
             let mut expected = if previous_pcm.is_empty() {

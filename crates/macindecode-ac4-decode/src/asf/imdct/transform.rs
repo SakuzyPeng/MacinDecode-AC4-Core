@@ -636,6 +636,14 @@ mod tests {
 
         let signal = deterministic_signal(2 * PAD + centres[centres.len() - 1] + total);
 
+        let export = std::env::var_os("MACINAC4_SYNC_IMDCT_OUTPUT").map(std::path::PathBuf::from);
+        if let Some(root) = &export {
+            std::fs::create_dir(root).unwrap();
+            let bytes: Vec<_> = signal.iter().flat_map(|v| v.to_le_bytes()).collect();
+            std::fs::write(root.join("signal.f64"), bytes).unwrap();
+        }
+        let mut positions = std::string::String::new();
+
         let mut workspace = ImdctWorkspace::new();
         let mut overlap = OverlapBuffer::new(FRAME).expect("2 048 是合法全块长度");
         let mut output = Vec::with_capacity(total);
@@ -662,8 +670,19 @@ mod tests {
 
             let lines = forward_mdct(&windowed, length);
             let mut pcm = vec![0.0f32; length];
+            let read_start = output.len();
             transform(&lines, &mut workspace, &mut overlap, &mut pcm).expect("块序列应合法");
             output.extend_from_slice(&pcm);
+            if let Some(root) = &export {
+                use std::fmt::Write;
+                writeln!(positions, "{{\"block\":{index},\"length\":{length},\"previous\":{previous},\"centre_tick\":{},\"read_start_tick\":{},\"read_end_tick\":{},\"new_history_start\":{},\"new_history_end\":{}}}", centres[index]*6, read_start*6, output.len()*6, (usize::from(FRAME)-length)/2, (usize::from(FRAME)+length)/2).unwrap();
+                let bytes: Vec<_> = lines.iter().flat_map(|v| v.to_le_bytes()).collect();
+                std::fs::write(root.join(std::format!("block{index:02}.lines.f32")), bytes)
+                    .unwrap();
+                let bytes: Vec<_> = left_taper.iter().flat_map(|v| v.to_le_bytes()).collect();
+                std::fs::write(root.join(std::format!("block{index:02}.window.f32")), bytes)
+                    .unwrap();
+            }
 
             // `N_full` 长的缓冲够用、不需要另设 composition buffer，靠的是这条
             // 不变式：每块结束后，下标 `≥ (N_full + N)/2` 的样本恒为零。右窗
@@ -695,6 +714,11 @@ mod tests {
             worst <= 3.0e-5,
             "混合块长重建最大偏差 {worst:e}（样本 {worst_at}）超出预算"
         );
+        if let Some(root) = export {
+            let bytes: Vec<_> = output.iter().flat_map(|v| v.to_le_bytes()).collect();
+            std::fs::write(root.join("pcm.f32"), bytes).unwrap();
+            std::fs::write(root.join("positions.jsonl"), positions).unwrap();
+        }
     }
 
     /// `5.5.3` 的文字示例逐项对上：`frame_length = 1 920`，块序列 480、480、960。

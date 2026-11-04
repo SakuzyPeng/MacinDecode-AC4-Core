@@ -1,0 +1,3218 @@
+{
+  "schema": "macinac4.audio-metadata-sync-evidence",
+  "version": 1,
+  "date": "2026-10-23",
+  "base_commit": "2e7077ea43abf3db6406e01932bc34272f1bc340",
+  "scope": {
+    "production_changes": false,
+    "public_api_changes": false,
+    "cli_changes": false,
+    "baseline_changes": false,
+    "raw_primary": true,
+    "existing_mp4_pair_only": true
+  },
+  "source_sha256": {
+    "scripts/check_ajoc_audio_metadata_sync.py": "aef7c8c37cd63f7605b72909268d685f829c431478747ecd7f67d3fae85061c3",
+    "scripts/test_check_ajoc_audio_metadata_sync.py": "a54a01837020d21f0ffef64d5cdceac67a303e866535f30e17df98660f47fd89",
+    "scripts/check_ajoc_timing.py": "f475ba5fa26e394b6fe21f0cf84702d82e2ba1bdc49168d50ac6fb33d983f93f",
+    "scripts/check_ajoc_timing_stream.py": "2f6e53f7ddda46c14058e0876278ea354f2d39e0d5081cc75938e3dbf0d0e39b",
+    "scripts/check_oamd_consumer_timing.py": "9fba12179dadbdc92831fba383e88fbad849f537734eac62caf9a9aafa67c246",
+    "scripts/check_qmf_phase_chain.py": "36df103fb22371926f540273561dfeab607892926e610b513914621bf1964b9e",
+    "scripts/check_asf_imdct_checkpoints.py": "4c69aaab2a5e7f060e8a6cd59affddf9d38e3ac2f5a147f8c79101db77a9127d",
+    ".github/workflows/ci.yml": "6dce8f4d0c333d8a04e73c68753493a09a5dd227c662334f0d96986ca82db5e3",
+    "crates/macindecode-ac4-decode/src/full_ajoc/input_probe.rs": "7f3b850b4d405ffa3fdc8a7c0f37ac281a066847903552e835c9490479ddf4f0",
+    "crates/macindecode-ac4-decode/src/full_ajoc/decoder.rs": "fd6816445e5183658ed32e925d24f5d5ad215551c65d6483732cad6e431748f4",
+    "crates/macindecode-ac4-decode/src/full_ajoc/decoder/input_boundary_tests.rs": "e7f097f7d479905dbae97bfe8bc65e5e7c98bb697a99d55e1f3dc61716205432",
+    "crates/macindecode-ac4-decode/src/asf/imdct/frame.rs": "e94d256bed7aa4c2d306c768a4f6c4134e32b9435a56fe259a1d1ee58ba1a84f",
+    "crates/macindecode-ac4-decode/src/asf/imdct/transform.rs": "237810971e9eec29c05f78d1b49c8f523690e26d904ffdf1c748c2c46a843dda",
+    "crates/macindecode-ac4-decode/src/ajoc/reconstruction/timing_probe.rs": "b373a5b670b1b0682a4f4a99e270c0f64b4406ae38eaa109f9ea4e213cb2f730",
+    "crates/macindecode-ac4-cli/src/scene_batch.rs": "9a77b54db19f836faf647adcc568ba48de3cb80298dd22a51328d785a423ea2a",
+    "crates/macindecode-ac4-cli/src/scene_batch/sync_tests.rs": "56a51773bc763db09b53b85f414ad124d7173c8e4f59a4fbac9140e6cd89c0b3"
+  },
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "target/release/macinac4": "5dc0e1917eac05429e33c3f0e900f08eb6848bbc66a4b67e10fca0ee017e45e6",
+    "spec/ts_10319001v010401p.pdf": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f",
+    "spec/ts_10319002v010301p.pdf": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/MacOS/drp": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/PlugIns/gst-plugins-libs/libdlb_metalib.dylib": "85514ded626be2020b6497963f5fcc122790d31672515028b605ea2e20ccda64",
+    "/Applications/Dolby/Dolby Reference Player.app/Contents/PlugIns/gst-plugins-libs/libdlb_oarlib.dylib": "89a42253b55dd2b285fc8f12b50e661a03c23c8d543c83fe869701c0857ca218"
+  },
+  "reference_profile": {
+    "schema": "macinac4.private-reference-adapter",
+    "version": 1,
+    "revision": "oamd-offset32-v1",
+    "runtime": "DRP 4.3.0.19350 arm64",
+    "mode": "decoder_only",
+    "adapter_sha256": "1a116c3913f5d9ba820270938a123d63f6145abe4567ec10353331fb5bda4bb1",
+    "source_sha256": "9cbbddb864a1c1c6879df2995a51bdafc940c1322a446e1f19a3b7f8f853401b",
+    "scene_format": "MASC v1",
+    "coordinate": "oar_input_pcm",
+    "block_offset_multiplier": 32,
+    "sample_rate": 48000,
+    "samples_per_call": 2048,
+    "verification_sha256": "3ef04106a45730343f57bd677868feb79a6cce67c777d55821414cb9c5855120",
+    "runtime_sha256": "0f3dc8a04ba827785bd7a8c1d21df8a30bb87668acb2354bdcf612a1c949b27d"
+  },
+  "reference_observation": {
+    "method": "Local runtime observations validated by complete-output and repeatability checks",
+    "first_primitive_observed_au": 2,
+    "actual_library_files_unchanged": true,
+    "synthetic_post_eof_not_used": true
+  },
+  "coverage": {
+    "local_original_streams": 3,
+    "local_aus": 592,
+    "local_imdct_blocks": 7350,
+    "local_terminal_channel_frames": 12432,
+    "local_selected_windows": 12,
+    "local_selected_pcm_components": 516096,
+    "new_reference_cases": 19,
+    "new_reference_processes": 38,
+    "new_reference_aus": 13984,
+    "new_reference_observed_primitive_aus": 13946,
+    "new_reference_detailed_windows": 152,
+    "new_reference_selected_pcm_components": 6537216,
+    "owned_qmf_cases": 514,
+    "owned_qmf_samples": 1339776,
+    "owned_timing_chains": 108,
+    "owned_timing_slots": 21672,
+    "owned_timing_samples": 1387008,
+    "common_event_rows": 6384,
+    "reused_scene_object_events": 134064,
+    "reused_oar_queries": 4474,
+    "reused_native_imdct_blocks": 82,
+    "reused_native_matrix_windows": 114,
+    "mp4_pairs": 1
+  },
+  "coordinates": {
+    "ticks_per_48k_sample": 6,
+    "width_grid_offsets_ticks": {
+      "8": 21,
+      "48": 1,
+      "64": 0
+    },
+    "width_grid_steps_ticks": {
+      "8": 48,
+      "48": 8,
+      "64": 6
+    },
+    "pcm_alignment_samples": 352,
+    "control_delay_frames": 1,
+    "aspx_lowband_delay_slots": 6,
+    "reference_api_offset_samples": 352,
+    "reference_formatter_retained_samples": 31,
+    "scene_to_oar_input_ticks": 2112,
+    "scene_to_oar_preformat_ticks": 1926,
+    "source_physical_alignment_adjudicated": false,
+    "ajoc_schedule_adjudicated": false
+  },
+  "local": [
+    {
+      "id": "tone",
+      "frames": 143,
+      "terminal_channels": 3003,
+      "selected_channels": 63,
+      "imdct_blocks": 1609,
+      "imdct_ledger_sha256": "667c3a5c85346efa0d3c1b4da49f6c6ce96d4c74539a745f7f2d7c15a161badb",
+      "pcm_sha256": "d3457be9dfbbf108c28d1c7119323cb28c1a941a56c773ded92d8fe8828b3ed3",
+      "ledger_sha256": "ce57cb70dd6b778efaaefbd14ebb8bd17148f4191de50c95081cbb4fd592f507"
+    },
+    {
+      "id": "music",
+      "frames": 400,
+      "terminal_channels": 8400,
+      "selected_channels": 126,
+      "imdct_blocks": 5422,
+      "imdct_ledger_sha256": "28b276d902ef968cc9065730f604641c3d413fdd75b9c553c52337b80e0cd788",
+      "pcm_sha256": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a",
+      "ledger_sha256": "7072e21fced6115b62e30e2ec660bcc33b402b2e1a3a079e292b4840def31507"
+    },
+    {
+      "id": "bed256",
+      "frames": 49,
+      "terminal_channels": 1029,
+      "selected_channels": 63,
+      "imdct_blocks": 319,
+      "imdct_ledger_sha256": "9ade1b6b4e4676a12e570f553651d410ac31755792da2c425ba0be4e4f483d43",
+      "pcm_sha256": "aded3d57768cf65c0f2c2f1b38f770a4ae2a18439aeabf5c3d5da294ee9ab54e",
+      "ledger_sha256": "8489d579666f2b0d16a8c4dfd1eaf0b3658764d733dd81f7c761876da1cb67d8"
+    }
+  ],
+  "native": [
+    {
+      "id": "tone",
+      "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+      "expected_pcm_sha256": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+      "frames": 143,
+      "selected": [
+        {
+          "au": 7,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 8,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 9,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "cb4aab40476a44451e28f254ae8a4624ec68c7dbe4ed8c546bb2210fa2ea2a08",
+          "returncode": 0,
+          "calls": 143,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 143,
+            "blocks": 143,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 24600576,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+            "capture.oamd.bin": "de5f8680ccfcce728547aadf5abf3bed2aa6b6f73ee8dbbea7269513b5a6c6f3",
+            "capture.scene.bin": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+            "capture.calls.csv": "c9bf82fbcecc4e1d23bdcb60c701b3e0788322cdb441829e4f1e1d7588e95ff9",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "decafa5ca39b61e41fa85a0a5d1631d7d92854902c9f951c19cfdbfe79c92eb0"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "775a251f107bb9a821f9938795355085f3ab72fa95ffa35179520e797c22aa51",
+          "returncode": 0,
+          "calls": 143,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 143,
+            "blocks": 143,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 24600576,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "9704b013fc579267333f687f860c0c898904f2a49780b949ab470a19929cbe3a",
+            "capture.oamd.bin": "de5f8680ccfcce728547aadf5abf3bed2aa6b6f73ee8dbbea7269513b5a6c6f3",
+            "capture.scene.bin": "609a7b1da99987bae042abb34d9c21488a9735701cc634c44d72bfa004d5a38c",
+            "capture.calls.csv": "c9bf82fbcecc4e1d23bdcb60c701b3e0788322cdb441829e4f1e1d7588e95ff9",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "decafa5ca39b61e41fa85a0a5d1631d7d92854902c9f951c19cfdbfe79c92eb0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 32,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 33,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 34,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "10cd3223b5d627daefeddd9411a13a8fa83fcb03345cec2c5ce36aa5d2043b8e",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "5e30d957223f57e286259a900b786e5796ff95269900dc7cc47a72fc133c3f7b"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "e54da7e81a1460318adadc140955c7e0c08894e4386342b3a09120fe43fcec30",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "5e30d957223f57e286259a900b786e5796ff95269900dc7cc47a72fc133c3f7b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bed256",
+      "input_sha256": "367c29e6bcd8c67f494fff78b2887a39764a133beaac12bd31a0807ae7eb6521",
+      "expected_pcm_sha256": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+      "frames": 49,
+      "selected": [
+        {
+          "au": 2,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 3,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 4,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "cbdf520818743a8fd52642b3b8bb1c340598e10b7b83a7d643594dcd7a3da648",
+          "returncode": 0,
+          "calls": 49,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 49,
+            "blocks": 49,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 8429568,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+            "capture.oamd.bin": "3ee0d7866d7ef3b807b0cd3f216ee2be4df996a09869484fc92c0bd653bc5605",
+            "capture.scene.bin": "532aa8f53d6bf5f9eab804b2e625078bb557d7b11c61c2a1813e9f0451b0a659",
+            "capture.calls.csv": "37ed6242a71b83ed69e9666e626fdd18c5886ce9b3731122250bc5be442f4104",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "0f98078f756e8a6aa45864da8f88ef428cc3b90397d2a71137df271672386022"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "db6bc74b4ee2bf6492185bbde20a4a931b0fb3f37335f2677599f886fdb05e7a",
+          "returncode": 0,
+          "calls": 49,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 49,
+            "blocks": 49,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 8429568,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+            "capture.oamd.bin": "3ee0d7866d7ef3b807b0cd3f216ee2be4df996a09869484fc92c0bd653bc5605",
+            "capture.scene.bin": "532aa8f53d6bf5f9eab804b2e625078bb557d7b11c61c2a1813e9f0451b0a659",
+            "capture.calls.csv": "37ed6242a71b83ed69e9666e626fdd18c5886ce9b3731122250bc5be442f4104",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "0f98078f756e8a6aa45864da8f88ef428cc3b90397d2a71137df271672386022"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s00_r32",
+      "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "081cde4bde961e6a695f5b09ca636ca28756f16d10872fba7fcb1cc85c2bb887",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "02ee724c759497e78aa6ca5fc047fc667c1dccbbc86547447e683ea7ea553a21",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s01_r01",
+      "input_sha256": "58eb9aaaf44aa81047f4b74a54c8606d6b3f64b6885b0b7a745131226818fb49",
+      "expected_pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "c2f00adf0e9105fde41b9641ef024d351212bee9edbd46d415c7fee7305fa78a",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "c406c2ef8e038915d36af0448bdbd7a1e9270f66dd71bb8b0d8a45dad9da54b6",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_s01_r01",
+      "input_sha256": "9e6f85a8d831c1e310acc0625951b1ae533a0147fbeb4f6642518d7ed0392bb3",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "0c5b86d7a9e26bb4c3faffe5a8e05293473baa5a6484c1a628baab74c41f92a0",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+            "capture.scene.bin": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "42f0f95772305dd20fcfcec98564fd7724889ee71ada92475112847af23f66bc",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+            "capture.scene.bin": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_both_s01_r01",
+      "input_sha256": "9737f29fd0accf8a9d728b77dd60bfd1a0e95260ff57cda8e0b486fe5fbcafe3",
+      "expected_pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "6d9b9988b31529e09ef49b6e6ad06bcf738e4fd86ff206c718da807320145e09",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+            "capture.oamd.bin": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+            "capture.scene.bin": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "9d4c816b4d8df9ddc9fe9068ce6f90937594fbed8be54a632d881f81eb46ab2e",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+            "capture.oamd.bin": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+            "capture.scene.bin": "a0558877953404d8af52fe7c0b949f5c39fc5860657f10e27bad1db8ad41a6dd",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s15_r02",
+      "input_sha256": "c818dd622338566b9954610f5af35424bd19ee1bf3b5e9c4100cf0edce9d72f3",
+      "expected_pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "9b2dfc335632a51b19e4281bdc0ea97d06a6fa75b58d609e6afe695321ee2e48",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "352f08c50209e64bfd57771d8a6a44b4cec8c327c1301732769945380048cc69",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_s15_r02",
+      "input_sha256": "bc0d60f62675378f42dd793b5862cc49dc8a57ae25125b95d3a06477366c43ae",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "6eed7000cd873228c03d3b21eb7e8b77e7c876890dc7e5764484bfb8c8257a4f",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+            "capture.scene.bin": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "6a5791777c26b532714f31fdc5a75d28c70709eb696e5506bb8413322549ce8f",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+            "capture.scene.bin": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_both_s15_r02",
+      "input_sha256": "f837b23e8a57f01041a0fe31df8fab52180400cca13a2d2fea45c4d0bb0cc31f",
+      "expected_pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "ad1adb6d3240b1ccf2704506a852242873eab6bd922882dab4da77284fafe91d",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+            "capture.oamd.bin": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+            "capture.scene.bin": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "6c77f73df95a2a68c86154de9ee4e0d28d0a33fc650aad3458d47839254a7f5c",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+            "capture.oamd.bin": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+            "capture.scene.bin": "9201c19cc169ff2972868eac0fc2f999ca124cd8dbf282aa1238d4f75e7dbf65",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_ajoc_s31_r32",
+      "input_sha256": "ebfc8c93da898467cf8a7ea694152502d7ad0e8e7aa888cf7a39e5c088452b6a",
+      "expected_pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "776e30969d4fb1b3991504e3e9887d009b633c7b2829bf0957fda724cf1a3d47",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "cf3df584ed4361018b2f2745f517fe1af9b61542ec2d0738a50303c5b9525f0f",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+            "capture.oamd.bin": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+            "capture.scene.bin": "589ad3d79a4473d061a14b03b65c63392e759d74c193743321bb16f382831728",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_s31_r32",
+      "input_sha256": "31b5cd63c3cddd663d764de4dc6da53809a4b5fc8c5f7907ea77636777d9bdf7",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "8dd3a0f03dd94e9ceb5ccc1999326ca7e2cb2254eb0049c29974b44a257aca8f",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+            "capture.scene.bin": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "13267a146f8ccdbaf56f404990c7e7039e9d32b7ebeae5354d745351205a6476",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+            "capture.scene.bin": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_both_s31_r32",
+      "input_sha256": "ff6ae8a7e6de531cb94cecd5778fa86745751fd0ba40113c1ee62c1de98fb718",
+      "expected_pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "131a3aff94acca3f7349d9264cb48183047f268e17ae5f31842c2067b40f744a",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+            "capture.oamd.bin": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+            "capture.scene.bin": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "7c9a007f19ae1a7ae64555ceb2a9fdb6330ee4fd2912763680f6ffd957591071",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+            "capture.oamd.bin": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+            "capture.scene.bin": "ac770ff058553005f750f0ad58a5a6f4bf6579531497dfb57740a0db8376d177",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f01_d0032",
+      "input_sha256": "8bf3bac46b46485e2ff45de4a301fd1757ff5f09e534110ec7fb24115cf6f70f",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "26c55609c9fcad63d52ff43b9e967255eae995aa32dfec2a5a7b09bb117a0904",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7",
+            "capture.scene.bin": "4e23af7f24656d529b993cb82ed2f124681822c63c222475e06ef47425f71f4c",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "654a7557ef475a9c416d2bda0f11ddfc730742774437e18a4efed453c7edd473",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7",
+            "capture.scene.bin": "4e23af7f24656d529b993cb82ed2f124681822c63c222475e06ef47425f71f4c",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "input_sha256": "63212e6685fdaa3afdb790595b833b67c67b097f2f22105a565be45556edf72e",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "7380df451601d8099232889da86e058a71743e9d7a37e082569d51f098631cf0",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4",
+            "capture.scene.bin": "993bc8ce2c17e23c97b4a7d8c6d05069f612ce148d7fba95567b9cc546990044",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "5679bdbdb04b04871f58aa1f7ea8daa321416b435821ef93ab34fe578ab32d47",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4",
+            "capture.scene.bin": "993bc8ce2c17e23c97b4a7d8c6d05069f612ce148d7fba95567b9cc546990044",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "input_sha256": "772c5c7a370aeb7c98f9790003540649090e61859431d88fe293ba520449b358",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "12802b23494ecb9a03fda19c2d274058a14c75ff5354645dcf588f0fd7ef68cd",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d",
+            "capture.scene.bin": "a2b301c87da99524d12ff71ca94957f4f91495989f29ca08f41988a70e7523bc",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "e5afe709f97bcc63d273f148b3ae1a80a3f92c5524eab370b3e245956666732a",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d",
+            "capture.scene.bin": "a2b301c87da99524d12ff71ca94957f4f91495989f29ca08f41988a70e7523bc",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f31_d1001",
+      "input_sha256": "4e7e6c64d88f31c2e32608721b44d78e8a69deaa4d5c04a0f8de835ec48a4bcf",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "1385fcf15b792f902034dffd5d38de502fe119985b60dfddd8524ebd42971233",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab",
+            "capture.scene.bin": "0a8e7f7f755fd63cf1fa861f22276a5dd8afc98d8835408bdaaf046049704194",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "3b7245f9d22c2a8361a8100da05b2d1a4f37e959db27f69b4de100d0914c4d8c",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab",
+            "capture.scene.bin": "0a8e7f7f755fd63cf1fa861f22276a5dd8afc98d8835408bdaaf046049704194",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "input_sha256": "8763a29914db05268252cbeac45d68b8ac48b6575b858c5a3f50d196f0f55aa2",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "82abd00b5211e8be95f91002fdf7ac303cee3cfbc3184a8688259ee21241b4dd",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c",
+            "capture.scene.bin": "00e2814e181ed97f55cb151ef24c994991fde7cd48a7a79e014d0b16cad0e154",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "dfa81612f34d9492dd983284967b566e305f3540b92c3ba5b2f512083e27a22d",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c",
+            "capture.scene.bin": "00e2814e181ed97f55cb151ef24c994991fde7cd48a7a79e014d0b16cad0e154",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "music_99_oamd_f63_d1001",
+      "input_sha256": "45e76cd0179e13ac312b0c0178289b8129fc403ae762c11d3e50fc7b53f7c6e8",
+      "expected_pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "frames": 400,
+      "selected": [
+        {
+          "au": 99,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 100,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 101,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        },
+        {
+          "au": 102,
+          "pcm_samples": 43008,
+          "pending_input_samples": 31,
+          "format_delay_ticks": 186,
+          "group_samples": 256,
+          "clipped_values": 0,
+          "clip_limit": 0.25,
+          "output_gain": 0.015625,
+          "effective_gain": 4.0,
+          "format_state_source": "next batch before setter; final batch after return"
+        }
+      ],
+      "processes": [
+        {
+          "mode": "r7",
+          "receipt_sha256": "16dce5cf132ad722f056a5572938e3bd552d82411e2a207e2dd1eff8a6b44029",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a",
+            "capture.scene.bin": "a873d005c70899a98d35b6c6ff7b09aaf29e2ef337bd20893df9cf5a9fd13083",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        },
+        {
+          "mode": "r8",
+          "receipt_sha256": "7ea1c01e185dc566077f0270e998c70674680886691bd8efaa6b155a7476cb7a",
+          "returncode": 0,
+          "calls": 400,
+          "status": {
+            "backend": "drp-runtime",
+            "runtime_profile": "DRP 4.3.0.19350 arm64",
+            "layout": "9.1.6",
+            "success": true,
+            "error": null,
+            "frames": 400,
+            "blocks": 400,
+            "sample_rate": 48000,
+            "decoder_raw_bytes": 68812800,
+            "oar_raw_bytes": 0
+          },
+          "files_sha256": {
+            "capture.raw": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+            "capture.oamd.bin": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a",
+            "capture.scene.bin": "a873d005c70899a98d35b6c6ff7b09aaf29e2ef337bd20893df9cf5a9fd13083",
+            "capture.calls.csv": "c7870d26fa2a840f75a32b3dd1ac041a957c3aacec13e56edfbb82fc0aae9e7a",
+            "capture.params.txt": "06cb6e417f0771c308fc714a0e1a2c07f8048ebc4cd82b02d6fe5c1f474ae0ec",
+            "terminal.jsonl": "cb6eaa2c0cce262b07792ab970aca7b3437384fd0a8184617ea56b80a405e45e"
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": [
+    {
+      "id": "music_99_ajoc_s00_r32",
+      "events": 399,
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_ajoc_s01_r01",
+      "events": 399,
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+      "pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_s01_r01",
+      "events": 399,
+      "scene_sha256": "48f2993c152275971a51747946eee8d564163863ded60bf61509592a0ee04bb3",
+      "trace_sha256": "f44f0ed6cd8d98c6c1ac097f64fb86bb8486ced67bc94db7fa84faa23fa0cdec",
+      "payload_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 258,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203184,
+          "relative_query": 80,
+          "active": true,
+          "remaining": 48,
+          "scheduled_sample": 203168
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203168
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_both_s01_r01",
+      "events": 399,
+      "scene_sha256": "48f2993c152275971a51747946eee8d564163863ded60bf61509592a0ee04bb3",
+      "trace_sha256": "f44f0ed6cd8d98c6c1ac097f64fb86bb8486ced67bc94db7fa84faa23fa0cdec",
+      "payload_sha256": "8344d6831a55ed5bfeba003ecb448c917269dff08155085f8e1495346505748a",
+      "pcm_sha256": "bb14132cdd43ee1d6c9c573f6e7d295737a75a8d56472bfb40d0a7da54d36cbc",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 258,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203184,
+          "relative_query": 80,
+          "active": true,
+          "remaining": 48,
+          "scheduled_sample": 203168
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203168
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_ajoc_s15_r02",
+      "events": 399,
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+      "pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_s15_r02",
+      "events": 399,
+      "scene_sha256": "d64cee9e5d1325e1dcbe5381a413dc781d53f74e548b3a3c774222c196602567",
+      "trace_sha256": "06239a325d7583b8d600b2b8f821b80798875404fd575c3b9034ae33c75119f2",
+      "payload_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 286,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204080,
+          "relative_query": 976,
+          "active": true,
+          "remaining": 112,
+          "scheduled_sample": 204064
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204064
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_both_s15_r02",
+      "events": 399,
+      "scene_sha256": "d64cee9e5d1325e1dcbe5381a413dc781d53f74e548b3a3c774222c196602567",
+      "trace_sha256": "06239a325d7583b8d600b2b8f821b80798875404fd575c3b9034ae33c75119f2",
+      "payload_sha256": "a74588f087aba77458be920ea2bd520884ebf9615e4bec09bfffb42519489e1c",
+      "pcm_sha256": "8c59eb494152eb94ed503a862e0785dc26cc41fac21d9ba2092e4d15e5de4660",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 286,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204080,
+          "relative_query": 976,
+          "active": true,
+          "remaining": 112,
+          "scheduled_sample": 204064
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204064
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_ajoc_s31_r32",
+      "events": 399,
+      "scene_sha256": "fc94834c69fafaddc3cb21a2094b8bda001be50db6fe7aedd3a993b9f75517f4",
+      "trace_sha256": "fa83251a705f13410719b20c9b71b4ab571f273edd287557be4b32510d78232f",
+      "payload_sha256": "c5f21a3a5de5f2db6de5917d204fc4a9420fab1ae6ddf0dededf2759c2594b37",
+      "pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 256,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203120,
+          "relative_query": 16,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 203104
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203104
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_s31_r32",
+      "events": 399,
+      "scene_sha256": "7900c1f08423693131029f8098c1f7e852b72e78c180b305f4dd85cbcf72842f",
+      "trace_sha256": "b9470b70d11a5bcff2098555192f45c2c0989402276893980e24d5b9bcfb9cf1",
+      "payload_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 318,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205104,
+          "relative_query": 2000,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 205088
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 2000,
+          "scheduled_sample": 205088
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_both_s31_r32",
+      "events": 399,
+      "scene_sha256": "7900c1f08423693131029f8098c1f7e852b72e78c180b305f4dd85cbcf72842f",
+      "trace_sha256": "b9470b70d11a5bcff2098555192f45c2c0989402276893980e24d5b9bcfb9cf1",
+      "payload_sha256": "6146dcfbf33c6cf1d1aafec84f2fc6a627dce46ead0bb60e10900b37d90d4f4a",
+      "pcm_sha256": "e35ac5492b0e1e33cb6221c0226c3d84a41d4ea2e6b461648ebd3e243d7006d7",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 318,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205104,
+          "relative_query": 2000,
+          "active": true,
+          "remaining": 2032,
+          "scheduled_sample": 205088
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 2000,
+          "scheduled_sample": 205088
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_f01_d0032",
+      "events": 399,
+      "scene_sha256": "363e356e44e1f94df2d88a3eaaa9e71b3a7626332119e1875cf3d044a229d9e8",
+      "trace_sha256": "c483647e647ec8e394c887f31512e2c934fc26b5359d2f23c53d430b6a344ddb",
+      "payload_sha256": "345abdf74fb96bb0af3672652b3850825515828d69c398369862c1f2a81a3ad7",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 257,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203152,
+          "relative_query": 48,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 203136
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203136
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_f01_d1001",
+      "events": 399,
+      "scene_sha256": "1812037289ad929456f1cb553f22a529b144b1954633543440c2d80f17a9fa19",
+      "trace_sha256": "af3614c24061945573539345c32a0a7205dbd4ce9307cf8efe8f33e98214ed1f",
+      "payload_sha256": "8b9dfab98c384156ed513bfc90bfc035679e2e5d2d7ae676e93f7d43986c3fe4",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 257,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 203152,
+          "relative_query": 48,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 203136
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 203136
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_f31_d0032",
+      "events": 399,
+      "scene_sha256": "9c4741f1a313bca51c41bfa4221279ddb87053e2aa6e28d14b4f75172a64a2ce",
+      "trace_sha256": "e0553602dbefcd298aba3baf87efa88c9deb9cff4ddb9e1f95f1551df4ae3484",
+      "payload_sha256": "3e36875638f1c6bf472678a36950483cba5c763c43ecff1934a95d113edcbd7d",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 287,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204112,
+          "relative_query": 1008,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 204096
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204096
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_f31_d1001",
+      "events": 399,
+      "scene_sha256": "1e13133bba36688297248ef34f74cf30ef881e93a5a6f844bbd98995e08a10fd",
+      "trace_sha256": "d3d53df07a13b87dcbc46ac4c4e5637be1f5efc9fae415f50b7c6801390960c6",
+      "payload_sha256": "1bebf3e3930e0705371624206b2c3f418c9d63f6e1ed968801fa6b47312dc8ab",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 287,
+        "first_active_query": {
+          "au": 100,
+          "query_sample": 204112,
+          "relative_query": 1008,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 204096
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 0,
+          "scheduled_sample": 204096
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_f63_d0032",
+      "events": 399,
+      "scene_sha256": "5e002712b7beeb7e008db9a7cd660b02fd56e330aa220db499013e5ad3b85b9f",
+      "trace_sha256": "ad2bc047a0887bea3e8f5802561b46c0c8500723d4f587056f674e378e78b4b4",
+      "payload_sha256": "3da50a851e1e6e1c6afa41a91fce20201eb8539da424421dcf49b8402140c10c",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 319,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 205120
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 16,
+          "scheduled_sample": 205120
+        }
+      },
+      "target_query_count": 64
+    },
+    {
+      "id": "music_99_oamd_f63_d1001",
+      "events": 399,
+      "scene_sha256": "ef464d14fc6f05c75d2f16f086c31f4d4867d788c562fdef0683fdd48c30551d",
+      "trace_sha256": "7984968e3abfe7a234a5efc513398e4011bc1852866c5e32339a8333e53de31f",
+      "payload_sha256": "95dcb9deb20dffc3aa498aff7dde22a85e2946450231b390455a5458375ca40a",
+      "pcm_sha256": "7b6b5d24aad46e7bb208096969793f963c9a07e67c45eb2d85fafda55440939a",
+      "native_consumer_reused": true,
+      "native": {
+        "calls": 400,
+        "queries": 319,
+        "first_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 205120
+        },
+        "last_active_query": {
+          "au": 101,
+          "query_sample": 205136,
+          "relative_query": 2032,
+          "active": true,
+          "remaining": 985,
+          "scheduled_sample": 205120
+        }
+      },
+      "target_query_count": 64
+    }
+  ],
+  "frontend_reuse": {
+    "matched_frames": 1080,
+    "matched_blocks": 82,
+    "old_manifest_sha256": "a5fc1db1d0f918a17a16f8da24cf908f8ac7841db5cf7a3fe22edd4038575fa6",
+    "normalized_data": "asf-imdct-20261017/normalized_evidence",
+    "new_ledger_sha256": "67f6be52e4170670fcf7511bf5c4a3b98829cfaca39ed74fec630bf227a1b653",
+    "no_new_native_imdct_coverage": true
+  },
+  "imdct": {
+    "samples": 12288,
+    "blocks": 22,
+    "exact_positions": true,
+    "maximum_model_residual": 1.5478079506969777e-07,
+    "reconstruction_error": 1.7881393432617188e-07,
+    "existing_regression_budget": 3e-05,
+    "new_numerical_conformance_claim": false
+  },
+  "bounds": {
+    "terminal_maximum_error_ratio": 0.18102081312265444,
+    "owned_qmf_analysis_maximum_error_ratio": 0.010589094517964921,
+    "owned_qmf_synthesis_maximum_error_ratio": 0.11495522546194295,
+    "fit_parameters": false,
+    "observed_residual_relaxation": false
+  },
+  "timing": {
+    "owned_signal_distinguishable_cases": 108,
+    "native_replayed_configurations": 38,
+    "native_replayed_windows": 114,
+    "reciprocal_vs_division_differences": 30554,
+    "independent_policy_replay": true,
+    "selects_production_schedule": false
+  },
+  "container": {
+    "aus": 143,
+    "tracks": 21,
+    "events": 3003,
+    "edit_samples": 2048,
+    "raw_samples": 292864,
+    "presented_samples": 288000,
+    "excluded_suffix": 2816,
+    "exact_payloads_and_pcm": true
+  },
+  "mutations": {
+    "kind": "captured-record and numerical-input mutations; no persistent production edits",
+    "cases": [
+      {
+        "name": "missing_352",
+        "caught": true,
+        "message": "共同坐标漏用／重复延迟或绑定错误来源"
+      },
+      {
+        "name": "duplicate_352",
+        "caught": true,
+        "message": "共同坐标漏用／重复延迟或绑定错误来源"
+      },
+      {
+        "name": "wrong_oamd_source",
+        "caught": true,
+        "message": "共同坐标漏用／重复延迟或绑定错误来源"
+      },
+      {
+        "name": "duplicate_formatter_delay",
+        "caught": true,
+        "message": "共同坐标漏用／重复延迟或绑定错误来源"
+      },
+      {
+        "name": "wrong_8_48_width",
+        "caught": true,
+        "message": "8／48 带的采样宽度换算错误"
+      },
+      {
+        "name": "duplicate_mp4_edit",
+        "caught": true,
+        "message": "元数据 edit 漏用、重复或身份改变"
+      },
+      {
+        "name": "one_sample_crop",
+        "caught": true,
+        "message": "返回到序列化坐标改变"
+      },
+      {
+        "name": "one_slot_crop",
+        "caught": true,
+        "message": "返回到序列化坐标改变"
+      },
+      {
+        "name": "clear_formatter_cross_frame_history",
+        "caught": true,
+        "message": "formatter history removed"
+      },
+      {
+        "name": "clear_synthesis_history",
+        "caught": true,
+        "message": "synthesis history removed 超出固定前向界：808.1873517563027 > 0.0007998575964201641"
+      },
+      {
+        "name": "wrong_qmf_slot",
+        "caught": true,
+        "message": "QMF slot shifted 超出固定前向界：1070.6311263922853 > 0.0007998575964201641"
+      },
+      {
+        "name": "equivalent_key_order_and_restored_records",
+        "caught": false,
+        "passed": true
+      }
+    ]
+  },
+  "baseline_selection": {
+    "case": "bed256",
+    "rejected": {
+      "id": "bed256",
+      "input": "/Users/Sakuzy/code/rust/MacinDecode-AC4-Core/tmp/drp_pcm_crosscheck/bed_reference.ac4.demuxed.ac4",
+      "input_sha256": "367c29e6bcd8c67f494fff78b2887a39764a133beaac12bd31a0807ae7eb6521",
+      "selected_aus": [
+        2,
+        3,
+        4
+      ],
+      "expected_frames": 49,
+      "expected_pcm_sha256": "f32727460f90ab7784cd53d9803f8a67c2a19681dfa28f8ac3135a538f18b291",
+      "baseline_pcm": "/Users/Sakuzy/code/rust/MacinDecode-AC4-Core/tmp/drp_pcm_crosscheck/bed_reference.ac4.objects_21ch.f32le.raw"
+    },
+    "accepted": {
+      "id": "bed256",
+      "input": "/Users/Sakuzy/code/rust/MacinDecode-AC4-Core/tmp/drp_pcm_crosscheck/bed_reference.ac4.demuxed.ac4",
+      "input_sha256": "367c29e6bcd8c67f494fff78b2887a39764a133beaac12bd31a0807ae7eb6521",
+      "selected_aus": [
+        2,
+        3,
+        4
+      ],
+      "expected_frames": 49,
+      "expected_pcm_sha256": "14048bf1f14cb9eb3268136567897ea6f9ad1426be5d6c3d753f1a138993c31e",
+      "baseline_pcm": "/Users/Sakuzy/code/rust/MacinDecode-AC4-Core/tmp/drp_pcm_crosscheck/bed_ref0.f32le.raw"
+    },
+    "reason": "Use the pre-existing target_reference_level=0 manifest, not the unqualified converter output; production baselines unchanged"
+  },
+  "checker_phase_correction": {
+    "initial_check": "all snapshots channels=21",
+    "failed_at": "bed256 r7/r8 AU 2 snapshot 0",
+    "actual_previous_channels": 10,
+    "reason": "snapshot 0 is before the current frame setter; consumed snapshots are 1 through 8",
+    "resolution": "check consumed snapshots; preserve previous-frame state in repeat hashes; no PCM expectation or float bound changed"
+  },
+  "validation": [
+    {
+      "name": "tests_default",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace"
+      ],
+      "returncode": 0,
+      "seconds": 2.6153853749856353
+    },
+    {
+      "name": "tests_spec",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "macindecode-ac4-decode",
+        "--features",
+        "spec-tables"
+      ],
+      "returncode": 0,
+      "seconds": 3.4400686249136925
+    },
+    {
+      "name": "clippy_default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 0.3768504161853343
+    },
+    {
+      "name": "tests_audio",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--features",
+        "audio-decode"
+      ],
+      "returncode": 0,
+      "seconds": 9.390655208844692
+    },
+    {
+      "name": "clippy_audio",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--features",
+        "audio-decode",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 2.5792321658227593
+    },
+    {
+      "name": "clippy_spec",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "macindecode-ac4-decode",
+        "--all-targets",
+        "--features",
+        "spec-tables",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 0.6966540419962257
+    },
+    {
+      "name": "nostd_default",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "macindecode-ac4-scene",
+        "--lib",
+        "--target",
+        "thumbv7em-none-eabi",
+        "--no-default-features"
+      ],
+      "returncode": 0,
+      "seconds": 0.13971325010061264
+    },
+    {
+      "name": "nostd_audio",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "macindecode-ac4-scene",
+        "--lib",
+        "--target",
+        "thumbv7em-none-eabi",
+        "--no-default-features",
+        "--features",
+        "audio-decode"
+      ],
+      "returncode": 0,
+      "seconds": 1.1668302910402417
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 0.6285289998631924,
+      "log": "fmt_final.log"
+    },
+    {
+      "name": "layers",
+      "command": [
+        "python3",
+        "scripts/check_layers.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.10831129201687872,
+      "log": "layers_final.log"
+    },
+    {
+      "name": "python",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts/test_check_ajoc_input.py",
+        "scripts/test_check_ajoc_matrix.py",
+        "scripts/test_check_ajoc_timing.py",
+        "scripts/test_check_ajoc_decorrelator.py",
+        "scripts/test_check_ajoc_timing_stream.py",
+        "scripts/test_check_oamd_consumer_timing.py",
+        "scripts/test_check_ajoc_audio_metadata_sync.py",
+        "scripts/test_check_aspx_merge.py",
+        "scripts/test_check_qmf_width_downstream.py",
+        "scripts/test_check_qmf_phase_chain.py",
+        "scripts/test_check_layers.py",
+        "scripts/test_ci_support.py",
+        "scripts/test_decode_check.py",
+        "scripts/test_compare_object_pcm.py"
+      ],
+      "returncode": 0,
+      "seconds": 1.2541077921632677,
+      "log": "python_final.log"
+    },
+    {
+      "name": "tables",
+      "command": [
+        "python3",
+        "scripts/check_ajoc_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.553428458981216
+    },
+    {
+      "name": "spec_sources",
+      "command": [
+        "python3",
+        "scripts/fetch_specs.py",
+        "--verify"
+      ],
+      "returncode": 0,
+      "seconds": 0.052323542069643736
+    },
+    {
+      "name": "math",
+      "command": [
+        "python3",
+        "scripts/check_math.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.02869075001217425
+    },
+    {
+      "name": "transform",
+      "command": [
+        "python3",
+        "scripts/check_transform_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 1.2617156249471009
+    },
+    {
+      "name": "workflow",
+      "command": [
+        "actionlint"
+      ],
+      "returncode": 0,
+      "seconds": 0.15031945914961398,
+      "log": "workflow_final.log"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 0.013901040889322758,
+      "log": "diff_final.log"
+    },
+    {
+      "name": "spec_distribution",
+      "command": [
+        "python3",
+        "scripts/check_spec_distribution.py",
+        "--generated"
+      ],
+      "returncode": 0,
+      "seconds": 0.41290124994702637
+    },
+    {
+      "name": "sfb_tables",
+      "command": [
+        "python3",
+        "scripts/check_sfb_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.5288415839895606
+    },
+    {
+      "name": "aspx_tables",
+      "command": [
+        "python3",
+        "scripts/check_aspx_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.3328372079413384
+    }
+  ],
+  "test_counts": {
+    "rust_default": 516,
+    "rust_audio_decode": 1331,
+    "rust_spec_tables": 107,
+    "python_related": 229,
+    "python_new": 36
+  },
+  "pcm_baselines": {
+    "candidate_binary_sha256": "04ae70ca8e39b3a2ac87d3abf53a47bfb7dec18ec35bba552d29edaa0f7aee2b",
+    "stages": [
+      {
+        "stage": "core",
+        "passed": true,
+        "entries": 12
+      },
+      {
+        "stage": "aspx",
+        "passed": true,
+        "entries": 12
+      },
+      {
+        "stage": "objects",
+        "passed": true,
+        "entries": 12
+      }
+    ]
+  },
+  "complete_original_pcm": [
+    {
+      "case": "tone",
+      "samples": 6150144,
+      "pcm_sha256": "d3457be9dfbbf108c28d1c7119323cb28c1a941a56c773ded92d8fe8828b3ed3",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    },
+    {
+      "case": "music",
+      "samples": 17203200,
+      "pcm_sha256": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    },
+    {
+      "case": "bed256",
+      "samples": 2107392,
+      "pcm_sha256": "aded3d57768cf65c0f2c2f1b38f770a4ae2a18439aeabf5c3d5da294ee9ab54e",
+      "bit_exact_to_committed_input_investigation": true,
+      "bit_exact_to_previous": true
+    }
+  ],
+  "artifacts": {
+    "local_root": "/absolute/path/research-input/ajoc-audio-metadata-sync-20261023",
+    "local_records_sha256": {
+      "manifest.json": "6319324b4ff52641e74f4ac82bcc490e7cc5f360e04299d90df96a6a38803a0c",
+      "comparison.json": "d9b3c201e0240d1bd0587d756a70eba10f71c4064306b88a29afbdbc60113772",
+      "common_events.jsonl": "9faf9ff537b1863a959339648ac61dfcf9475eec948c9ada5bbef65032e5e950",
+      "oar_queries.jsonl": "4330e50f5cf7b6dbf5df57f03b7d6a8c6a833c7943da3dc572ce125c2897f185",
+      "frontend_grid.jsonl": "67f6be52e4170670fcf7511bf5c4a3b98829cfaca39ed74fec630bf227a1b653",
+      "frontend_reuse.json": "625741b2f4a95b550ed336f5e0aa31ad427e46764d1913450e9e6ba9e50c98d3",
+      "reused_imdct_reference.json": "e05743dd9fa67ffc56cea0fee28fdc597890d2dbe8a5dccbd22cfe6a3a45f9a6",
+      "mutations.json": "a2cc37d5d445a995777b28d73e62656a889bf00eb231990a0c2bfbf1abe9f605",
+      "validation.json": "935a8a1836a07c7af3faea3ae590bf0bf5e74957f6560b57013a05b4fcc0422a",
+      "baselines.json": "c0b0f4cf83c75e7e9ca1592e6d2b88aa0a0f7c441ad5572cd42e35bbfee01aad",
+      "pcm_preservation.json": "6df24919840998c6da02e6d9f71fc21abc62cbc44903805ad486dd10d4b55213",
+      "deduplication.json": "676fcfc44714af10623ad242d25018c37a90a6a84358feaa328128b5698bd9e5",
+      "baseline_selection.json": "63bceda8a9cacfc4f9b43ad02782bb4086b3694fb6155d059b9db30c51a67da4",
+      "setter_capture_phase_failure.json": "3e653d5199915d58552d3ca61607cb028ae901c22743d0f1f91975a5c99352ef",
+      "container_full/container.jsonl": "d73b71051256ed145083d8d09997f9fe74c50c7d6247fcea7d1ef76a78f1c5e1",
+      "imdct_full/positions.jsonl": "4dd60977416e1ceeb0ca14726439bc3d62998cb2d410a99b34105308e5f661be",
+      "qmf_owned_cases.json": "a6668d7ffa3728657ee562230f39d257bce0a433cc957dcbe3dde75c86df3118",
+      "local_final_tone/terminal.jsonl": "ce57cb70dd6b778efaaefbd14ebb8bd17148f4191de50c95081cbb4fd592f507",
+      "local_final_tone/imdct.jsonl": "667c3a5c85346efa0d3c1b4da49f6c6ce96d4c74539a745f7f2d7c15a161badb",
+      "local_final_tone/timeline.jsonl": "52028ff35342dac8ad8c122cffd30097610a9dfa6a7b8c0fe2ccaac6fc34fb78",
+      "local_final_tone/frames.jsonl": "dcbc3f19dac2f43969bbaa4667aece7511171b2719760add2236a8dcb570d1b4",
+      "local_final_music/terminal.jsonl": "7072e21fced6115b62e30e2ec660bcc33b402b2e1a3a079e292b4840def31507",
+      "local_final_music/imdct.jsonl": "28b276d902ef968cc9065730f604641c3d413fdd75b9c553c52337b80e0cd788",
+      "local_final_music/timeline.jsonl": "5491197e82233566f94408fc2252d7e9870bea0c2bd20ebd97927ee0494016fe",
+      "local_final_music/frames.jsonl": "b9da3a15e81cad927da3b56ff85c73e1eb3d389511b2aa329afe9f610f79d908",
+      "local_final_bed256/terminal.jsonl": "8489d579666f2b0d16a8c4dfd1eaf0b3658764d733dd81f7c761876da1cb67d8",
+      "local_final_bed256/imdct.jsonl": "9ade1b6b4e4676a12e570f553651d410ac31755792da2c425ba0be4e4f483d43",
+      "local_final_bed256/timeline.jsonl": "d291570dae83b121b9b293b87f3ec2797c29f1851c49f6b3e5acb27a6cbabb63",
+      "local_final_bed256/frames.jsonl": "3f6ff3f858b9319cea0f442401930b2af4f7b36ddbae5438bfd3621216cba8ec"
+    },
+    "public_timeline": {
+      "path": "docs/experiments/ajoc_audio_metadata_sync_timeline.jsonl",
+      "sha256": "d45f778d3d283feec144b99a5c015757675da908a4300d54e351afa3dfdac192",
+      "rows": 242
+    },
+    "private_capture_remains_local": true
+  },
+  "resources": {
+    "reuse_cargo_cache": true,
+    "duplicate_pcm_hardlinks": 84,
+    "deduplicated_bytes": 4849778688,
+    "old_evidence_unchanged": true
+  },
+  "gaps": [
+    "native synthesis/formatter calls inside AU 1",
+    "other formatter configurations, changing gain, and real clipping",
+    "native short frames and mode switches",
+    "uninterrupted 64-slot ramps and sparse/multiple matrix points",
+    "other native OAMD encoding paths",
+    "native matrix output bands above the previously validated 48",
+    "unique normative adjudication of field endpoint vs P17/P18",
+    "generic MP4 priming/edit semantics"
+  ],
+  "provenance_note": "历史实验的提交标识、源码摘要、数值与测试计数对应采集时的原始研究版本。参考检查点来自本地运行时观察，原始资料保存在受限研究档案中。"
+}

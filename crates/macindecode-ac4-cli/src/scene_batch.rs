@@ -25,6 +25,9 @@ use macindecode_ac4_scene::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+#[cfg(test)]
+mod sync_tests;
+
 const MAX_MP4_EDIT_ENTRIES: usize = 8;
 
 /// CLI 经 Scene Session 批量采集时的稳定失败分类。

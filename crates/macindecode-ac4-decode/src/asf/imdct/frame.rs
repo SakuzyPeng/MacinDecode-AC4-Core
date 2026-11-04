@@ -36,6 +36,34 @@
 use crate::asf::framing::AsfWindowLayout;
 use crate::asf::imdct::transform::{self, ImdctError, ImdctWorkspace, OverlapBuffer};
 
+#[cfg(all(test, feature = "audio-decode"))]
+extern crate std;
+
+#[cfg(all(test, feature = "audio-decode"))]
+pub(crate) struct SyncFrame {
+    pub pointer: usize,
+    pub samples: usize,
+    pub blocks: std::vec::Vec<(usize, usize, u16)>,
+}
+
+#[cfg(all(test, feature = "audio-decode"))]
+std::thread_local! {
+    static SYNC_FRAMES: std::cell::RefCell<Option<std::vec::Vec<SyncFrame>>> = const { std::cell::RefCell::new(None) };
+}
+
+#[cfg(all(test, feature = "audio-decode"))]
+pub(crate) fn sync_begin() {
+    SYNC_FRAMES.with(|slot| {
+        assert!(slot.borrow().is_none());
+        *slot.borrow_mut() = Some(std::vec::Vec::new());
+    });
+}
+
+#[cfg(all(test, feature = "audio-decode"))]
+pub(crate) fn sync_take() -> std::vec::Vec<SyncFrame> {
+    SYNC_FRAMES.with(|slot| slot.borrow_mut().take().unwrap())
+}
+
 /// 一个声道的跨帧合成状态。
 #[derive(Debug)]
 pub struct ChannelSynthesis {
@@ -116,6 +144,8 @@ pub fn synthesize(
     }
 
     let mut offset = 0usize;
+    #[cfg(all(test, feature = "audio-decode"))]
+    let mut observed_blocks = std::vec::Vec::new();
     for window in 0..windows {
         let length = usize::from(block_length(layout, window)?);
         let end = offset.saturating_add(length);
@@ -126,10 +156,22 @@ pub fn synthesize(
                 provided: ungrouped.len(),
             });
         };
+        #[cfg(all(test, feature = "audio-decode"))]
+        observed_blocks.push((offset, target.len(), state.previous_block_length()));
         transform::transform(lines, workspace, &mut state.overlap, target)
             .map_err(|error| FrameSynthesisError::Block { window, error })?;
         offset = end;
     }
+    #[cfg(all(test, feature = "audio-decode"))]
+    SYNC_FRAMES.with(|slot| {
+        if let Some(rows) = slot.borrow_mut().as_mut() {
+            rows.push(SyncFrame {
+                pointer: pcm.as_ptr() as usize,
+                samples: pcm.len(),
+                blocks: observed_blocks,
+            });
+        }
+    });
     Ok(())
 }
 

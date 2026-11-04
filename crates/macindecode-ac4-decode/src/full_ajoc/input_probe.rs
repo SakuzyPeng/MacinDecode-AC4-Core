@@ -13,11 +13,55 @@ use crate::{
 };
 use std::{cell::RefCell, format, string::String, vec::Vec};
 
+pub(crate) struct TerminalObservation {
+    pub sources: Vec<super::FullAjocPcmSource>,
+    pub qmf: Vec<Vec<QmfSlot>>,
+    pub pcm: Vec<Vec<f32>>,
+    pub pcm_pointers: Vec<usize>,
+}
+
 #[derive(Default)]
 pub(crate) struct Observation {
     pub signals: Vec<(usize, Vec<QmfSlot>)>,
     pub applied: Option<String>,
     pub consumed: Option<(String, u8, Vec<QmfChannelFrame>)>,
+    pub terminal: Option<TerminalObservation>,
+}
+
+pub(crate) fn terminal(
+    sources: &[super::FullAjocPcmSource],
+    objects: &[QmfChannelFrame],
+    lfe: &QmfChannelFrame,
+    reuse_first_object: bool,
+    pcm: &[Vec<f32>],
+    timeslots: usize,
+) {
+    ACTIVE.with(|cell| {
+        if let Some(record) = cell.borrow_mut().as_mut() {
+            assert!(record.terminal.is_none());
+            let qmf = sources
+                .iter()
+                .map(|source| {
+                    let frame = match *source {
+                        super::FullAjocPcmSource::AjocObject(index) => objects
+                            .get(if reuse_first_object { 0 } else { index })
+                            .unwrap(),
+                        super::FullAjocPcmSource::Lfe => lfe,
+                        super::FullAjocPcmSource::AjocInput => {
+                            panic!("terminal must have object or LFE identity")
+                        }
+                    };
+                    frame.get(..timeslots).unwrap().to_vec()
+                })
+                .collect();
+            record.terminal = Some(TerminalObservation {
+                sources: sources.to_vec(),
+                qmf,
+                pcm: pcm.to_vec(),
+                pcm_pointers: pcm.iter().map(|plane| plane.as_ptr() as usize).collect(),
+            });
+        }
+    });
 }
 
 std::thread_local! {

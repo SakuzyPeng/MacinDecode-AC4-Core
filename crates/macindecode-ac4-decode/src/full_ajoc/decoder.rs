@@ -3289,6 +3289,8 @@ fn synthesise_object_outputs(
         })?;
         sources.push(source);
     }
+    #[cfg(test)]
+    super::input_probe::terminal(sources, objects, lfe, reuse_first_object, pcm, timeslots);
     Ok(())
 }
 

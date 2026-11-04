@@ -125,7 +125,9 @@ def scalar_schedule(rows, *, immediate=False):
     return np.asarray(values, '<f4')
 
 
-def check_synthetic(root):
+def check_synthetic(root, *, frames=5):
+    if frames not in (5, 7):
+        raise ValueError('未知构造尾部协议')
     root = Path(root)
     if sha(root/'window.f32') != WINDOW_SHA256:
         raise ValueError('独立 FIR 原型窗身份错误')
@@ -140,15 +142,15 @@ def check_synthetic(root):
         case = json.loads((d/'case.json').read_text())
         slots = integer(case['slots'],24,32)
         n = slots*64
-        length = 5*n
-        if case['frames'] != 5 or case['pcm_delay'] != {24:96,30:288,32:352}[slots]:
+        length = frames*n
+        if case['frames'] != frames or case['pcm_delay'] != {24:96,30:288,32:352}[slots]:
             raise ValueError('构造链帧数或延迟错误')
         pcm = array(d/'pcm_input.f32',(length,))
         expected_pcm = np.zeros(length,'<f4')
         if case['pattern']=='impulse':
             expected_pcm[[n//2,n+63,2*n-1,3*n+32]]=1
         elif case['pattern']=='step':
-            expected_pcm[n+3:]=.25
+            expected_pcm[n+3:5*n]=.25
         else:
             raise ValueError('未知波形')
         exact(pcm,expected_pcm,'带样本标签的构造输入')
@@ -159,7 +161,7 @@ def check_synthetic(root):
         expected_x = np.zeros(analysed.shape,complex)
         expected_x[6:] = analysed[:-6]
         rows = [json.loads(line) for line in (d/'frames.jsonl').read_text().splitlines()]
-        if len(rows)!=5 or [r['au'] for r in rows]!=list(range(1,6)):
+        if len(rows)!=frames or [r['au'] for r in rows]!=list(range(1,frames+1)):
             raise ValueError('构造矩阵帧序列不完整')
         schedule=[]; xs=[]; zs=[]; coefficients=[]
         for i,r in enumerate(rows):
@@ -187,7 +189,9 @@ def check_synthetic(root):
         pcm_error=require_bound(expected_output,output,synthesis_bound,'完整合成时间轴')
         different=np.flatnonzero(local.view('u4')!=early.view('u4'))
         if not len(different):raise ValueError('构造链没有区分两种日程')
-        results.append(dict(id=name,slots=5*slots,qmf_max_error=qmf_error,qmf_bound=bound,
+        if frames == 7 and (case.get('signal_frames') != 5 or np.any(output[-64:])):
+            raise ValueError('人工补零尾部未声明或未排尽有限滤波历史')
+        results.append(dict(id=name,slots=frames*slots,qmf_max_error=qmf_error,qmf_bound=bound,
                             pcm_max_error=pcm_error,pcm_bound=synthesis_bound,
                             schedule_different_slots=len(different),first_different_slot=int(different[0])))
     return results

@@ -32,6 +32,7 @@ fn replay_ajoc_timing() {
     std::thread::Builder::new().stack_size(32 * 1024 * 1024).spawn(|| {
         let root = PathBuf::from(std::env::var("MACINAC4_AJOC_TIMING_OUTPUT").unwrap());
         std::fs::create_dir(&root).unwrap();
+        let frames = if std::env::var_os("MACINAC4_AJOC_SYNC_TAIL").is_some() { 7 } else { 5 };
         save(&root.join("window.f32"), QMF_WINDOW);
         for slots in [24usize, 30, 32] {
             let n = slots * 64;
@@ -42,12 +43,12 @@ fn replay_ajoc_timing() {
                         let dir = root.join(format!("s{slots}p{start}r{ramp}{pattern}"));
                         std::fs::create_dir(&dir).unwrap();
                         std::fs::write(dir.join("case.json"), format!(
-                            "{{\"slots\":{slots},\"start\":{start},\"ramp\":{ramp},\"pattern\":\"{pattern}\",\"pcm_delay\":{delay},\"frames\":5}}\n"
+                            "{{\"slots\":{slots},\"start\":{start},\"ramp\":{ramp},\"pattern\":\"{pattern}\",\"pcm_delay\":{delay},\"frames\":{frames},\"signal_frames\":5}}\n"
                         )).unwrap();
-                        let mut pcm = vec![0.0f32; 5 * n];
+                        let mut pcm = vec![0.0f32; frames * n];
                         if pattern == "impulse" {
                             for i in [n / 2, n + 63, 2 * n - 1, 3 * n + 32] { pcm[i] = 1.0; }
-                        } else { pcm[n + 3..].fill(0.25); }
+                        } else { pcm[n + 3..5 * n].fill(0.25); }
                         save(&dir.join("pcm_input.f32"), pcm.iter().copied());
                         let mut delayed = vec![0.0; pcm.len()];
                         delayed[delay..].copy_from_slice(&pcm[..pcm.len() - delay]);
@@ -57,7 +58,7 @@ fn replay_ajoc_timing() {
                         let mut state = AjocReconstructionState::new();
                         let mut workspace = AjocWorkspace::new();
                         let mut pcm_out = Vec::new();
-                        for frame in 0..5 {
+                        for frame in 0..frames {
                             let points = match frame {
                                 0 => vec![(0, 1)],
                                 1 => vec![(start as u8, ramp)],
