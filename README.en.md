@@ -19,6 +19,7 @@ respective owners and are referenced only to describe compatibility.
 
 - **Container & sync**: MP4 (`ac-4` sample entry / `dac4`) and raw AC-4 sync frame parsing
 - **Scene topology**: Presentation / Group / Substream relationships, random access & configuration generation state machine
+- **Presentation metadata**: Read-only loudness/DRC/DE syntax, alternative OAMD, opaque EMDF routing and census
 - **Metadata-only sessions**: Source-AU presentation/audio/OAMD observation without PCM reconstruction, with Core grid and speaker-layout reports
 - **OAMD timeline**: Cross-frame state continuity, intra-frame updates, ramps, and post-seek integrity marking
 - **Audio core decoding**: Dequantization, IMDCT, joint channel matrix, A-SPX spectral extension & QMF synthesis
@@ -193,12 +194,14 @@ For detailed progress, known limitations, and the audio reconstruction support m
 | [CLI Usage Guide](docs/CLI_USAGE.md) | Complete reference for all 10 subcommands |
 | [CLI Output Contract v1](docs/CLI_OUTPUT_CONTRACT.md) | Machine-readable JSON stdout/stderr specification |
 | [Multi-platform Binary Releases](docs/BINARY_RELEASE.md) | Six-target builds, GitHub Releases, and SHA-256 verification |
+| [CI & Cross-platform Bit-exact Regression](docs/CI.md) | Six-platform PCM gates, public fixtures, faster specification extraction, and local execution |
 | [crates.io Release Checklist](docs/CRATES_IO_RELEASE.md) | Package gates, manual release order, and post-release checks |
 | [Pre-render Output Contract](docs/OUTPUT_CONTRACT.md) | Scene frame semantics and pre-render boundary |
 | [Roadmap](docs/ROADMAP.md) | Milestone details, support matrix, known limitations |
 | [Test Vector Strategy](docs/TEST_VECTOR_STRATEGY.md) | Vector production chain, verification tiers, external references |
+| [External Object PCM Comparison](docs/OBJECT_PCM_REFERENCE.md) | Reference processing, identity, scale and timing alignment, initial comparison results, and open questions |
 | [Spec Traceability](docs/SPEC_TRACEABILITY.md) | Clause ↔ implementation ↔ test traceability matrix |
-| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (12 records) |
+| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (24 records) |
 
 ## Related Projects
 

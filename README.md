@@ -19,6 +19,7 @@ Dolby、Dolby Atmos 与 AC-4 是其各自权利人的商标；文中名称仅用
 - **容器与同步**：MP4 (`ac-4` sample entry / `dac4`) 和 raw AC-4 sync frame 解析
 - **场景拓扑**：Presentation / Group / Substream 关系、随机访问与配置代次状态机
 - **Presentation 元数据**：响度/DRC/DE 只读语法、alternative OAMD、opaque EMDF 路由与 census
+- **纯元数据 Session**：无需重建 PCM 即可观察源 AU 的 presentation/audio/OAMD，并报告 Core 网格与扬声器布局
 - **OAMD 时间线**：跨帧状态延续、帧内更新、ramp 和 seek 后完整性标记
 - **音频核心解码**：反量化、IMDCT、联合声道矩阵、A-SPX 频谱扩展与 QMF 合成
 - **A-JOC full 重建**：对象矩阵、wet/去相关、LFE 插回、终端 QMF 合成
@@ -197,7 +198,7 @@ MP4 / raw AC-4
 | [测试向量策略](docs/TEST_VECTOR_STRATEGY.md) | 向量生产链、验证层级、外部参考 |
 | [对象 PCM 外部差分](docs/OBJECT_PCM_REFERENCE.md) | 参考处理、身份、尺度和时间对齐，首轮差分与未决项 |
 | [规范可追踪性](docs/SPEC_TRACEABILITY.md) | 条款↔实现↔测试追踪矩阵 |
-| [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 12 份 |
+| [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 24 份 |
 
 ## 相关项目
 
