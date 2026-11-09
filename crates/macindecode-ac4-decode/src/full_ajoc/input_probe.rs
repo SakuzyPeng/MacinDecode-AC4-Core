@@ -23,6 +23,7 @@ pub(crate) struct TerminalObservation {
 #[derive(Default)]
 pub(crate) struct Observation {
     pub signals: Vec<(usize, Vec<QmfSlot>)>,
+    pub hf_components: Vec<(usize, crate::aspx::pipeline::component_probe::Components)>,
     pub applied: Option<String>,
     pub consumed: Option<(String, u8, Vec<QmfChannelFrame>)>,
     pub terminal: Option<TerminalObservation>,
@@ -76,6 +77,7 @@ pub(crate) fn begin() {
 }
 
 pub(crate) fn take() -> Observation {
+    crate::aspx::pipeline::component_probe::end();
     ACTIVE.with(|cell| cell.borrow_mut().take().expect("边界观察必须显式启用"))
 }
 
@@ -83,6 +85,9 @@ pub(crate) fn signal(source: usize, values: &[QmfSlot]) {
     ACTIVE.with(|cell| {
         if let Some(record) = cell.borrow_mut().as_mut() {
             record.signals.push((source, values.to_vec()));
+            if let Some(components) = crate::aspx::pipeline::component_probe::bind_output(values) {
+                record.hf_components.push((source, components));
+            }
         }
     });
 }

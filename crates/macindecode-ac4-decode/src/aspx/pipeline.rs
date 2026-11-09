@@ -87,6 +87,11 @@ use crate::aspx::lowband::{LowBandError, low_band};
 use crate::aspx::noisegen::{NoiseError, generate as generate_noise};
 use crate::aspx::patches::{PatchError, PatchTable};
 use crate::aspx::preflatten::{PreFlattenError, PreFlattenGains, pre_flatten};
+
+#[cfg(test)]
+pub(crate) mod component_probe;
+#[cfg(test)]
+pub(crate) mod phase_candidate;
 use crate::aspx::qmf::{
     QmfError, QmfSlot, analyse_ac4_pcm, analyse_ac4_pcm_pair, synthesise_ac4_pcm,
 };
@@ -835,6 +840,8 @@ fn generate_hf_from_low_band(
         aspx.last,
         q_high,
     )?;
+    #[cfg(test)]
+    phase_candidate::patch(patches, q_high);
 
     // `Pseudocode 71` 会把不足三个子带的最后一段 patch 丢掉，此时
     // `Pseudocode 89` 不会覆写 `[patch_end, sbz)`。工作区跨帧复用，若不在
@@ -1087,6 +1094,8 @@ fn assemble_high_band(
         &mut next_noise,
         noise,
     )?;
+    #[cfg(test)]
+    phase_candidate::noise(bands.sbx(), bands.sbz(), noise);
     generate_tone(
         gains,
         bands,
@@ -1111,6 +1120,17 @@ fn assemble_high_band(
         &mut state.hf,
         y,
     )?;
+    #[cfg(test)]
+    component_probe::observe(
+        gains,
+        bands,
+        interval,
+        num_ts_in_ats,
+        q_high,
+        noise,
+        sine,
+        y,
+    );
     state.noise = next_noise;
     state.tone = next_tone;
     Ok(())

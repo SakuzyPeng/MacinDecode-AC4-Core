@@ -201,7 +201,7 @@ For detailed progress, known limitations, and the audio reconstruction support m
 | [Test Vector Strategy](docs/TEST_VECTOR_STRATEGY.md) | Vector production chain, verification tiers, external references |
 | [External Object PCM Comparison](docs/OBJECT_PCM_REFERENCE.md) | Reference processing, identity, scale and timing alignment, initial comparison results, and open questions |
 | [Spec Traceability](docs/SPEC_TRACEABILITY.md) | Clause ↔ implementation ↔ test traceability matrix |
-| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (25 records) |
+| [ADR Decision Records](docs/decisions/) | Language, numeric, transform, Scene API, and responsibility-layering decisions (26 records) |
 
 ## Related Projects
 

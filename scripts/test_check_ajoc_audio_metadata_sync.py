@@ -27,6 +27,42 @@ def stream(parts, data, *, carry=31, limit=.25, gain=1/64):
     return np.concatenate(result, axis=1), state, carry
 
 
+class PaddedSynthesisTests(unittest.TestCase):
+    def test_described_silent_channels_are_retained_and_padding_is_zero(self):
+        pcm = np.zeros((64, 21), '<f4')
+        pcm[:, 0] = .5
+        sync.validate_padded_pcm(pcm, 16)
+        pcm[:, 20] = .25
+        sync.validate_padded_pcm(pcm, 21)
+        with self.assertRaises(ValueError):
+            sync.validate_padded_pcm(pcm, 16)
+
+    def test_padding_nan_and_bad_shapes_are_rejected(self):
+        for pcm in (np.zeros((0, 21)), np.zeros((4, 16)), np.zeros(21),
+                    np.full((4, 21), np.nan)):
+            with self.assertRaises(ValueError):
+                sync.validate_padded_pcm(pcm, 16)
+        for active in (0, 22, True, 16.0):
+            with self.assertRaises(ValueError):
+                sync.validate_padded_pcm(np.zeros((4, 21)), active)
+
+    def test_synthesis_counts_bind_padding_to_actual_calls(self):
+        sync.validate_synthesis_channels(dict(counts=[0]*21, synthesis_channels=0), 1, 16)
+        row = dict(counts=[32]*16+[0]*5, synthesis_channels=16)
+        sync.validate_synthesis_channels(row, 2, 16)
+        for changed in (dict(row, counts=[32]*21), dict(row, counts=[32]*15+[0]*6),
+                        dict(row, synthesis_channels=21), dict(counts=row['counts'])):
+            with self.assertRaises(ValueError):
+                sync.validate_synthesis_channels(changed, 2, 16)
+
+    def test_existing_21_channel_observations_remain_valid(self):
+        sync.validate_synthesis_channels(dict(counts=[0]*21), 1, 21)
+        sync.validate_synthesis_channels(dict(counts=[32]*21), 2, 21)
+        for counts in ([32]*20, [32]*22, [False]*21):
+            with self.assertRaises(ValueError):
+                sync.validate_synthesis_channels(dict(counts=counts), 1, 21)
+
+
 class CommonClockTests(unittest.TestCase):
     def test_exact_width_grids_include_fractional_origins(self):
         self.assertEqual([sync.grid_tick(i, 64) for i in (-1, 0, 1)], [-6, 0, 6])

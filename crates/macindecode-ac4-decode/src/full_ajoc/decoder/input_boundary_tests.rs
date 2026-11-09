@@ -137,6 +137,12 @@ fn capture_ajoc_input_boundary() {
 }
 
 fn capture() {
+    use crate::aspx::pipeline::phase_candidate;
+    let candidate =
+        std::env::var("MACINAC4_ASPX_PHASE_CANDIDATE").unwrap_or_else(|_| String::from("baseline"));
+    let _phase_scope = phase_candidate::enter(
+        phase_candidate::Mode::parse(&candidate).expect("明确的测试相位候选"),
+    );
     let input = std::env::var("MACINAC4_AJOC_INPUT_STREAM").unwrap();
     let destination = std::env::var("MACINAC4_AJOC_INPUT_OUTPUT").unwrap();
     let selected: BTreeSet<usize> = std::env::var("MACINAC4_AJOC_INPUT_AUS")
@@ -275,6 +281,9 @@ fn capture() {
             before, previous_state,
             "连续帧入口必须保留上一帧的完整 A-SPX 历史"
         );
+        if std::env::var_os("MACINAC4_HF_COMPONENTS").is_some() && selected.contains(&(index + 1)) {
+            crate::aspx::pipeline::component_probe::begin();
+        }
         input_probe::begin();
         if sync_capture {
             crate::asf::imdct::frame::sync_begin();
@@ -383,6 +392,30 @@ fn capture() {
         }
         append_floats(&mut core_file, core.iter().flatten().copied());
         let record = input_probe::take();
+        for (source, component) in &record.hf_components {
+            let prefix = format!("au{:04}.hf{source}", index + 1);
+            let metadata = format!(
+                "{{\"au\":{},\"source\":{source},\"sbx\":{},\"sbz\":{},\"factor\":{},\"borders\":{:?},\"signal_gains\":{:?},\"noise_enabled\":{:?}}}\n",
+                index + 1,
+                component.sbx,
+                component.sbz,
+                component.factor,
+                component.borders,
+                component.signal_gains,
+                component.noise_enabled,
+            );
+            let mut metadata_file =
+                File::create_new(destination.join(format!("{prefix}.json"))).unwrap();
+            metadata_file.write_all(metadata.as_bytes()).unwrap();
+            for (name, values) in [
+                ("high", &component.high),
+                ("noise", &component.noise),
+                ("sine", &component.sine),
+                ("assembled", &component.assembled),
+            ] {
+                save_qmf(&destination.join(format!("{prefix}.{name}.f32")), values);
+            }
+        }
         if let Some(rows) = terminal_rows.as_mut() {
             let terminal = record.terminal.as_ref().unwrap();
             assert_eq!(
@@ -571,6 +604,10 @@ fn capture() {
     object_file.flush().unwrap();
     rows.flush().unwrap();
     timeline.flush().unwrap();
+    let mut phase_summary = File::create_new(destination.join("phase_candidate.json")).unwrap();
+    phase_summary
+        .write_all(phase_candidate::summary().as_bytes())
+        .unwrap();
     if let Some(file) = all_sources.as_mut() {
         file.flush().unwrap();
     }

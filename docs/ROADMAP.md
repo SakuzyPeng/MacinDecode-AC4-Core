@@ -194,7 +194,12 @@ OAMD API offset 分别记账。已有 MP4 配对的 PCM 与元数据都只应用
 
 下一阶段按以下顺序推进：
 
-1. [矩阵与插值调查](AJOC_MATRIX_INVESTIGATION.md)已核对三份流的连续控制和 24 条构造链，
+1. 2026-11-08 的[新素材高频调查](HF_RESIDUAL_RESERVE_INVESTIGATION.md)已完成 13 条
+   A-JOC 独立参考及四份流的实际矩阵输入对照。随后[21 条完整相位候选](ASPX_PHASE_CANDIDATE_INVESTIGATION.md)
+   将噪声／搬运的固定相位差收口为已解释的实现差异，按 ADR-0026 保留默认。
+   当前优先核对预平坦化、增益与噪声电平的联动；固定噪声的信号交换已表明不能
+   用完整旁路的分数代替独立纠错依据，候选不进入生产。
+2. [矩阵与插值调查](AJOC_MATRIX_INVESTIGATION.md)已核对三份流的连续控制和 24 条构造链，
    采样系数／乘法逐位符合独立模型，16 个参考混合网格探针支持逐对象映射。
    两个音乐参考窗口的实际消费从 start_pos 当时隙执行第一增量，与当前本地顺序不同；
    时间坐标、非零时序与 OAMD 消费单位现已核对，共同账本已解释 31 样本格式历史，
@@ -205,10 +210,10 @@ OAMD API offset 分别记账。已有 MP4 配对的 PCM 与元数据都只应用
    把已解释的去相关系数、ducker 条件和前端残差分别记账。
    保持已验证的 QMF／音调初相、TNA 与预平坦化；参考相似度不作修复目标，参考 limiter
    约束另行评价。
-2. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
+3. 继续以 [ADR-0011](decisions/0011-layer-syntax-decode-and-scene.md) 和
    [ADR-0013](decisions/0013-extract-decode-crate.md) 的 Cargo/层门禁保持 syntax → decode →
    scene 单向边界；后续重构不得混入数值变化。
-3. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。ADR-0012 已
+4. 取得真实宿主所有权需求后再设计版本化 C ABI；FFI 不反向决定 Rust Scene 布局。ADR-0012 已
    把 direct-object 从 ABI 的前置条件中移除，它不再阻塞这一项。
 
 direct-object **不在**上述列表里，这是决定而不是遗漏：编码链不产出该路径，至今没有真实样本，

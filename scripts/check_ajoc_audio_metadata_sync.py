@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -212,9 +213,33 @@ def validate_reference_gate(status, calls, params, offsets):
         raise ValueError('参考参数缺失、重复、失败或与基准不同')
 
 
+def validate_padded_pcm(pcm, active_channels):
+    """按已验证的合成通道数检查物理 21 路 API 缓冲；不按信号能量选轨。"""
+    integer(active_channels, 1, 21)
+    pcm = np.asarray(pcm)
+    if pcm.ndim != 2 or pcm.shape[1] != 21 or not len(pcm) or not np.isfinite(pcm).all():
+        raise ValueError('参考物理 PCM 形状或有限性错误')
+    if np.any(pcm[:, active_channels:] != 0):
+        raise ValueError('未描述的物理填充通道含非零 PCM，不能丢弃')
+
+
+def validate_synthesis_channels(row, au, active_channels):
+    integer(active_channels, 1, 21)
+    if active_channels != 21 and 'synthesis_channels' not in row:
+        raise ValueError('部分物理通道必须有实际合成通道数凭证')
+    expected = active_channels if au > 1 else 0
+    if integer(row.get('synthesis_channels', expected), 0, 21) != expected:
+        raise ValueError('实际合成通道数与声明不符')
+    counts = row['counts']
+    if (len(counts) != 21 or any(type(count) is not int for count in counts)
+            or counts != ([32]*active_channels+[0]*(21-active_channels) if au > 1 else [0]*21)):
+        raise ValueError('合成原语调用缺失或填充通道被误当作实际合成')
+
+
 def check_native(case):
     root = Path(case['directory'])
     count = case['expected_frames']
+    active = integer(case.get('active_channels', 21), 1, 21)
     runs = []
     for mode in ('r7', 'r8'):
         receipt = json.loads((root/mode/'receipt.json').read_text())
@@ -243,17 +268,16 @@ def check_native(case):
         if sha(raw_path) != case['expected_pcm_sha256']:
             raise ValueError('参考捕获文件摘要错误')
         pcm = np.memmap(raw_path, '<f4', mode='r').reshape(count, 2048, 21)
-        if not np.isfinite(pcm).all():
-            raise ValueError('参考完整 PCM 非有限')
+        validate_padded_pcm(pcm.reshape(-1, 21), active)
         selected = []
         hashes = {}
         prior_au, prior_tail = None, None
         for au, row in enumerate(rows, 1):
             validate_transfer(row)
+            validate_synthesis_channels(row, au, active)
             if (row['au'] != au or row['sample_start'] != (au-1)*2048 or row['errors'] != 0
                     or row['selected'] is not (au in case['selected_aus'])
                     or row['observed'] is not (au > 1)
-                    or row['counts'] != ([32]*21 if au > 1 else [0]*21)
                     or row['formatter_pending_samples'] != (31 if au > 1 else 0)
                     or row['formatter_tail_matches'] is not (au > 1)
                     or row['formatter_history_matches'] is not (au > 2)):
@@ -270,17 +294,20 @@ def check_native(case):
             # snapshot 0 在本帧 setter 之前，可保留启动帧的 10 路设置；
             # 本帧实际消费的是后一个快照所记录的设置，与下方 gain 同源。
             if (np.any(state_words[1:, 0] != 1) or np.any(state_words[1:, 3] != 1)
-                    or np.any(state_words[1:, 4] != 21) or np.any(state_words[1:, 14] != 32)):
+                    or np.any(state_words[1:, 4] != active) or np.any(state_words[1:, 14] != 32)):
                 raise ValueError('参考格式转换分支或 32 采样粒度改变')
             offsets = np.fromfile(d/'format_offsets.u32', '<u4')
             destinations = np.fromfile(d/'format_return_delta.i64', '<i8')
-            if offsets.tolist() != list(range(0, 2048, 256)) or destinations.shape != (168,) or np.any(destinations):
+            if (offsets.tolist() != list(range(0, 2048, 256)) or destinations.shape != (168,)
+                    or np.any(destinations.reshape(8, 21)[:, :active])):
                 raise ValueError('格式转换到返回缓冲发生裁剪或错位')
-            if np.any(contexts[:, 15] != 31) or np.any(contexts[:, 18] != 21) or np.any(contexts[:, 19] != 256):
+            if np.any(contexts[:, 15] != 31) or np.any(contexts[:, 18] != active) or np.any(contexts[:, 19] != 256):
                 raise ValueError('原生保留数量或四时隙批次改变')
             observed_slots = np.fromfile(d/'descriptor_slots.u32', '<u4').reshape(21, 32)
             offsets_in_scratch = np.fromfile(d/'producer_offsets.i64', '<i8').reshape(21, 32)
-            if np.any(observed_slots != 4) or np.any(offsets_in_scratch != np.tile(np.arange(4)*256, 8)):
+            if (np.any(observed_slots[:active] != 4)
+                    or np.any(offsets_in_scratch[:active] != np.tile(np.arange(4)*256, 8))
+                    or np.any(observed_slots[active:]) or np.any(offsets_in_scratch[active:])):
                 raise ValueError('原生暂存视图或时隙次序错误')
             exact_bytes(api, pcm[au-1].T, '返回缓冲与实际序列化 PCM 不一致')
             clipped = 0
@@ -288,25 +315,30 @@ def check_native(case):
                 limit, gain, start_gain = state[group+1, [1, 2, 29]]
                 if gain.view('u4') != start_gain.view('u4') or not np.isfinite(state[group+1, [1, 2, 29]]).all():
                     raise ValueError('本批未覆盖变化中的格式增益')
-                values = raw[:, group*256:(group+1)*256]
-                prediction, after, carry = format_block(prefix[group], values, int(contexts[group, 15]), limit, gain)
-                exact_bytes(prediction, api[:, group*256:(group+1)*256], '原生格式转换／31 采样保留不符')
+                values = raw[:active, group*256:(group+1)*256]
+                prediction, after, carry = format_block(prefix[group, :active], values, int(contexts[group, 15]), limit, gain)
+                exact_bytes(prediction, api[:active, group*256:(group+1)*256], '原生格式转换／31 采样保留不符')
                 if carry != int(contexts[group+1, 15]):
                     raise ValueError('格式保留游标错误')
                 if group < 7:
-                    exact_bytes(after[:, 1:], prefix[group+1, :, 1:], '四时隙批次丢失尾部')
-                clipped += int(np.count_nonzero(abs(np.concatenate((prefix[group, :, 1:], values[:, :225]), axis=1)) > limit))
+                    exact_bytes(after[:, 1:], prefix[group+1, :active, 1:], '四时隙批次丢失尾部')
+                clipped += int(np.count_nonzero(abs(np.concatenate((prefix[group, :active, 1:], values[:, :225]), axis=1)) > limit))
             if prior_au == au - 1:
-                exact_bytes(prior_tail, prefix[0, :, 1:], '跨 AU 格式历史不连续')
-            prior_au, prior_tail = au, raw[:, -31:].copy()
-            selected.append(dict(au=au, pcm_samples=21*2048, pending_input_samples=31,
+                exact_bytes(prior_tail, prefix[0, :active, 1:], '跨 AU 格式历史不连续')
+            prior_au, prior_tail = au, raw[:active, -31:].copy()
+            selected.append(dict(au=au, pcm_samples=active*2048, pending_input_samples=31,
                                  format_delay_ticks=186, group_samples=256, clipped_values=clipped,
                                  clip_limit=float(state[-1, 1]), output_gain=float(state[-1, 2]),
                                  effective_gain=float(np.float32(state[-1, 2]*256)),
                                  format_state_source='next batch before setter; final batch after return'))
             for name in ('synthesis.f32', 'api.f32', 'qmf.f32', 'before.f32', 'after.f32', 'format_prefix.f32',
                          'producer_offsets.i64', 'descriptor_slots.u32', 'format_offsets.u32', 'format_return_delta.i64'):
-                hashes[f'au{au:04}/{name}'] = sha(d/name)
+                if name == 'format_return_delta.i64' and active != 21:
+                    # 未合成的物理尾路没有目的地址观察；其地址槽不能用于重复性比较。
+                    hashes[f'au{au:04}/{name}'] = hashlib.sha256(
+                        destinations.reshape(8, 21)[:, :active].tobytes()).hexdigest()
+                else:
+                    hashes[f'au{au:04}/{name}'] = sha(d/name)
             # 内存快照只比较实际使用的标量；未使用位置和进程地址不冒充状态。
             hashes[f'au{au:04}/format_values'] = contexts[:, [14, 15, 18, 19, 22, 24]].tobytes().hex()+state[:, [1, 2, 29]].tobytes().hex()+state_words[:, [0, 3, 4, 14]].tobytes().hex()
         del pcm
