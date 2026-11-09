@@ -1,0 +1,177 @@
+{
+  "schema": "macinac4.ajoc-interpolation-timing-decision",
+  "version": 1,
+  "date": "2026-11-08",
+  "base_commit": "105a2441c59ae2c4d6ede08c445d6c11867c0c0f",
+  "decision": {
+    "adr": "ADR-0025",
+    "default_schedule": "retain_start_endpoint",
+    "first_increment": "s + 1",
+    "uninterrupted_target": "s + N",
+    "interrupted_start_value": "old_curve(u)",
+    "engineering_default_decided": true,
+    "official_conformance_adjudicated": false,
+    "physical_audio_metadata_alignment_adjudicated": false
+  },
+  "scope": {
+    "production_arithmetic_changes": false,
+    "public_api_changes": false,
+    "cli_changes": false,
+    "pcm_baseline_changes": false,
+    "spec_version_changes": false,
+    "new_native_reference_capture": false
+  },
+  "official_source_audit": {
+    "directory_url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319002/",
+    "listed_versions": [
+      "1.1.1",
+      "1.2.1",
+      "1.3.1"
+    ],
+    "relevant_public_erratum_found": false,
+    "search_scope": "Official public release directory and ETSI-indexed searches for the interpolation function, errata and newer Part 2 revisions; not an exhaustive proof of absence.",
+    "extraction": "pdftotext -layout; function declaration through return interpolated; remove whitespace before SHA-256",
+    "sources": [
+      {
+        "version": "1.1.1",
+        "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319002/01.01.01_60/ts_10319002v010101p.pdf",
+        "pdf_sha256": "2cfc11d5c190bb9ff8d8adf94071faa906aedc99fdfca12db473d06ae2c77bf9",
+        "interpolate_text_without_whitespace_sha256": "30846db579b3f570de30edce16d40732a265c774e0ac98168ae98796794b21e1"
+      },
+      {
+        "version": "1.2.1",
+        "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319002/01.02.01_60/ts_10319002v010201p.pdf",
+        "pdf_sha256": "02a200f4a3a3cb2b2ef0ac1c96b1bb77dfed841ba80a94c3aa27edde2f20ac6f",
+        "interpolate_text_without_whitespace_sha256": "30846db579b3f570de30edce16d40732a265c774e0ac98168ae98796794b21e1"
+      },
+      {
+        "version": "1.3.1",
+        "url": "https://www.etsi.org/deliver/etsi_ts/103100_103199/10319002/01.03.01_60/ts_10319002v010301p.pdf",
+        "pdf_sha256": "0f6deedf99febab50aac23b4624992cd813ce27875199b6375b743b723641cf1",
+        "interpolate_text_without_whitespace_sha256": "30846db579b3f570de30edce16d40732a265c774e0ac98168ae98796794b21e1"
+      }
+    ]
+  },
+  "contract_tests": {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "macindecode-ac4-decode",
+      "--features",
+      "audio-decode",
+      "timing_contract_tests"
+    ],
+    "passed": 2,
+    "uninterrupted_chains": 5504,
+    "interrupted_chains": 8064,
+    "total_chains": 13568,
+    "coefficient_groups": [
+      "dry",
+      "wet",
+      "pre"
+    ],
+    "first_frame_slots": [
+      24,
+      30,
+      32
+    ],
+    "ramp_lengths_inclusive": [
+      1,
+      64
+    ],
+    "oracle": "Absolute-slot piecewise linear closed form with exactly representable binary rational slopes; verifies the local decision, not official semantics.",
+    "mutations": [
+      {
+        "mutation": "advance_at_start",
+        "returncode": 101,
+        "detected_by_both_contract_tests": true
+      },
+      {
+        "mutation": "extra_increment",
+        "returncode": 101,
+        "detected_by_both_contract_tests": true
+      }
+    ],
+    "restored_passed": 2
+  },
+  "reference_revalidation": {
+    "kind": "revalidation_of_frozen_captures",
+    "cases": 38,
+    "windows": 114,
+    "repeated_captures_bit_exact": true,
+    "new_native_capture": false,
+    "checker": "scripts.check_ajoc_timing_stream.check_reference_set(manifest, records)",
+    "source_experiment": "ajoc-timing-stream-20261023",
+    "manifest_sha256": "e27b0aa222606fe779aa69fc52cb85a1858c9a7b8b98844c854c2083bedb8539",
+    "reference_manifest_sha256": "e9260537d5a7ffa0cea30df1d1542427300b86de5050f30b01c58ae78004c67f",
+    "result_sha256": "24b8551e8bbd37c33b8184c4acd96a93ad877c4b883bb3c83dea5275859f9ac3",
+    "limitation": "Frozen reference consumption remains immediate-first with reciprocal multiplication and no endpoint snap; this run checks existing captures and adds no native coverage."
+  },
+  "validation": {
+    "workspace_audio": {
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--features",
+        "audio-decode"
+      ],
+      "passed": 1325,
+      "failed": 0,
+      "ignored": 44,
+      "summaries": 25
+    },
+    "python": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "scripts/test_check_ajoc_matrix.py",
+        "scripts/test_check_ajoc_timing.py",
+        "scripts/test_check_ajoc_timing_stream.py",
+        "scripts/test_check_oamd_consumer_timing.py",
+        "scripts/test_check_ajoc_audio_metadata_sync.py"
+      ],
+      "passed": 100
+    },
+    "format": true,
+    "layers": true,
+    "math_anchors": true,
+    "spec_sources_verified": true,
+    "git_diff_check": true,
+    "clippy_audio": {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--features",
+        "audio-decode",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "passed": true
+    }
+  },
+  "production_body_unchanged_from_head": true,
+  "production_body_after_import_marker_sha256": "c236f50d44b887dc7d19a05e8e59707e0ad6b1bf5b88fe5578c12b8759c02c5d",
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "spec/MANIFEST.json": "66af26105a0c83efd97cfae3e245702c6e5c53c2820f2dacc167f6832d505dd6"
+  },
+  "source_sha256": {
+    "crates/macindecode-ac4-decode/src/ajoc/interp.rs": "358b6fe67dd9f31b54678aeae7668937a8d997dfdcdc64facec3a08f56779b5b",
+    "crates/macindecode-ac4-decode/src/ajoc/interp/timing_contract_tests.rs": "70ab73cfde37e2373be019b78544373df4794c3f73428c86bc2a859e415cebcd",
+    "docs/decisions/0025-retain-ajoc-interpolation-endpoint-timing.md": "331f12fb6e6793e1fd3969d7216a9306460e98e9bea7457ff342439ccfb87855",
+    "scripts/check_ajoc_timing_stream.py": "2f6e53f7ddda46c14058e0876278ea354f2d39e0d5081cc75938e3dbf0d0e39b"
+  },
+  "not_rerun": [
+    "Ignored real-media PCM baseline decoding",
+    "New reference decoder/OAR capture",
+    "Default/spec-tables/no_std build matrix; no affected runtime code"
+  ]
+}

@@ -7,6 +7,10 @@
 来源、数量和验收命令见[机器摘要](experiments/ajoc_audio_metadata_sync.json)，
 公开的整数坐标摘录见[JSONL](experiments/ajoc_audio_metadata_sync_timeline.jsonl)。
 
+后续：2026-11-08 的 [ADR-0025](decisions/0025-retain-ajoc-interpolation-endpoint-timing.md)
+已决定保留当前默认插值日程。那是工程裁决；本报告关于官方语义和物理时间意图尚未
+唯一确定的历史结论仍有效，原始证据和覆盖不变。
+
 ## 结论
 
 **历史上的 31 样本偏移已有实际消费者解释。** 已测参考在终端 QMF 合成之后，按

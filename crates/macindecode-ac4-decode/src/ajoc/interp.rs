@@ -6,6 +6,14 @@
 //! [`InterpolationState`] 只保存一份共享 ramp 游标。每个 QMF 时隙必须且只能
 //! 调用一次 [`InterpolationState::interpolate_timeslot`]，该入口会统一推进 dry、
 //! wet 与 pre 三组系数。
+//!
+//! 时序按 ADR-0025 的工程裁决：`start_pos = s` 是新 ramp 的起点端点，
+//! 长度 `N` 的第一增量在 `s + 1`，未被打断时于 `s + N` 到达 target。
+//! `TS103190-2:v1.3.1:6.3.6.4.2` 的字段描述不足以独立确定端点取样约定；
+//! 这里保留 P17 返回值及 P18 消费顺序，不把已测参考的当时隙第一步当作规范勘误。
+
+#[cfg(test)]
+mod timing_contract_tests;
 
 use super::MAX_DATA_POINTS;
 use super::syntax::AjocDataPoints;

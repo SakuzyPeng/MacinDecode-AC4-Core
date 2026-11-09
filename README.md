@@ -198,7 +198,7 @@ MP4 / raw AC-4
 | [测试向量策略](docs/TEST_VECTOR_STRATEGY.md) | 向量生产链、验证层级、外部参考 |
 | [对象 PCM 外部差分](docs/OBJECT_PCM_REFERENCE.md) | 参考处理、身份、尺度和时间对齐，首轮差分与未决项 |
 | [规范可追踪性](docs/SPEC_TRACEABILITY.md) | 条款↔实现↔测试追踪矩阵 |
-| [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 24 份 |
+| [ADR 决策记录](docs/decisions/) | 语言、数值、变换、Scene API 与职责分层等 25 份 |
 
 ## 相关项目
 
