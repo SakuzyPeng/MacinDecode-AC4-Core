@@ -12,19 +12,19 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.98"
 license = "MIT"
 repository = "https://github.com/SakuzyPeng/MacinDecode-AC4-Core"
 
 [workspace.dependencies]
-macindecode-ac4-metadata = { version = "0.1.0", path = "crates/macindecode-ac4-metadata" }
-macindecode-ac4-bitstream = { version = "0.1.0", path = "crates/macindecode-ac4-bitstream" }
-macindecode-ac4-decode = { version = "0.1.0", path = "crates/macindecode-ac4-decode" }
-macindecode-ac4-inspect = { version = "0.1.0", path = "crates/macindecode-ac4-inspect" }
-macindecode-ac4-mp4 = { version = "0.1.0", path = "crates/macindecode-ac4-mp4" }
-macindecode-ac4-scene = { version = "0.1.0", path = "crates/macindecode-ac4-scene" }
+macindecode-ac4-metadata = { version = "0.2.0", path = "crates/macindecode-ac4-metadata" }
+macindecode-ac4-bitstream = { version = "0.2.0", path = "crates/macindecode-ac4-bitstream" }
+macindecode-ac4-decode = { version = "0.2.0", path = "crates/macindecode-ac4-decode" }
+macindecode-ac4-inspect = { version = "0.2.0", path = "crates/macindecode-ac4-inspect" }
+macindecode-ac4-mp4 = { version = "0.2.0", path = "crates/macindecode-ac4-mp4" }
+macindecode-ac4-scene = { version = "0.2.0", path = "crates/macindecode-ac4-scene" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

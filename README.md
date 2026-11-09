@@ -30,6 +30,9 @@ Dolby、Dolby Atmos 与 AC-4 是其各自权利人的商标；文中名称仅用
 
 ## 快速开始
 
+当前发布版本为 [v0.2.0](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/releases/tag/v0.2.0)。
+下载适合平台的压缩包及同名 `.sha256` 文件进行校验。
+
 ### 前置条件
 
 - Rust ≥ 1.98（[安装](https://rustup.rs/)）

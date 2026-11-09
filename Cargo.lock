@@ -239,11 +239,11 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "macindecode-ac4-bitstream"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "macindecode-ac4-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "macindecode-ac4-bitstream",
@@ -261,7 +261,7 @@ dependencies = [
 
 [[package]]
 name = "macindecode-ac4-decode"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libm",
  "macindecode-ac4-bitstream",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "macindecode-ac4-inspect"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "macindecode-ac4-bitstream",
  "macindecode-ac4-metadata",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "macindecode-ac4-metadata"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "macindecode-ac4-bitstream",
  "macindecode-ac4-decode",
@@ -288,14 +288,14 @@ dependencies = [
 
 [[package]]
 name = "macindecode-ac4-mp4"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "macindecode-ac4-bitstream",
 ]
 
 [[package]]
 name = "macindecode-ac4-perf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "macindecode-ac4-bitstream",
@@ -309,7 +309,7 @@ dependencies = [
 
 [[package]]
 name = "macindecode-ac4-scene"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "macindecode-ac4-bitstream",
  "macindecode-ac4-decode",

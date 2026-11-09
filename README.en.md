@@ -31,6 +31,9 @@ respective owners and are referenced only to describe compatibility.
 
 ## Quick Start
 
+The current release is [v0.2.0](https://github.com/SakuzyPeng/MacinDecode-AC4-Core/releases/tag/v0.2.0).
+Download the archive for your platform and its matching `.sha256` file for verification.
+
 ### Prerequisites
 
 - Rust ≥ 1.98 ([install](https://rustup.rs/))
