@@ -176,9 +176,15 @@ def discovered_inputs() -> list[Path]:
 
 
 def default_inputs(entries: dict) -> list[Path]:
-    """既覆盖基线声明的全部输入，也暴露本地新增但未登记的向量。"""
+    """覆盖全部冻结输入及普通新增媒体，显式储备由独立向量门禁检查。"""
     paths = {path_for_key(name) for name in entries}
-    paths.update(discovered_inputs())
+    for path in discovered_inputs():
+        case_path = path.parent.parent / "case.json"
+        case = json.loads(case_path.read_text()) if case_path.is_file() else {}
+        if not isinstance(case, dict):
+            raise ValueError(f"案例必须是对象：{case_path}")
+        if case.get("pcm_baseline_status") != "reserve":
+            paths.add(path)
     return sorted(paths, key=lambda path: path.as_posix())
 
 

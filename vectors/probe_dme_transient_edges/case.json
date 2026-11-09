@@ -1,0 +1,226 @@
+{
+  "case_id": "probe_dme_transient_edges",
+  "intent": [
+    "静音中的宽带短猝发与独立脉冲，储备启动、尾部、瞬态窗选择和跨帧历史恢复样本。",
+    "输入事件放在 2048-sample 与 64-sample 候选边界两侧；实际编码边界以 trace 和 priming 为准。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 288000,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "silence"
+    }
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "transient-prbs",
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -0.5,
+            0.5,
+            0.0
+          ]
+        }
+      ],
+      "burst_samples": 512,
+      "signal": {
+        "kind": "prbs",
+        "seed": 826366246,
+        "level_dbfs": -18.0,
+        "fade_samples": 0
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "signal_segments": [
+        {
+          "start_samples": 2047,
+          "seed": 655894552
+        },
+        {
+          "start_samples": 16385,
+          "seed": 655894553
+        },
+        {
+          "start_samples": 48063,
+          "seed": 655894554
+        },
+        {
+          "start_samples": 96001,
+          "seed": 655894555
+        },
+        {
+          "start_samples": 144000,
+          "seed": 655894556
+        },
+        {
+          "start_samples": 192001,
+          "seed": 655894557
+        },
+        {
+          "start_samples": 240063,
+          "seed": 655894558
+        },
+        {
+          "start_samples": 287488,
+          "seed": 655894559
+        }
+      ]
+    },
+    {
+      "source_id": 11,
+      "name": "boundary-impulses",
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            0.5,
+            -0.5,
+            0.5
+          ]
+        }
+      ],
+      "signal": {
+        "kind": "impulses",
+        "pulses": [
+          {
+            "sample": 0,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 2048,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 4095,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 4096,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 4097,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 32767,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 32768,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 32769,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 47999,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 48000,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 48001,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 95999,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 96000,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 96001,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 192000,
+            "amplitude": 0.25
+          },
+          {
+            "sample": 287998,
+            "amplitude": -0.25
+          },
+          {
+            "sample": 287999,
+            "amplitude": 0.25
+          }
+        ]
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      }
+    }
+  ],
+  "encodes": [],
+  "dme_ac4": [
+    {
+      "level": 3,
+      "bitrate": 320
+    },
+    {
+      "level": 4,
+      "bitrate": 128
+    },
+    {
+      "level": 4,
+      "bitrate": 256
+    },
+    {
+      "level": 4,
+      "bitrate": 768
+    },
+    {
+      "level": 4,
+      "bitrate": 1500
+    }
+  ],
+  "notes": [
+    "绝大多数时间静音；用脉冲的实际输入采样位置与容器 edit list 对齐，不把源事件位置直接当作编码帧边界。",
+    "两路对象的信号与位置独立；短猝发不用淡入淡出，以保留瞬态。",
+    "本例用于发现边界行为，不预设一定触发短帧、SIMPLE、companding 或 FIC/TIC。"
+  ],
+  "pcm_baseline_status": "reserve"
+}

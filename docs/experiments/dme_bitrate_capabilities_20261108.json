@@ -1,0 +1,183 @@
+{
+  "schema": "macinac4.dme-bitrate-capabilities",
+  "version": 1,
+  "recorded_on": "2026-11-08",
+  "request": "储备增加 1500 kbps，并覆盖 channel-based。",
+  "scope": "仅描述当前本机 DME CLI 的公开配置与实际参数接受性；不推断 AC-4 规范或其他编码器的限制。",
+  "help_observations": {
+    "dme_channel": {
+      "query": "--morehelp data-rate",
+      "layouts": [
+        "stereo",
+        "5.1",
+        "5.1.4"
+      ],
+      "bitrates_kbps": [
+        48,
+        64,
+        96,
+        128,
+        144,
+        192,
+        256,
+        288,
+        320,
+        384,
+        448,
+        512,
+        768
+      ],
+      "maximum_kbps": 768,
+      "note": "每个布局还有各自的低码率下限；此处记录帮助列出的所有码率。"
+    },
+    "dme_ims": {
+      "query": "--help",
+      "bitrates_kbps": [
+        64,
+        96,
+        128,
+        144,
+        256,
+        320
+      ],
+      "maximum_kbps": 320
+    },
+    "dme_ajoc": {
+      "query": "--help",
+      "level_3_bitrates_kbps": [
+        320,
+        448,
+        768
+      ],
+      "level_4_bitrates_kbps": [
+        128,
+        256,
+        448,
+        768,
+        1500
+      ]
+    }
+  },
+  "probe_input": {
+    "sample_rate": 48000,
+    "duration_samples": 48000,
+    "pcm_bits": 24,
+    "bed_signal": {
+      "kind": "per_channel_sine",
+      "level_dbfs": -18.0,
+      "base_hz": 7200.0,
+      "step_hz": 900.0,
+      "lfe_hz": 40.0,
+      "fade_samples": 480
+    },
+    "source_case": "vectors/probe_dme_native_highband/case.json",
+    "preparation": "scripts.dme_native.prepare_wave(case with duration_samples=48000, output, layout)",
+    "generator_sha256": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+    "native_adapter_sha256": "856f33e94ac47f99f729aec18a91549d46cedc62f33ee273b0a81bcd51b5d797"
+  },
+  "attempts": [
+    {
+      "backend": "dme_channel",
+      "layout": "stereo",
+      "requested_bitrate_kbps": 1500,
+      "exit_code": 1,
+      "output_bytes": 0,
+      "input_sha256": "2a83dab58cefb39b5e10d0b775c88d0ced26c4320971eeff9a454d18db885be9",
+      "encoder_sha256": "6a7594ed74e0ecc043d80a3b10691329369198bdeda0d7590006643b90a388d5",
+      "diagnostics": "Invalid 'data-rate' option value: '1500'.",
+      "input_format": "wav",
+      "command": "${DME_AC4_ENCODER} --input-format <input_format> --input <generated_wave> --output-channel-layout <layout> --data-rate 1500 --encoder drc_profile=film_light:iframe_interval=1sec --loudness-management measure_only --output <output>"
+    },
+    {
+      "backend": "dme_channel",
+      "layout": "5.1",
+      "requested_bitrate_kbps": 1500,
+      "exit_code": 1,
+      "output_bytes": 0,
+      "input_sha256": "8f0f4fcbae01b34810d210681281c0daf6f9800d4e37d006b7ebd57b1cdc85f1",
+      "encoder_sha256": "6a7594ed74e0ecc043d80a3b10691329369198bdeda0d7590006643b90a388d5",
+      "diagnostics": "Invalid 'data-rate' option value: '1500'.",
+      "input_format": "wav",
+      "command": "${DME_AC4_ENCODER} --input-format <input_format> --input <generated_wave> --output-channel-layout <layout> --data-rate 1500 --encoder drc_profile=film_light:iframe_interval=1sec --loudness-management measure_only --output <output>"
+    },
+    {
+      "backend": "dme_channel",
+      "layout": "5.1.4",
+      "requested_bitrate_kbps": 1500,
+      "exit_code": 1,
+      "output_bytes": 0,
+      "input_sha256": "83a50f1d2b490937d0c11879e7038b37ca1936685588c74c3503ed72b8a3feb2",
+      "encoder_sha256": "6a7594ed74e0ecc043d80a3b10691329369198bdeda0d7590006643b90a388d5",
+      "diagnostics": "Invalid 'data-rate' option value: '1500'.",
+      "input_format": "cbi_wav",
+      "command": "${DME_AC4_ENCODER} --input-format <input_format> --input <generated_wave> --output-channel-layout <layout> --data-rate 1500 --encoder drc_profile=film_light:iframe_interval=1sec --loudness-management measure_only --output <output>"
+    },
+    {
+      "backend": "dme_ims",
+      "mode": "general",
+      "requested_bitrate_kbps": 1500,
+      "exit_code": 1,
+      "output_bytes": 0,
+      "input_sha256": "8f0f4fcbae01b34810d210681281c0daf6f9800d4e37d006b7ebd57b1cdc85f1",
+      "encoder_sha256": "54b066d5272f42401e2acf9cfc9f815bf2498ef9bb78bce5a4d1abd3c16afea6",
+      "diagnostics": "Invalid 'data-rate' option value: '1500'.",
+      "input_format": "wav",
+      "command": "${DME_AC4_IMS_ENCODER} --input-format wav --input <generated_5_1_wave> --data-rate 1500 --target-fps <24_for_general_or_native_for_music> --encoder mode=<mode>:drc_profile=<matching_profile>:iframe_interval=24 --loudness-management <matching_measure_only_options> --output <output>"
+    },
+    {
+      "backend": "dme_ims",
+      "mode": "music",
+      "requested_bitrate_kbps": 1500,
+      "exit_code": 1,
+      "output_bytes": 0,
+      "input_sha256": "8f0f4fcbae01b34810d210681281c0daf6f9800d4e37d006b7ebd57b1cdc85f1",
+      "encoder_sha256": "54b066d5272f42401e2acf9cfc9f815bf2498ef9bb78bce5a4d1abd3c16afea6",
+      "diagnostics": "Invalid 'data-rate' option value: '1500'.",
+      "input_format": "wav",
+      "command": "${DME_AC4_IMS_ENCODER} --input-format wav --input <generated_5_1_wave> --data-rate 1500 --target-fps <24_for_general_or_native_for_music> --encoder mode=<mode>:drc_profile=<matching_profile>:iframe_interval=24 --loudness-management <matching_measure_only_options> --output <output>"
+    }
+  ],
+  "existing_1500_outputs": [
+    {
+      "file": "vectors/probe_dme_dense_prbs/encoded/master_ac4_dme_l4_1500K.m4a",
+      "job": {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 1500,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_1500K.m4a"
+      },
+      "sha256": "cd33441476a65576130ce273e126c73d7f36a7604c8f731ad7c26554ca63647f",
+      "payload_sha256": "4186cbef2bbd8587aa94cdcbd313fc3aac45a2c368caa872da3d701732c9e166",
+      "bytes": 1521730
+    },
+    {
+      "file": "vectors/probe_dme_transient_edges/encoded/master_ac4_dme_l4_1500K.m4a",
+      "job": {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 1500,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_1500K.m4a"
+      },
+      "sha256": "e3f3eb81f1f41a722733dc9411b5f52308b3591f956050e5afd98d614e4a759c",
+      "payload_sha256": "32a423bebe9f32b0f8efac99172193bf1a7e407506a09d10da1b9916b48df1e9",
+      "bytes": 1145470
+    }
+  ],
+  "result": {
+    "ajoc_level4_1500": "两条已存在产物已重新核对文件 SHA-256，无需重复编码。",
+    "channel_1500": "stereo、5.1、5.1.4 均被实际编码器拒绝，未生成媒体。",
+    "ims_1500": "general、music 均被实际编码器拒绝，未生成媒体。",
+    "native_prepared": "首批已保留 9 条 channel-based（stereo、5.1、5.1.4 各三档，均含 768 kbps）和 6 条 native IMS（两种模式均含 320 kbps）。",
+    "matrix_policy": "保留实际可生成的原生声道上限档；不把 A-JOC 1500 标记为 channel-based 1500。"
+  }
+}

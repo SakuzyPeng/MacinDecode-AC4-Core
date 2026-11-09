@@ -1,0 +1,550 @@
+{
+  "case_id": "probe_dme_dense_prbs",
+  "intent": [
+    "8 个独立固定种子宽带对象与低电平 bed 同时发声，为 A-JOC 多对象矩阵、wet/去相关和 A-SPX 储备真实码流。",
+    "分离、交叉、重合、再次分离四个阶段，观察信号相关性与对象分组；不按创作对象 ID 假定解码槽位。",
+    "用同一母版覆盖 DME L3/L4 码率边界，逐产物统计实际可达的音频分支，不预先宣称压扩或交织被触发。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 384000,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "per_channel_sine",
+      "level_dbfs": -36.0,
+      "base_hz": 200.0,
+      "step_hz": 150.0,
+      "lfe_hz": 40.0,
+      "fade_samples": 480
+    }
+  },
+  "objects": [
+    {
+      "source_id": 10,
+      "name": "dense-prbs-0",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270544960,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -0.8,
+            0.8,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            0.8,
+            -0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            -0.8,
+            0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 11,
+      "name": "dense-prbs-1",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270610753,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            0.8,
+            0.8,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            -0.8,
+            -0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            0.8,
+            0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 12,
+      "name": "dense-prbs-2",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270676546,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -0.8,
+            -0.8,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            0.8,
+            0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            -0.8,
+            -0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 13,
+      "name": "dense-prbs-3",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270742339,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            0.8,
+            -0.8,
+            0.0
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            -0.8,
+            0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            0.8,
+            -0.8,
+            0.0
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 14,
+      "name": "dense-prbs-4",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270808132,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -0.6,
+            0.6,
+            0.8
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            0.6,
+            -0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            -0.6,
+            0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 15,
+      "name": "dense-prbs-5",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270873925,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            0.6,
+            0.6,
+            0.8
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            -0.6,
+            -0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            0.6,
+            0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 16,
+      "name": "dense-prbs-6",
+      "signal": {
+        "kind": "prbs",
+        "seed": 270939718,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            -0.6,
+            -0.6,
+            0.8
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            0.6,
+            0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            -0.6,
+            -0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    },
+    {
+      "source_id": 17,
+      "name": "dense-prbs-7",
+      "signal": {
+        "kind": "prbs",
+        "seed": 271005511,
+        "level_dbfs": -24.0,
+        "fade_samples": 480
+      },
+      "static_fields": {
+        "size": 0.0,
+        "decorr": 0,
+        "snap": false,
+        "elevation": true,
+        "zones": "all",
+        "gain": 0,
+        "importance": 1,
+        "screenFactor": 0,
+        "depthFactor": 0,
+        "headTrackMode": "scene relative"
+      },
+      "segments": [
+        {
+          "start_samples": 0,
+          "position": [
+            0.6,
+            -0.6,
+            0.8
+          ]
+        },
+        {
+          "start_samples": 96000,
+          "position": [
+            -0.6,
+            0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        },
+        {
+          "start_samples": 192000,
+          "position": [
+            0.0,
+            0.0,
+            0.4
+          ],
+          "ramp_samples": 12000
+        },
+        {
+          "start_samples": 288000,
+          "position": [
+            0.6,
+            -0.6,
+            0.8
+          ],
+          "ramp_samples": 24000
+        }
+      ]
+    }
+  ],
+  "encodes": [],
+  "dme_ac4": [
+    {
+      "level": 3,
+      "bitrate": 320
+    },
+    {
+      "level": 3,
+      "bitrate": 448
+    },
+    {
+      "level": 3,
+      "bitrate": 768
+    },
+    {
+      "level": 4,
+      "bitrate": 128
+    },
+    {
+      "level": 4,
+      "bitrate": 256
+    },
+    {
+      "level": 4,
+      "bitrate": 448
+    },
+    {
+      "level": 4,
+      "bitrate": 768
+    },
+    {
+      "level": 4,
+      "bitrate": 1500
+    }
+  ],
+  "notes": [
+    "许可到期前的覆盖储备；编解码正确性须结合 trace 与独立参考判断。",
+    "PRBS 是确定性的 xorshift32 宽带信号；8 路使用不同种子，各路峰值不超过 -24 dBFS。",
+    "保留母版、最终码流和 provenance；当前解析失败的产物也保留为待实现用例，不改写既有 PCM 基线。"
+  ],
+  "pcm_baseline_status": "reserve"
+}

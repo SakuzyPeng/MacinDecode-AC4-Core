@@ -1,0 +1,121 @@
+{
+  "schema": "macinac4.dme-backend-capability-observation",
+  "version": 1,
+  "recorded_on": "2026-11-08",
+  "question": "当前原生 channel-based 限制是仅 UI/CLI 未开放，还是也存在于底层？",
+  "scope": "当前本机 DME 原生声道编码构建的配置接受性与输出观测，结论限定于所测构建和输入。",
+  "encoder_sha256": "6a7594ed74e0ecc043d80a3b10691329369198bdeda0d7590006643b90a388d5",
+  "method": [
+    "采用所测构建的本地运行时观察与独立配置对照，核对实际接受性及有效输出。",
+    "三种已验证原生配置提供对照，以实际返回状态和有效配置判定结果。",
+    "共同前缀声道保持相同，附加声道采用非零 PCM，分别核对 6/8 和 10/12 路输入产物。",
+    "冻结的检查器核对四条 48 帧产物，官方封装器生成 DSI 并核对后置声道声明。"
+  ],
+  "integrity_control": {
+    "original_executable_unchanged": true,
+    "normal_encode_sha256": "c55a651b6b93223cfb244e7f78094e26acd4746c0a5fda02aaba7f2f190ddfd1",
+    "observed_encode_sha256": "c55a651b6b93223cfb244e7f78094e26acd4746c0a5fda02aaba7f2f190ddfd1",
+    "encoded_outputs_identical": true
+  },
+  "configuration_observations": {
+    "valid_initial_layouts": [
+      "stereo",
+      "5.1",
+      "5.1.4"
+    ],
+    "tested_high_rates_kbps": [
+      768,
+      1024,
+      1500
+    ],
+    "accepted_high_rates_kbps": [
+      768
+    ],
+    "rejected_high_rates_kbps": [
+      1024,
+      1500
+    ],
+    "adapter_rate_error": "Bitrate out of range",
+    "note": "本地配置对照的完整方法和原始返回状态保存在受限研究档案中。",
+    "initial_validation_observations": 45,
+    "configuration_validation_observations": 63,
+    "runtime_configuration_observations": 63
+  },
+  "pcm_probes": [
+    {
+      "configured_layout": "5.1",
+      "input_channels": 6,
+      "input_samples": 98304,
+      "input_signal": "每路 0.05*sin(2*pi*f*n/48000)，LFE 为 40 Hz，其他为 200+150*index Hz；对照组共同前缀声道 PCM 完全相同，额外声道非零。",
+      "frames": 48,
+      "bytes": 196896,
+      "sha256": "a9ad0a0a23948e08d95ef662ff07eb7ea9e62a9b9baa4c15702bba290e2abf48",
+      "topology_failures": 0,
+      "audio_substream_failures": 0,
+      "channel_mode": 4
+    },
+    {
+      "configured_layout": "5.1",
+      "input_channels": 8,
+      "input_samples": 98304,
+      "input_signal": "每路 0.05*sin(2*pi*f*n/48000)，LFE 为 40 Hz，其他为 200+150*index Hz；对照组共同前缀声道 PCM 完全相同，额外声道非零。",
+      "frames": 48,
+      "bytes": 196896,
+      "sha256": "a9ad0a0a23948e08d95ef662ff07eb7ea9e62a9b9baa4c15702bba290e2abf48",
+      "topology_failures": 0,
+      "audio_substream_failures": 0,
+      "channel_mode": 4
+    },
+    {
+      "configured_layout": "5.1.4",
+      "input_channels": 10,
+      "input_samples": 98304,
+      "input_signal": "每路 0.05*sin(2*pi*f*n/48000)，LFE 为 40 Hz，其他为 200+150*index Hz；对照组共同前缀声道 PCM 完全相同，额外声道非零。",
+      "frames": 48,
+      "bytes": 196896,
+      "sha256": "a1761df04d44220725be0252f6edd1f08f18b0c224c6dad82f5f759b958bff35",
+      "topology_failures": 0,
+      "audio_substream_failures": 0,
+      "channel_mode": 12
+    },
+    {
+      "configured_layout": "5.1.4",
+      "input_channels": 12,
+      "input_samples": 98304,
+      "input_signal": "每路 0.05*sin(2*pi*f*n/48000)，LFE 为 40 Hz，其他为 200+150*index Hz；对照组共同前缀声道 PCM 完全相同，额外声道非零。",
+      "frames": 48,
+      "bytes": 196896,
+      "sha256": "a1761df04d44220725be0252f6edd1f08f18b0c224c6dad82f5f759b958bff35",
+      "topology_failures": 0,
+      "audio_substream_failures": 0,
+      "channel_mode": 12
+    }
+  ],
+  "official_muxer_dsi_for_12_input_channels": {
+    "channel_groups": {
+      "indices": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6
+      ],
+      "raw": 119
+    },
+    "channel_mode": 12,
+    "four_back_channels_present": false,
+    "top_channel_pairs": 2
+  },
+  "conclusions": [
+    "本地配置对照同样拒绝超出所测原生范围的请求。",
+    "在已验证的 5.1 / 5.1.4 配置下增加非零输入声道，不会扩展输出布局：6/8 路与 10/12 路的对应码流逐字节相同。",
+    "12 路输入探针仍声明 four_back_channels_present=false、channel_groups=0x77，是 5.1.4 原始内容，不能标作完整 7.1.4 正向样本。",
+    "现有证据不支持仅修改参数白名单就能得到 7.1.4 或原生 1500 kbps。"
+  ],
+  "limits": [
+    "不能由参数拒绝证明通用 DSP 算法绝不存在，或证明任意改动后的编码库永远无法实现这些布局。",
+    "原始实验程序、运行时分析与配置状态保存在本地受限研究档案中。"
+  ],
+  "provenance_note": "公开摘要保留配置接受性、输入配方、输出与校验结果，原始实验版本另行归档。"
+}

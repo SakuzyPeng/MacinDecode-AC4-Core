@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import subprocess
@@ -246,6 +247,7 @@ class DmeNativeCheckerTests(unittest.TestCase):
             "parse_failures": 0,
             "scene_path": "channel_based",
             "channel_modes": [ch_mode],
+            "independent_frames": 3,
             "topology_integrity": {
                 "substream_size_overruns": 0,
                 "dangling_group_references": 0,
@@ -284,6 +286,10 @@ class DmeNativeCheckerTests(unittest.TestCase):
         self.assertEqual(dme_native_check.expected_frames(96000, "channel"), 49)
         self.assertEqual(dme_native_check.expected_frames(96000, "general"), 49)
         self.assertEqual(dme_native_check.expected_frames(96000, "music"), 47)
+        # 旧 2 秒样本在两种帧长下碰巧都是 49 帧；真实 6 秒样本消除歧义。
+        self.assertEqual(dme_native_check.expected_frames(288000, "channel"), 143)
+        self.assertEqual(dme_native_check.expected_frames(288000, "general"), 145)
+        self.assertEqual(dme_native_check.expected_frames(288000, "music"), 141)
 
     def test_accepts_active_and_music_dialogue_enhancement_shapes(self) -> None:
         active = self.observation(49, 5, "general")
@@ -332,6 +338,58 @@ class DmeNativeCheckerTests(unittest.TestCase):
         self.assertTrue(any("ch_mode" in item for item in problems))
         self.assertTrue(any("body" in item for item in problems))
         self.assertTrue(any("emdf.routed_infos" in item for item in problems))
+
+    def test_nonzero_de_requires_exact_case_census_and_keeps_independent_emdf_count(self) -> None:
+        actual = self.observation(49, 1, "channel")
+        de = actual["dialogue_enhancement"]
+        de.update(new_config=5, keep_previous=44, body_bits=81, max_body_bits=45)
+        de["configurations"].append(
+            {"method": 0, "max_gain": 2, "channel_config": 6, "count": 2}
+        )
+        expected = copy.deepcopy(de)
+        arguments = dict(expected_ch_mode=1, expected_frame_count=49, mode="channel")
+        self.assertTrue(dme_native_check.validate_observation(actual, **arguments))
+        self.assertEqual(
+            dme_native_check.validate_observation(actual, expected_de=expected, **arguments),
+            [],
+        )
+        # 两个 dependent DE 更新不增加 I-frame/EMDF 数量；统计变化也不能静默通过。
+        de["body_bits"] += 1
+        self.assertTrue(
+            dme_native_check.validate_observation(actual, expected_de=expected, **arguments)
+        )
+
+    def test_rejects_missing_independent_frame_count(self) -> None:
+        actual = self.observation(49, 1, "channel")
+        del actual["independent_frames"]
+        problems = dme_native_check.validate_observation(
+            actual, expected_ch_mode=1, expected_frame_count=49, mode="channel"
+        )
+        self.assertTrue(any("independent_frames" in item for item in problems))
+
+    def test_case_expectations_reject_unknown_output_and_invalid_census(self) -> None:
+        case = pure_bed_case()
+        case["dme_channel"] = [{"layout": "stereo", "bitrate": 64}]
+        name = "master_ac4_dme_channel_stereo_64K.m4a"
+        census = self.observation(49, 1, "channel")["dialogue_enhancement"]
+        invalid = [
+            [], {"missing.m4a": census}, {name: {}},
+            {name: {**census, "body_bits": -1}},
+            {name: {**census, "max_body_bits": True}},
+            {name: {**census, "configurations": [{}]}},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            for value in invalid:
+                with self.subTest(value=value):
+                    case["dme_native_expectations"] = value
+                    (path / "case.json").write_text(json.dumps(case))
+                    with self.assertRaises(ValueError):
+                        dme_native_check.declared_jobs(path)
+            case["dme_native_expectations"] = {name: census}
+            (path / "case.json").write_text(json.dumps(case))
+            _, jobs = dme_native_check.declared_jobs(path)
+            self.assertEqual(len(jobs), 1)
 
     def test_rejects_reference_failures_and_midstream_topology_changes(self) -> None:
         actual = self.observation(49, 5, "general")

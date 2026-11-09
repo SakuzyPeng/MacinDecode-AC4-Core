@@ -264,6 +264,13 @@ channel 作业固定 `film_light`、`iframe_interval=1sec` 与 `measure_only`，
 `offset=0`。两者都把可见 duration 固定为 case 的整数采样数。未知字段、不支持的布局/码率、
 非 48 kHz、非 24 fps IMS、输出重名、WAVE 作业含对象或缺少工具均失败关闭。
 
+2026-11-08 的[向量储备](DME_VECTOR_RESERVE.md)另外保存了 28 条媒体，其中高频 stereo
+首次在这批正式可复现案例中出现非零 DE body。`dme_native_check.py` 通过 case 中按输出名
+声明的 `dme_native_expectations` 冻结这些完整 census；既有案例继续要求零 body。
+6 秒输入也区分了 channel 的 native 2048-sample 帧和 IMS general 的 24 fps 时序，
+并确认 dependent DE 配置更新不能计作新的 I-frame/EMDF 路由。储备不等于新增 PCM 支持，
+非零 DE body 的 Huffman 参数和数值处理仍待验证。
+
 DEE IMS 直接读取生成的 DAMF，只支持
 64/72/112/144/256/320 kbit/s；每个作业可选择 `ims`/`ims_music` 和 legacy presentation：
 

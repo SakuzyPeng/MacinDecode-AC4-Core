@@ -1,0 +1,180 @@
+{
+  "case_id": "probe_dme_native_highband",
+  "intent": [
+    "逐声道不同高频正弦与 40 Hz LFE，补充既有低频纯 bed 探针，为 channel-based 与 native IMS 音频重建保留高带输入。",
+    "stereo、5.1、5.1.4 各取低/高码率，同一 5.1 WAVE 用 general/music 成对编码，观察 DE 和帧时序差异。"
+  ],
+  "sample_rate": 48000,
+  "duration_samples": 288000,
+  "frame_rate": "24",
+  "offset_frames": 0,
+  "bed": {
+    "layout": "7.1.2",
+    "channels": [
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lss",
+      "Rss",
+      "Lrs",
+      "Rrs",
+      "Lts",
+      "Rts"
+    ],
+    "signal": {
+      "kind": "per_channel_sine",
+      "level_dbfs": -18.0,
+      "base_hz": 7200.0,
+      "step_hz": 900.0,
+      "lfe_hz": 40.0,
+      "fade_samples": 480
+    }
+  },
+  "objects": [],
+  "encodes": [],
+  "dme_channel": [
+    {
+      "layout": "stereo",
+      "bitrate": 48
+    },
+    {
+      "layout": "stereo",
+      "bitrate": 128
+    },
+    {
+      "layout": "stereo",
+      "bitrate": 768
+    },
+    {
+      "layout": "5.1",
+      "bitrate": 96
+    },
+    {
+      "layout": "5.1",
+      "bitrate": 256
+    },
+    {
+      "layout": "5.1",
+      "bitrate": 768
+    },
+    {
+      "layout": "5.1.4",
+      "bitrate": 192
+    },
+    {
+      "layout": "5.1.4",
+      "bitrate": 448
+    },
+    {
+      "layout": "5.1.4",
+      "bitrate": 768
+    }
+  ],
+  "dme_ims": [
+    {
+      "input": "wav_5_1",
+      "mode": "general",
+      "bitrate": 64
+    },
+    {
+      "input": "wav_5_1",
+      "mode": "general",
+      "bitrate": 144
+    },
+    {
+      "input": "wav_5_1",
+      "mode": "general",
+      "bitrate": 320
+    },
+    {
+      "input": "wav_5_1",
+      "mode": "music",
+      "bitrate": 64
+    },
+    {
+      "input": "wav_5_1",
+      "mode": "music",
+      "bitrate": 144
+    },
+    {
+      "input": "wav_5_1",
+      "mode": "music",
+      "bitrate": 320
+    }
+  ],
+  "notes": [
+    "每个目标布局按 SMPTE 顺序重新生成信号；各声道频率为 7200 + 900*index Hz，LFE 固定 40 Hz。",
+    "source 中的 canonical DAMF 为 7.1.2，native speaker WAVE 使用所声明的目标布局，不把两者当作相同 PCM 文件。",
+    "高频纯音不是语音，但本次 stereo 实际传输了非零 DE body，含 channel_config=6 和 dependent configuration 更新；完整 census 已按文件名冻结，尚不等于验证了 Huffman 参数或 DE 数值重建。"
+  ],
+  "dme_native_expectations": {
+    "master_ac4_dme_channel_stereo_48K.m4a": {
+      "absent": 0,
+      "body_bits": 81,
+      "configurations": [
+        {
+          "channel_config": 0,
+          "count": 8,
+          "max_gain": 2,
+          "method": 0
+        },
+        {
+          "channel_config": 6,
+          "count": 2,
+          "max_gain": 2,
+          "method": 0
+        }
+      ],
+      "keep_previous": 133,
+      "max_body_bits": 45,
+      "new_config": 10,
+      "present": 143
+    },
+    "master_ac4_dme_channel_stereo_128K.m4a": {
+      "absent": 0,
+      "body_bits": 81,
+      "configurations": [
+        {
+          "channel_config": 0,
+          "count": 8,
+          "max_gain": 2,
+          "method": 0
+        },
+        {
+          "channel_config": 6,
+          "count": 2,
+          "max_gain": 2,
+          "method": 0
+        }
+      ],
+      "keep_previous": 133,
+      "max_body_bits": 45,
+      "new_config": 10,
+      "present": 143
+    },
+    "master_ac4_dme_channel_stereo_768K.m4a": {
+      "absent": 0,
+      "body_bits": 81,
+      "configurations": [
+        {
+          "channel_config": 0,
+          "count": 8,
+          "max_gain": 2,
+          "method": 0
+        },
+        {
+          "channel_config": 6,
+          "count": 2,
+          "max_gain": 2,
+          "method": 0
+        }
+      ],
+      "keep_previous": 133,
+      "max_body_bits": 45,
+      "new_config": 10,
+      "present": 143
+    }
+  },
+  "pcm_baseline_status": "reserve"
+}

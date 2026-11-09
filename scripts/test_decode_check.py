@@ -35,6 +35,22 @@ def core_stage() -> decode_check.Stage:
 
 
 class DecodeCheckTests(unittest.TestCase):
+    def test_explicit_reserve_does_not_expand_the_frozen_input_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vectors = Path(directory)
+            media = vectors / "reserve" / "encoded" / "new.m4a"
+            media.parent.mkdir(parents=True)
+            media.touch()
+            (media.parent.parent / "case.json").write_text(
+                json.dumps({"pcm_baseline_status": "reserve"})
+            )
+            with mock.patch.object(decode_check, "VECTORS", vectors):
+                self.assertEqual(decode_check.default_inputs({}), [])
+                self.assertEqual(
+                    decode_check.default_inputs({"reserve/new.m4a": shape("a")}),
+                    [media],
+                )
+
     def test_default_inputs_include_missing_baseline_media_and_local_extras(self):
         with tempfile.TemporaryDirectory() as directory:
             vectors = Path(directory) / "vectors"
@@ -71,6 +87,9 @@ class DecodeCheckTests(unittest.TestCase):
                 json.dumps({"comment": [], "entries": {"missing/a.m4a": shape("a")}}),
                 encoding="utf-8",
             )
+            case = vectors / "missing" / "case.json"
+            case.parent.mkdir()
+            case.write_text(json.dumps({"pcm_baseline_status": "reserve"}))
             stderr = io.StringIO()
             with (
                 mock.patch.object(decode_check, "REPO_ROOT", root),

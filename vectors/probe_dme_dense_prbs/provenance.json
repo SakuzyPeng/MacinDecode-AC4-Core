@@ -1,0 +1,215 @@
+{
+  "case_id": "probe_dme_dense_prbs",
+  "generated_at": "2026-11-09T09:49:11Z",
+  "generator": {
+    "script": "scripts/gen_damf.py",
+    "sha256": "8611444c76be3a6008b3e14606067f5b5b11d9d8f2db271bfa4e5c4a750272a6",
+    "repo": {
+      "commit": "7cd7d4463c272c71df9995631a336b71562b9f89",
+      "dirty": false
+    }
+  },
+  "encode": {
+    "codec": "ac4",
+    "bitrates_kbps": [],
+    "jobs": [
+      {
+        "backend": "dme_ac4",
+        "level": 3,
+        "bitrate_kbps": 320,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l3_320K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 3,
+        "bitrate_kbps": 448,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l3_448K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 3,
+        "bitrate_kbps": 768,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l3_768K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 128,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_128K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 256,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_256K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 448,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_448K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 768,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_768K.m4a"
+      },
+      {
+        "backend": "dme_ac4",
+        "level": 4,
+        "bitrate_kbps": 1500,
+        "start_samples": 0,
+        "encoder_mode": "general",
+        "drc_profile": "film_light",
+        "iframe_interval": "1sec",
+        "loudness_management": "measure_only",
+        "output": "encoded/master_ac4_dme_l4_1500K.m4a"
+      }
+    ],
+    "sample_rate": 48000,
+    "frame_rate": "24",
+    "duration_samples": 384000,
+    "encoder_behavior_scope": "backend_and_job_parameters"
+  },
+  "tools": {
+    "ac4_encoder": {
+      "sha256": "",
+      "commit": "",
+      "worktree_dirty": null
+    },
+    "adm_normalizer": {
+      "sha256": "21229c3d2855bf68f604ed4915e9832eac2c4e4fdd33e4bce3e3e7dcfa6eae21"
+    },
+    "dme_ac4": {
+      "encoder_sha256": "c8ac73eefb6af7bff58d1889017d8824705e29112cdac121d5a618e22af43889",
+      "muxer_sha256": "452a13d2320baee3880405da9e00886b294fdf317ae8e39d16c77614d185ce00"
+    },
+    "dme_native": {
+      "channel_encoder_sha256": "",
+      "ims_encoder_sha256": "",
+      "muxer_sha256": ""
+    },
+    "ac4_muxer": {
+      "backend": null,
+      "sha256": ""
+    },
+    "encoder_backend": {
+      "present": true
+    },
+    "dee_ims_encoder": {
+      "wrapper_sha256": "",
+      "engine_sha256": "",
+      "template_sha256": "",
+      "workspace_present": null
+    },
+    "ffprobe": {
+      "version": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers"
+    },
+    "mp4box": {
+      "sha256": "910837f90ecbecc19da2bfa2b737982d4feafa1ff00b72055a4a106f99b2065d",
+      "version": "MP4Box - GPAC version 26.02-revrelease"
+    }
+  },
+  "host": {
+    "os": "macOS 27.2",
+    "arch": "arm64"
+  },
+  "artifacts": {
+    "case.json": {
+      "sha256": "d99d9ae7c6488c09c3f65c3b28c5c4ad2d2256f8ba11e41aa6c96d8365687098",
+      "bytes": 11279
+    },
+    "source/master.atmos": {
+      "sha256": "2be245c43dd6f0ff44685ef3e8d8483649dc6057161e8818c30a52f92eef37e9",
+      "bytes": 1441
+    },
+    "source/master.atmos.audio": {
+      "sha256": "21a2a40651c094a1ef1a6557fd1fa8c6cf8b8907dee3bde05e5112674058602a",
+      "bytes": 20736068
+    },
+    "source/master.atmos.metadata": {
+      "sha256": "e8e6a0c9f10da4cf4ea72c342731a3dae13424c51c3aad6c2110e015b11249d9",
+      "bytes": 13312
+    },
+    "normalized/output.wav": {
+      "sha256": "863030b2b9306f290d27fbb4f2821cb4899318361a90a36c42233d47e3ae1092",
+      "bytes": 20777620
+    },
+    "encoded/master_ac4_dme_l3_320K.m4a": {
+      "sha256": "26a1956cc357c61002f3601c1872574cc233c2302294154669895f4abbf7530c",
+      "bytes": 327980,
+      "payload_sha256": "39028e8f6ef92d4bfc98ea694e49e9da9fd9e403bbb0309708374400c8425882"
+    },
+    "encoded/master_ac4_dme_l3_448K.m4a": {
+      "sha256": "04294e7cc6eca1715bfcb6bdb5d071e6eb26b20554d66747c0449052b985359e",
+      "bytes": 458520,
+      "payload_sha256": "182a0f6aec5db65e33804ea768acc40e5b48e32b8232606c8bda8d606e4b049e"
+    },
+    "encoded/master_ac4_dme_l3_768K.m4a": {
+      "sha256": "deece7f7a794182791af35769d3028848c26feab814a96e29f8b957216f8d6a7",
+      "bytes": 781159,
+      "payload_sha256": "b46367efe498441d6587cf4f708f25d56374b8c780d38141b0456ba5287c53e2"
+    },
+    "encoded/master_ac4_dme_l4_128K.m4a": {
+      "sha256": "8f53dd6eaf77ca303734143e38a4749c71ac10fd6a33a896d2d31f3fb215d690",
+      "bytes": 132359,
+      "payload_sha256": "82a75da1d03ef23aeb82980632b03bc9afcad25e120477ac972f7462e5e1aca3"
+    },
+    "encoded/master_ac4_dme_l4_1500K.m4a": {
+      "sha256": "cd33441476a65576130ce273e126c73d7f36a7604c8f731ad7c26554ca63647f",
+      "bytes": 1521730,
+      "payload_sha256": "4186cbef2bbd8587aa94cdcbd313fc3aac45a2c368caa872da3d701732c9e166"
+    },
+    "encoded/master_ac4_dme_l4_256K.m4a": {
+      "sha256": "80eea7e8e17fa4c68a7222b75104c84d13af74c464602aa219c9be2e266a0927",
+      "bytes": 263025,
+      "payload_sha256": "b5b68fadbb81b268a7221958c0de6b44a8fc3a3bad13c8c220eeaa46c878f9b9"
+    },
+    "encoded/master_ac4_dme_l4_448K.m4a": {
+      "sha256": "fa33990715b751991ca2efe7c686b082f15209080536338ec125574b8730ae83",
+      "bytes": 458449,
+      "payload_sha256": "0cf3c4417732a245490cf593254a1f4e3adeba21e661d91d585d4975a258d020"
+    },
+    "encoded/master_ac4_dme_l4_768K.m4a": {
+      "sha256": "2fd7b7c0c49d0e3e35484efad677205b3e2731ee5610f136d62b6a68f5068b07",
+      "bytes": 782225,
+      "payload_sha256": "c97aad611cca079424af851fec2ae432e0d147bc5bc5eaa9bf7f97bab3f5b503"
+    }
+  }
+}

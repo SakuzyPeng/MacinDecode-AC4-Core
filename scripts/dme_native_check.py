@@ -7,8 +7,9 @@
 预期由 ``case.json`` 的 ``dme_channel``/``dme_ims`` 作业直接推出，不另建可被
 随意重冻的基线：channel layout 对应固定 ``ch_mode``；5.1 WAVE IMS 为 5，DAMF
 IMS 为 6；general 与 channel encoder 必须全帧传输已观测的 DE 配置，music
-必须全帧缺席。当前向量的 DE body 为 0 bit，本门禁只证明 presence/config/keep，
-不把它解释为非零 Huffman 参数覆盖。
+必须全帧缺席。既有案例默认要求 DE body 为 0 bit；新案例可以在
+``dme_native_expectations`` 中按输出名冻结完整 DE census。本门禁只验证
+presence/config/keep 与原始 body 长度，不把非零 body 当作 Huffman 数值验证。
 """
 
 from __future__ import annotations
@@ -35,10 +36,10 @@ def _integer(value, label: str) -> int:
     return value
 
 
-def inspect(path: Path) -> dict:
+def inspect(path: Path, binary: Path | None = None) -> dict:
     try:
         result = subprocess.run(
-            [
+            [str(binary.resolve()), "trace", str(path)] if binary else [
                 "cargo",
                 "run",
                 "-q",
@@ -90,6 +91,9 @@ def inspect(path: Path) -> dict:
         config_generations = _integer(
             configuration["config_generations"], "config_generations"
         )
+        independent_frames = _integer(
+            topology["timing"]["full_random_access_frames"], "independent_frames"
+        )
         groups = topology["observations"]["first_frame"]["substream_groups"]
         if not isinstance(groups, list):
             raise ValueError("first_frame.substream_groups 必须是数组")
@@ -121,6 +125,7 @@ def inspect(path: Path) -> dict:
         "parse_failures": parse_failures,
         "scene_path": scene_path,
         "channel_modes": channel_modes,
+        "independent_frames": independent_frames,
         "topology_integrity": {
             "substream_size_overruns": size_overruns,
             "dangling_group_references": dangling_group_references,
@@ -144,7 +149,11 @@ def expected_frames(duration_samples: int, mode: str) -> int:
         raise ValueError("duration_samples 必须是正整数")
     if mode == "music":
         return (duration_samples + 2047) // 2048
-    if mode in ("general", "channel"):
+    if mode == "channel":
+        # 当前 DME channel encoder 是 native 2048-sample 帧，并输出两帧余量。
+        # 2 秒样本恰与 IMS 24 fps 的 49 帧相同，6 秒样本才区分出 143/145。
+        return (duration_samples + 2047) // 2048 + 2
+    if mode == "general":
         return (duration_samples + 3999) // 2000
     raise ValueError("mode 必须是 channel、general 或 music")
 
@@ -155,6 +164,7 @@ def validate_observation(
     expected_ch_mode: int,
     expected_frame_count: int,
     mode: str,
+    expected_de: dict | None = None,
 ) -> list[str]:
     problems = []
     frames = actual.get("frames")
@@ -227,7 +237,6 @@ def validate_observation(
     ):
         problems.append(f"audio coverage 不完整：{audio}")
 
-    new_config_count = None
     de = actual.get("dialogue_enhancement")
     if not isinstance(de, dict):
         problems.append("缺少 dialogue_enhancement census")
@@ -236,7 +245,6 @@ def validate_observation(
             absent = _integer(de["absent"], "de.absent")
             present = _integer(de["present"], "de.present")
             new_config = _integer(de["new_config"], "de.new_config")
-            new_config_count = new_config
             keep = _integer(de["keep_previous"], "de.keep_previous")
             body_bits = _integer(de["body_bits"], "de.body_bits")
             max_body_bits = _integer(de["max_body_bits"], "de.max_body_bits")
@@ -246,7 +254,9 @@ def validate_observation(
         except (KeyError, TypeError, ValueError) as error:
             problems.append(str(error))
         else:
-            if body_bits != 0 or max_body_bits != 0:
+            if expected_de is not None and de != expected_de:
+                problems.append(f"DE census 与 case 声明不匹配：{de!r}")
+            if expected_de is None and (body_bits != 0 or max_body_bits != 0):
                 problems.append(
                     f"DE body 非零：total={body_bits}，max={max_body_bits}"
                 )
@@ -276,6 +286,8 @@ def validate_observation(
                         "count": new_config,
                     }
                 ]
+                if expected_de is not None:
+                    expected_configurations = expected_de["configurations"]
                 if configurations != expected_configurations:
                     problems.append(f"DE 配置不匹配：{configurations!r}")
 
@@ -283,7 +295,14 @@ def validate_observation(
     if not isinstance(emdf, dict):
         problems.append("缺少 EMDF census")
     else:
-        if mode == "channel" and new_config_count is not None:
+        if mode == "channel":
+            # dependent frame 也能更新 DE configuration，不能把 DE New 数量
+            # 当成 I-frame/EMDF 路由数量。
+            try:
+                emdf_count = _integer(actual.get("independent_frames"), "independent_frames")
+            except ValueError as error:
+                problems.append(str(error))
+                return problems
             for key in (
                 "routed_infos",
                 "routed_frames",
@@ -293,9 +312,9 @@ def validate_observation(
                 "payloads",
                 "payload_bytes",
             ):
-                if emdf.get(key) != new_config_count:
+                if emdf.get(key) != emdf_count:
                     problems.append(
-                        f"channel emdf.{key}={emdf.get(key)}，预期 {new_config_count}"
+                        f"channel emdf.{key}={emdf.get(key)}，预期 {emdf_count}"
                     )
             for key in ("empty_substreams", "failures"):
                 if emdf.get(key) != 0:
@@ -306,7 +325,7 @@ def validate_observation(
                     "emdf_version": 0,
                     "key_id": 0,
                     "substream_index": 2,
-                    "count": new_config_count,
+                    "count": emdf_count,
                 }
             ]
             if emdf.get("routes") != expected_routes:
@@ -314,7 +333,7 @@ def validate_observation(
             expected_signatures = [
                 {
                     "id": 20,
-                    "count": new_config_count,
+                    "count": emdf_count,
                     "size_bytes": 1,
                     "fnv1a64": "af63bd4c8601b7df",
                     "opaque_prefix_hex": "00",
@@ -379,6 +398,23 @@ def declared_jobs(case_dir: Path) -> tuple[dict, list[tuple[str, Path, int, str]
     names = [name for name, *_ in jobs]
     if len(names) != len(set(names)):
         raise ValueError("DME native 作业输出重名")
+    expectations = case.get("dme_native_expectations", {})
+    if not isinstance(expectations, dict) or set(expectations).difference(names):
+        raise ValueError("dme_native_expectations 必须按已声明的输出名索引")
+    de_counts = {"absent", "present", "new_config", "keep_previous", "body_bits", "max_body_bits"}
+    for name, expected in expectations.items():
+        if not isinstance(expected, dict) or set(expected) != de_counts | {"configurations"}:
+            raise ValueError(f"{name} 的 DE expectation 必须是完整 census")
+        for key in de_counts:
+            _integer(expected[key], f"{name}.{key}")
+        if not isinstance(expected["configurations"], list):
+            raise ValueError(f"{name}.configurations 必须是数组")
+        for configuration in expected["configurations"]:
+            keys = {"method", "max_gain", "channel_config", "count"}
+            if not isinstance(configuration, dict) or set(configuration) != keys:
+                raise ValueError(f"{name} 的 DE configuration 字段不完整")
+            for key in keys:
+                _integer(configuration[key], f"{name}.configuration.{key}")
     return case, jobs
 
 
@@ -388,6 +424,7 @@ def default_case_dirs() -> list[Path]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--bin", type=Path, help="使用指定 CLI 快照，省略时通过 cargo run")
     parser.add_argument("cases", nargs="*", type=Path)
     args = parser.parse_args()
 
@@ -422,7 +459,7 @@ def main() -> int:
         for name, path, ch_mode, mode in jobs:
             try:
                 frame_count = expected_frames(duration, mode)
-                actual = inspect(path)
+                actual = inspect(path, args.bin)
             except (ValueError, RuntimeError) as error:
                 print(f"{case_dir.name}/{name}：检查失败：{error}", file=sys.stderr)
                 failed = True
@@ -432,6 +469,7 @@ def main() -> int:
                 expected_ch_mode=ch_mode,
                 expected_frame_count=frame_count,
                 mode=mode,
+                expected_de=case.get("dme_native_expectations", {}).get(name),
             )
             if problems:
                 print(
