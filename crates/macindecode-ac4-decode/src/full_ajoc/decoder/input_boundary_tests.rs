@@ -395,7 +395,7 @@ fn capture() {
         for (source, component) in &record.hf_components {
             let prefix = format!("au{:04}.hf{source}", index + 1);
             let metadata = format!(
-                "{{\"au\":{},\"source\":{source},\"sbx\":{},\"sbz\":{},\"factor\":{},\"borders\":{:?},\"signal_gains\":{:?},\"noise_enabled\":{:?}}}\n",
+                "{{\"au\":{},\"source\":{source},\"sbx\":{},\"sbz\":{},\"factor\":{},\"borders\":{:?},\"signal_gains\":{:?},\"noise_enabled\":{:?},\"noise_cursors\":{:?},\"gain_audit\":{}}}\n",
                 index + 1,
                 component.sbx,
                 component.sbz,
@@ -403,6 +403,8 @@ fn capture() {
                 component.borders,
                 component.signal_gains,
                 component.noise_enabled,
+                component.noise_cursors,
+                component.gain_audit.json(),
             );
             let mut metadata_file =
                 File::create_new(destination.join(format!("{prefix}.json"))).unwrap();

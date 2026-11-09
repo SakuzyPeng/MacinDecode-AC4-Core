@@ -1,0 +1,1174 @@
+{
+  "schema": "macinac4.aspx-energy-budget-investigation",
+  "version": 1,
+  "date": "2026-11-08",
+  "base_commit": "ebf188aa309b1861865ce3a918867a047e1de44f",
+  "status": "independent_p94_precision_fix_and_local_energy_audit",
+  "normative_source": {
+    "clause": "TS103190-1:v1.4.1:5.7.6.4.2.1–5.7.6.4.5",
+    "pdf_sha256": "25c868dae73bec515dd6be2522c87312e051cec62613948a3e32ce851e16297f"
+  },
+  "precision": {
+    "anchors": {
+      "precision": 100,
+      "method": "Decimal sqrt; exact binary input powers; nearest-even midpoint comparison",
+      "cases": [
+        {
+          "signal_exponent": -126,
+          "noise_exponent": -24,
+          "sine_bits": "20000000",
+          "noise_bits": "1a000000"
+        },
+        {
+          "signal_exponent": -126,
+          "noise_exponent": 6,
+          "sine_bits": "1e7e05ec",
+          "noise_bits": "1ffe05ec"
+        }
+      ],
+      "closest_midpoint": "2.235174068054851765248323214866097716131121323133879414255900825028745899510485345195E-8"
+    },
+    "old_noise_bits": [
+      "00000000",
+      "1ffe060c"
+    ],
+    "fixed_noise_bits": [
+      "1a000000",
+      "1ffe05ec"
+    ],
+    "pre_fix_tests": {
+      "failed": 2,
+      "passed": 1
+    },
+    "post_fix_regressions": 5,
+    "power_budget_cases": 1778,
+    "accepted_api_histories": true,
+    "encoded_counterexample_vectors_added": false,
+    "normal_f32_rounding_preserved": true
+  },
+  "audit": {
+    "calls": 57,
+    "envelopes": 115,
+    "subband_envelopes": 2716,
+    "noise_bit_exact": true,
+    "assembly_bit_exact": true,
+    "coverage": {
+      "sine_subband_envelopes": 0,
+      "onset_envelopes": 17,
+      "interpolation_false_calls": 0,
+      "p94_widened_subband_envelopes": 0
+    },
+    "cases": [
+      {
+        "case": "dense_prbs_l4_448K",
+        "au": 171,
+        "calls": 7,
+        "envelopes": 14,
+        "subband_envelopes": 420,
+        "limiter": true,
+        "limiter_groups": 28,
+        "limited_subband_envelopes": 4,
+        "boost_capped_groups": 0,
+        "boost_range": [
+          1.0,
+          1.0176318883895874
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 739539681280.0,
+              "modeled_signal": 493026450984.64294,
+              "modeled_noise": 246513233971.373,
+              "modeled_sine": 0.0,
+              "signal": 493026450043.12103,
+              "noise": 246513229040.27344,
+              "sine": 0.0,
+              "cross": -5100661023.633409,
+              "assembled": 734439018135.0134,
+              "signal_grouping_and_multiply_rounding": -941.5218963623047,
+              "noise_window_delta": -4931.09952545166,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 75.25227737426758
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.6666666623369143,
+              "modeled_noise": 0.33333334263376685,
+              "modeled_sine": 0.0,
+              "signal": 0.6666666610637954,
+              "noise": 0.3333333359659711,
+              "sine": 0.0,
+              "cross": -0.00689707550892354,
+              "assembled": 0.9931029216225986,
+              "signal_grouping_and_multiply_rounding": -1.2731188335056107e-09,
+              "noise_window_delta": -6.667795725196086e-09,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 1.0175556400708676e-10
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 391915765760.0,
+              "modeled_signal": 261280566426.2098,
+              "modeled_noise": 130640287408.04294,
+              "modeled_sine": 0.0,
+              "signal": 261280565730.0827,
+              "noise": 130640281300.87662,
+              "sine": 0.0,
+              "cross": -3195672464.0691957,
+              "assembled": 388725174302.70135,
+              "signal_grouping_and_multiply_rounding": -696.1271104812622,
+              "noise_window_delta": -6107.166325330734,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -264.1887845993042
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.6666753145782145,
+              "modeled_noise": 0.3333376679927798,
+              "modeled_sine": 0.0,
+              "signal": 0.6666753128019983,
+              "noise": 0.3333376524099254,
+              "sine": 0.0,
+              "cross": -0.008153977827026612,
+              "assembled": 0.9918589867108013,
+              "signal_grouping_and_multiply_rounding": -1.7762161446384735e-09,
+              "noise_window_delta": -1.558285442660814e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -6.740958330344057e-10
+            }
+          }
+        }
+      },
+      {
+        "case": "transient_edges_l4_256K",
+        "au": 4,
+        "calls": 5,
+        "envelopes": 14,
+        "subband_envelopes": 448,
+        "limiter": true,
+        "limiter_groups": 42,
+        "limited_subband_envelopes": 54,
+        "boost_capped_groups": 3,
+        "boost_range": [
+          1.0,
+          1.5848932266235352
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 109874457704.0,
+              "modeled_signal": 92009887924.60356,
+              "modeled_noise": 17864505500.30782,
+              "modeled_sine": 0.0,
+              "signal": 92009888651.76671,
+              "noise": 17864504737.753933,
+              "sine": 0.0,
+              "cross": -1371219486.0235689,
+              "assembled": 108503174200.83806,
+              "signal_grouping_and_multiply_rounding": 727.1631438196438,
+              "noise_window_delta": -762.553887615766,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 297.3409904009096
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.8374092564122292,
+              "modeled_noise": 0.16259015856473674,
+              "modeled_sine": 0.0,
+              "signal": 0.8374092630303565,
+              "noise": 0.16259015162450782,
+              "sine": 0.0,
+              "cross": -0.012479874892466927,
+              "assembled": 0.9875195424685858,
+              "signal_grouping_and_multiply_rounding": 6.6181272610110115e-09,
+              "noise_window_delta": -6.940228908069551e-09,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 2.7061884683148236e-09
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 59391518836.0,
+              "modeled_signal": 48349026513.530075,
+              "modeled_noise": 9122607683.489836,
+              "modeled_sine": 0.0,
+              "signal": 48349026851.13189,
+              "noise": 9122607255.80814,
+              "sine": 0.0,
+              "cross": -140586092.86060372,
+              "assembled": 57331048280.891266,
+              "signal_grouping_and_multiply_rounding": 337.6018139146107,
+              "noise_window_delta": -427.6816955131355,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 266.81183749741285
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.8140729090804705,
+              "modeled_noise": 0.15360118519077498,
+              "modeled_sine": 0.0,
+              "signal": 0.8140729147648142,
+              "noise": 0.15360117798971826,
+              "sine": 0.0,
+              "cross": -0.002367107216921145,
+              "assembled": 0.9653069900300346,
+              "signal_grouping_and_multiply_rounding": 5.684343834459649e-09,
+              "noise_window_delta": -7.201056714749269e-09,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 4.492423206656329e-09
+            }
+          }
+        }
+      },
+      {
+        "case": "tone1",
+        "au": 8,
+        "calls": 9,
+        "envelopes": 9,
+        "subband_envelopes": 234,
+        "limiter": true,
+        "limiter_groups": 18,
+        "limited_subband_envelopes": 5,
+        "boost_capped_groups": 16,
+        "boost_range": [
+          1.162252426147461,
+          1.5848932266235352
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 4401084129083.4,
+              "modeled_signal": 4401078967152.505,
+              "modeled_noise": 4782561.88116484,
+              "modeled_sine": 0.0,
+              "signal": 4401079042956.117,
+              "noise": 4782562.070643891,
+              "sine": 0.0,
+              "cross": 551066844.3229061,
+              "assembled": 4401634893999.2705,
+              "signal_grouping_and_multiply_rounding": 75803.61230834924,
+              "noise_window_delta": 0.1894790500004433,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 1636.7597666569764
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.999998827122876,
+              "modeled_noise": 1.0866781322266815e-06,
+              "modeled_sine": 0.0,
+              "signal": 0.9999988443467259,
+              "noise": 1.086678175279494e-06,
+              "sine": 0.0,
+              "cross": 0.0001252116133571105,
+              "assembled": 1.0001251430101576,
+              "signal_grouping_and_multiply_rounding": 1.722384987085821e-08,
+              "noise_window_delta": 4.305281254414591e-14,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 3.7189922270307954e-10
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 4401083898212.106,
+              "modeled_signal": 4401078965089.449,
+              "modeled_noise": 4782491.549493513,
+              "modeled_sine": 0.0,
+              "signal": 4401079040893.062,
+              "noise": 4782491.73897188,
+              "sine": 0.0,
+              "cross": 551066843.8019247,
+              "assembled": 4401634891865.363,
+              "signal_grouping_and_multiply_rounding": 75803.61230778419,
+              "noise_window_delta": 0.18947836662798068,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 1636.7597654826145
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.9999988791118799,
+              "modeled_noise": 1.0866622086973506e-06,
+              "modeled_sine": 0.0,
+              "signal": 0.9999988963357307,
+              "noise": 1.08666225175001e-06,
+              "sine": 0.0,
+              "cross": 0.00012521161980706385,
+              "assembled": 1.000125194989689,
+              "signal_grouping_and_multiply_rounding": 1.7223850774255543e-08,
+              "noise_window_delta": 4.305265952892974e-14,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 3.718992419452696e-10
+            }
+          }
+        }
+      },
+      {
+        "case": "tone0",
+        "au": 8,
+        "calls": 9,
+        "envelopes": 9,
+        "subband_envelopes": 234,
+        "limiter": false,
+        "limiter_groups": 0,
+        "limited_subband_envelopes": 0,
+        "boost_capped_groups": 0,
+        "boost_range": [
+          1.0,
+          1.0
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 4401084129083.4,
+              "modeled_signal": 3757777735013.159,
+              "modeled_noise": 4197248.492317878,
+              "modeled_sine": 0.0,
+              "signal": 3757777739514.0176,
+              "noise": 4197248.516274313,
+              "sine": 0.0,
+              "cross": 839070946.1925094,
+              "assembled": 3758620986721.8677,
+              "signal_grouping_and_multiply_rounding": 4500.858400333531,
+              "noise_window_delta": 0.023956435399085763,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -20986.858396949847
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.8538300166045177,
+              "modeled_noise": 9.536851305753214e-07,
+              "modeled_sine": 0.0,
+              "signal": 0.8538300176271881,
+              "noise": 9.536851360186247e-07,
+              "sine": 0.0,
+              "cross": 0.0001906509672577561,
+              "assembled": 0.8540216175110162,
+              "signal_grouping_and_multiply_rounding": 1.0226703849151165e-09,
+              "noise_window_delta": 5.443303217217775e-15,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -4.768565603702902e-09
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 4401083898212.106,
+              "modeled_signal": 3757777733578.48,
+              "modeled_noise": 4197220.490032265,
+              "modeled_sine": 0.0,
+              "signal": 3757777738079.339,
+              "noise": 4197220.513988627,
+              "sine": 0.0,
+              "cross": 839070946.1513453,
+              "assembled": 3758620985259.145,
+              "signal_grouping_and_multiply_rounding": 4500.858888088238,
+              "noise_window_delta": 0.023956362051258395,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -20986.85888602404
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.8538300610686012,
+              "modeled_noise": 9.536788180151124e-07,
+              "modeled_sine": 0.0,
+              "signal": 0.8538300620912717,
+              "noise": 9.536788234583992e-07,
+              "sine": 0.0,
+              "cross": 0.0001906509772495382,
+              "assembled": 0.8540216619787786,
+              "signal_grouping_and_multiply_rounding": 1.0226705493882231e-09,
+              "noise_window_delta": 5.443286836906338e-15,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -4.7685659649773385e-09
+            }
+          }
+        }
+      },
+      {
+        "case": "music1",
+        "au": 100,
+        "calls": 9,
+        "envelopes": 23,
+        "subband_envelopes": 460,
+        "limiter": true,
+        "limiter_groups": 46,
+        "limited_subband_envelopes": 81,
+        "boost_capped_groups": 0,
+        "boost_range": [
+          1.0,
+          1.482008695602417
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 2499303888.4074707,
+              "modeled_signal": 1767759076.973145,
+              "modeled_noise": 731544760.4144373,
+              "modeled_sine": 0.0,
+              "signal": 1767759073.8712704,
+              "noise": 731544702.8661623,
+              "sine": 0.0,
+              "cross": -122485773.86138132,
+              "assembled": 2376818003.859915,
+              "signal_grouping_and_multiply_rounding": -3.101874418091029,
+              "noise_window_delta": -57.54827507119626,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 0.9838631516322494
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.7073005748410778,
+              "modeled_noise": 0.2926994047452828,
+              "modeled_sine": 0.0,
+              "signal": 0.7073005735999824,
+              "noise": 0.2926993817195614,
+              "sine": 0.0,
+              "cross": -0.04900795554694549,
+              "assembled": 0.9509920001662533,
+              "signal_grouping_and_multiply_rounding": -1.2410953435788514e-09,
+              "noise_window_delta": -2.3025721417120426e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 3.936548717407695e-10
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 2394757991.8007812,
+              "modeled_signal": 1646516691.3666794,
+              "modeled_noise": 700391335.248736,
+              "modeled_sine": 0.0,
+              "signal": 1646516688.0945446,
+              "noise": 700391278.2484348,
+              "sine": 0.0,
+              "cross": -106259414.65263152,
+              "assembled": 2240648553.0856233,
+              "signal_grouping_and_multiply_rounding": -3.272134865168482,
+              "noise_window_delta": -57.0003013368696,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 1.3952756053768098
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.6875503483041105,
+              "modeled_noise": 0.2924685240206941,
+              "modeled_sine": 0.0,
+              "signal": 0.6875503469377366,
+              "noise": 0.29246850021858073,
+              "sine": 0.0,
+              "cross": -0.044371671382429693,
+              "assembled": 0.9356471763565251,
+              "signal_grouping_and_multiply_rounding": -1.3663739201922202e-09,
+              "noise_window_delta": -2.3802113421075672e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 5.826374147842836e-10
+            }
+          }
+        }
+      },
+      {
+        "case": "music0",
+        "au": 100,
+        "calls": 9,
+        "envelopes": 23,
+        "subband_envelopes": 460,
+        "limiter": false,
+        "limiter_groups": 0,
+        "limited_subband_envelopes": 0,
+        "boost_capped_groups": 0,
+        "boost_range": [
+          1.0,
+          1.0
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 2499303888.4074707,
+              "modeled_signal": 1767758550.896544,
+              "modeled_noise": 731544537.8760746,
+              "modeled_sine": 0.0,
+              "signal": 1767758549.6007066,
+              "noise": 731544479.2385097,
+              "sine": 0.0,
+              "cross": -117884860.20858581,
+              "assembled": 2381418170.152329,
+              "signal_grouping_and_multiply_rounding": -1.2958374386653304,
+              "noise_window_delta": -58.63756482070312,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 1.521698271855712
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.7073003643518277,
+              "modeled_noise": 0.2926993157051449,
+              "modeled_sine": 0.0,
+              "signal": 0.7073003638333485,
+              "noise": 0.2926992922435862,
+              "sine": 0.0,
+              "cross": -0.04716707750320861,
+              "assembled": 0.952832579182575,
+              "signal_grouping_and_multiply_rounding": -5.184793432586639e-10,
+              "noise_window_delta": -2.346155867346981e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 6.088488394363766e-10
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 2394757991.8007812,
+              "modeled_signal": 1683466447.585225,
+              "modeled_noise": 711290773.2851397,
+              "modeled_sine": 0.0,
+              "signal": 1683466446.881635,
+              "noise": 711290715.1838813,
+              "sine": 0.0,
+              "cross": -105708150.55580215,
+              "assembled": 2289049012.8812146,
+              "signal_grouping_and_multiply_rounding": -0.7035900256596506,
+              "noise_window_delta": -58.10125841689296,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 1.3715004492551088
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.7029797805661825,
+              "modeled_noise": 0.29701989750967356,
+              "modeled_sine": 0.0,
+              "signal": 0.7029797802723783,
+              "noise": 0.29701987324782386,
+              "sine": 0.0,
+              "cross": -0.04414147522118217,
+              "assembled": 0.9558581788717294,
+              "signal_grouping_and_multiply_rounding": -2.938042290989802e-10,
+              "noise_window_delta": -2.4261849679934745e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": 5.727094152941043e-10
+            }
+          }
+        }
+      },
+      {
+        "case": "music_preflat0",
+        "au": 100,
+        "calls": 9,
+        "envelopes": 23,
+        "subband_envelopes": 460,
+        "limiter": true,
+        "limiter_groups": 46,
+        "limited_subband_envelopes": 85,
+        "boost_capped_groups": 2,
+        "boost_range": [
+          1.0000001192092896,
+          1.5848932266235352
+        ],
+        "regions": {
+          "totals": {
+            "time_weighted": {
+              "target": 2499303888.4074707,
+              "modeled_signal": 1759459043.8747842,
+              "modeled_noise": 727395092.3999757,
+              "modeled_sine": 0.0,
+              "signal": 1759459051.7486284,
+              "noise": 727395035.9734949,
+              "sine": 0.0,
+              "cross": -121150736.00175557,
+              "assembled": 2365703346.735676,
+              "signal_grouping_and_multiply_rounding": 7.873844286426902,
+              "noise_window_delta": -56.42648074449971,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -4.9846920180134475
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.7039796369043752,
+              "modeled_noise": 0.29103907522964884,
+              "modeled_sine": 0.0,
+              "signal": 0.7039796400547901,
+              "noise": 0.2910390526527701,
+              "sine": 0.0,
+              "cross": -0.04847379166802781,
+              "assembled": 0.9465448990451002,
+              "signal_grouping_and_multiply_rounding": 3.150414930712579e-09,
+              "noise_window_delta": -2.257687870859676e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -1.9944321461403554e-09
+            }
+          },
+          "subbands_32_48": {
+            "time_weighted": {
+              "target": 2394757991.8007812,
+              "modeled_signal": 1627554551.9413545,
+              "modeled_noise": 694437046.8133625,
+              "modeled_sine": 0.0,
+              "signal": 1627554559.829307,
+              "noise": 694436990.8067553,
+              "sine": 0.0,
+              "cross": -103079978.48738103,
+              "assembled": 2218911567.551299,
+              "signal_grouping_and_multiply_rounding": 7.88795266347006,
+              "noise_window_delta": -56.00660712062381,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -4.597382515203208
+            },
+            "relative_to_target": {
+              "target": 1.0,
+              "modeled_signal": 0.6796321622117171,
+              "modeled_noise": 0.28998213981996906,
+              "modeled_sine": 0.0,
+              "signal": 0.6796321655055584,
+              "noise": 0.2899821164328012,
+              "sine": 0.0,
+              "cross": -0.04304400646758806,
+              "assembled": 0.9265702735510024,
+              "signal_grouping_and_multiply_rounding": 3.2938412526347066e-09,
+              "noise_window_delta": -2.3387167852609875e-08,
+              "sine_rounding": 0.0,
+              "assembly_rounding": -1.9197691503458033e-09
+            }
+          }
+        }
+      }
+    ],
+    "noise_table_power_range": [
+      0.999998628928445,
+      1.0000013016574805
+    ],
+    "max_relative_errors": {
+      "initial_noise": 3.6391767157145756e-08,
+      "initial_sine": 0.0,
+      "signal": 0.0,
+      "noise": 0.0,
+      "sine": 0.0,
+      "boost": 0.0,
+      "estimate": 5.766339225031942e-08
+    }
+  },
+  "preflat_pair": {
+    "before": "music1",
+    "after": "music_preflat0",
+    "au": 100,
+    "subbands": [
+      32,
+      48
+    ],
+    "only_preflat_bits_changed": 18,
+    "mutation_proof_sha256": "2db4e2943cf66d7ff9f88ecb459eb4e9985fcecc3a7809a129a671e17ac9c52d",
+    "same_target_ratio_masks_cursors_and_initial_levels": true,
+    "core_timeline_and_ajoc_metadata_identical": true,
+    "metrics": {
+      "subband_envelopes": 276,
+      "limited_before": 75,
+      "limited_after": 79,
+      "noise_level_ratio_quantiles": {
+        "min": 0.6830180511043076,
+        "p05": 0.8471545986552947,
+        "median": 1.0000001032382644,
+        "p95": 1.0464537538178662,
+        "max": 1.3962973734554227
+      },
+      "noise_level_delta_relative_l2": 0.0430040951218133,
+      "noise_budget_after_over_before": 0.9914954919598603,
+      "symmetric_amplitude_decomposition": {
+        "delta_energy": 1408711.1435782209,
+        "cap_energy": 2234052.4697157294,
+        "boost_energy": 303086.0604417514,
+        "cross": -1128427.2905663329,
+        "rounding_energy": 1.0504526681528172e-06
+      },
+      "normalised_high_relative_l2": 3.0214938077510353e-08
+    },
+    "sources": [
+      {
+        "source": 1,
+        "limited_before": 13,
+        "limited_after": 13,
+        "noise_level_ratio_min": 0.8903313999327847,
+        "noise_level_ratio_max": 1.0612775144931978
+      },
+      {
+        "source": 2,
+        "limited_before": 14,
+        "limited_after": 13,
+        "noise_level_ratio_min": 0.8898009453944763,
+        "noise_level_ratio_max": 1.0646875632231598
+      },
+      {
+        "source": 3,
+        "limited_before": 7,
+        "limited_after": 7,
+        "noise_level_ratio_min": 0.8008312913196798,
+        "noise_level_ratio_max": 1.1030157032635692
+      },
+      {
+        "source": 4,
+        "limited_before": 7,
+        "limited_after": 7,
+        "noise_level_ratio_min": 0.7927949900486829,
+        "noise_level_ratio_max": 1.110723352611178
+      },
+      {
+        "source": 5,
+        "limited_before": 3,
+        "limited_after": 3,
+        "noise_level_ratio_min": 0.8948648299464064,
+        "noise_level_ratio_max": 1.0590856048603083
+      },
+      {
+        "source": 6,
+        "limited_before": 3,
+        "limited_after": 3,
+        "noise_level_ratio_min": 0.9552560395432109,
+        "noise_level_ratio_max": 1.038205032066743
+      },
+      {
+        "source": 7,
+        "limited_before": 12,
+        "limited_after": 13,
+        "noise_level_ratio_min": 0.8159147923230196,
+        "noise_level_ratio_max": 1.101663857903325
+      },
+      {
+        "source": 8,
+        "limited_before": 12,
+        "limited_after": 14,
+        "noise_level_ratio_min": 0.795450439908319,
+        "noise_level_ratio_max": 1.1077990119642256
+      },
+      {
+        "source": 9,
+        "limited_before": 4,
+        "limited_after": 6,
+        "noise_level_ratio_min": 0.6830180511043076,
+        "noise_level_ratio_max": 1.3962973734554227
+      }
+    ]
+  },
+  "validation": {
+    "checks": [
+      {
+        "name": "rust_audio",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--workspace",
+          "--features",
+          "audio-decode"
+        ],
+        "exit_code": 0
+      },
+      {
+        "name": "clippy_audio",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--workspace",
+          "--all-targets",
+          "--features",
+          "audio-decode",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0
+      },
+      {
+        "name": "no_std",
+        "command": [
+          "cargo",
+          "check",
+          "--locked",
+          "-p",
+          "macindecode-ac4-scene",
+          "--lib",
+          "--target",
+          "thumbv7em-none-eabi",
+          "--no-default-features",
+          "--features",
+          "audio-decode"
+        ],
+        "exit_code": 0
+      },
+      {
+        "name": "rust_default",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--workspace"
+        ],
+        "exit_code": 0
+      },
+      {
+        "name": "python",
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts",
+          "-p",
+          "test_*.py"
+        ],
+        "exit_code": 0
+      },
+      {
+        "name": "layers",
+        "command": [
+          "python3",
+          "scripts/check_layers.py"
+        ],
+        "exit_code": 0
+      },
+      {
+        "name": "fmt",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--",
+          "--check"
+        ],
+        "exit_code": 0
+      }
+    ],
+    "counts": {
+      "rust_audio": {
+        "passed": 1336,
+        "ignored": 44
+      },
+      "rust_default": {
+        "passed": 514,
+        "ignored": 3
+      },
+      "python": {
+        "passed": 525
+      }
+    },
+    "known_pcm_baselines": {
+      "stages": 3,
+      "per_stage": 12,
+      "total": 36,
+      "all_bit_exact": true,
+      "updated": false
+    },
+    "default_discovery": {
+      "passed": false,
+      "reason": "13 new decodable inputs absent from frozen baseline; 23 channel_based paths unsupported; all frozen entries matched",
+      "new_unregistered_inputs_per_stage": 13
+    },
+    "full_stream_comparisons": {
+      "inputs": 21,
+      "aus": 4150,
+      "new_reference_captures": 0,
+      "records": [
+        {
+          "case": "dense_prbs_l3_320K",
+          "input_sha256": "157542af0910dee4fa0a437da20bb3891ca42fad967a11bbb462cb5ec08fc7ee",
+          "objects_sha256": "47b673568786d3681799ae12dcc106a2970b7f62a3bfba191586001f200ae54e",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l3_448K",
+          "input_sha256": "c2ac291ba27cae3e8bff9f6c29962c4a9e90b741818daa2992597d7398dcaf07",
+          "objects_sha256": "b3cac14872d7ec725ac25f9d6582182eaf184752d0e75a636bd03ebdcebb6b71",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l3_768K",
+          "input_sha256": "8e1207e7a66b2913247ae9bad344e2b1f0d8870fa35caaf7d83accfdaf2008be",
+          "objects_sha256": "654d143ec34c13e40042cda6fed8d7fb22e5cca80c24d0dc7002d0972b6c44ec",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l4_128K",
+          "input_sha256": "71fd7bc1d3f9dc2e49acf610dd6a8560ff05330d6373a9cb3521bce39ee81551",
+          "objects_sha256": "9083ebfc5a01eb92246f496162456449e3375b8d68ff50d17677dd282d6fb0ee",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l4_256K",
+          "input_sha256": "60d4985d4fb2391fb38066cd75a5ab25396a5f1dc28d83dd8ffa61bb26aa95c4",
+          "objects_sha256": "b43deb2e4ebd34d5ef8f44ba84b30642c927053284618463d4b9dff8324dcd92",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l4_448K",
+          "input_sha256": "cdad758d3876e4de33bc06dbcb75b8cdfe72cdced0d1f9a2fda1d1ebfd7c55a7",
+          "objects_sha256": "656faa0cbee4ecd6f9be9c4460db1da52a1e5c3b6d1ae8952d815e79fe6131b2",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l4_768K",
+          "input_sha256": "84dd8f24167e1c34d0d8ebe7aa5c344d2a59f72c67a35dd2f3f2b7bc187a4f53",
+          "objects_sha256": "1347cc88312bdc7205507b6bec7945450a1fe261f170092722d75854e61fa6b5",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "dense_prbs_l4_1500K",
+          "input_sha256": "144342c75217c4215b1368059e6d095bce7ad9502ed3577c90085a1f87e6d457",
+          "objects_sha256": "92c75b34bd263a4d8f0e7bf4bc667426b8b57570f652b7d732e5a8e35fe2b1bf",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "transient_edges_l3_320K",
+          "input_sha256": "b91fb4988c0c4edd31000cf900ffedcc262ae5dcc4b0fe51b72616426ecea3a9",
+          "objects_sha256": "321fdb8176d82446f834f7aa174d525dcd6053b17bc64391248dfef8b9f4481c",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "transient_edges_l4_128K",
+          "input_sha256": "aa81377852ee959b4a851e75f5fc1a91232375b8e147b78b9c527655023f6602",
+          "objects_sha256": "001da6a3ae19c6fff34205c73f39ab5c6c4051037ffe425b1436caa290295dd4",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "transient_edges_l4_256K",
+          "input_sha256": "5141ca891168fcbef4c4a79122a4c1f034b2ab55aae927e385d1d00951d98f64",
+          "objects_sha256": "9f8d68379590e153b5ec6094455caafd2c70ad41fec568eeb41ba4b142aa31d3",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "transient_edges_l4_768K",
+          "input_sha256": "213dff7cd7d2503a66957ce6063cf73352c1e9cd17e30c7d628bec90d5eaac70",
+          "objects_sha256": "b8f1407c04d490512f1a118417a0996258e9edddceaa58f8a48fe29640a527c4",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "transient_edges_l4_1500K",
+          "input_sha256": "63a8a73d5f36e34763fba35bbbe0fbd9e1a06b2c3574edee24e7abda1c5c7d6c",
+          "objects_sha256": "e900319674cc50d44f88a2d040451b2c4a9e0e2eba879de82ddff52744c031d0",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "tone1",
+          "input_sha256": "ee9987ecf02959fbe1624a3874b7b07fe304ef4b4b4a21d1b7b3230a5c416902",
+          "objects_sha256": "d3457be9dfbbf108c28d1c7119323cb28c1a941a56c773ded92d8fe8828b3ed3",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "tone0",
+          "input_sha256": "44661e1d894f6aa5ec348f24cf44d32b8882b699b2e07e9d1bf5f37d2a43c099",
+          "objects_sha256": "15cf7bb04fb532c29ffd76fbe6731718b7a561b450cfe344e22b4576fd22bd5d",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "music1",
+          "input_sha256": "da78a5224a1b5e1103a4bfe4afd4a0d83bf7f496991799b3b36aa517bf493911",
+          "objects_sha256": "9fe63958bcbc24e14210f7e6bf2c5da546d696467b614a4c4c0aa2b33a6d275a",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "music0",
+          "input_sha256": "ab6edf45e30bf7976103ecb29b570216300910ef6eb506c67965e9ef43271a5a",
+          "objects_sha256": "737b788e3310aae24137611e75fba54f33f3bf4c5c2996fd84576a506a5aa6f8",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "tone1281",
+          "input_sha256": "5c0cd60c4d4939d23f68380d31fb329c157bba58f928f6cbefe275378a3e416f",
+          "objects_sha256": "6bf48818a270ad1d48b47cae6e9c048532399b185ffdad25edf8ca3a498d2f6f",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "tone181871",
+          "input_sha256": "3046c9a7bf1e84de30d4429932ef7811c0e3444b458d9099ad48213f40d1991e",
+          "objects_sha256": "bc702e875ca6084a7956396f58dd9b86ecd30120dca85fd755e6db8b4ae88e1b",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "tone_preflat0",
+          "input_sha256": "0983024ff1474bb394259fb016575b73d14161ca2fcd93c08c76b6d87aa44fc7",
+          "objects_sha256": "3ec245563693ad775fdf28ef5598bc8da5dc3538f22295f337794fa3f992e89a",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        },
+        {
+          "case": "music_preflat0",
+          "input_sha256": "d5e2e4a3c91e27e8c4ea31a51d7ab7439c1baab436fe63a333373d14ebd23882",
+          "objects_sha256": "d5a7e5faa50258e1396171c890a3203e76c44e0d4dbc280fca8284f44fb88768",
+          "matching": {
+            "objects.f32": true,
+            "core.f32": true,
+            "timeline.jsonl": true,
+            "frame_metadata_except_capture_selection": true
+          }
+        }
+      ]
+    },
+    "energy_checker_cli": {
+      "exit_code": 0,
+      "calls": 57,
+      "matches_analysis": true
+    }
+  },
+  "protected_sha256": {
+    "vectors/decode_baseline.json": "d42a22283e4bd7645e94db410471bbe0c78b4da53ddfa065ea482bf93523a0e7",
+    "vectors/aspx_baseline.json": "7a486045a2a1a087868083b5e78bb0ee78896bc4b56b293358c136fbce978f25",
+    "vectors/objects_baseline.json": "87fca9b0f6c84c2bafdfdff87732fd4ebe5ac08bdbc6f9faacb55c496503097f",
+    "target/release/macinac4": "88f1341bf49235d85c88762623629951fdf2cd187d2dc2c9bcbb76e5d42f991d",
+    "spec/MANIFEST.json": "66af26105a0c83efd97cfae3e245702c6e5c53c2820f2dacc167f6832d505dd6"
+  },
+  "source_before_sha256": {
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust.rs": "4ed3f74af76773ece7c7ca9097095cfbeb1202097a5df4e5c83d3960b50e867a",
+    "crates/macindecode-ac4-decode/src/aspx/hfgain.rs": "f991e7430ecf0f60f0e697d605fcd2f572978c393a60c927b358072be0c5b4fb",
+    "crates/macindecode-ac4-decode/src/aspx/pipeline.rs": "b37989c51688dee34e8974183cfd17afc4c5012f9702043f35e55608e6a50e00",
+    "crates/macindecode-ac4-decode/src/aspx/pipeline/component_probe.rs": "24cad5085b4215fda8bfc2094044bb568eb44fb405fc4563163fc90c7fe3f9ab",
+    "crates/macindecode-ac4-decode/src/full_ajoc/decoder/input_boundary_tests.rs": "2bc3d908c5082fa2033b3466f212de592eea4d8db30a34c486a66ebec81e45a1"
+  },
+  "source_sha256": {
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust.rs": "354db587a9bcb79b40dfabc9d6e33a303bd918ab985d165431472e8e07562191",
+    "crates/macindecode-ac4-decode/src/aspx/hfgain.rs": "b5266b5509c1c3bc331a0f1202e0e2941cf4aede11e8d5e4341187bc1f792881",
+    "crates/macindecode-ac4-decode/src/aspx/pipeline.rs": "7dc982d8a00404cdee6e5c57f41ec4f6db4046a58fc296640c8ae11e04111531",
+    "crates/macindecode-ac4-decode/src/aspx/pipeline/component_probe.rs": "840b7e7203b456e585844044087d5c916a448fab80381a89d60ae745754aa618",
+    "crates/macindecode-ac4-decode/src/full_ajoc/decoder/input_boundary_tests.rs": "1a2a56162b41f8a9a25a85b2eadc5403645a77e9ff56eb5304e937f2118e90bb",
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust/level_precision_tests.rs": "3c738e0b0f9ddd4bd53b7a43f55849d0df65280cf43aaffb42fc0f1850b3dcb7",
+    "scripts/check_aspx_energy_budget.py": "312f97feb0a2b1bc7f917a06b2b35b6fe37c54505ee21a440213bc9be711b17e",
+    "scripts/test_check_aspx_energy_budget.py": "46cfda19eae76c9e1dfbbf5ecb7cdad4da3b52d81512d7ce836fe0d9cbb99abe",
+    ".github/workflows/ci.yml": "fc6178b8ee228eac1f2359a60ffe3d19362c92f0f93983b62054ee660f146a4d"
+  },
+  "archive": {
+    "artifacts": {
+      "starting_state.json": "e9c2aa4f0691075b81323b418eb429ac6588df39cc0620885d30e2e2eb9d14ad",
+      "precision_anchors.json": "08c06c9f41deacf2fdd3099a8a232c203eb03bc22a156bba8bf8a9cf2e713779",
+      "p94_before.log": "fedf3d848467898f707d21094d5e5a1abe6e9fc0ec9be642dfd6d7e28830d158",
+      "p94_after.log": "6a5af8d11a2781696011f75bb6d48d225b255300658498d8ee5c45957ca924c3",
+      "baselines.json": "54e4230537464100e4655847cc082b85865a9361e04edf908ce1a9354ca8e325",
+      "baselines.log": "262671ead600d6e68b93542442c7aac80aba4c3b1b126570fd08dc82cddf0182",
+      "discovery_baselines.json": "e3785ffa000f244968d5f0fa3661512db37428b3a8e43e660f1b494ede04bde6",
+      "discovery_baselines.log": "86e452b76cd6ffeb275aeb79a2e8f07733cac75b01096b8335b32184dce5fb86",
+      "captures.json": "908c731b9b7523925d0c98d8e4184850046ea8bc174e51b0183e1bc40284d56a",
+      "energy_audit.json": "22475b5961dd7a62e62fd746dd410ca7ae176744fd20c612c53b1c1bc9cce47f",
+      "energy_summary.json": "9fbc13094a20c308a9ecebbde5c2e21cc52aa39658f1949981725aedd8f91432",
+      "preflat_pair.json": "2c7ac29ef41d138cd04b0ce96349aa4cdf5a5c1528db0b0a888331812b34148b",
+      "test_binary.json": "1ca9cb5297c1c510c0fd3a3f472119e61b4c55fe52813fb0928b372a45874200",
+      "release_tests.log": "ae845ec9ebb72ae6c3de0d01dd119c8bfd3dcb7fb80f3ed5b62fd4d27d42c71c",
+      "rust_audio.log": "5efe671bc369f04f74c82b9e1f7afa219398e5ac38533b218ec2a6bfd99ac75e",
+      "rust_default.log": "bf3bfe545ed5890090f5612ef186ea82ac58aca93d3bbc680e0137700eed800f",
+      "python.log": "eebb1a01f804f5a3eccd38f1855ee2493048ad577bd644c667844c4b937d9cb7",
+      "clippy_audio.log": "95599dc114ab3193b7d88a35e7a7a2044cceb8031fc461386ed20329d3313517",
+      "no_std.log": "bbcd8ab505e513168d8cba3e852b40b898ac10a41fa5a4455eb5cc702909c939",
+      "layers.log": "d464080a3201f6fbb01c2ff4603ce62e135907d7075edcace9385266307de9e0",
+      "fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "capture.py": "7519482ccf5eea9d14ac0247a36dfc11dd130d10b09a0482c22375d65f9f4520",
+      "analyse.py": "509d0644e7d590537eb9853429fef89b056bc9dbd09dc8284e276f09c75646a3",
+      "baselines.py": "b74672f42fe467aee51e8328c9ae26b1e6acd524408a9d25cca44c92eff86a6d",
+      "energy_cli_audit.json": "42d06c88d6c29f8a39135ef11f2b16822b644853511c91bf6ab5905ebc1908bf",
+      "energy_cli.log": "41bb952e8486a64981da3cec116277a75e4befaddfe4abc2d36cf740dc47dacf"
+    },
+    "noise_table_sha256": "6ef5390a34b211cf5f190019b8295f349b56eb493f7828b88cbba272890a2e9f",
+    "capture_binary": {
+      "sha256": "8d135fb22b08f1d962171624c0f2d0cf2bb1a334e6d3c3b2cff1f720e96eb7e4",
+      "bytes": 6560320
+    },
+    "storage": "restricted_local_archive"
+  },
+  "capture_source_sha256": {
+    "crates/macindecode-ac4-decode/src/aspx/hfadjust.rs": "354db587a9bcb79b40dfabc9d6e33a303bd918ab985d165431472e8e07562191",
+    "crates/macindecode-ac4-decode/src/aspx/hfgain.rs": "f991e7430ecf0f60f0e697d605fcd2f572978c393a60c927b358072be0c5b4fb",
+    "crates/macindecode-ac4-decode/src/aspx/pipeline.rs": "7dc982d8a00404cdee6e5c57f41ec4f6db4046a58fc296640c8ae11e04111531",
+    "crates/macindecode-ac4-decode/src/aspx/pipeline/component_probe.rs": "840b7e7203b456e585844044087d5c916a448fab80381a89d60ae745754aa618",
+    "crates/macindecode-ac4-decode/src/full_ajoc/decoder/input_boundary_tests.rs": "1a2a56162b41f8a9a25a85b2eadc5403645a77e9ff56eb5304e937f2118e90bb"
+  },
+  "capture_build_note": "P94 and observation code unchanged since capture; later edits only corrected a hfgain error comment and removed an unused indexing_slicing lint expectation from the new precision test module.",
+  "provenance_note": "实验提交与源码摘要对应原始研究版本，完整原始记录保存在本地受限档案中。"
+}

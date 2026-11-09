@@ -120,8 +120,8 @@ pub enum GainError {
     LimiterSourceMismatch,
     /// `sig_gain_sb` 为零，而 `Pseudocode 97` 要除以它。
     ///
-    /// 只有 `scf_sig_sb` 为零才会这样，而 `5.7.6.3.5` 的反量化只产出正规数，
-    /// 故它意味着上游已经坏了。照字面算下去会得到 `0 · ∞ = NaN`。
+    /// 反量化只产出正规数，但极端能量比仍可能让 f32 增益舍入为零。
+    /// 在 P97 前报告错误，避免照字面除零后得到 `0 · ∞ = NaN`。
     DegenerateSignalGain { subband: usize, envelope: usize },
 }
 

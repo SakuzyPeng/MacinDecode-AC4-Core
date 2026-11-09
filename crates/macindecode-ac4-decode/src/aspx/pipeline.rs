@@ -1126,6 +1126,14 @@ fn assemble_high_band(
         bands,
         interval,
         num_ts_in_ats,
+        [
+            if params.master_reset {
+                0
+            } else {
+                state.noise.previous()
+            },
+            next_noise.previous(),
+        ],
         q_high,
         noise,
         sine,
@@ -1317,6 +1325,15 @@ fn adjust_high_band(
     };
     let mut gains = AdjustedGains::new();
     adjust(&estimated, bands, mode, &mut gains)?;
+    #[cfg(test)]
+    component_probe::gain(
+        bands,
+        &input.framing.interval,
+        params.interpolation,
+        limiter,
+        &estimated,
+        &gains,
+    );
     Ok((next_sines, estimated, gains))
 }
 

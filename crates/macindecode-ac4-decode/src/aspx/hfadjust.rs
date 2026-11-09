@@ -56,7 +56,7 @@ use crate::aspx::dequant::ScaleFactors;
 use crate::aspx::frames::{AspxInterval, MAX_ATSG_SIG};
 use crate::aspx::qmf::QmfSlot;
 use crate::aspx::tables::NUM_QMF_SUBBANDS;
-use macindecode_ac4_bitstream::math::sqrt_f32;
+use macindecode_ac4_bitstream::math::{sqrt, sqrt_f32};
 
 /// 子带数，`5.7.3.2` 规定恒为 64。
 const SUBBANDS: usize = NUM_QMF_SUBBANDS as usize;
@@ -527,12 +527,13 @@ pub fn estimate(
         }
     }
 
-    // `Pseudocode 94`：正弦与噪声电平。两个 sqrt 都在这里。
+    // `Pseudocode 94`：正弦与噪声电平。功率开方前不能因 f32 下溢而丢掉幅度。
     for atsg in 0..envelopes {
         for sb in 0..num_sb_aspx {
-            let factor = scf_sig[sb][atsg] / (1.0 + scf_noise[sb][atsg]);
-            sine_lev[sb][atsg] = sqrt_f32(factor * f32::from(u8::from(sine_idx[sb][atsg])));
-            noise_lev[sb][atsg] = sqrt_f32(factor * scf_noise[sb][atsg]);
+            let (sine, noise) =
+                generated_levels(scf_sig[sb][atsg], scf_noise[sb][atsg], sine_idx[sb][atsg]);
+            sine_lev[sb][atsg] = sine;
+            noise_lev[sb][atsg] = noise;
         }
     }
 
@@ -561,6 +562,31 @@ pub fn estimate(
     Ok(())
 }
 
+/// P94 的功率分配和开方。正常 f32 路径保持既有舍入；只有精度已在中间
+/// 因子／功率的非正规范围丢失时，才用同一公式的 f64 中间量恢复可表示幅度。
+fn generated_levels(signal: f32, noise_ratio: f32, has_sine: bool) -> (f32, f32) {
+    let sine_index = f32::from(u8::from(has_sine));
+    let factor = signal / (1.0 + noise_ratio);
+    let noise_power = factor * noise_ratio;
+    let mut sine = sqrt_f32(factor * sine_index);
+    let mut noise = sqrt_f32(noise_power);
+    let factor_lost_precision = signal > 0.0 && !factor.is_normal();
+    let noise_lost_precision =
+        signal > 0.0 && noise_ratio > 0.0 && (factor_lost_precision || !noise_power.is_normal());
+    if factor_lost_precision || noise_lost_precision {
+        // 反量化保证两输入有限且非负；两个 f32 正规数的比值／乘积在 f64 中
+        // 仍可表示。只在开方后的幅度出口收窄，不放宽反量化的数值范围。
+        let wide_factor = f64::from(signal) / (1.0 + f64::from(noise_ratio));
+        if factor_lost_precision {
+            sine = sqrt(wide_factor * f64::from(sine_index)) as f32;
+        }
+        if noise_lost_precision {
+            noise = sqrt(wide_factor * f64::from(noise_ratio)) as f32;
+        }
+    }
+    (sine, noise)
+}
+
 #[cfg(test)]
 mod gain_replay_tests;
 
@@ -569,6 +595,9 @@ mod estimate_replay_tests;
 
 #[cfg(test)]
 mod width_chain_tests;
+
+#[cfg(test)]
+mod level_precision_tests;
 
 #[cfg(test)]
 mod tests {
