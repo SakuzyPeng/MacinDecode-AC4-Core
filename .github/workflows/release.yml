@@ -77,13 +77,20 @@ jobs:
 
       - name: Install pinned cargo-audit
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           archive="$RUNNER_TEMP/cargo-audit.tgz"
           tool_dir="$RUNNER_TEMP/cargo-audit"
-          curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
+          if ! curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
             --retry 5 --retry-max-time 180 --connect-timeout 15 --max-time 60 \
             --output "$archive" \
-            "https://github.com/rustsec/rustsec/releases/download/cargo-audit/v${CARGO_AUDIT_VERSION}/cargo-audit-x86_64-unknown-linux-musl-v${CARGO_AUDIT_VERSION}.tgz"
+            "https://github.com/rustsec/rustsec/releases/download/cargo-audit/v${CARGO_AUDIT_VERSION}/cargo-audit-x86_64-unknown-linux-musl-v${CARGO_AUDIT_VERSION}.tgz"; then
+            gh release download "cargo-audit/v${CARGO_AUDIT_VERSION}" \
+              --repo rustsec/rustsec \
+              --pattern "cargo-audit-x86_64-unknown-linux-musl-v${CARGO_AUDIT_VERSION}.tgz" \
+              --output "$archive" --clobber
+          fi
           echo "${CARGO_AUDIT_SHA256}  $archive" | sha256sum --check --strict
           mkdir -p "$tool_dir"
           tar -xzf "$archive" --strip-components=1 -C "$tool_dir"
