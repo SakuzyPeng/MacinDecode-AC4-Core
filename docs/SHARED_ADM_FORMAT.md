@@ -1,6 +1,6 @@
 # ADM/DAMF 写侧迁移
 
-本迁移分支使用私有仓库 MacinFormat-ADM-Core 的 macin-atmos，依赖提交由 Cargo.toml/Cargo.lock 固定。
+本仓库使用公开仓库 MacinFormat-ADM-Core 的 macin-atmos，依赖提交由 Cargo.toml/Cargo.lock 固定。
 解码、OAMD 映射、presentation 选择、edit/preroll、对象配对、探针与节目级 PCM 增益仍归本仓库。
 AXML、CHNA、DBMD、DAMF 文本及母版容器序列化由共享库实现。
 
@@ -15,5 +15,11 @@ CLI 命令、JSON v1、严格映射诊断和不覆盖目标的提交行为保持
 路径覆盖会改变 Cargo.lock，提交前须恢复固定 Git 依赖并重新运行 locked 检查。
 本机继续复用已有 target；不复制媒体、规范表或第三方工具。
 
-私有共享库尚未在 crates.io 分发，因此本分支不能作为公开发布分支。
-现有打包、分发和发行检查不放宽；待共享库公开分发后，再将依赖切到正式版本并处理公开集成。
+共享库已准备 `0.1.0` 的包元数据、许可证与 README，并通过归档解包构建及发布 dry-run，尚未上传 crates.io。
+CLI 的依赖同时声明 `=0.1.0` 与固定 Git 提交，源码构建使用公开 Git 依赖，Cargo 归档会转成注册表版本约束。
+注册表尚不能解析共享库时，CLI 的 `cargo package` 和现有 CI 打包检查仍会失败。
+后续正式上传共享库并待索引可用后，须重新运行 workspace 默认与 all-features 打包检查，见
+[crates.io 发布检查](CRATES_IO_RELEASE.md)。
+
+DAMF stem 保留尾随句点或空格，因为实际成员名会追加 `.atmos`、`.atmos.metadata` 和 `.atmos.audio`。
+回归覆盖显式 `--stem`、从输入文件名提取 stem、probe/full 及 home/3dof 配置。

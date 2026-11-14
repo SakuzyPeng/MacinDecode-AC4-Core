@@ -10,6 +10,11 @@
 `[workspace.dependencies]` 中六个内部库的 `version` 必须与它同步。路径用于工作区
 开发，Cargo 打包时会移除路径并保留 crates.io 版本约束。
 
+CLI 的 `macin-atmos` 依赖同时声明 `=0.1.0` 和公开 Git 仓库的固定提交。
+Cargo 打包会移除 Git 来源，归档依赖注册表中的 `macin-atmos =0.1.0`。
+共享库当前只完成发布准备，尚未上传 crates.io，因此 workspace 打包检查仍受此依赖阻挡。
+其发布准备记录见 [MacinFormat-ADM-Core](https://github.com/SakuzyPeng/MacinFormat-ADM-Core/blob/main/docs/CRATES_IO_RELEASE.md)。
+
 ## 发布前门禁
 
 在干净工作树运行：
@@ -42,6 +47,9 @@ MACINDECODE_AC4_SPEC_DIR="$PWD/spec" \
 ## 人工发布顺序
 
 内部注册表依赖决定顺序：
+
+先确保共享库 `macin-adm` 与 `macin-bwf` 的 `0.1.0` 已发布，再发布 `macin-atmos 0.1.0`，
+并等待注册表能解析后再执行本仓库的打包与发布门禁。
 
 1. `macindecode-ac4-bitstream`
 2. `macindecode-ac4-decode` 与 `macindecode-ac4-mp4`
