@@ -1,6 +1,8 @@
-"""CI 必需依赖、MSRV 和非空测试集的失败路径。"""
+"""CI 必需依赖、MSRV、归档依赖覆盖和非空测试集的失败路径。"""
 from pathlib import Path
+import json
 import tempfile
+import tomllib
 import unittest
 
 from scripts import ci_support as ci
@@ -72,6 +74,43 @@ class ReleaseReuseTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ci.check_reused_artifacts(artifacts)
             artifact["fresh"] = True
+
+
+class PackageTests(unittest.TestCase):
+    def test_archive_override_follows_the_source_dependency_pin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            manifest = root / "crates/macindecode-ac4-cli/Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            for revision in ("a" * 40, "b" * 40):
+                dependency = {"version": "=0.1.0", "git": "https://example.com/adm",
+                              "rev": revision, "optional": True}
+                manifest.write_text('[dependencies]\nmacin-atmos = { ' +
+                                    ', '.join(f'{key} = {json.dumps(value)}'
+                                              for key, value in dependency.items()) + ' }\n')
+                command = ci.package_command(root, all_features=True, allow_dirty=True)
+                config = '\n'.join(command[i + 1] for i, arg in enumerate(command)
+                                   if arg == "--config")
+                self.assertEqual(tomllib.loads(config)["patch"]["crates-io"]["macin-atmos"],
+                                 {key: dependency[key] for key in ("git", "rev")})
+                self.assertIn("--all-features", command)
+                self.assertIn("--allow-dirty", command)
+                self.assertIn("--locked", command)
+                self.assertNotIn("--no-verify", command)
+
+    def test_registry_dependencies_need_no_override_and_floating_git_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            manifest = root / "crates/macindecode-ac4-cli/Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            for dependency in ('"=0.1.0"', '{ version = "=0.1.0", optional = true }'):
+                manifest.write_text('[dependencies]\nmacin-atmos = ' + dependency + '\n')
+                self.assertNotIn("--config", ci.package_command(root))
+            for revision in ('', ', rev = "main"', ', branch = "main"'):
+                manifest.write_text('[dependencies]\nmacin-atmos = { git = '
+                                    '"https://example.com/adm"' + revision + ' }\n')
+                with self.assertRaises(ValueError):
+                    ci.package_command(root)
 
 
 if __name__ == "__main__":

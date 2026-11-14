@@ -2,7 +2,7 @@
 
 本文定义 workspace 中 7 个公开 crate 的发布前条件与人工发布顺序。
 `macindecode-ac4-perf` 是 `publish = false` 的内部 harness，不进入发布队列。CI 和仓库脚本
-只执行 `cargo package`，不会上传 crate，也不读取 crates.io token。
+只验证归档及其构建，不会上传 crate，也不读取 crates.io token。
 
 ## 版本与依赖
 
@@ -12,8 +12,13 @@
 
 CLI 的 `macin-atmos` 依赖同时声明 `=0.1.0` 和公开 Git 仓库的固定提交。
 Cargo 打包会移除 Git 来源，归档依赖注册表中的 `macin-atmos =0.1.0`。
-共享库当前只完成发布准备，尚未上传 crates.io，因此 workspace 打包检查仍受此依赖阻挡。
+共享库当前只完成发布准备，尚未上传 crates.io，正式发布前须先解除这一注册表依赖阻挡。
 其发布准备记录见 [MacinFormat-ADM-Core](https://github.com/SakuzyPeng/MacinFormat-ADM-Core/blob/main/docs/CRATES_IO_RELEASE.md)。
+
+CI 使用 `python3 scripts/ci_support.py package`（音频配置追加 `--all-features`）验证
+workspace 归档及解包构建。该入口从 CLI 清单读取共享库的固定 Git 提交，通过命令行
+`patch.crates-io` 将归档构建指向同一来源，覆盖配置不会写入归档清单。正式发布前仍须运行
+下述原始 `cargo package` 命令，确认 crates.io 能独立解析全部依赖。
 
 ## 发布前门禁
 

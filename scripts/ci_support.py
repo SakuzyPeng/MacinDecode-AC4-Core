@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI 的失败汇总、工具链契约、规范准备与精简一致性入口；仅使用标准库。"""
+"""CI 的失败汇总、工具链契约、规范准备、归档验证与精简一致性入口；仅使用标准库。"""
 from __future__ import annotations
 
 import argparse
@@ -84,6 +84,27 @@ def prepare_spec() -> None:
         run([sys.executable, "scripts/check_spec_distribution.py", "--generated"])
 
 
+def package_command(root: Path, *, all_features: bool = False,
+                    allow_dirty: bool = False) -> list[str]:
+    command = ["cargo", "package", "--locked", "--workspace"]
+    if all_features:
+        command.append("--all-features")
+    if allow_dirty:
+        command.append("--allow-dirty")
+
+    manifest = root / "crates/macindecode-ac4-cli/Cargo.toml"
+    atmos = tomllib.loads(manifest.read_text())["dependencies"]["macin-atmos"]
+    if isinstance(atmos, dict) and "git" in atmos:
+        if not re.fullmatch(r"[0-9a-f]{40}", atmos.get("rev", "")):
+            raise ValueError("CI 打包要求 macin-atmos 固定完整 Git 提交")
+        # Cargo 将归档中的 Git 依赖转成注册表版本。共享库发布前，验证构建
+        # 仍使用源码构建的同一提交；命令行 patch 不会写入归档清单。
+        for key in ("git", "rev"):
+            command.extend(["--config",
+                            f"patch.crates-io.macin-atmos.{key}={json.dumps(atmos[key])}"])
+    return command
+
+
 def check_test_inventory(output: str) -> None:
     names = [line.removesuffix(": test") for line in output.splitlines() if line.endswith(": test")]
     if len(names) != len(CONSISTENCY_TESTS) or set(names) != CONSISTENCY_TESTS:
@@ -134,6 +155,9 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("prepare-spec")
     commands.add_parser("toolchain")
+    package = commands.add_parser("package", help="使用固定 Git 依赖验证 CI 归档构建")
+    package.add_argument("--all-features", action="store_true")
+    package.add_argument("--allow-dirty", action="store_true")
     gate = commands.add_parser("gate")
     gate.add_argument("jobs", nargs="+")
     tests = commands.add_parser("consistency")
@@ -147,6 +171,9 @@ def main() -> int:
             check_toolchain(ROOT, run(["rustc", "--version"], capture=True))
         elif args.command == "prepare-spec":
             prepare_spec()
+        elif args.command == "package":
+            run(package_command(ROOT, all_features=args.all_features,
+                                allow_dirty=args.allow_dirty))
         else:
             consistency(args.target, args.require_reuse)
     except (OSError, ValueError, KeyError, IndexError) as error:

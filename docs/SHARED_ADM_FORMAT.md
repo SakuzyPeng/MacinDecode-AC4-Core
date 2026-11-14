@@ -17,8 +17,9 @@ CLI 命令、JSON v1、严格映射诊断和不覆盖目标的提交行为保持
 
 共享库已准备 `0.1.0` 的包元数据、许可证与 README，并通过归档解包构建及发布 dry-run，尚未上传 crates.io。
 CLI 的依赖同时声明 `=0.1.0` 与固定 Git 提交，源码构建使用公开 Git 依赖，Cargo 归档会转成注册表版本约束。
-注册表尚不能解析共享库时，CLI 的 `cargo package` 和现有 CI 打包检查仍会失败。
-后续正式上传共享库并待索引可用后，须重新运行 workspace 默认与 all-features 打包检查，见
+CI 通过 `scripts/ci_support.py package` 从 CLI 清单读取固定 Git 提交，为归档验证构建设置临时
+`patch.crates-io`。正式上传共享库并待索引可用后，须运行原始 `cargo package` 命令，
+核对 workspace 默认与 all-features 配置能独立解析注册表依赖，见
 [crates.io 发布检查](CRATES_IO_RELEASE.md)。
 
 DAMF stem 保留尾随句点或空格，因为实际成员名会追加 `.atmos`、`.atmos.metadata` 和 `.atmos.audio`。

@@ -59,12 +59,12 @@ jobs:
       - name: Test default features
         run: cargo test --locked --workspace
 
-      - name: Verify crates.io packages
+      - name: Verify package archives
         run: |
           for crate_license in crates/*/LICENSE; do
             cmp LICENSE "$crate_license"
           done
-          cargo package --locked --workspace
+          python3 scripts/ci_support.py package
 
       - name: Audit specification distribution boundary
         run: python3 scripts/check_spec_distribution.py
@@ -166,8 +166,8 @@ jobs:
       - name: Test audio-decode feature
         run: cargo test --locked --workspace --features audio-decode
 
-      - name: Verify crates.io packages with audio-decode
-        run: cargo package --locked --workspace --all-features
+      - name: Verify package archives with audio-decode
+        run: python3 scripts/ci_support.py package --all-features
 
   spec_audit:
     name: specification audit
