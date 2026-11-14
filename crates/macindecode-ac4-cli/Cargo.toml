@@ -28,9 +28,11 @@ audio-decode = [
     "dep:macindecode-ac4-scene",
     "macindecode-ac4-scene/audio-decode",
     "dep:renamore",
+    "dep:macin-atmos",
 ]
 
 [dependencies]
+macin-atmos = { git = "https://github.com/SakuzyPeng/MacinFormat-ADM-Core", rev = "158b1760e22ca87dc5a8a6b4a56d511581d4c86f", optional = true }
 macindecode-ac4-metadata.workspace = true
 clap = { version = "4.6", features = ["derive"] }
 macindecode-ac4-bitstream.workspace = true

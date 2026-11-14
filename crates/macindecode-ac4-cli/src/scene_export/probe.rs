@@ -4,7 +4,6 @@ use crate::metadata_batch::MetadataElement;
 use crate::scene_export::scene_selector;
 
 pub(crate) const OUTPUT_SAMPLE_RATE: u32 = 48_000;
-pub(crate) const BYTES_PER_SAMPLE: u64 = 3;
 pub(crate) const SAMPLE_MAX: f64 = 8_388_607.0;
 pub(crate) const MAX_PROBE_OBJECTS: usize = 118;
 

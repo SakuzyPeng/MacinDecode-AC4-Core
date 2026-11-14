@@ -11,23 +11,11 @@ pub(super) fn build_metadata(
     warnings: &mut WarningSet,
 ) -> Result<String, String> {
     let mut lines = vec!["sampleRate: 48000".to_owned(), "events:".to_owned()];
-    for (index, channel) in BED_CHANNELS.iter().enumerate() {
-        lines.extend([
-            format!("  - ID: {index}"),
-            "    samplePos: 0".to_owned(),
-            "    active: true".to_owned(),
-            "    importance: 1".to_owned(),
-            "    gain: 0".to_owned(),
-            "    rampLength: 0".to_owned(),
-            "    trimBypass: false".to_owned(),
-            "    headTrackMode: scene relative".to_owned(),
-            if *channel == "LFE" {
-                "    binauralRenderMode: off".to_owned()
-            } else {
-                "    binauralRenderMode: undefined".to_owned()
-            },
-        ]);
-    }
+    lines.extend(
+        macin_atmos::metadata::damf_bed_events()
+            .lines()
+            .map(str::to_owned),
+    );
 
     for object in selected {
         let selector = scene_selector(&object.scene);
@@ -59,16 +47,19 @@ pub(super) fn build_metadata(
                 // 有效策略即使映射为相同字段，也可能有损；警告不能随字段一起去重。
                 headphone_warning(policy, &selector, sample, warnings);
                 if previous_fields != Some(fields) {
-                    lines.extend([
-                        format!("  - ID: {}", object.damf_id),
-                        format!("    samplePos: {sample}"),
-                    ]);
+                    let mut patch = macin_atmos::ObjectPatch::default();
                     if previous_fields.is_none_or(|previous: (&str, &str)| previous.0 != fields.0) {
-                        lines.push(format!("    headTrackMode: {}", fields.0));
+                        patch.head_tracking = Some(tracking_value(fields.0));
                     }
                     if previous_fields.is_none_or(|previous| previous.1 != fields.1) {
-                        lines.push(format!("    binauralRenderMode: {}", fields.1));
+                        patch.binaural_mode = Some(binaural_value(fields.1));
                     }
+                    lines.extend(
+                        macin_atmos::metadata::damf_event(object.damf_id, sample, patch, None)
+                            .map_err(|e| e.to_string())?
+                            .lines()
+                            .map(str::to_owned),
+                    );
                     // 局部事件不写 rampLength、位置或增益；未改变字段继续原来的 ramp。
                 }
             }
@@ -152,12 +143,12 @@ pub(super) fn append_object_event(
         );
     }
     let gain = match basic.gain {
-        ObjectGainState::Default => "0".to_owned(),
-        ObjectGainState::NegativeInfinity => "-.inf".to_owned(),
+        ObjectGainState::Default => macin_atmos::Gain::Decibels(0.),
+        ObjectGainState::NegativeInfinity => macin_atmos::Gain::Silence,
         ObjectGainState::Quantized(code) if code <= 14 => {
-            i16::from(15u8.saturating_sub(code)).to_string()
+            macin_atmos::Gain::Decibels(f64::from(15u8.saturating_sub(code)))
         }
-        ObjectGainState::Quantized(code) => 14i16.saturating_sub(i16::from(code)).to_string(),
+        ObjectGainState::Quantized(code) => macin_atmos::Gain::Decibels(14. - f64::from(code)),
     };
     let importance = match basic.priority {
         ObjectPriorityState::Default => 1.0,
@@ -168,27 +159,17 @@ pub(super) fn append_object_event(
     let (head_track, binaural) = headphone_fields(policy)
         .map_err(|error| format!("Object {selector} at sample {}: {error}", event.sample))?;
 
-    lines.extend([
-        format!("  - ID: {}", object.damf_id),
-        format!("    samplePos: {}", event.sample),
-        format!("    active: {}", state.active),
-        format!("    pos: [{}, {}, {}]", number(x), number(y), number(z)),
-        format!("    snap: {snap}"),
-        format!("    elevation: {elevation}"),
-        format!("    zones: {zones}"),
-    ]);
-    match other.width {
+    let extent = match other.width {
         Some(WidthUpdate::Uniform(code)) => {
-            lines.push(format!("    size: {}", number(f64::from(code) / 31.0)));
+            Some(macin_atmos::Extent::Uniform(f64::from(code) / 31.))
         }
-        Some(WidthUpdate::Cartesian { x, y, z }) => lines.push(format!(
-            "    size3D: [{}, {}, {}]",
-            number(f64::from(x) / 31.0),
-            number(f64::from(y) / 31.0),
-            number(f64::from(z) / 31.0)
-        )),
-        None => lines.push("    size: 0".to_owned()),
-    }
+        Some(WidthUpdate::Cartesian { x, y, z }) => Some(macin_atmos::Extent::Cartesian([
+            f64::from(x) / 31.,
+            f64::from(y) / 31.,
+            f64::from(z) / 31.,
+        ])),
+        None => None,
+    };
     let screen = other
         .screen_factor_code
         .map_or(0.0, |code| f64::from(code.saturating_add(1)) / 8.0);
@@ -198,19 +179,40 @@ pub(super) fn append_object_event(
             .copied()
             .unwrap_or(0.0)
     });
-    lines.extend([
-        "    decorr: 0".to_owned(),
-        format!("    importance: {}", number(importance)),
-        format!("    gain: {gain}"),
-        format!("    rampLength: {}", event.ramp),
-        format!("    trimBypass: {}", event.additional.trim_disabled),
-        "    dialog: -1".to_owned(),
-        "    music: -1".to_owned(),
-        format!("    screenFactor: {}", number(screen)),
-        format!("    depthFactor: {}", number(depth)),
-        format!("    headTrackMode: {head_track}"),
-        format!("    binauralRenderMode: {binaural}"),
-    ]);
+    let mapped = macin_atmos::ObjectState {
+        active: state.active,
+        position: [x, y, z],
+        gain,
+        extent,
+        snap,
+        elevation,
+        zone: match zones {
+            "no back" => macin_atmos::Zone::NoBack,
+            "no sides" => macin_atmos::Zone::NoSides,
+            "center back" => macin_atmos::Zone::CenterBack,
+            "screen only" => macin_atmos::Zone::ScreenOnly,
+            "surround only" => macin_atmos::Zone::SurroundOnly,
+            _ => macin_atmos::Zone::All,
+        },
+        importance,
+        trim_bypass: event.additional.trim_disabled,
+        screen_factor: screen,
+        depth_factor: depth,
+        head_tracking: tracking_value(head_track),
+        binaural_mode: binaural_value(binaural),
+        ..Default::default()
+    };
+    lines.extend(
+        macin_atmos::metadata::damf_event(
+            object.damf_id,
+            event.sample,
+            macin_atmos::ObjectPatch::full(mapped),
+            Some(event.ramp),
+        )
+        .map_err(|e| e.to_string())?
+        .lines()
+        .map(str::to_owned),
+    );
     Ok(())
 }
 
@@ -280,5 +282,21 @@ fn headphone_warning(
             "binaural_render_mode",
             "DAMF does not accept AC-4 Mid headphone mode; falling back to undefined",
         );
+    }
+}
+
+fn tracking_value(value: &str) -> macin_atmos::HeadTracking {
+    if value == "head relative" {
+        macin_atmos::HeadTracking::HeadRelative
+    } else {
+        macin_atmos::HeadTracking::SceneRelative
+    }
+}
+fn binaural_value(value: &str) -> macin_atmos::BinauralMode {
+    match value {
+        "off" => macin_atmos::BinauralMode::Off,
+        "near" => macin_atmos::BinauralMode::Near,
+        "far" => macin_atmos::BinauralMode::Far,
+        _ => macin_atmos::BinauralMode::Undefined,
     }
 }

@@ -9,7 +9,7 @@ mod yaml;
 use manifest::*;
 use metadata::*;
 use package::*;
-use yaml::{finish_lines as finish_yaml_lines, quote as yaml_scalar};
+use yaml::finish_lines as finish_yaml_lines;
 
 use super::*;
 #[cfg(test)]
@@ -19,8 +19,8 @@ use crate::scene_batch::{DiagnosticSceneBatch, SceneBatchError, collect_diagnost
 #[cfg(test)]
 use crate::scene_export::parse_scene_selector;
 use crate::scene_export::{
-    BYTES_PER_SAMPLE, MAX_PROBE_OBJECTS, MappingWarning, OUTPUT_SAMPLE_RATE, PinkNoise, SAMPLE_MAX,
-    WarningSet, position, rescale_u64, scene_selector, select_metadata_elements, selector_seed,
+    MAX_PROBE_OBJECTS, MappingWarning, OUTPUT_SAMPLE_RATE, PinkNoise, SAMPLE_MAX, WarningSet,
+    position, rescale_u64, scene_selector, select_metadata_elements, selector_seed,
     validate_selected_common as validate_scene_common, zone_components,
 };
 use crate::wire::{CliError, DiagnosticCode};
@@ -151,7 +151,8 @@ pub(super) fn run(args: ExportDamfArgs) -> Result<String, CliError> {
         DamfPresentationType::Home,
         DamfEssence::Probe,
         &mut warnings,
-    );
+    )
+    .map_err(|message| cli_error(DiagnosticCode::MappingUnsupported, message))?;
     let metadata_json = build_metadata(&metadata, &selected, duration, &mut warnings)
         .map_err(|message| cli_error(DiagnosticCode::MappingUnsupported, message))?;
     if args.strict_mapping && !warnings.items.is_empty() {
@@ -290,10 +291,6 @@ fn summary_json(
     ))
 }
 
-fn yaml_quote(value: &str) -> String {
-    yaml_scalar(value)
-}
-
 fn json_quote(value: &str) -> String {
     let mut out = String::from("\"");
     for ch in value.chars() {
@@ -310,20 +307,6 @@ fn json_quote(value: &str) -> String {
         }
     }
     out.push('\"');
-    out
-}
-
-fn number(value: f64) -> String {
-    if value == 0.0 {
-        return "0".to_owned();
-    }
-    let mut out = format!("{value:.9}");
-    while out.ends_with('0') {
-        out.pop();
-    }
-    if out.ends_with('.') {
-        out.pop();
-    }
     out
 }
 
@@ -1096,7 +1079,8 @@ mod tests {
             DamfPresentationType::Home,
             DamfEssence::Full { has_lfe: true },
             &mut home_warnings,
-        );
+        )
+        .expect("合法母版应可生成");
         let mut dof_warnings = WarningSet::default();
         let dof = build_manifest(
             "full",
@@ -1105,7 +1089,8 @@ mod tests {
             DamfPresentationType::ThreeDof,
             DamfEssence::Full { has_lfe: true },
             &mut dof_warnings,
-        );
+        )
+        .expect("合法母版应可生成");
         assert!(home_warnings.items.is_empty());
         assert!(dof_warnings.items.is_empty());
         assert_eq!(

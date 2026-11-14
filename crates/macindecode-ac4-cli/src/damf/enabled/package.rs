@@ -180,54 +180,16 @@ pub(super) fn write_caf_with_audio<F>(
 where
     F: FnOnce(&mut BufWriter<File>) -> Result<(), String>,
 {
-    let bytes_per_packet = u64::try_from(channels)
-        .map_err(|_| "CAF channel count exceeds u64")?
-        .checked_mul(BYTES_PER_SAMPLE)
-        .ok_or("CAF packet-byte-count overflow")?;
-    let payload_bytes = frames
-        .checked_mul(bytes_per_packet)
-        .ok_or("CAF payload-size overflow")?;
-    let data_chunk_size = payload_bytes
-        .checked_add(4)
-        .ok_or("CAF data-chunk overflow")?;
     let mut writer = BufWriter::new(
         File::create(path).map_err(|error| format!("Failed to create CAF: {error}"))?,
     );
-    writer.write_all(b"caff").map_err(io_error)?;
-    writer.write_all(&1u16.to_be_bytes()).map_err(io_error)?;
-    writer.write_all(&0u16.to_be_bytes()).map_err(io_error)?;
-    writer.write_all(b"desc").map_err(io_error)?;
-    writer.write_all(&32i64.to_be_bytes()).map_err(io_error)?;
-    writer
-        .write_all(&f64::from(OUTPUT_SAMPLE_RATE).to_bits().to_be_bytes())
-        .map_err(io_error)?;
-    writer.write_all(b"lpcm").map_err(io_error)?;
-    writer.write_all(&2u32.to_be_bytes()).map_err(io_error)?;
-    writer
-        .write_all(
-            &u32::try_from(bytes_per_packet)
-                .map_err(|_| "CAF packet size exceeds u32")?
-                .to_be_bytes(),
-        )
-        .map_err(io_error)?;
-    writer.write_all(&1u32.to_be_bytes()).map_err(io_error)?;
-    writer
-        .write_all(
-            &u32::try_from(channels)
-                .map_err(|_| "CAF channel count exceeds u32")?
-                .to_be_bytes(),
-        )
-        .map_err(io_error)?;
-    writer.write_all(&24u32.to_be_bytes()).map_err(io_error)?;
-    writer.write_all(b"data").map_err(io_error)?;
-    writer
-        .write_all(
-            &i64::try_from(data_chunk_size)
-                .map_err(|_| "CAF data chunk exceeds i64")?
-                .to_be_bytes(),
-        )
-        .map_err(io_error)?;
-    writer.write_all(&0u32.to_be_bytes()).map_err(io_error)?;
+    macin_atmos::containers::write_caf_header(
+        &mut writer,
+        Some(frames),
+        channels,
+        OUTPUT_SAMPLE_RATE,
+    )
+    .map_err(|e| e.to_string())?;
     write_audio(&mut writer)?;
     writer.flush().map_err(io_error)
 }

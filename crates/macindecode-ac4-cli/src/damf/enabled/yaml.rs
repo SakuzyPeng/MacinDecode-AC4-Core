@@ -2,6 +2,7 @@
 
 /// JSON 双引号字符串也是合法 YAML 1.2 scalar；复用 serde 的完整 UTF-8 与控制
 /// 字符转义，避免格式专属代码遗漏边界。
+#[cfg(test)]
 pub(super) fn quote(value: &str) -> String {
     serde_json::to_string(value).expect("String must be serializable as a YAML scalar")
 }

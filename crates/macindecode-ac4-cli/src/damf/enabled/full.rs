@@ -82,7 +82,8 @@ pub(super) fn run(args: ExportFullDamfArgs) -> Result<String, CliError> {
             has_lfe: selection.source.lfe.is_some(),
         },
         &mut warnings,
-    );
+    )
+    .map_err(|message| full_error(DiagnosticCode::MappingUnsupported, message))?;
     let metadata_json = build_metadata(&metadata, &selection.objects, duration, &mut warnings)
         .map_err(|message| full_error(DiagnosticCode::MappingUnsupported, message))?;
     if args.strict_mapping && !warnings.items.is_empty() {

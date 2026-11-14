@@ -124,164 +124,24 @@ pub(super) fn write_adm_wave(
 pub(super) fn write_adm_wave_payload<F>(
     file: File,
     spec: AdmWaveSpec<'_>,
-    write_pcm_payload: F,
+    write_pcm: F,
 ) -> Result<(), String>
 where
     F: FnOnce(&mut BufWriter<File>) -> Result<(), String>,
 {
-    let AdmWaveSpec {
-        frames,
-        channels,
-        sample_rate,
-        axml,
-        chna,
-        dbmd,
-        compatibility,
-    } = spec;
-    let channels_u16 = u16::try_from(channels).map_err(|_| "ADM BWF channel count exceeds u16")?;
-    let block_align_u64 = u64::from(channels_u16)
-        .checked_mul(BYTES_PER_SAMPLE)
-        .ok_or("ADM BWF blockAlign overflow")?;
-    let block_align =
-        u16::try_from(block_align_u64).map_err(|_| "ADM BWF blockAlign exceeds u16")?;
-    let bytes_per_second = sample_rate
-        .checked_mul(u32::from(block_align))
-        .ok_or("ADM BWF bytesPerSecond overflow")?;
-    let data_size = frames
-        .checked_mul(block_align_u64)
-        .ok_or("ADM BWF data-size overflow")?;
-    let axml_size = u64::try_from(axml.len()).map_err(|_| "AXML size exceeds u64")?;
-    let chna_size = u64::try_from(chna.len()).map_err(|_| "CHNA size exceeds u64")?;
-    let dbmd_size = dbmd
-        .map(|value| u64::try_from(value.len()).map_err(|_| "DBMD size exceeds u64"))
-        .transpose()?;
-    let dbmd_total = dbmd_size.map(chunk_total).transpose()?.unwrap_or(0);
-    let axml_uses_ds64 = axml_size >= u64::from(u32::MAX);
-    let ds64_payload_size = 28u64
-        .checked_add(if axml_uses_ds64 { 12 } else { 0 })
-        .ok_or("ds64 size overflow")?;
-    let total_size = 12u64
-        .checked_add(chunk_total(ds64_payload_size)?)
-        .and_then(|value| value.checked_add(24))
-        .and_then(|value| value.checked_add(chunk_total(chna_size).ok()?))
-        .and_then(|value| value.checked_add(chunk_total(axml_size).ok()?))
-        .and_then(|value| value.checked_add(dbmd_total))
-        .and_then(|value| value.checked_add(chunk_total(data_size).ok()?))
-        .ok_or("ADM BWF file-size overflow")?;
-    let riff_size = total_size
-        .checked_sub(8)
-        .ok_or("ADM BWF outer-size underflow")?;
-
-    let mut writer = BufWriter::new(file);
-    writer
-        .write_all(compatibility.container_id())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&u32::MAX.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer.write_all(b"WAVE").map_err(adm_io_error)?;
-
-    writer.write_all(b"ds64").map_err(adm_io_error)?;
-    writer
-        .write_all(
-            &u32::try_from(ds64_payload_size)
-                .map_err(|_| "ds64 payload exceeds u32")?
-                .to_le_bytes(),
-        )
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&riff_size.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&data_size.to_le_bytes())
-        .map_err(adm_io_error)?;
-    let sample_count = match compatibility {
-        AdmCompatibility::Standard => 0,
-        AdmCompatibility::Logic => frames,
-    };
-    writer
-        .write_all(&sample_count.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&u32::from(axml_uses_ds64).to_le_bytes())
-        .map_err(adm_io_error)?;
-    if axml_uses_ds64 {
-        writer.write_all(b"axml").map_err(adm_io_error)?;
-        writer
-            .write_all(&axml_size.to_le_bytes())
-            .map_err(adm_io_error)?;
-    }
-
-    writer.write_all(b"fmt ").map_err(adm_io_error)?;
-    writer
-        .write_all(&16u32.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&1u16.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&channels_u16.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&sample_rate.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&bytes_per_second.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&block_align.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer
-        .write_all(&24u16.to_le_bytes())
-        .map_err(adm_io_error)?;
-
-    write_chunk(&mut writer, b"chna", chna, false)?;
-    write_chunk(&mut writer, b"axml", axml, axml_uses_ds64)?;
-    if let Some(dbmd) = dbmd {
-        write_chunk(&mut writer, b"dbmd", dbmd, false)?;
-    }
-    writer.write_all(b"data").map_err(adm_io_error)?;
-    writer
-        .write_all(&u32::MAX.to_le_bytes())
-        .map_err(adm_io_error)?;
-    write_pcm_payload(&mut writer)?;
-    if data_size & 1 != 0 {
-        writer.write_all(&[0]).map_err(adm_io_error)?;
-    }
-    writer.flush().map_err(adm_io_error)?;
-    let file = writer
-        .into_inner()
-        .map_err(|error| format!("Failed to finish writing ADM BWF: {}", error.error()))?;
-    file.sync_all()
-        .map_err(|error| format!("Failed to sync ADM BWF: {error}"))
-}
-
-pub(super) fn chunk_total(payload: u64) -> Result<u64, String> {
-    8u64.checked_add(payload)
-        .and_then(|value| value.checked_add(payload & 1))
-        .ok_or("RIFF chunk-size overflow".to_owned())
-}
-
-pub(super) fn write_chunk<W: Write>(
-    writer: &mut W,
-    id: &[u8; 4],
-    data: &[u8],
-    uses_ds64: bool,
-) -> Result<(), String> {
-    writer.write_all(id).map_err(adm_io_error)?;
-    let size = if uses_ds64 {
-        u32::MAX
-    } else {
-        u32::try_from(data.len()).map_err(|_| "RIFF chunk payload exceeds u32")?
-    };
-    writer
-        .write_all(&size.to_le_bytes())
-        .map_err(adm_io_error)?;
-    writer.write_all(data).map_err(adm_io_error)?;
-    if data.len() & 1 != 0 {
-        writer.write_all(&[0]).map_err(adm_io_error)?;
-    }
-    Ok(())
+    macin_atmos::containers::write_adm_wave_payload(
+        file,
+        macin_atmos::containers::AdmWaveSpec {
+            frames: spec.frames,
+            channels: spec.channels,
+            sample_rate: spec.sample_rate,
+            axml: spec.axml,
+            chna: spec.chna,
+            dbmd: spec.dbmd,
+            compatibility: spec.compatibility.into(),
+        },
+        write_pcm,
+    )
 }
 
 pub(super) fn write_pcm<W: Write>(

@@ -3,6 +3,7 @@
 mod core;
 mod full;
 mod mapping;
+mod master;
 mod probe;
 mod selection;
 
@@ -18,8 +19,7 @@ pub(crate) use full::{
 };
 pub(crate) use mapping::{MappingWarning, WarningSet, position, zone_components};
 pub(crate) use probe::{
-    BYTES_PER_SAMPLE, MAX_PROBE_OBJECTS, OUTPUT_SAMPLE_RATE, PinkNoise, SAMPLE_MAX, rescale_u64,
-    selector_seed,
+    MAX_PROBE_OBJECTS, OUTPUT_SAMPLE_RATE, PinkNoise, SAMPLE_MAX, rescale_u64, selector_seed,
 };
 #[cfg(test)]
 pub(crate) use selection::parse_selector as parse_scene_selector;

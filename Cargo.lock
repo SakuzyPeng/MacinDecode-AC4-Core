@@ -238,6 +238,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
+name = "macin-adm"
+version = "0.1.0"
+source = "git+https://github.com/SakuzyPeng/MacinFormat-ADM-Core?rev=158b1760e22ca87dc5a8a6b4a56d511581d4c86f#158b1760e22ca87dc5a8a6b4a56d511581d4c86f"
+dependencies = [
+ "libm",
+ "quick-xml",
+]
+
+[[package]]
+name = "macin-atmos"
+version = "0.1.0"
+source = "git+https://github.com/SakuzyPeng/MacinFormat-ADM-Core?rev=158b1760e22ca87dc5a8a6b4a56d511581d4c86f#158b1760e22ca87dc5a8a6b4a56d511581d4c86f"
+dependencies = [
+ "libm",
+ "macin-adm",
+ "macin-bwf",
+ "quick-xml",
+ "renamore",
+]
+
+[[package]]
+name = "macin-bwf"
+version = "0.1.0"
+source = "git+https://github.com/SakuzyPeng/MacinFormat-ADM-Core?rev=158b1760e22ca87dc5a8a6b4a56d511581d4c86f#158b1760e22ca87dc5a8a6b4a56d511581d4c86f"
+
+[[package]]
 name = "macindecode-ac4-bitstream"
 version = "0.2.0"
 
@@ -246,6 +272,7 @@ name = "macindecode-ac4-cli"
 version = "0.2.0"
 dependencies = [
  "clap",
+ "macin-atmos",
  "macindecode-ac4-bitstream",
  "macindecode-ac4-decode",
  "macindecode-ac4-inspect",

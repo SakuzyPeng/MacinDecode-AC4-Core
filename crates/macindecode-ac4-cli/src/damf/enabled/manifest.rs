@@ -9,7 +9,7 @@ pub(super) fn build_manifest(
     presentation_type: DamfPresentationType,
     essence: DamfEssence,
     warnings: &mut WarningSet,
-) -> String {
+) -> Result<String, String> {
     let common = selected.first().and_then(|item| item.scene.common);
     if selected.iter().any(|item| item.scene.common != common) {
         warnings.push(
@@ -73,58 +73,47 @@ pub(super) fn build_manifest(
             "AC-4 full 7.1.2 compatibility bed (silent)".to_owned()
         }
     };
-    let mut lines = vec![
-        format!("version: {}", presentation_type.version()),
-        "presentations:".to_owned(),
-        format!("  - type: {}", presentation_type.as_str()),
-        "    simplified: false".to_owned(),
-        format!(
-            "    metadata: {}",
-            yaml_quote(&format!("{stem}.atmos.metadata"))
-        ),
-        format!("    audio: {}", yaml_quote(&format!("{stem}.atmos.audio"))),
-        "    offset: 0".to_owned(),
-        format!("    fps: {fps}"),
-        "    scBedConfiguration: [3]".to_owned(),
-        format!("    creationTool: {creation_tool}"),
-        format!("    creationToolVersion: {}", env!("CARGO_PKG_VERSION")),
-        "    downmixType_5to2: LoRo_Stereo".to_owned(),
-        "    51-to-20_LsRs90degPhaseShift: false".to_owned(),
-        format!("    warpMode: {warp_mode}"),
-        format!("    screenSizeRatio: {}", number(screen_ratio)),
-        format!("    bedDistribution: {bed_distribution}"),
-        "    trimMode:".to_owned(),
-        "      SomeSurroundsNoHeights:".to_owned(),
-        "        {}".to_owned(),
-        "      SomeSurroundsSomeHeights:".to_owned(),
-        "        {}".to_owned(),
-        "      SomeSurroundsManyHeights:".to_owned(),
-        "        {}".to_owned(),
-        "      ManySurroundsNoHeights:".to_owned(),
-        "        {}".to_owned(),
-        "    bedInstances:".to_owned(),
-        match essence {
-            DamfEssence::Probe => format!("      - description: {bed_description}"),
-            DamfEssence::Full { .. } => {
-                format!("      - description: {}", yaml_quote(&bed_description))
-            }
+    let objects = selected
+        .iter()
+        .map(|object| {
+            macin_atmos::ObjectSpec::new(
+                macin_atmos::TrackId(u64::from(object.damf_id)),
+                match essence {
+                    DamfEssence::Probe => {
+                        format!("AC-4 {} pink probe", scene_selector(&object.scene))
+                    }
+                    DamfEssence::Full { .. } => {
+                        format!("AC-4 full object {}", scene_selector(&object.scene))
+                    }
+                },
+            )
+        })
+        .collect();
+    let frame_rate = match fps {
+        "23.976" => macin_atmos::FrameRate::Fps23976,
+        "24" => macin_atmos::FrameRate::Fps24,
+        "25" => macin_atmos::FrameRate::Fps25,
+        "29.97" => macin_atmos::FrameRate::Fps2997,
+        "29.97df" => macin_atmos::FrameRate::Fps2997Drop,
+        "30" => macin_atmos::FrameRate::Fps30,
+        _ => return Err(format!("Unsupported master frame rate {fps}")),
+    };
+    let spec = macin_atmos::MasterSpec {
+        stem: stem.to_owned(),
+        frame_rate,
+        profile: presentation_type.into(),
+        objects,
+        bed_name: bed_description,
+        creation_tool: creation_tool.to_owned(),
+        creation_tool_version: env!("CARGO_PKG_VERSION").to_owned(),
+        screen_size_ratio: screen_ratio,
+        bed_distribution,
+        warp_mode: if warp_mode == "None" {
+            macin_atmos::WarpMode::None
+        } else {
+            macin_atmos::WarpMode::LoRo
         },
-        "        channels:".to_owned(),
-    ];
-    for (index, channel) in BED_CHANNELS.iter().enumerate() {
-        lines.push(format!("          - channel: {channel}"));
-        lines.push(format!("            ID: {index}"));
-    }
-    lines.push("    objects:".to_owned());
-    for object in selected {
-        let description = match essence {
-            DamfEssence::Probe => format!("AC-4 {} pink probe", scene_selector(&object.scene)),
-            DamfEssence::Full { .. } => {
-                format!("AC-4 full object {}", scene_selector(&object.scene))
-            }
-        };
-        lines.push(format!("      - description: {}", yaml_quote(&description)));
-        lines.push(format!("        ID: {}", object.damf_id));
-    }
-    finish_yaml_lines(lines)
+        ..Default::default()
+    };
+    macin_atmos::metadata::damf_manifest(&spec).map_err(|e| e.to_string())
 }

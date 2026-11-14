@@ -17,8 +17,8 @@ use crate::metadata_batch::{
 use crate::scene_batch::SceneBatchPath;
 use crate::scene_batch::{DiagnosticSceneBatch, SceneBatchError, collect_diagnostic_scene_batch};
 use crate::scene_export::{
-    BYTES_PER_SAMPLE, MAX_PROBE_OBJECTS, MappingWarning, OUTPUT_SAMPLE_RATE, PinkNoise, SAMPLE_MAX,
-    WarningSet, position, rescale_u64, scene_selector, select_metadata_elements, selector_seed,
+    MAX_PROBE_OBJECTS, MappingWarning, OUTPUT_SAMPLE_RATE, PinkNoise, SAMPLE_MAX, WarningSet,
+    position, rescale_u64, scene_selector, select_metadata_elements, selector_seed,
     validate_selected_common as validate_scene_common, zone_components,
 };
 use crate::wire::{CliError, DiagnosticCode};
@@ -32,69 +32,33 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
 const DBMD_VERSION: [u8; 4] = [0x06, 0x00, 0x00, 0x01];
+#[cfg(test)]
 const DBMD_ATMOS_SUPPLEMENTAL_SYNC: [u8; 4] = [0xbd, 0x6f, 0x72, 0xf8];
 const ADM_PROGRAMME_NAME: &str = "Atmos_Master";
 const BED_CHANNELS: [BedChannel; 10] = [
-    BedChannel::new("RoomCentricLeft", "RC_L", -1.0, 1.0, 0.0),
-    BedChannel::new("RoomCentricRight", "RC_R", 1.0, 1.0, 0.0),
-    BedChannel::new("RoomCentricCenter", "RC_C", 0.0, 1.0, 0.0),
-    BedChannel::new("RoomCentricLFE", "RC_LFE", -1.0, 1.0, -1.0),
-    BedChannel::new("RoomCentricLeftSideSurround", "RC_Lss", -1.0, 0.0, 0.0),
-    BedChannel::new("RoomCentricRightSideSurround", "RC_Rss", 1.0, 0.0, 0.0),
-    BedChannel::new("RoomCentricLeftRearSurround", "RC_Lrs", -1.0, -1.0, 0.0),
-    BedChannel::new("RoomCentricRightRearSurround", "RC_Rrs", 1.0, -1.0, 0.0),
-    BedChannel::new("RoomCentricLeftTopSurround", "RC_Lts", -1.0, 0.0, 1.0),
-    BedChannel::new("RoomCentricRightTopSurround", "RC_Rts", 1.0, 0.0, 1.0),
+    BedChannel { label: "RC_L" },
+    BedChannel { label: "RC_R" },
+    BedChannel { label: "RC_C" },
+    BedChannel { label: "RC_LFE" },
+    BedChannel { label: "RC_Lss" },
+    BedChannel { label: "RC_Rss" },
+    BedChannel { label: "RC_Lrs" },
+    BedChannel { label: "RC_Rrs" },
+    BedChannel { label: "RC_Lts" },
+    BedChannel { label: "RC_Rts" },
 ];
-
 #[derive(Debug, Clone, Copy)]
 struct BedChannel {
-    name: &'static str,
     label: &'static str,
-    x: f64,
-    y: f64,
-    z: f64,
-}
-
-impl BedChannel {
-    const fn new(name: &'static str, label: &'static str, x: f64, y: f64, z: f64) -> Self {
-        Self {
-            name,
-            label,
-            x,
-            y,
-            z,
-        }
-    }
 }
 
 impl AdmCompatibility {
-    const fn container_id(self) -> &'static [u8; 4] {
-        match self {
-            Self::Standard => b"BW64",
-            Self::Logic => b"RF64",
-        }
-    }
-
     const fn container_name(self) -> &'static str {
         match self {
             Self::Standard => "BW64",
             Self::Logic => "RF64",
-        }
-    }
-
-    const fn clock_units_per_second(self) -> u64 {
-        match self {
-            Self::Standard => 1_000_000_000,
-            Self::Logic => 100_000,
-        }
-    }
-
-    const fn clock_fraction_digits(self) -> usize {
-        match self {
-            Self::Standard => 9,
-            Self::Logic => 5,
         }
     }
 }
@@ -416,134 +380,31 @@ fn summary_json(
     ))
 }
 
-fn bed_pack_id() -> String {
-    "AP_00011001".to_owned()
+fn object_id(track: u16) -> String {
+    macin_atmos::metadata::object_id(track)
 }
-
-fn bed_channel_id(index: u16) -> String {
-    format!("AC_0001{:04x}", 0x1000u16.saturating_add(index))
+fn format_sample_time(samples: u64, profile: AdmCompatibility) -> Result<String, String> {
+    format_sample_time_at(samples, OUTPUT_SAMPLE_RATE, profile)
 }
-
-fn object_pack_id(ordinal: u16) -> String {
-    format!("AP_0003{:04x}", 0x1000u16.saturating_add(ordinal))
-}
-
-fn object_channel_id(ordinal: u16) -> String {
-    format!("AC_0003{:04x}", 0x1000u16.saturating_add(ordinal))
-}
-
-fn object_id(track_index: u16) -> String {
-    format!("AO_{:04x}", 0x1000u16.saturating_add(track_index))
-}
-
-fn track_uid(track_index: u16) -> String {
-    format!("ATU_{track_index:08x}")
-}
-
-fn block_id(channel_id: &str, block: u32) -> String {
-    format!("AB_{}_{block:08x}", channel_id.trim_start_matches("AC_"))
-}
-
-fn format_sample_time(samples: u64, compatibility: AdmCompatibility) -> Result<String, String> {
-    format_sample_time_at(samples, OUTPUT_SAMPLE_RATE, compatibility)
-}
-
 fn format_sample_time_at(
     samples: u64,
-    sample_rate: u32,
-    compatibility: AdmCompatibility,
+    rate: u32,
+    profile: AdmCompatibility,
 ) -> Result<String, String> {
-    let units =
-        samples_to_clock_units_at(samples, sample_rate, compatibility.clock_units_per_second())?;
-    format_clock_units(
-        units,
-        compatibility.clock_units_per_second(),
-        compatibility.clock_fraction_digits(),
-    )
+    macin_atmos::metadata::sample_time(samples, rate, profile.into()).map_err(|e| e.to_string())
 }
-
+#[cfg(test)]
 fn format_sample_span_at(
     start: u64,
     end: u64,
-    sample_rate: u32,
-    compatibility: AdmCompatibility,
+    rate: u32,
+    profile: AdmCompatibility,
 ) -> Result<String, String> {
-    let units_per_second = compatibility.clock_units_per_second();
-    let start_units = samples_to_clock_units_at(start, sample_rate, units_per_second)?;
-    let end_units = samples_to_clock_units_at(end, sample_rate, units_per_second)?;
-    let duration_units = end_units
-        .checked_sub(start_units)
-        .ok_or("ADM block-duration underflow")?;
-    format_clock_units(
-        duration_units,
-        units_per_second,
-        compatibility.clock_fraction_digits(),
-    )
+    macin_atmos::metadata::sample_span(start, end, rate, profile.into()).map_err(|e| e.to_string())
 }
-
-fn samples_to_clock_units_at(
-    samples: u64,
-    sample_rate: u32,
-    units_per_second: u64,
-) -> Result<u64, String> {
-    if sample_rate == 0 {
-        return Err("ADM output sample rate is zero".to_owned());
-    }
-    let scaled = u128::from(samples)
-        .checked_mul(u128::from(units_per_second))
-        .ok_or("ADM time-rescaling overflow")?;
-    let rounded = scaled
-        .checked_add(u128::from(sample_rate / 2))
-        .ok_or("ADM time-rounding overflow")?
-        .checked_div(u128::from(sample_rate))
-        .ok_or("ADM output sample rate is zero")?;
-    u64::try_from(rounded).map_err(|_| "ADM time value exceeds u64".to_owned())
-}
-
-fn format_clock_units(
-    units: u64,
-    units_per_second: u64,
-    fraction_digits: usize,
-) -> Result<String, String> {
-    let seconds = units
-        .checked_div(units_per_second)
-        .ok_or("ADM clock units per second is zero")?;
-    let fraction = units
-        .checked_rem(units_per_second)
-        .ok_or("ADM clock units per second is zero")?;
-    let hours = seconds / 3_600;
-    if hours > 99 {
-        return Err(
-            "ADM BS.2076 time fields cannot represent durations of 100 hours or more".to_owned(),
-        );
-    }
-    let minutes = seconds % 3_600 / 60;
-    let seconds = seconds % 60;
-    Ok(format!(
-        "{hours:02}:{minutes:02}:{seconds:02}.{fraction:0fraction_digits$}"
-    ))
-}
-
-fn samples_to_nanoseconds_at(samples: u64, sample_rate: u32) -> Result<u64, String> {
-    samples_to_clock_units_at(samples, sample_rate, 1_000_000_000)
-}
-
-fn format_seconds_span_at(start: u64, end: u64, sample_rate: u32) -> Result<String, String> {
-    let start_ns = samples_to_nanoseconds_at(start, sample_rate)?;
-    let end_ns = samples_to_nanoseconds_at(end, sample_rate)?;
-    let nanoseconds = end_ns
-        .checked_sub(start_ns)
-        .ok_or("ADM interpolation-duration underflow")?;
-    let seconds = nanoseconds / 1_000_000_000;
-    let fraction = nanoseconds % 1_000_000_000;
-    let mut out = format!("{seconds}.{fraction:09}");
-    while out.ends_with('0') {
-        out.pop();
-    }
-    if out.ends_with('.') {
-        out.push('0');
-    }
-    Ok(out)
+#[cfg(test)]
+fn format_seconds_span_at(start: u64, end: u64, rate: u32) -> Result<String, String> {
+    macin_atmos::metadata::seconds_span(start, end, rate).map_err(|e| e.to_string())
 }
 
 fn json_quote(value: &str) -> String {
@@ -563,20 +424,6 @@ fn json_quote(value: &str) -> String {
         }
     }
     out.push('\"');
-    out
-}
-
-fn number(value: f64) -> String {
-    if value == 0.0 {
-        return "0".to_owned();
-    }
-    let mut out = format!("{value:.12}");
-    while out.ends_with('0') {
-        out.pop();
-    }
-    if out.ends_with('.') {
-        out.pop();
-    }
     out
 }
 

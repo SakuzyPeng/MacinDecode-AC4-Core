@@ -190,13 +190,9 @@ enum DamfPresentationType {
 
 #[cfg(feature = "audio-decode")]
 impl DamfPresentationType {
-    const fn version(self) -> &'static str {
-        match self {
-            Self::Home => "0.5.1",
-            Self::ThreeDof => "0.6.0",
-        }
+    fn version(self) -> &'static str {
+        macin_atmos::Profile::from(self).damf_version()
     }
-
     const fn as_str(self) -> &'static str {
         match self {
             Self::Home => "home",
@@ -239,17 +235,6 @@ impl MasterFrameRate {
             Self::Fps2997 => "29.97",
             Self::Fps2997Drop => "29.97df",
             Self::Fps30 => "30",
-        }
-    }
-
-    const fn dbmd_code(self) -> u8 {
-        match self {
-            Self::Fps23976 => 0x21,
-            Self::Fps24 => 0x22,
-            Self::Fps25 => 0x23,
-            Self::Fps2997 => 0x25,
-            Self::Fps2997Drop => 0x24,
-            Self::Fps30 => 0x26,
         }
     }
 }
