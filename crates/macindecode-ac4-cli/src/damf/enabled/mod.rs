@@ -1066,6 +1066,45 @@ mod tests {
     }
 
     #[test]
+    fn manifests_preserve_requested_and_derived_stems_with_trailing_dots_and_spaces() {
+        let selected = [SelectedObject {
+            scene: test_scene(2, 1),
+            damf_id: 10,
+        }];
+        for (input, requested, expected) in [
+            ("source.m4a", Some("master."), "master."),
+            ("source.m4a", Some("master "), "master "),
+            ("mix..m4a", None, "mix."),
+            ("mix .m4a", None, "mix "),
+        ] {
+            let stem = choose_stem_from(Path::new(input), requested.map(str::to_owned))
+                .expect("应保留追加扩展名后合法的 stem");
+            assert_eq!(stem, expected);
+            for essence in [DamfEssence::Probe, DamfEssence::Full { has_lfe: true }] {
+                for presentation in [DamfPresentationType::Home, DamfPresentationType::ThreeDof] {
+                    let mut warnings = WarningSet::default();
+                    let manifest = build_manifest(
+                        &stem,
+                        "24",
+                        &selected,
+                        presentation,
+                        essence,
+                        &mut warnings,
+                    )
+                    .expect("合法 stem 应可生成 manifest");
+                    for suffix in ["metadata", "audio"] {
+                        assert!(
+                            manifest.contains(&format!(
+                                "    {suffix}: \"{expected}.atmos.{suffix}\"\n"
+                            ))
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn full_home_and_3dof_manifests_only_change_version_and_type() {
         let selected = [SelectedObject {
             scene: test_scene(2, 1),

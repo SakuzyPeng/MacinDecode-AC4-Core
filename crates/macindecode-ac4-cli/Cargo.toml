@@ -32,7 +32,7 @@ audio-decode = [
 ]
 
 [dependencies]
-macin-atmos = { git = "https://github.com/SakuzyPeng/MacinFormat-ADM-Core", rev = "158b1760e22ca87dc5a8a6b4a56d511581d4c86f", optional = true }
+macin-atmos = { version = "=0.1.0", git = "https://github.com/SakuzyPeng/MacinFormat-ADM-Core", rev = "c7ec09002ef0464f4da41f3cb067d42fe47b86f9", optional = true }
 macindecode-ac4-metadata.workspace = true
 clap = { version = "4.6", features = ["derive"] }
 macindecode-ac4-bitstream.workspace = true
